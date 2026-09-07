@@ -1,90 +1,28 @@
-# v0.60 FinLab Free 部署檢查表
+# easystock v0.62 History Fix
 
-## 1. 覆蓋檔案
+這個修補只處理「個股圖表只有當日」問題，不改每日快速更新流程。
 
-- `index.html`
-- `update_market.py`
-- `requirements.txt`
-- `.github/workflows/update.yml`
-- `.gitignore`
-- `README.md`
+## 上傳 2 個新檔案
 
-## 2. 刪除舊檔（若還存在）
+- `backfill_history.py` → repo 根目錄
+- `.github/workflows/backfill-history.yml` → 對應路徑
 
-- `serviceAccountKey.json`
-- `market_data.json`
+`requirements.txt` 沿用 v0.61（requests / numpy / firebase-admin）即可。
 
-## 3. GitHub Secrets
+## 執行一次歷史補檔
 
-必須保留：
+GitHub → Actions → **Historical K-line Backfill** → Run workflow
 
-- `FIREBASE_DATABASE_URL`
-- `FIREBASE_SERVICE_ACCOUNT_JSON`
+工作會拆成 5 個 shard，每個 shard 約處理 100 檔，使用 TWSE / TPEx 官方歷史月資料，把最近約 14 個月壓縮成最多 250 根日 K。
 
-選配：
+- 每檔寫完就立即存 Firebase，因此中途失敗可重跑。
+- 已有至少 220 根 K 線的股票會直接跳過。
+- 不需要 FinLab。
+- 不需要 Fugle API key。
+- 這是一次性修復；平常的 `Daily Stock Data Update` 仍維持 v0.61 快速版。
 
-- `FUGLE_API_KEY`
+## 完成後
 
-可以刪除：
+重新整理 GitHub Pages，點進個股後應可看到數月到約 250 個交易日的 K 線，而不是只有當日。
 
-- `FINLAB_API_TOKEN`
-
-## 4. Commit / Push
-
-```bash
-git add .
-git commit -m "Upgrade Mohren Quant Matrix to v0.60 FinLab Free"
-git push
-```
-
-## 5. 第一次執行
-
-GitHub → **Actions → Daily Stock Data Update → Run workflow**。
-
-檢查 log：
-
-- `Validate Required Secrets`：Success
-- `Check Optional Fugle Secret`：有／無 Key 都可以 Success
-- `Verify Dependencies and Syntax`：Success
-- `Update TWSE TPEx Data to Firebase`：Success
-
-## 6. Firebase
-
-確認：
-
-```text
-/market_data/meta/version = 0.60
-/market_data/meta/source = TWSE + TPEx
-/market_data/summary
-/market_data/kline
-```
-
-若從 v0.50 升級，既有 K 線應被保留並只追加最新交易日，不應整批消失。
-
-## 7. 網站
-
-重新整理 GitHub Pages 後確認：
-
-- 頁首顯示 `v0.60`
-- 狀態列顯示 `TWSE + TPEx`
-- 上市、上櫃股票皆可出現
-- 點上櫃股票時 Yahoo 連結使用 `.TWO`
-- 點個股可正常載入 K 線
-- 缺少 FCF 等欄位時顯示 `N/A`，不是 `0`
-
-## 8. 若沒有 Fugle Key
-
-這不是錯誤。
-
-- 舊 K 線直接沿用。
-- 新進股票從官方日資料開始累積。
-- 歷史不足的股票暫時沒有完整 MA60 / 回測。
-
-若想讓新進股票立即擁有歷史 K 線，再新增 `FUGLE_API_KEY`。
-
-## v0.61 Fast 部署後檢查
-
-- `.github/workflows/update.yml` 的 `timeout-minutes` 應為 `8`。
-- env 應包含 `HTTP_TIMEOUT: "12"`、`HTTP_WORKERS: "6"`、`FUGLE_BOOTSTRAP_MAX_PER_RUN: "20"`。
-- Action log 的財報階段應看到多個 `[HTTP]` 幾乎同時開始，而不是逐一等待。
-- 正常情況建議目標約 1–3 分鐘；若官方 API 異常，最晚 8 分鐘由 GitHub 自動中止。
+若某個 shard 有少數 `[WARN]`，直接再次 Run workflow；已成功股票會被跳過，只補剩下的。
