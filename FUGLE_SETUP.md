@@ -1,43 +1,39 @@
-# EasyStock v0.63 — Fugle 歷史 K 線補檔
+# Fugle 設定 — v1.1
 
 ## 1. GitHub Secret
 
-到 Repository → Settings → Secrets and variables → Actions → New repository secret：
+Repository → Settings → Secrets and variables → Actions → New repository secret：
 
 - Name: `FUGLE_API_KEY`
-- Secret: 貼上你的 Fugle API Key
+- Secret: 貼上 Fugle API Key
 
-不要把 Key 放進 `index.html`、Python 程式、README 或 commit。
+不要把 Key 放進 `index.html`、Python、README 或任何 commit。
 
-## 2. 上傳檔案
+## 2. Fugle 在 v1.1 的用途
 
-把本包完整覆蓋到 repository；最重要的新檔案：
+- `backfill_fugle.py`：歷史日 K 回填
+- `scan_intraday.py`：盤中 5 分 K 掃描；15 分 K 由程式本地聚合
+- `update_market.py`：新進熱門股歷史不足時少量 bootstrap
 
-- `backfill_fugle.py`
-- `.github/workflows/backfill-fugle-history.yml`
+## 3. GitHub Actions
 
-平常每日更新仍使用：
+### Historical Research Backfill (Fugle)
 
-- `.github/workflows/update.yml`
+第一次部署或歷史不足時手動跑。
 
-## 3. 先跑一次歷史補檔
+### Intraday & Overnight Picks
 
-GitHub → Actions → **Historical K-line Backfill (Fugle)** → Run workflow
+平日盤中自動跑，將結果寫入：
 
-行為：
+```text
+/market_data/intraday_picks
+```
 
-- 從 Firebase `/market_data/summary` 取得最多 500 檔熱門股票。
-- 已有至少 220 根 K 線的股票直接跳過。
-- 其餘使用 Fugle `historical/candles/{symbol}` 抓近一年日 K，最多保存 250 根。
-- 每補完一檔立即寫 Firebase，所以中途停止後可安全重跑。
-- 補檔後自動再跑一次 `update_market.py`，重新計算技術指標與分數。
+若要先測試，可在 GitHub → Actions → `Intraday & Overnight Picks` 手動 Run workflow。
 
-## 4. 日後每天
+## 4. 注意
 
-`Daily Stock Data Update` 仍由 TWSE + TPEx 提供每天的新資料，只追加一根 K 線。
-Fugle 只會在新進股票歷史不足時做少量 bootstrap；v0.63 每次最多 5 檔，避免拖慢每日 workflow。
-
-## 5. 為什麼使用 adjusted=false
-
-歷史補檔使用未還原股價，因為每日 TWSE/TPEx append 的也是實際未還原 OHLC。
-兩者一致可避免除權息前後把「還原價」與「實際價」混在同一條曲線。
+- 盤中掃描預設只挑約 30 檔高流動性候選，避免大量 API 呼叫。
+- 只向 Fugle抓 5 分 K，15 分 K 本地聚合，降低額度消耗。
+- GitHub Actions cron 可能有數分鐘延遲，不是券商級即時訊號。
+- 歷史補檔使用未還原價，與 TWSE / TPEx 每日實際 OHLC 保持一致。
