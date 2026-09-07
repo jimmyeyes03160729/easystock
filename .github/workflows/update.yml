@@ -2,19 +2,20 @@ name: Daily Stock Data Update
 
 on:
   schedule:
-    # 台灣時間週一至週五下午 15:30 自動執行 (UTC 時間 07:30)
     - cron: '30 7 * * 1-5'
-  workflow_dispatch: # 支援在 GitHub 網頁手動點擊立即執行
+  workflow_dispatch:
 
 jobs:
   update-data:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 強制宣告寫入權限，避免權限被拒
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
