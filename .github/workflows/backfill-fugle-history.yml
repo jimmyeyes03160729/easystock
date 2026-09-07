@@ -1,25 +1,39 @@
-name: Historical K-line Backfill (Fugle)
+name: Historical Research Backfill (Fugle)
 
 on:
   workflow_dispatch:
+    inputs:
+      years:
+        description: "研究歷史年數（3年已足夠，5年更完整但第一次較久）"
+        required: true
+        default: "3"
+        type: choice
+        options:
+          - "3"
+          - "5"
+      max_symbols:
+        description: "最多補幾檔（可重跑，已完成的會跳過）"
+        required: true
+        default: "500"
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: easystock-fugle-history-backfill
+  group: easystock-fugle-research-history
   cancel-in-progress: true
 
 jobs:
   backfill-history:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 80
     env:
       PYTHONUNBUFFERED: "1"
       FIREBASE_ROOT_PATH: "market_data"
-      BACKFILL_TARGET_BARS: "250"
-      BACKFILL_MIN_EXISTING_BARS: "220"
-      BACKFILL_MAX_SYMBOLS: "500"
+      BACKFILL_YEARS: ${{ inputs.years }}
+      BACKFILL_MAX_SYMBOLS: ${{ inputs.max_symbols }}
+      DISPLAY_KLINE_BARS: "250"
       HTTP_TIMEOUT: "12"
       FUGLE_MIN_INTERVAL_SECONDS: "1.10"
       FUGLE_MAX_RETRIES: "4"
@@ -58,15 +72,16 @@ jobs:
       - name: Verify Syntax
         run: |
           python -m py_compile backfill_fugle.py update_market.py
+          python tests/test_parsers.py
 
-      - name: Backfill 250D K-lines from Fugle
+      - name: Backfill 3Y or 5Y Research History from Fugle
         env:
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
         run: python backfill_fugle.py
 
-      - name: Refresh Scores After Backfill
+      - name: Refresh Scores and Rolling-Forward Validation
         env:
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
@@ -74,6 +89,9 @@ jobs:
           FIREBASE_ROOT_PATH: "market_data"
           HOT_STOCK_COUNT: "500"
           KLINE_DAYS: "250"
+          BACKTEST_HISTORY_BARS: "1260"
+          VALIDATION_OOS_DAYS: "252"
+          BACKTEST_TOTAL_COST_BPS: "70"
           INSTITUTION_DAYS: "15"
           LEGACY_FUNDAMENTAL_MAX_AGE_DAYS: "120"
           HTTP_TIMEOUT: "12"

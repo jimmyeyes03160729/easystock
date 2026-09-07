@@ -16,12 +16,15 @@ concurrency:
 jobs:
   update-data:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     env:
       PYTHONUNBUFFERED: "1"
       FIREBASE_ROOT_PATH: "market_data"
       HOT_STOCK_COUNT: "500"
       KLINE_DAYS: "250"
+      BACKTEST_HISTORY_BARS: "1260"
+      VALIDATION_OOS_DAYS: "252"
+      BACKTEST_TOTAL_COST_BPS: "70"
       INSTITUTION_DAYS: "15"
       LEGACY_FUNDAMENTAL_MAX_AGE_DAYS: "120"
       HTTP_TIMEOUT: "12"
