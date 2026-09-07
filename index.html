@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="墨衡量化 Mohren Quant Matrix - 台股量化觀察儀表板" />
-  <title>墨衡量化 Mohren Quant Matrix v0.63</title>
+  <title>墨衡量化 Mohren Quant Matrix v0.70</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <style>
@@ -38,7 +38,7 @@
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
             <h1 class="text-sm font-bold tracking-[0.16em] text-main">墨衡量化 ｜ MOHREN QUANT MATRIX</h1>
-            <span class="text-[10px] rounded border px-1.5 py-0.5 text-sub">v0.63</span>
+            <span class="text-[10px] rounded border px-1.5 py-0.5 text-sub">v0.70</span>
           </div>
           <div id="dataStatusText" class="text-[11px] text-sub font-mono mt-1">正在從 Firebase 載入市場資料…</div>
         </div>
@@ -84,35 +84,39 @@
       <div class="panel rounded-2xl p-3">
         <div class="flex items-center justify-between border-b muted-border pb-2"><div class="font-bold text-xs text-main">🎯 均線回踩轉強</div><span class="text-[9px] text-purple-300">REBOUND</span></div>
         <div class="text-[11px] text-sub mt-2 leading-relaxed">MA20/60 之上 + 近3日回踩 + 紅K + 營收條件。</div>
+        <div class="mt-2 text-[9px] rounded-lg border muted-border px-2 py-1.5 text-purple-200">建議模式：10D｜多頭／震盪回升｜看回踩後再轉強</div>
         <div id="reboundList" class="space-y-1.5 mt-2"><div class="text-xs text-sub text-center py-8">計算中…</div></div>
       </div>
       <div class="panel rounded-2xl p-3">
         <div class="flex items-center justify-between border-b muted-border pb-2"><div class="font-bold text-xs text-main">⚡ 日線短線動能</div><span class="text-[9px] text-rose-300">MOMENTUM</span></div>
         <div class="text-[11px] text-sub mt-2 leading-relaxed">單日漲幅、20日量比、成交金額與收盤區間位置；不是即時盤中訊號。</div>
+        <div class="mt-2 text-[9px] rounded-lg border muted-border px-2 py-1.5 text-rose-200">建議模式：1D｜研究用｜真正短線需搭配 5/15 分K</div>
         <div id="dayTradeList" class="space-y-1.5 mt-2"><div class="text-xs text-sub text-center py-8">計算中…</div></div>
       </div>
       <div class="panel rounded-2xl p-3">
         <div class="flex items-center justify-between border-b muted-border pb-2"><div class="font-bold text-xs text-main">📈 強勢波段主升</div><span class="text-[9px] text-amber-300">SWING</span></div>
         <div class="text-[11px] text-sub mt-2 leading-relaxed">接近 250D 高點 + 20日風險調整報酬 + 均線趨勢。</div>
+        <div class="mt-2 text-[9px] rounded-lg border muted-border px-2 py-1.5 text-amber-200">建議模式：10–20D｜多頭｜分數與均線趨勢同步</div>
         <div id="shortSwingList" class="space-y-1.5 mt-2"><div class="text-xs text-sub text-center py-8">計算中…</div></div>
       </div>
       <div class="panel rounded-2xl p-3">
         <div class="flex items-center justify-between border-b muted-border pb-2"><div class="font-bold text-xs text-main">🛡️ 穩健長期核心</div><span class="text-[9px] text-emerald-300">LONG</span></div>
         <div class="text-[11px] text-sub mt-2 leading-relaxed">TTM 股利殖利率 + 可得基本面 + 負債 + 股價穩定度；缺值因子不硬算 0 分，預設殖利率門檻 4%。</div>
+        <div class="mt-2 text-[9px] rounded-lg border muted-border px-2 py-1.5 text-emerald-200">建議模式：季頻／3–12M｜基本面＋估值｜不以日線勝率為主</div>
         <div id="longTermList" class="space-y-1.5 mt-2"><div class="text-xs text-sub text-center py-8">計算中…</div></div>
       </div>
     </section>
 
     <section class="panel rounded-2xl p-4">
       <div class="flex items-center justify-between gap-2 border-b muted-border pb-2">
-        <div><h2 class="text-sm font-bold text-main">📊 模型回測驗證</h2><p class="text-[10px] text-sub mt-1">目前熱門股票池的 250 日樣本內檢驗；存在股票池選擇偏誤，不代表未來績效。</p></div>
-        <span class="text-[10px] text-sub font-mono">250D SAMPLE-IN TEST</span>
+        <div><h2 class="text-sm font-bold text-main">📊 模型回測驗證</h2><p id="backtestDescription" class="text-[10px] text-sub mt-1">載入 rolling-forward 驗證資訊…</p></div>
+        <span id="backtestMethod" class="text-[10px] text-sub font-mono">ROLLING FORWARD</span>
       </div>
       <div id="backtestGrid" class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3"></div>
     </section>
 
     <section class="panel rounded-2xl p-4 text-[10px] text-sub leading-relaxed">
-      本頁為資料整理與量化研究工具，不構成投資建議。資料核心為 TWSE / TPEx 官方公開資料；歷史 K 線不足時可選用 Fugle 補齊。短線動能使用日線資料代理；回測未納入所有交易成本、滑價與完整歷史股票池重建。
+      本頁為資料整理與量化研究工具，不構成投資建議。資料核心為 TWSE / TPEx 官方公開資料；Fugle 用於 3–5 年歷史 K 線補齊。回測採 rolling-forward、同股持有期間不重複進場，並扣除預設研究用交易摩擦成本；但歷史股票池仍由目前熱門股回推，尚未完全消除 current-universe 選擇偏誤。
     </section>
   </div>
 
@@ -362,8 +366,44 @@
 
   function renderBacktest() {
     const bt=META.backtests||{};
+    const v=META.validation||{};
+    const years=META.history_backfill?.years;
+    const cost=v.cost_bps==null?null:Number(v.cost_bps)/100;
+    document.getElementById("backtestMethod").textContent = v.method ? `${years?years+"Y · ":""}${v.oos_days||"--"}D ROLLING-FORWARD` : "等待 3Y 歷史回填";
+    document.getElementById("backtestDescription").textContent = v.method
+      ? `驗證窗 ${v.evaluation_start||"--"}～${v.evaluation_end||"--"}；訊號只使用當時以前資料，平均報酬已扣研究用摩擦成本 ${cost==null?"--":cost.toFixed(2)+"%"}。歷史股票池仍有 current-universe 選擇偏誤。`
+      : "尚未建立研究歷史；請先執行 Historical Research Backfill (Fugle)。";
+
     const items=[["均線回踩",bt.rebound],["強勢波段",bt.swing],["日線短線代理",bt.daytrade_proxy]];
-    document.getElementById("backtestGrid").innerHTML=items.map(([title,x])=>`<div class="rounded-xl border muted-border p-3"><div class="text-xs font-bold text-main">${title}</div><div class="grid grid-cols-3 gap-2 mt-2"><div><div class="text-[9px] text-sub">訊號</div><div class="text-sm text-main">${x?.signals??0}</div></div><div><div class="text-[9px] text-sub">勝率</div><div class="text-sm text-main">${x?.win_rate==null?"N/A":pct(x.win_rate,1)}</div></div><div><div class="text-[9px] text-sub">平均</div><div class="text-sm ${(x?.avg_return??0)>=0?'metric-good':'metric-bad'}">${x?.avg_return==null?"N/A":pct(x.avg_return,2)}</div></div></div><div class="text-[9px] text-sub mt-2">${escapeHtml(x?.note||"")}</div></div>`).join("");
+    const metric=(label,value,kind="num",good=true)=>{
+      let text="N/A";
+      if (value!==null && value!==undefined) {
+        text = kind==="pct" ? pct(value,2) : kind==="ratio" ? Number(value).toFixed(2) : String(value);
+      }
+      const cls = kind==="pct" && value!=null ? (Number(value)>=0?'metric-good':'metric-bad') : 'text-main';
+      return `<div><div class="text-[8px] text-sub">${label}</div><div class="text-xs ${cls} mt-0.5">${text}</div></div>`;
+    };
+    const regimeLabel={bull:"多頭",sideways:"盤整",bear:"空頭"};
+    document.getElementById("backtestGrid").innerHTML=items.map(([title,x])=>{
+      if (!x) return `<div class="rounded-xl border muted-border p-3"><div class="text-xs font-bold text-main">${title}</div><div class="text-[10px] text-sub mt-3">尚無新版驗證資料，先執行歷史回填。</div></div>`;
+      const horizons=["1","5","10","20"].map(h=>{const z=x.horizons?.[h]; return `<div class="flex justify-between gap-2"><span>${h}D</span><span class="${(z?.avg_return??0)>=0?'metric-good':'metric-bad'}">${z?.avg_return==null?'N/A':pct(z.avg_return,2)}</span><span class="text-sub">n=${z?.signals??0}</span></div>`}).join("");
+      const regimes=["bull","sideways","bear"].map(k=>{const z=x.regimes?.[k]; return `<div class="flex justify-between gap-2"><span>${regimeLabel[k]}</span><span class="${(z?.avg_return??0)>=0?'metric-good':'metric-bad'}">${z?.avg_return==null?'N/A':pct(z.avg_return,2)}</span><span class="text-sub">${z?.signals??0}</span></div>`}).join("");
+      const buckets=["<60","60-69","70-79","80-89","90+"].map(k=>{const z=x.score_buckets?.[k]; return `<div class="flex justify-between gap-2"><span>${k}</span><span class="${(z?.avg_return??0)>=0?'metric-good':'metric-bad'}">${z?.avg_return==null?'N/A':pct(z.avg_return,2)}</span><span class="text-sub">${z?.signals??0}</span></div>`}).join("");
+      return `<div class="rounded-xl border muted-border p-3">
+        <div class="flex justify-between gap-2 items-start"><div><div class="text-xs font-bold text-main">${title}</div><div class="text-[9px] text-sub mt-1">主驗證 ${x.primary_horizon??"--"}D</div></div><span class="text-[8px] rounded border muted-border px-1.5 py-1 text-sub">${escapeHtml(x.recommended_mode||"")}</span></div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+          ${metric("訊號",x.signals)}${metric("勝率",x.win_rate,"pct")}${metric("成本後平均",x.avg_return,"pct")}${metric("中位數",x.median_return,"pct")}
+          ${metric("Profit Factor",x.profit_factor,"ratio")}${metric("盈虧比",x.payoff_ratio,"ratio")}${metric("最大回撤",x.max_drawdown,"pct")}${metric("Sharpe",x.sharpe,"ratio")}
+          ${metric("等權基準",x.avg_benchmark_return,"pct")}${metric("超額報酬",x.avg_excess_return,"pct")}
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3 text-[8px]">
+          <div class="rounded-lg border muted-border p-2"><div class="font-bold text-main mb-1">持有期比較</div>${horizons}</div>
+          <div class="rounded-lg border muted-border p-2"><div class="font-bold text-main mb-1">市場模式</div>${regimes}</div>
+          <div class="rounded-lg border muted-border p-2"><div class="font-bold text-main mb-1">歷史代理分數分層</div>${buckets}</div>
+        </div>
+        <div class="text-[8px] text-sub mt-2 leading-relaxed">${escapeHtml(x.note||"")}</div>
+      </div>`;
+    }).join("");
   }
 
   function renderFactorGrid(stock) {
@@ -398,7 +438,18 @@
 
   function renderStockBacktest(stock) {
     const items=[["均線回踩",stock.backtest?.rebound],["強勢波段",stock.backtest?.swing],["日線短線代理",stock.backtest?.daytrade_proxy]];
-    document.getElementById("stockBacktest").innerHTML=items.map(([title,x])=>`<div class="rounded-lg border muted-border p-2.5"><div class="text-[10px] font-bold text-main">${title}</div><div class="grid grid-cols-3 gap-1 mt-2"><div><div class="text-[8px] text-sub">訊號</div><div class="text-xs text-main">${x?.signals??0}</div></div><div><div class="text-[8px] text-sub">勝率</div><div class="text-xs text-main">${x?.win_rate==null?"N/A":pct(x.win_rate,1)}</div></div><div><div class="text-[8px] text-sub">平均</div><div class="text-xs ${(x?.avg_return??0)>=0?'metric-good':'metric-bad'}">${x?.avg_return==null?"N/A":pct(x.avg_return,2)}</div></div></div><div class="text-[8px] text-sub mt-2">${escapeHtml(x?.note||"")}</div></div>`).join("");
+    document.getElementById("stockBacktest").innerHTML=items.map(([title,x])=>`<div class="rounded-lg border muted-border p-2.5">
+      <div class="flex justify-between gap-2"><div class="text-[10px] font-bold text-main">${title}</div><div class="text-[8px] text-sub">${x?.primary_horizon??"--"}D</div></div>
+      <div class="grid grid-cols-3 gap-1 mt-2">
+        <div><div class="text-[8px] text-sub">訊號</div><div class="text-xs text-main">${x?.signals??0}</div></div>
+        <div><div class="text-[8px] text-sub">勝率</div><div class="text-xs text-main">${x?.win_rate==null?"N/A":pct(x.win_rate,1)}</div></div>
+        <div><div class="text-[8px] text-sub">成本後平均</div><div class="text-xs ${(x?.avg_return??0)>=0?'metric-good':'metric-bad'}">${x?.avg_return==null?"N/A":pct(x.avg_return,2)}</div></div>
+        <div><div class="text-[8px] text-sub">中位數</div><div class="text-xs ${(x?.median_return??0)>=0?'metric-good':'metric-bad'}">${x?.median_return==null?"N/A":pct(x.median_return,2)}</div></div>
+        <div><div class="text-[8px] text-sub">PF</div><div class="text-xs text-main">${x?.profit_factor==null?"N/A":fmt(x.profit_factor,2)}</div></div>
+        <div><div class="text-[8px] text-sub">Max DD</div><div class="text-xs metric-bad">${x?.max_drawdown==null?"N/A":pct(x.max_drawdown,2)}</div></div>
+      </div>
+      <div class="text-[8px] text-sub mt-2">${escapeHtml(x?.recommended_mode||"")}</div>
+    </div>`).join("");
   }
 
   async function openStockDetail(symbol,strategyType) {

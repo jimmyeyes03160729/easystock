@@ -30,7 +30,10 @@ HTTP_TIMEOUT = float(os.environ.get("HTTP_TIMEOUT", "12"))
 FUGLE_MIN_INTERVAL_SECONDS = float(os.environ.get("FUGLE_MIN_INTERVAL_SECONDS", "1.05"))
 FUGLE_BOOTSTRAP_MAX_PER_RUN = int(os.environ.get("FUGLE_BOOTSTRAP_MAX_PER_RUN", "20"))
 HTTP_WORKERS = max(2, min(8, int(os.environ.get("HTTP_WORKERS", "6"))))
-MODEL_VERSION = "0.63"
+BACKTEST_HISTORY_BARS = max(KLINE_DAYS, int(os.environ.get("BACKTEST_HISTORY_BARS", "1260")))
+VALIDATION_OOS_DAYS = max(60, int(os.environ.get("VALIDATION_OOS_DAYS", "252")))
+BACKTEST_TOTAL_COST_BPS = max(0.0, float(os.environ.get("BACKTEST_TOTAL_COST_BPS", "70")))
+MODEL_VERSION = "0.70"
 
 TWSE_BASE = "https://openapi.twse.com.tw/v1"
 TPEX_BASE = "https://www.tpex.org.tw/openapi/v1"
@@ -38,7 +41,7 @@ TWSE_T86_URL = "https://www.twse.com.tw/rwd/zh/fund/T86"
 FUGLE_BASE = "https://api.fugle.tw/marketdata/v1.0/stock"
 
 DEFAULT_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; easystock/0.63; +https://github.com/jimmyeyes03160729/easystock)",
+    "User-Agent": "Mozilla/5.0 (compatible; easystock/0.70; +https://github.com/jimmyeyes03160729/easystock)",
     "Accept": "application/json,text/plain,*/*",
 }
 _THREAD_LOCAL = threading.local()
@@ -608,9 +611,10 @@ def merge_institution_history(previous: list[dict] | None, today: str, current_n
 # ============================================================
 # Kline and Fugle migration helpers
 # ============================================================
-def normalize_kline(rows: list[dict] | None) -> list[dict]:
+def normalize_kline(rows: list[dict] | dict | None, limit: int | None = None) -> list[dict]:
     by_day: dict[str, dict] = {}
-    for row in rows or []:
+    source = rows.values() if isinstance(rows, dict) else (rows or [])
+    for row in source:
         if not isinstance(row, dict):
             continue
         day = str(row.get("time") or row.get("date") or "")[:10]
@@ -632,7 +636,10 @@ def normalize_kline(rows: list[dict] | None) -> list[dict]:
             "volume": v,
             "amount": safe_float(row.get("amount")) or ((c * v) if v else None),
         }
-    return [by_day[k] for k in sorted(by_day)][-KLINE_DAYS:]
+    ordered = [by_day[k] for k in sorted(by_day)]
+    if limit is None:
+        limit = KLINE_DAYS
+    return ordered[-limit:] if limit > 0 else ordered
 
 
 def _wait_for_fugle_rate_limit() -> None:
@@ -683,13 +690,13 @@ def fetch_fugle_history(symbol: str, end_day: str) -> list[dict]:
                 "amount": safe_float(row.get("turnover")) or ((c * v) if v else None),
             }
         )
-    return normalize_kline(result)
+    return normalize_kline(result, KLINE_DAYS)
 
 
-def merge_kline(existing: list[dict] | None, quote: dict, fugle_rows: list[dict] | None = None) -> list[dict]:
-    rows = []
-    rows.extend(existing or [])
-    rows.extend(fugle_rows or [])
+def merge_bars(existing: list[dict] | dict | None, quote: dict, extra_rows: list[dict] | None = None, *, limit: int) -> list[dict]:
+    rows: list[dict] = []
+    rows.extend(normalize_kline(existing, 0))
+    rows.extend(extra_rows or [])
     rows.append(
         {
             "time": quote["date"],
@@ -701,21 +708,25 @@ def merge_kline(existing: list[dict] | None, quote: dict, fugle_rows: list[dict]
             "amount": quote.get("amount"),
         }
     )
-    return normalize_kline(rows)
+    return normalize_kline(rows, limit)
+
+
+def merge_kline(existing: list[dict] | dict | None, quote: dict, fugle_rows: list[dict] | None = None) -> list[dict]:
+    return merge_bars(existing, quote, fugle_rows, limit=KLINE_DAYS)
 
 
 # ============================================================
-# Quant/backtest helpers
+# Quant/backtest / rolling-forward validation helpers
 # ============================================================
+VALIDATION_HORIZONS = (1, 5, 10, 20)
+PRIMARY_HORIZON = {"rebound": 10, "swing": 10, "daytrade_proxy": 1}
+STRATEGY_LABEL = {"rebound": "均線回踩", "swing": "強勢波段", "daytrade_proxy": "日線短線代理"}
+
+
 def daily_returns(closes: list[float]) -> list[float]:
     if len(closes) < 2:
         return []
-    out = []
-    for i in range(1, len(closes)):
-        prev = closes[i - 1]
-        if prev:
-            out.append((closes[i] - prev) / prev)
-    return out
+    return [(closes[i] / closes[i - 1]) - 1 for i in range(1, len(closes)) if closes[i - 1] > 0]
 
 
 def sharpe_annualized(closes: list[float]) -> float | None:
@@ -724,9 +735,7 @@ def sharpe_annualized(closes: list[float]) -> float | None:
         return None
     mean = float(np.mean(rets))
     std = float(np.std(rets, ddof=1))
-    if std <= 0:
-        return 0.0
-    return (mean / std) * math.sqrt(252)
+    return 0.0 if std <= 0 else (mean / std) * math.sqrt(252)
 
 
 def sma(values: list[float], window: int) -> float | None:
@@ -735,144 +744,308 @@ def sma(values: list[float], window: int) -> float | None:
     return float(np.mean(values[-window:]))
 
 
-def calc_trade_stats(returns: list[float], equity_curve: list[float], note: str):
-    if not returns:
-        return {"signals": 0, "win_rate": None, "avg_return": None, "max_drawdown": None, "note": note}
-    wins = sum(1 for x in returns if x > 0)
-    max_dd = 0.0
-    peak = equity_curve[0] if equity_curve else 1.0
-    for value in equity_curve:
-        peak = max(peak, value)
-        if peak > 0:
-            max_dd = min(max_dd, (value / peak) - 1)
+def clamp01(value: float | None) -> float:
+    if value is None:
+        return 0.0
+    return max(0.0, min(1.0, float(value)))
+
+
+def weighted_number(pairs: list[tuple[float | None, float]], fallback: float = 50.0) -> float:
+    usable = [(float(v), float(w)) for v, w in pairs if v is not None and w > 0]
+    weight = sum(w for _, w in usable)
+    return fallback if weight <= 0 else sum(v * w for v, w in usable) / weight
+
+
+def historical_features(kline: list[dict], i: int) -> dict:
+    closes = [float(x["close"]) for x in kline]
+    row = kline[i]
+    close = closes[i]
+    open_v = float(row["open"])
+    high = float(row["high"])
+    low = float(row["low"])
+    volume = float(row.get("volume") or 0)
+    ma20 = float(np.mean(closes[i - 19 : i + 1])) if i >= 19 else None
+    ma60 = float(np.mean(closes[i - 59 : i + 1])) if i >= 59 else None
+    high250 = max(float(x["high"]) for x in kline[max(0, i - 249) : i + 1]) if i >= 59 else None
+    near_high = close / high250 if high250 and high250 > 0 else None
+    window20 = closes[max(0, i - 19) : i + 1]
+    rets = daily_returns(window20)
+    std = float(np.std(rets, ddof=1)) if len(rets) >= 10 else 0.0
+    sharpe = (float(np.mean(rets)) / std) * math.sqrt(252) if std > 0 else None
+    prev_vol = [float(x.get("volume") or 0) for x in kline[max(0, i - 20) : i] if float(x.get("volume") or 0) > 0]
+    avg_vol = float(np.mean(prev_vol)) if prev_vol else 0.0
+    vol_ratio = volume / avg_vol if avg_vol > 0 else None
+    intraday_ret = (close - open_v) / open_v if open_v > 0 else None
+    day_range = high - low
+    range_position = (close - low) / day_range if day_range > 0 else 0.5
+    recent_min_low = min(float(x["low"]) for x in kline[max(0, i - 2) : i + 1])
+    momo20 = close / closes[i - 20] if i >= 20 and closes[i - 20] > 0 else None
     return {
-        "signals": len(returns),
-        "win_rate": round(wins / len(returns) * 100, 2),
-        "avg_return": round(float(np.mean(returns)) * 100, 4),
-        "max_drawdown": round(max_dd * 100, 4),
-        "note": note,
+        "close": close, "open": open_v, "ma20": ma20, "ma60": ma60,
+        "near_high": near_high, "sharpe": sharpe, "vol_ratio": vol_ratio,
+        "intraday_ret": intraday_ret, "range_position": range_position,
+        "recent_min_low": recent_min_low, "momo20": momo20,
     }
 
 
-def backtest_rebound(kline: list[dict]):
-    if len(kline) < 75:
-        return calc_trade_stats([], [1.0], "資料不足，至少需要75個交易日。")
-    closes = [float(x["close"]) for x in kline]
-    opens = [float(x["open"]) for x in kline]
-    lows = [float(x["low"]) for x in kline]
-    returns: list[float] = []
-    equity = [1.0]
-    i = 60
-    while i < len(kline) - 10:
-        ma20 = np.mean(closes[i - 19 : i + 1])
-        ma60 = np.mean(closes[i - 59 : i + 1])
-        recent_min_low = min(lows[i - 2 : i + 1])
-        hit = recent_min_low <= max(ma20, ma60) * 1.02
-        red = closes[i] > opens[i]
-        signal = closes[i] > ma20 and closes[i] > ma60 and hit and red
-        if signal:
-            entry = opens[i + 1]
-            exit_price = closes[i + 10]
-            if entry > 0:
-                ret = exit_price / entry - 1
-                returns.append(ret)
-                equity.append(equity[-1] * (1 + ret))
-                i += 10
-                continue
-        i += 1
-    return calc_trade_stats(returns, equity, "訊號日收盤後，下一交易日開盤進場；固定持有10個交易日。未納入交易成本。")
+def strategy_signal_and_score(strategy: str, f: dict) -> tuple[bool, float]:
+    close, open_v = f["close"], f["open"]
+    ma20, ma60 = f["ma20"], f["ma60"]
+    near_high, sharpe = f["near_high"], f["sharpe"]
+    vol_ratio, intraday_ret, range_position = f["vol_ratio"], f["intraday_ret"], f["range_position"]
+
+    if strategy == "swing":
+        trend = ma20 is not None and ma60 is not None and close > ma20 and close > ma60
+        signal = bool(near_high is not None and near_high >= 0.90 and sharpe is not None and sharpe >= 0.50 and trend)
+        score = clamp01(near_high) * 50 + clamp01(((sharpe or 0) + 1) / 3) * 30 + (20 if trend else 5)
+        return signal, round(score, 2)
+
+    if strategy == "daytrade_proxy":
+        signal = bool((intraday_ret or 0) > 0.01 and (vol_ratio or 0) > 1.2 and (range_position or 0) > 0.65)
+        # Historical cross-sectional amount rank is unavailable, so the remaining
+        # contemporaneously-known factors are reweighted instead of filling 0.
+        score = weighted_number([
+            (clamp01(((intraday_ret or 0) + 0.02) / 0.08) * 100, 35),
+            (clamp01((vol_ratio or 0) / 3) * 100, 25),
+            (clamp01(range_position) * 100, 15),
+        ])
+        return signal, round(score, 2)
+
+    # rebound: historical revenue/institution cross-section is intentionally not
+    # backfilled, therefore validation uses only point-in-time price/volume inputs.
+    hit20 = ma20 is not None and f["recent_min_low"] <= ma20 * 1.02
+    hit60 = ma60 is not None and f["recent_min_low"] <= ma60 * 1.02
+    trend = ma20 is not None and ma60 is not None and close > ma20 and close > ma60
+    red = close > open_v
+    signal = bool(trend and (hit20 or hit60) and red)
+    momo_score = clamp01((((f.get("momo20") or 1.0) - 0.90) / 0.25)) * 100
+    score = weighted_number([
+        (100.0 if signal else 0.0, 50),
+        (clamp01(near_high) * 100 if near_high is not None else None, 20),
+        (clamp01((vol_ratio or 0) / 3) * 100 if vol_ratio is not None else None, 15),
+        (momo_score if f.get("momo20") is not None else None, 15),
+    ])
+    return signal, round(score, 2)
 
 
-def backtest_swing(kline: list[dict]):
-    if len(kline) < 80:
-        return calc_trade_stats([], [1.0], "資料不足。")
-    closes = [float(x["close"]) for x in kline]
-    returns: list[float] = []
-    equity = [1.0]
-    i = 60
-    while i < len(kline) - 10:
-        window20 = closes[i - 19 : i + 1]
-        rets = daily_returns(window20)
-        std = np.std(rets, ddof=1) if len(rets) >= 10 else 0
-        sharpe = (np.mean(rets) / std) * math.sqrt(252) if std > 0 else 0
-        high_window = closes[max(0, i - 249) : i + 1]
-        near_high = closes[i] / max(high_window)
-        ma20 = np.mean(closes[i - 19 : i + 1])
-        ma60 = np.mean(closes[i - 59 : i + 1])
-        signal = near_high >= 0.90 and sharpe >= 0.50 and closes[i] > ma20 and closes[i] > ma60
-        if signal:
-            entry = float(kline[i + 1]["open"])
-            exit_price = closes[i + 10]
-            if entry > 0:
-                ret = exit_price / entry - 1
-                returns.append(ret)
-                equity.append(equity[-1] * (1 + ret))
-                i += 10
-                continue
-        i += 1
-    return calc_trade_stats(returns, equity, "訊號日收盤後，下一交易日開盤進場；固定持有10個交易日。未納入交易成本。")
+def build_benchmark_context(histories: dict[str, list[dict]]) -> dict:
+    daily: dict[str, list[float]] = {}
+    for rows in histories.values():
+        rows = normalize_kline(rows, 0)
+        for i in range(1, len(rows)):
+            p = float(rows[i - 1]["close"])
+            c = float(rows[i]["close"])
+            if p > 0:
+                daily.setdefault(rows[i]["time"], []).append(c / p - 1)
+
+    dates = sorted(daily)
+    index_values: list[float] = []
+    value = 100.0
+    regime_by_date: dict[str, str] = {}
+    for idx, day in enumerate(dates):
+        rets = daily[day]
+        if rets:
+            value *= 1 + float(np.mean(rets))
+        index_values.append(value)
+        if idx >= 59:
+            ma20 = float(np.mean(index_values[idx - 19 : idx + 1]))
+            ma60 = float(np.mean(index_values[idx - 59 : idx + 1]))
+            if value > ma20 > ma60:
+                regime_by_date[day] = "bull"
+            elif value < ma20 < ma60:
+                regime_by_date[day] = "bear"
+            else:
+                regime_by_date[day] = "sideways"
+        else:
+            regime_by_date[day] = "unknown"
+
+    future: dict[int, dict[str, float]] = {h: {} for h in VALIDATION_HORIZONS}
+    future_samples: dict[int, dict[str, list[float]]] = {h: {} for h in VALIDATION_HORIZONS}
+    for rows in histories.values():
+        rows = normalize_kline(rows, 0)
+        for i in range(len(rows) - 1):
+            signal_day = rows[i]["time"]
+            for h in VALIDATION_HORIZONS:
+                if i + h >= len(rows):
+                    continue
+                entry = float(rows[i + 1]["open"])
+                exit_price = float(rows[i + h]["close"])
+                if entry > 0:
+                    future_samples[h].setdefault(signal_day, []).append(exit_price / entry - 1)
+    for h in VALIDATION_HORIZONS:
+        future[h] = {d: float(np.mean(xs)) for d, xs in future_samples[h].items() if xs}
+    return {"dates": dates, "regime_by_date": regime_by_date, "future_returns": future}
 
 
-def backtest_daytrade_proxy(kline: list[dict]):
-    if len(kline) < 25:
-        return calc_trade_stats([], [1.0], "資料不足。")
-    returns: list[float] = []
-    equity = [1.0]
-    for i in range(21, len(kline)):
-        prev = kline[i - 1]
-        today = kline[i]
-        prev_open = float(prev["open"])
-        prev_close = float(prev["close"])
-        prev_volume = float(prev.get("volume") or 0)
-        prev_range = float(prev["high"]) - float(prev["low"])
-        history_vol = [float(x.get("volume") or 0) for x in kline[max(0, i - 21) : i - 1] if float(x.get("volume") or 0) > 0]
-        avg_vol = float(np.mean(history_vol)) if history_vol else 0.0
-        vol_ratio = prev_volume / avg_vol if avg_vol else 0.0
-        intraday_ret = (prev_close - prev_open) / prev_open if prev_open else 0.0
-        close_location = ((prev_close - float(prev["low"])) / prev_range if prev_range > 0 else 0.5)
-        signal = intraday_ret > 0.01 and vol_ratio > 1.2 and close_location > 0.65
-        if signal:
-            entry = float(today["open"])
-            exit_price = float(today["close"])
-            if entry > 0:
-                ret = exit_price / entry - 1
-                returns.append(ret)
-                equity.append(equity[-1] * (1 + ret))
-    return calc_trade_stats(returns, equity, "日線代理回測：前一日收盤產生訊號，隔日開盤進場、隔日收盤出場；不代表真正5/15分鐘當沖。")
-
-
-def aggregate_backtests(stock_backtests: list[dict]):
-    result = {}
-    for key in ["rebound", "swing", "daytrade_proxy"]:
-        samples = [x[key] for x in stock_backtests if x.get(key, {}).get("signals", 0)]
-        total_signals = sum(x.get("signals", 0) for x in samples)
-        if not samples or total_signals == 0:
-            result[key] = {"signals": 0, "win_rate": None, "avg_return": None, "max_drawdown": None, "note": "目前可用歷史資料沒有足夠訊號。"}
-            continue
-        weighted_win = sum((x.get("win_rate", 0) or 0) * x.get("signals", 0) for x in samples) / total_signals
-        weighted_avg = sum((x.get("avg_return", 0) or 0) * x.get("signals", 0) for x in samples) / total_signals
-        result[key] = {
-            "signals": total_signals,
-            "win_rate": round(weighted_win, 2),
-            "avg_return": round(weighted_avg, 4),
-            "max_drawdown": round(min((x.get("max_drawdown", 0) or 0) for x in samples), 4),
-            "note": samples[0].get("note", ""),
+def _base_trade_stats(records: list[dict], horizon: int) -> dict:
+    if not records:
+        return {
+            "signals": 0, "win_rate": None, "avg_return": None, "gross_avg_return": None,
+            "median_return": None, "avg_win": None, "avg_loss": None, "payoff_ratio": None,
+            "profit_factor": None, "max_drawdown": None, "sharpe": None,
+            "avg_benchmark_return": None, "avg_excess_return": None,
         }
+    ordered = sorted(records, key=lambda x: (x.get("exit_date", ""), x.get("symbol", "")))
+    rets = np.array([float(x["net_return"]) for x in ordered], dtype=float)
+    gross = np.array([float(x["gross_return"]) for x in ordered], dtype=float)
+    wins = rets[rets > 0]
+    losses = rets[rets < 0]
+    equity = 1.0
+    peak = 1.0
+    max_dd = 0.0
+    for r in rets:
+        equity *= max(0.000001, 1 + float(r))
+        peak = max(peak, equity)
+        max_dd = min(max_dd, equity / peak - 1)
+    std = float(np.std(rets, ddof=1)) if len(rets) > 1 else 0.0
+    sharpe = None if std <= 0 else float(np.mean(rets) / std * math.sqrt(252 / max(1, horizon)))
+    bench = [float(x["benchmark_return"]) for x in ordered if x.get("benchmark_return") is not None]
+    excess = [float(x["net_return"] - x["benchmark_return"]) for x in ordered if x.get("benchmark_return") is not None]
+    gross_profit = float(np.sum(wins)) if len(wins) else 0.0
+    gross_loss = abs(float(np.sum(losses))) if len(losses) else 0.0
+    avg_win = float(np.mean(wins)) if len(wins) else None
+    avg_loss = float(np.mean(losses)) if len(losses) else None
+    return {
+        "signals": int(len(rets)),
+        "win_rate": round(float(np.mean(rets > 0)) * 100, 2),
+        "avg_return": round(float(np.mean(rets)) * 100, 4),
+        "gross_avg_return": round(float(np.mean(gross)) * 100, 4),
+        "median_return": round(float(np.median(rets)) * 100, 4),
+        "avg_win": round(avg_win * 100, 4) if avg_win is not None else None,
+        "avg_loss": round(avg_loss * 100, 4) if avg_loss is not None else None,
+        "payoff_ratio": round(avg_win / abs(avg_loss), 4) if avg_win is not None and avg_loss is not None and avg_loss < 0 else None,
+        "profit_factor": round(gross_profit / gross_loss, 4) if gross_loss > 0 else None,
+        "max_drawdown": round(max_dd * 100, 4),
+        "sharpe": round(sharpe, 4) if sharpe is not None else None,
+        "avg_benchmark_return": round(float(np.mean(bench)) * 100, 4) if bench else None,
+        "avg_excess_return": round(float(np.mean(excess)) * 100, 4) if excess else None,
+    }
+
+
+def _score_bucket(score: float) -> str:
+    if score < 60:
+        return "<60"
+    if score < 70:
+        return "60-69"
+    if score < 80:
+        return "70-79"
+    if score < 90:
+        return "80-89"
+    return "90+"
+
+
+def enrich_primary_stats(records: list[dict], horizon: int) -> dict:
+    stats = _base_trade_stats(records, horizon)
+    regimes = {}
+    for key in ["bull", "sideways", "bear"]:
+        subset = [x for x in records if x.get("regime") == key]
+        sub = _base_trade_stats(subset, horizon)
+        regimes[key] = {k: sub[k] for k in ["signals", "win_rate", "avg_return", "median_return"]}
+    buckets = {}
+    for key in ["<60", "60-69", "70-79", "80-89", "90+"]:
+        subset = [x for x in records if _score_bucket(float(x.get("score") or 0)) == key]
+        sub = _base_trade_stats(subset, horizon)
+        buckets[key] = {k: sub[k] for k in ["signals", "win_rate", "avg_return", "median_return"]}
+    stats["regimes"] = regimes
+    stats["score_buckets"] = buckets
+    return stats
+
+
+def generate_strategy_records(
+    kline: list[dict], strategy: str, horizon: int, eval_start_date: str,
+    benchmark_future: dict[str, float], regime_by_date: dict[str, str], symbol: str,
+) -> list[dict]:
+    rows = normalize_kline(kline, 0)
+    min_i = 249 if strategy == "swing" else (59 if strategy == "rebound" else 20)
+    if len(rows) <= min_i + horizon:
+        return []
+    cost_rate = BACKTEST_TOTAL_COST_BPS / 10000.0
+    records: list[dict] = []
+    i = min_i
+    while i + horizon < len(rows):
+        signal_day = rows[i]["time"]
+        if signal_day < eval_start_date:
+            i += 1
+            continue
+        features = historical_features(rows, i)
+        signal, score = strategy_signal_and_score(strategy, features)
+        if not signal:
+            i += 1
+            continue
+        entry = float(rows[i + 1]["open"])
+        exit_price = float(rows[i + horizon]["close"])
+        if entry <= 0:
+            i += 1
+            continue
+        gross_ret = exit_price / entry - 1
+        net_ret = (1 + gross_ret) * (1 - cost_rate) - 1
+        records.append({
+            "symbol": symbol,
+            "signal_date": signal_day,
+            "entry_date": rows[i + 1]["time"],
+            "exit_date": rows[i + horizon]["time"],
+            "gross_return": gross_ret,
+            "net_return": net_ret,
+            "benchmark_return": benchmark_future.get(signal_day),
+            "score": score,
+            "regime": regime_by_date.get(signal_day, "unknown"),
+        })
+        # Same stock cannot create a second independent trade while the current
+        # horizon is still being held.
+        i += max(1, horizon)
+    return records
+
+
+def summarize_strategy_records(records_by_horizon: dict[int, list[dict]], strategy: str) -> dict:
+    primary = PRIMARY_HORIZON[strategy]
+    primary_records = records_by_horizon.get(primary, [])
+    result = enrich_primary_stats(primary_records, primary)
+    result["primary_horizon"] = primary
+    result["cost_bps"] = BACKTEST_TOTAL_COST_BPS
+    result["horizons"] = {
+        str(h): {k: v for k, v in _base_trade_stats(records_by_horizon.get(h, []), h).items()
+                 if k in ["signals", "win_rate", "avg_return", "median_return", "profit_factor", "max_drawdown", "sharpe", "avg_excess_return"]}
+        for h in VALIDATION_HORIZONS
+    }
+    if strategy == "daytrade_proxy":
+        result["recommended_mode"] = "1D｜僅研究；真正短線需 5/15 分K確認"
+    elif strategy == "rebound":
+        result["recommended_mode"] = "10D｜多頭或震盪回升；看 MA20/60 回踩後轉強"
+    else:
+        result["recommended_mode"] = "10–20D｜多頭；分數與趨勢同步時參考度較高"
+    result["note"] = (
+        f"Rolling-forward：訊號只使用當時以前資料；最後 {VALIDATION_OOS_DAYS} 個交易日為驗證窗。"
+        f" 每筆扣除研究用總摩擦成本 {BACKTEST_TOTAL_COST_BPS/100:.2f}%；同股持有期間不重複進場。"
+        " 股票池仍以目前熱門股為基礎，仍存在 current-universe 選擇偏誤。"
+    )
     return result
+
+
+def backtest_all_strategies(kline: list[dict], eval_start_date: str, benchmark: dict, symbol: str):
+    results = {}
+    raw = {}
+    for strategy in ["rebound", "swing", "daytrade_proxy"]:
+        records_by_h = {}
+        for h in VALIDATION_HORIZONS:
+            records_by_h[h] = generate_strategy_records(
+                kline, strategy, h, eval_start_date,
+                benchmark["future_returns"].get(h, {}), benchmark["regime_by_date"], symbol,
+            )
+        results[strategy] = summarize_strategy_records(records_by_h, strategy)
+        raw[strategy] = records_by_h
+    return results, raw
+
+
+def aggregate_global_backtests(all_records: dict[str, dict[int, list[dict]]]) -> dict:
+    return {strategy: summarize_strategy_records(records, strategy) for strategy, records in all_records.items()}
 
 
 def compute_technical(kline: list[dict]) -> dict:
     if not kline:
         return {
-            "sharpe20": None,
-            "sma20": None,
-            "sma60": None,
-            "near_high_ratio": None,
-            "momo20": None,
-            "intraday_ret": None,
-            "volume_ratio": None,
-            "range_position": None,
-            "recent_min_low_3": None,
+            "sharpe20": None, "sma20": None, "sma60": None, "near_high_ratio": None,
+            "momo20": None, "intraday_ret": None, "volume_ratio": None,
+            "range_position": None, "recent_min_low_3": None,
         }
     closes = [float(x["close"]) for x in kline]
     volumes = [float(x.get("volume") or 0) for x in kline]
@@ -896,15 +1069,10 @@ def compute_technical(kline: list[dict]) -> dict:
     range_position = (current_price - current_low) / day_range if day_range > 0 else 0.5
     recent_min_low_3 = min(float(x["low"]) for x in kline[-3:]) if len(kline) >= 3 else None
     return {
-        "sharpe20": sharpe20,
-        "sma20": ma20,
-        "sma60": ma60,
-        "near_high_ratio": near_high_ratio,
-        "momo20": momo20,
-        "intraday_ret": intraday_ret,
-        "volume_ratio": volume_ratio,
-        "range_position": range_position,
-        "recent_min_low_3": recent_min_low_3,
+        "sharpe20": sharpe20, "sma20": ma20, "sma60": ma60,
+        "near_high_ratio": near_high_ratio, "momo20": momo20,
+        "intraday_ret": intraday_ret, "volume_ratio": volume_ratio,
+        "range_position": range_position, "recent_min_low_3": recent_min_low_3,
     }
 
 
@@ -940,6 +1108,7 @@ def main() -> None:
     previous = market_ref.get() or {}
     previous_summary_map = previous.get("summary") or {}
     previous_kline_map = previous.get("kline") or {}
+    previous_history_map = previous.get("history") or {}
 
     print("[1/8] 讀取 TWSE / TPEx 當日行情…")
     quote_payloads = fetch_many([
@@ -1034,32 +1203,27 @@ def main() -> None:
     print("[7/8] 合併既有 K 線、必要時 Fugle 補洞、計算技術指標與回測…")
     summaries: dict[str, dict] = {}
     klines: dict[str, list[dict]] = {}
-    stock_backtests: list[dict] = []
+    histories: dict[str, list[dict]] = {}
     fugle_bootstrap_count = 0
     legacy_fallback_count = 0
 
     for hot_rank, quote in enumerate(target_quotes, start=1):
         sym = quote["symbol"]
         prev_summary = previous_summary_map.get(sym) or {}
-        existing = normalize_kline(previous_kline_map.get(sym) or prev_summary.get("kline") or [])
+        existing_display = normalize_kline(previous_kline_map.get(sym) or prev_summary.get("kline") or [], KLINE_DAYS)
+        existing_history = normalize_kline(previous_history_map.get(sym) or existing_display, BACKTEST_HISTORY_BARS)
         fugle_rows = []
         if (
-            len(existing) < MIN_TECHNICAL_DAYS
+            len(existing_display) < MIN_TECHNICAL_DAYS
             and FUGLE_API_KEY
             and fugle_bootstrap_count < FUGLE_BOOTSTRAP_MAX_PER_RUN
         ):
             fugle_rows = fetch_fugle_history(sym, quote["date"])
             if fugle_rows:
                 fugle_bootstrap_count += 1
-        kline = merge_kline(existing, quote, fugle_rows)
+        history = merge_bars(existing_history, quote, fugle_rows, limit=BACKTEST_HISTORY_BARS)
+        kline = normalize_kline(history, KLINE_DAYS)
         technical = compute_technical(kline)
-
-        bt = {
-            "rebound": backtest_rebound(kline),
-            "swing": backtest_swing(kline),
-            "daytrade_proxy": backtest_daytrade_proxy(kline),
-        }
-        stock_backtests.append(bt)
 
         basic = company.get(sym, {})
         val = valuation.get(sym, {})
@@ -1119,22 +1283,46 @@ def main() -> None:
             "net15Total": net15,
             "institution_history": inst_history,
             "kline_count": len(kline),
-            "history_source": "firebase+official" if existing else ("fugle+official" if fugle_rows else "official-daily-only"),
+            "history_count": len(history),
+            "history_source": "firebase+official" if existing_history else ("fugle+official" if fugle_rows else "official-daily-only"),
             "fundamental_source": "official-filings" if fund else ("legacy-fallback" if fallback_fields else "unavailable"),
             "legacy_fallback_fields": fallback_fields,
             "revenue_period": rev.get("revenue_period"),
             "fundamental_quarter": fund.get("fundamental_quarter"),
-            "backtest": bt,
             **technical,
         }
         summaries[sym] = summary
         klines[sym] = kline
+        histories[sym] = history
+
+    print("[7.5/8] 執行 rolling-forward 驗證、成本後績效與分數分層…")
+    benchmark = build_benchmark_context(histories)
+    validation_dates = benchmark.get("dates") or []
+    if validation_dates:
+        eval_start_idx = max(0, len(validation_dates) - VALIDATION_OOS_DAYS)
+        eval_start_date = validation_dates[eval_start_idx]
+        eval_end_date = validation_dates[-1]
+    else:
+        eval_start_date = latest_day
+        eval_end_date = latest_day
+
+    global_records: dict[str, dict[int, list[dict]]] = {
+        key: {h: [] for h in VALIDATION_HORIZONS}
+        for key in ["rebound", "swing", "daytrade_proxy"]
+    }
+    for sym, history in histories.items():
+        bt, raw_records = backtest_all_strategies(history, eval_start_date, benchmark, sym)
+        summaries[sym]["backtest"] = bt
+        for strategy, by_h in raw_records.items():
+            for h, records in by_h.items():
+                global_records[strategy][h].extend(records)
+
+    global_backtests = aggregate_global_backtests(global_records)
 
     print("[8/8] 寫入 Firebase /market_data…")
     if not summaries:
         raise RuntimeError("沒有成功建立任何股票資料，停止覆寫 Firebase。")
 
-    global_backtests = aggregate_backtests(stock_backtests)
     quality_fields = ["pe", "pb", "rev_yoy", "roe", "eps", "debt_ratio", "dividend_ttm", "net15Total", "sharpe20"]
     quality_total = sum(sum(1 for key in quality_fields if stock.get(key) is not None) for stock in summaries.values())
     data_quality_pct = round(quality_total / max(1, len(summaries) * len(quality_fields)) * 100, 2)
@@ -1145,8 +1333,18 @@ def main() -> None:
             "updated_at": latest_day,
             "generated_at_utc": now_utc,
             "source": "TWSE + TPEx",
-            "history_source": "Firebase accumulated daily bars; Fugle optional bootstrap/fill",
+            "history_source": "Firebase rolling history; Fugle historical bootstrap/fill",
             "version": MODEL_VERSION,
+            "validation": {
+                "method": "rolling-forward-oos",
+                "evaluation_start": eval_start_date,
+                "evaluation_end": eval_end_date,
+                "oos_days": VALIDATION_OOS_DAYS,
+                "history_bars_target": BACKTEST_HISTORY_BARS,
+                "cost_bps": BACKTEST_TOTAL_COST_BPS,
+                "benchmark": "current-universe equal-weight future-return proxy",
+                "universe_bias": True,
+            },
             "performance": {"http_timeout_seconds": HTTP_TIMEOUT, "http_workers": HTTP_WORKERS, "fugle_bootstrap_max_per_run": FUGLE_BOOTSTRAP_MAX_PER_RUN},
             "universe": {
                 "name": f"熱門{HOT_STOCK_COUNT}檔",
@@ -1154,9 +1352,10 @@ def main() -> None:
                 "count": len(summaries),
             },
             "kline_days": KLINE_DAYS,
+            "backtest_history_bars": BACKTEST_HISTORY_BARS,
             "institution_days": INSTITUTION_DAYS,
             "data_quality_pct": data_quality_pct,
-            "schema": "split-summary-kline",
+            "schema": "split-summary-kline-history",
             "fugle_enabled": bool(FUGLE_API_KEY),
             "fugle_bootstrap_count": fugle_bootstrap_count,
             "legacy_fallback_stock_count": legacy_fallback_count,
@@ -1165,7 +1364,9 @@ def main() -> None:
                 f"官方 API 以最多 {HTTP_WORKERS} 個並行 worker 抓取，單一 HTTP 最長等待 {HTTP_TIMEOUT:g} 秒。",
                 f"Fugle 每次最多補 {FUGLE_BOOTSTRAP_MAX_PER_RUN} 檔，避免單次 workflow 過久。",
                 "TWSE/TPEx 官方 OpenAPI 提供當日行情、估值、營收、股利與財報；法人15日歷史由每日官方資料持續累積。",
-                "既有 Firebase K 線會沿用並每日追加；只有歷史不足且設定 FUGLE_API_KEY 時才呼叫 Fugle 歷史 K 線。",
+                "前端 K 線保留最近 250 根；研究回測另保留最多 5 年 rolling history，不會一次載入瀏覽器。",
+                f"Rolling-forward 主要驗證窗為最後 {VALIDATION_OOS_DAYS} 個交易日，每筆預設扣除 {BACKTEST_TOTAL_COST_BPS/100:.2f}% 研究用總摩擦成本。",
+                "回測訊號只使用訊號日以前的價格/量資料；但歷史股票池仍以目前熱門股為基礎，current-universe 選擇偏誤尚未完全消除。",
                 f"近期舊版基本面欄位最多只允許沿用 {LEGACY_FUNDAMENTAL_MAX_AGE_DAYS} 天，避免永久使用過期值。",
                 "ROE 以最新累計淨利年化 / 期末權益近似；FCF 若官方資料無法直接取得，會暫時使用近期舊值或留空。",
             ],
@@ -1173,6 +1374,7 @@ def main() -> None:
         "backtests": global_backtests,
         "summary": summaries,
         "kline": klines,
+        "history": histories,
     }
 
     market_ref.set(output)
