@@ -1,18 +1,49 @@
 import os
 import json
+import urllib.request
 import finlab
 from finlab import data
 
-# 讀取 GitHub Secret 中的 FinLab 金鑰
 api_token = os.environ.get("FINLAB_API_TOKEN")
 if not api_token:
     raise ValueError("找不到 FINLAB_API_TOKEN！")
 
-# 登入 FinLab
 finlab.login(api_token)
 
-print("正在取得台股日線與基本面資料...")
-# 取得行情與基本面特徵
+print("正在取得台股代號與中文名稱對照表...")
+# 建立台股代號 -> 中文名稱與產業類別對照表
+stock_meta_map = {}
+
+# 1. 優先從 FinLab 抓取代碼與名稱對照
+try:
+    sec_info = data.get('security_categories')
+    if sec_info is not None and not sec_info.empty:
+        for idx, row in sec_info.iterrows():
+            sym = str(row.get('stock_id', idx)).strip()
+            name = str(row.get('name', sym)).strip()
+            cat = str(row.get('category', '一般')).strip()
+            stock_meta_map[sym] = {"name": name, "cat": cat}
+except Exception as e:
+    print(f"FinLab 名稱表讀取跳過: {e}")
+
+# 2. 若對照表不完整，自動以 TWSE 官方 OpenAPI 補充對照
+if len(stock_meta_map) < 50:
+    try:
+        req = urllib.request.Request(
+            'https://openapi.twse.com.tw/v1/exchangeReport/BWIBBU_ALL',
+            headers={'User-Agent': 'Mozilla/5.0'}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            twse_data = json.loads(resp.read().decode('utf-8'))
+            for item in twse_data:
+                sym = str(item.get('Code', '')).strip()
+                name = str(item.get('Name', sym)).strip()
+                if sym:
+                    stock_meta_map[sym] = {"name": name, "cat": "上市"}
+    except Exception as e:
+        print(f"TWSE 名稱補充跳過: {e}")
+
+print("正在取得台股日線與基本面特徵...")
 close = data.get('price:收盤價')
 open_p = data.get('price:開盤價')
 high = data.get('price:最高價')
@@ -22,7 +53,7 @@ pb = data.get('price_earning_ratio:股價淨值比')
 rev = data.get('monthly_revenue:當月營收')
 rev_yoy = data.get('monthly_revenue:去年同月增減(%)')
 
-# 修正：取得三大法人資料 (加入安全容錯，若取不到自動以 0 代替)
+# 取得法人資料
 try:
     inst_investors = data.get('institutional_investors_trading_summary:買賣超金額')
 except Exception:
@@ -33,24 +64,23 @@ except Exception:
     except Exception:
         inst_investors = None
 
-# 取得最新交易日
 latest_date = close.index[-1].strftime('%Y-%m-%d')
 stocks_list = []
 
-# 選取有效個股代碼 (過濾指數與存託憑證等非股票代碼)
-target_symbols = [col for col in close.columns if len(str(col)) == 4 and str(col).isdigit()][:120]
+# 選取 4 碼純台股代碼
+target_symbols = [col for col in close.columns if len(str(col)) == 4 and str(col).isdigit()][:150]
 
 for sym in target_symbols:
     try:
         s_close = close[sym].dropna()
-        if len(s_close) < 20:
+        if len(s_close) < 60:
             continue
             
         s_open = open_p[sym].dropna()
         s_high = high[sym].dropna()
         s_low = low[sym].dropna()
         
-        # 組裝近一年 (約 250 筆) K 線序列
+        # 組裝近 250 筆 K 線序列
         kline = []
         recent_dates = s_close.index[-250:]
         for d in recent_dates:
@@ -64,18 +94,22 @@ for sym in target_symbols:
                     "close": round(float(s_close[d]), 2)
                 })
 
-        # 計算近 15 日法人買賣超 (張數或金額)
+        # 計算近 15 日法人買超
         net15 = 0
         if inst_investors is not None and sym in inst_investors:
             s_inst = inst_investors[sym].dropna()
             if len(s_inst) >= 15:
-                # 轉成張數或百萬級距單位
                 net15 = int(s_inst.iloc[-15:].sum() / 1000)
+
+        # 比對中文名稱與產業
+        meta = stock_meta_map.get(str(sym), {})
+        stock_name = meta.get("name", str(sym))
+        category = meta.get("cat", "一般")
 
         stock_obj = {
             "symbol": str(sym),
-            "name": str(sym),
-            "category": "一般",
+            "name": stock_name,
+            "category": category,
             "price": round(float(s_close.iloc[-1]), 2),
             "pe": round(float(pe[sym].iloc[-1]), 1) if (sym in pe and not pe[sym].isna().iloc[-1]) else 18.0,
             "pb": round(float(pb[sym].iloc[-1]), 2) if (sym in pb and not pb[sym].isna().iloc[-1]) else 1.0,
@@ -84,7 +118,7 @@ for sym in target_symbols:
             "kline": kline
         }
         stocks_list.append(stock_obj)
-    except Exception as e:
+    except Exception:
         continue
 
 output_data = {
