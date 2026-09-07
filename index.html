@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="墨衡量化 Mohren Quant Matrix - 台股量化觀察儀表板" />
-  <title>墨衡量化 Mohren Quant Matrix v1.1 短打版</title>
+  <title>墨衡量化 Mohren Quant Matrix v1.1.2 短打版</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <style>
@@ -38,7 +38,7 @@
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
             <h1 class="text-sm font-bold tracking-[0.16em] text-main">墨衡量化 ｜ MOHREN QUANT MATRIX</h1>
-            <span class="text-[10px] rounded border px-1.5 py-0.5 text-sub">v1.1 短打版</span>
+            <span class="text-[10px] rounded border px-1.5 py-0.5 text-sub">v1.1.2 短打版</span>
           </div>
           <div class="text-[11px] text-emerald-300 mt-1">無腦選股：先給答案，再看理由；研究資料收在第二層。</div>
           <div id="dataStatusText" class="text-[10px] text-sub font-mono mt-1">正在從 Firebase 載入市場資料…</div>
@@ -637,22 +637,28 @@
   }
 
   async function loadSplitSchema() {
-    const [meta,summary,backtests,intraday]=await Promise.all([
-      fetchJson(`${FIREBASE_ROOT}/meta.json`),
-      fetchJson(`${FIREBASE_ROOT}/summary.json`),
-      fetchJson(`${FIREBASE_ROOT}/backtests.json`),
-      fetchJson(`${FIREBASE_ROOT}/intraday_picks.json`).catch(()=>null)
+    // summary 是首頁唯一必要資料；其餘節點若尚未建立或暫時讀取失敗，不應拖垮整個首頁。
+    const summary=await fetchJson(`${FIREBASE_ROOT}/summary.json`);
+    if (!summary || typeof summary!=="object" || Array.isArray(summary)) {
+      throw new Error("新版 Firebase 缺少 summary");
+    }
+
+    const [meta,backtests,intraday]=await Promise.all([
+      fetchJson(`${FIREBASE_ROOT}/meta.json`).catch(err=>{ console.warn("meta 讀取失敗，使用空值",err); return {}; }),
+      fetchJson(`${FIREBASE_ROOT}/backtests.json`).catch(err=>{ console.warn("backtests 讀取失敗，使用空值",err); return {}; }),
+      fetchJson(`${FIREBASE_ROOT}/intraday_picks.json`).catch(err=>{ console.warn("intraday_picks 尚未建立或讀取失敗",err); return {}; })
     ]);
-    if (!summary || typeof summary!=="object") throw new Error("新版 Firebase 缺少 summary");
+
     DATA_MODE="split";
     META={...(meta||{}),backtests:backtests||{}};
     INTRADAY=intraday||{};
-    return Object.values(summary);
+    return Object.values(summary).filter(Boolean);
   }
 
   async function loadLegacySchema() {
+    // 僅保留非常舊版本相容；新版資料不存在時才嘗試。
     const data=await fetchJson(`${FIREBASE_ORIGIN}/.json`);
-    if (!data || !data.stocks) throw new Error("舊版 Firebase 也缺少 stocks");
+    if (!data || !data.stocks) throw new Error("找不到新版 summary，也沒有可相容的舊版 stocks");
     DATA_MODE="legacy";
     META={...(data.metadata||{}),updated_at:data.updated_at,backtests:data.backtests||data.metadata?.backtests||{}};
     INTRADAY=data.intraday_picks||{};
