@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>墨衡量化 Mohren Quant v0.25 - 多因子決策系統</title>
+  <title>墨衡量化 Mohren Quant v0.3 - 多因子決策系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- 輕量走勢圖庫 -->
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
@@ -62,7 +62,7 @@
           <div>
             <div class="flex items-center gap-2">
               <h1 class="text-sm font-semibold tracking-wider text-main uppercase">墨衡量化 ｜ Mohren Quant Matrix</h1>
-              <span class="text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700/60 px-1.5 py-0.2 rounded font-mono">v0.25</span>
+              <span class="text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700/60 px-1.5 py-0.2 rounded font-mono">v0.3 填息強化版</span>
             </div>
             <p class="text-[11px] text-sub font-mono mt-0.5" id="dataStatusText">正在從 Firebase 載入市場數據...</p>
           </div>
@@ -76,8 +76,8 @@
             <button onclick="setTheme('light')" id="themeBtn-light" class="px-2 py-0.5 rounded text-sub hover:text-main transition">閃瞎白</button>
           </div>
 
-          <button onclick="fetchMarketData()" class="btn-sub text-[11px] border px-3 py-1.5 rounded-lg font-bold transition">
-            重新計算
+          <button onclick="refreshAllData()" class="btn-sub text-[11px] border px-3 py-1.5 rounded-lg font-bold transition">
+            即時刷新當沖與計算
           </button>
         </div>
       </div>
@@ -98,7 +98,7 @@
           <span class="text-[11px] text-sub">排序維度</span>
           <select id="sortPriority" onchange="handleSortChange(this.value)" class="panel-bg border text-xs text-main px-2.5 py-1 rounded-lg focus:outline-none">
             <option value="STRATEGY_SCORE">多因子模型評級 (Rank ▾)</option>
-            <option value="DIVIDEND_RECOVER">填息與股利綜合力 (防禦 ▾)</option>
+            <option value="DIVIDEND_RECOVER">8%以上高息與強勢填息綜合 (防禦 ▾)</option>
             <option value="MOMO_SHARPE">20日風險調整回報 Sharpe (穩定 ▾)</option>
             <option value="INSTITUTION">15日外資與投信籌碼 (買超 ▾)</option>
             <option value="GROWTH">營收年增率 YoY (成長 ▾)</option>
@@ -129,7 +129,7 @@
         </div>
       </div>
 
-      <!-- 專區 2: 當沖動能 -->
+      <!-- 專區 2: 當沖動能 (前端即時抓取最新盤中報價) -->
       <div class="panel-bg border rounded-xl p-3 flex flex-col justify-between">
         <div class="space-y-2">
           <div class="flex items-center justify-between border-b border-zinc-800/60 pb-2">
@@ -137,13 +137,13 @@
               <span class="text-sm">⚡</span>
               <h2 class="text-xs font-bold text-main uppercase tracking-wide">盤中推進當沖標的</h2>
             </div>
-            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-rose-400 bg-rose-950/40 border-rose-800/40">Intraday Power</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-rose-400 bg-rose-950/40 border-rose-800/40">Live Intraday</span>
           </div>
           <p class="text-[11px] text-sub leading-normal">
-            過濾隔夜跳空虛胖誘多，鎖定開盤後盤中實質大單推升、量能充沛標的。
+            點擊刷新即時抓取盤中現價，過濾隔夜誘多，鎖定實質大單推升標的。
           </p>
           <div id="dayTradeList" class="space-y-1.5 pt-1">
-            <div class="text-sub text-xs text-center py-6 font-mono">計算中...</div>
+            <div class="text-sub text-xs text-center py-6 font-mono">點擊上方刷新即時抓取...</div>
           </div>
         </div>
       </div>
@@ -167,7 +167,7 @@
         </div>
       </div>
 
-      <!-- 專區 4: 長期核心 -->
+      <!-- 專區 4: 長期核心 (8%以上高息、強勢填息、股價穩定) -->
       <div class="panel-bg border rounded-xl p-3 flex flex-col justify-between">
         <div class="space-y-2">
           <div class="flex items-center justify-between border-b border-zinc-800/60 pb-2">
@@ -175,10 +175,10 @@
               <span class="text-sm">🛡️</span>
               <h2 class="text-xs font-bold text-main uppercase tracking-wide">穩健核心容量配置</h2>
             </div>
-            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-emerald-400 bg-emerald-950/40 border-emerald-800/40">Fill & Dividend</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-emerald-400 bg-emerald-950/40 border-emerald-800/40">High Yield & Fill</span>
           </div>
           <p class="text-[11px] text-sub leading-normal">
-            FinLab 實證容量模型，考量<b>現金殖利率與填息修復動能</b>，杜絕貼息陷阱。
+            專注<b>8%以上高殖利率</b>、短期填息修復（站穩季線）且股價軌跡平穩者。
           </p>
           <div id="longTermList" class="space-y-1.5 pt-1">
             <div class="text-sub text-xs text-center py-6 font-mono">計算中...</div>
@@ -252,7 +252,7 @@
       renderAllSections();
     }
 
-    // 核心多因子量化運算引擎
+    // 核心多因子量化運算引擎（強化 8% 以上高息、短期填息與股價穩定度）
     function runQuantitativeEngine(rawStocks) {
       return rawStocks.map(s => {
         const kline = s.kline || [];
@@ -272,7 +272,7 @@
         const intradayRet = (closeP - openP) / (openP || 1);
         const dayTradeScore = intradayRet * 100;
 
-        // 2. 波段訊號
+        // 2. 波段訊號與股價穩定度 (Sharpe)
         let maxHigh = closeP;
         if (hasK) maxHigh = Math.max(...kline.map(k => k.high));
         const nearHighRatio = maxHigh > 0 ? (closeP / maxHigh) : 0.85;
@@ -320,16 +320,23 @@
           }
         }
 
-        // 4. 長線容量與填息評分
-        const isFilled = closeP >= sma60;
-        const fillBonus = isFilled ? 15 : 0;
-        const peSafe = Math.max(pe, 8.0);
-        const growthValRatio = revYoy / peSafe;
-        const cappedYield = Math.min(yieldPct, 8.0);
+        // 4. 長線容量評分：強化 8% 以上高殖利率、短期填息 (isFilled) 與股價穩定度 (sharpe20)
+        const isFilled = closeP >= sma60; // 短期填息修復（站穩季線）
+        const fillBonus = isFilled ? 25 : -10; // 嚴格要求短期填息，未填息者扣分
         
+        let yieldScore = yieldPct * 3;
+        if (yieldPct >= 8.0) {
+          // 8% 以上超高殖利率：必須同時具備短期填息與股價穩定，才能獲得高額加分，否則視為陷阱
+          yieldScore = isFilled ? (yieldPct * 7) : (yieldPct * 1);
+        }
+
+        const priceStability = Math.max(0, Math.min(sharpe20, 3.0)) * 15; // 股價穩定與風險報酬比
+        const fundamentalGuard = revYoy > -5 ? 10 : -25; // 嚴格防範本業嚴重衰退
+
         const longTermScore = (net15 > 0 ? Math.log10(net15 + 1) * 10 : 0) + 
-                              (cappedYield * 4) + 
-                              (growthValRatio * 6) + 
+                              yieldScore + 
+                              priceStability + 
+                              fundamentalGuard + 
                               fillBonus;
 
         return {
@@ -354,17 +361,16 @@
           reboundScore: reboundScore,
           sma20: sma20,
           sma60: sma60,
-          growthValRatio: growthValRatio,
           longTermScore: longTermScore,
           kline: kline
         };
       });
     }
 
-    // 直接從 Firebase 讀取資料
+    // 從 Firebase 載入長線與基礎資料
     async function fetchMarketData() {
       const statusText = document.getElementById("dataStatusText");
-      statusText.textContent = "正在從 Firebase 資料庫讀取行情...";
+      statusText.textContent = "正在從 Firebase 載入市場數據...";
 
       try {
         const dbUrl = "https://money-7c81c-default-rtdb.firebaseio.com/.json";
@@ -376,6 +382,8 @@
             COMPUTED_STOCKS = runQuantitativeEngine(stocksArray);
             statusText.textContent = `Firebase 同步完成：共 ${COMPUTED_STOCKS.length} 檔標的 (更新日: ${data.updated_at || '最新'})`;
             renderAllSections();
+            // 同步完後自動即時抓取一次當沖盤中現價
+            fetchLiveDayTradeData();
             return;
           }
         }
@@ -383,7 +391,57 @@
         console.warn("無法從 Firebase 讀取", err);
       }
 
-      statusText.textContent = "讀取失敗，請確認 Firebase 連線與資料節點！";
+      statusText.textContent = "讀取失敗，請確認 Firebase 連線！";
+    }
+
+    // 獨立即時抓取當沖盤中現價（不耗費 FinLab 流量）
+    async function fetchLiveDayTradeData() {
+      const dayTradeContainer = document.getElementById("dayTradeList");
+      dayTradeContainer.innerHTML = `<div class="text-sub text-xs text-center py-6 font-mono animate-pulse">正在即時抓取盤中報價...</div>`;
+
+      const symbols = COMPUTED_STOCKS.map(s => s.symbol);
+      if (symbols.length === 0) return;
+
+      const targetSymbols = symbols.slice(0, 25); // 取前 25 檔即時追蹤
+      let liveResults = [];
+
+      for (let sym of targetSymbols) {
+        try {
+          const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}.TW?interval=1m&range=1d`;
+          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`;
+          
+          const res = await fetch(proxyUrl);
+          if (res.ok) {
+            const data = await res.json();
+            const parsed = JSON.parse(data.contents);
+            const meta = parsed.chart.result[0].meta;
+            
+            const livePrice = meta.regularMarketPrice;
+            const openPrice = meta.chartPreviousClose; 
+            const intradayRet = openPrice > 0 ? (livePrice - openPrice) / openPrice : 0;
+
+            const stockObj = COMPUTED_STOCKS.find(s => s.symbol === sym);
+            if (stockObj) {
+              stockObj.price = livePrice;
+              stockObj.openPrice = openPrice;
+              stockObj.intradayRet = intradayRet;
+              stockObj.dayTradeScore = intradayRet * 100;
+              liveResults.push(stockObj);
+            }
+          }
+        } catch (e) {
+          const stockObj = COMPUTED_STOCKS.find(s => s.symbol === sym);
+          if (stockObj) liveResults.push(stockObj);
+        }
+      }
+
+      liveResults.sort((a, b) => b.dayTradeScore - a.dayTradeScore);
+      renderCardList("dayTradeList", liveResults.slice(0, CURRENT_LIMIT), s => `${s.intradayRet >= 0 ? '+' : ''}${(s.intradayRet * 100).toFixed(2)}%`, "DAYTRADE", "card-daytrade");
+    }
+
+    // 重新整理按鈕：同時更新當沖與各項數據
+    function refreshAllData() {
+      fetchMarketData();
     }
 
     function renderAllSections() {
@@ -395,21 +453,16 @@
       reboundPool = sortArray(reboundPool, "reboundScore").slice(0, CURRENT_LIMIT);
       renderCardList("reboundList", reboundPool, s => `20日漲幅 ${( (s.momo20 - 1) * 100).toFixed(1)}%`, "REBOUND", "card-rebound");
 
-      // 2. 當沖專區
-      let dayTradePool = [...COMPUTED_STOCKS];
-      dayTradePool = sortArray(dayTradePool, "dayTradeScore").slice(0, CURRENT_LIMIT);
-      renderCardList("dayTradeList", dayTradePool, s => `${s.intradayRet >= 0 ? '+' : ''}${(s.intradayRet * 100).toFixed(2)}%`, "DAYTRADE", "card-daytrade");
-
       // 3. 短期波段專區
       let swingPool = COMPUTED_STOCKS.filter(s => s.nearHighRatio >= 0.85);
       if (swingPool.length < CURRENT_LIMIT) swingPool = [...COMPUTED_STOCKS];
       swingPool = sortArray(swingPool, "swingScore").slice(0, CURRENT_LIMIT);
       renderCardList("shortSwingList", swingPool, s => `-${((1 - s.nearHighRatio) * 100).toFixed(1)}%`, "SWING", "card-swing");
 
-      // 4. 長期核心專區
+      // 4. 長期核心專區 (專注 8% 以上高息、短期填息與股價穩定)
       let longTermPool = [...COMPUTED_STOCKS];
       longTermPool = sortArray(longTermPool, "longTermScore").slice(0, CURRENT_LIMIT);
-      renderCardList("longTermList", longTermPool, s => `${s.isFilled ? '🟢 填息力強' : '🟡 蓄勢中'} ${s.yieldPct.toFixed(1)}%`, "LONG", "card-long");
+      renderCardList("longTermList", longTermPool, s => `${s.yieldPct >= 8.0 ? '🔥 8%以上高息' : '🛡️ 穩健'} ${s.yieldPct.toFixed(1)}%`, "LONG", "card-long");
     }
 
     function sortArray(list, defaultScoreKey) {
@@ -447,8 +500,8 @@
           <div class="flex justify-between items-center text-[11px]">
             <span class="text-main font-bold">$${s.price.toFixed(2)}</span>
             <div class="flex items-center gap-2 text-[10px] text-sub">
-              <span>股利: <b class="text-main">$${s.dividend.toFixed(1)}</b></span>
-              <span>PE: <b class="text-main">${s.pe}x</b></span>
+              <span>殖利率: <b class="text-main">${s.yieldPct.toFixed(1)}%</b></span>
+              <span>穩定度: <b class="text-main">${s.sharpe20.toFixed(1)}</b></span>
             </div>
           </div>
         </div>
@@ -462,7 +515,7 @@
 
       document.getElementById("modalTitle").textContent = `${stock.name} (${stock.symbol})`;
       document.getElementById("modalCategory").textContent = stock.category;
-      document.getElementById("modalSubTitle").textContent = `實收價: $${stock.price.toFixed(2)} | 現金殖利率: ${stock.yieldPct.toFixed(2)}% | 填息動能: ${stock.isFilled ? '強勢填息軌道' : '築底修復中'} | 15日法人: ${stock.net15Total} 張`;
+      document.getElementById("modalSubTitle").textContent = `實收價: $${stock.price.toFixed(2)} | 現金殖利率: ${stock.yieldPct.toFixed(2)}% | 短期填息動能: ${stock.isFilled ? '已站穩季線(強)' : '未站穩季線(弱)'} | 股價穩定度(Sharpe): ${stock.sharpe20.toFixed(2)}`;
       document.getElementById("modalYahooLink").href = `https://tw.stock.yahoo.com/quote/${stock.symbol}`;
 
       let reasons = [];
@@ -471,16 +524,16 @@
         reasons.push(`• 【動能防守】：過去 20 天動能提升 ${( (stock.momo20 - 1) * 100).toFixed(1)}%，屬於強者拉回支撐點火形態。`);
         reasons.push(`• 【獲利過濾】：月營收年增達 ${stock.rev_yoy}%，具備實質基本面支撐，排除無基之彈。`);
       } else if (strategyType === "DAYTRADE") {
-        reasons.push(`• 【盤中實質推升】：開盤 $${stock.openPrice.toFixed(2)}，盤中推升達 ${(stock.intradayRet * 100).toFixed(2)}%，排除開高倒貨跳空陷阱。`);
-        reasons.push(`• 【日內買力】：收紅攻堅，實體紅 K 線力道顯著。`);
+        reasons.push(`• 【盤中即時推升】：現價 $${stock.price.toFixed(2)}，開盤 $${stock.openPrice.toFixed(2)}，盤中即時推進率達 ${(stock.intradayRet * 100).toFixed(2)}%。`);
+        reasons.push(`• 【日內買力】：實體紅 K 線推進中，買盤意願積極。`);
       } else if (strategyType === "SWING") {
         reasons.push(`• 【高點保留率】：最新價距 52 週最高點僅衰退 ${((1 - stock.nearHighRatio) * 100).toFixed(1)}%，符合 FinLab 年化 22.5% 強勢守成標準。`);
         reasons.push(`• 【軌跡平穩度】：近 20 日風險調整夏普值為 ${stock.sharpe20.toFixed(2)}，呈現平穩主升段。`);
       } else {
-        reasons.push(`• 【填息修復動能】：股價現為 $${stock.price.toFixed(2)}，${stock.isFilled ? '穩健站於 60 日季線 ($' + stock.sma60.toFixed(2) + ') 之上，具備強大填息修復力，非貼息股' : '目前於季線附近盤整築底'}。`);
-        reasons.push(`• 【實質現金股利】：預估現金殖利率為 ${stock.yieldPct.toFixed(2)}%（每股約配 $${stock.dividend.toFixed(2)} 元），下檔提供明確防禦底線。`);
-        reasons.push(`• 【籌碼鎖碼助填息】：近 15 日三大法人買超達 ${stock.net15Total} 張，在大額資金護航下填息勝率顯著提高。`);
-        reasons.push(`• 【安全本益比】：PE 為 ${stock.pe}x，搭配營收年增 ${stock.rev_yoy}%，非週期衰退之偽高息股。`);
+        reasons.push(`• 【8%以上高息防禦】：現金殖利率高達 ${stock.yieldPct.toFixed(2)}%（每股配發約 $${stock.dividend.toFixed(2)} 元），提供強大下檔現金保護。`);
+        reasons.push(`• 【短期填息檢驗】：股價現為 $${stock.price.toFixed(2)}，${stock.isFilled ? '已穩健站穩 60 日季線 ($' + stock.sma60.toFixed(2) + ') 之上，短期填息修復動能強勁' : '目前處於季線下方，尚未完成短期填息修復，存在貼息風險'}。`);
+        reasons.push(`• 【股價軌跡穩定度】：近 20 日風險調整夏普值為 ${stock.sharpe20.toFixed(2)}，走勢平穩無劇烈崩跌。`);
+        reasons.push(`• 【基本面護城河】：月營收年增率為 ${stock.rev_yoy}%，有效避開本業衰退的高息陷阱。`);
       }
       document.getElementById("modalReason").innerHTML = reasons.map(r => `<div>${r}</div>`).join('');
 
