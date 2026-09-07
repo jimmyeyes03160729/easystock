@@ -3,69 +3,104 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>墨衡量化 Mohren Quant v0.2 - 台股多因子決策核心</title>
+  <title>墨衡量化 Mohren Quant v0.2 - 多因子決策系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- 引入輕量流暢圖表庫 (免 API Key、無跨域問題) -->
+  <!-- 輕量走勢圖庫 -->
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <style>
-    body {
-      -webkit-tap-highlight-color: transparent;
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
+    /* 主題色彩定義 */
+    body.theme-dark {
       background-color: #0b0c0e !important;
       color: #94a3b8;
     }
-    /* 自訂沉穩滾動條 */
+    .theme-dark .panel-bg { background-color: #121418; border-color: rgba(63, 63, 70, 0.4); }
+    .theme-dark .card-bg { background-color: #090a0d; border-color: rgba(39, 39, 42, 0.7); }
+    .theme-dark .card-bg:hover { border-color: rgba(113, 113, 122, 0.8); }
+    .theme-dark .text-main { color: #f1f5f9; }
+    .theme-dark .text-sub { color: #64748b; }
+    .theme-dark .btn-sub { background-color: #181b20; border-color: #272a30; color: #cbd5e1; }
+
+    body.theme-light {
+      background-color: #ffffff !important;
+      color: #334155;
+    }
+    .theme-light .panel-bg { background-color: #f8fafc; border-color: #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .theme-light .card-bg { background-color: #ffffff; border-color: #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .theme-light .card-bg:hover { border-color: #94a3b8; }
+    .theme-light .text-main { color: #0f172a; }
+    .theme-light .text-sub { color: #64748b; }
+    .theme-light .btn-sub { background-color: #ffffff; border-color: #cbd5e1; color: #334155; }
+
+    body.theme-color {
+      background-color: #0d1117 !important;
+      color: #c9d1d9;
+    }
+    .theme-color .panel-bg { background-color: #161b22; border-color: #30363d; }
+    .theme-color .card-rebound { background-color: #1c1427; border-color: rgba(168, 85, 247, 0.4); }
+    .theme-color .card-daytrade { background-color: #271418; border-color: rgba(244, 63, 94, 0.4); }
+    .theme-color .card-swing { background-color: #241c10; border-color: rgba(245, 158, 11, 0.4); }
+    .theme-color .card-long { background-color: #10241b; border-color: rgba(16, 185, 129, 0.4); }
+    .theme-color .text-main { color: #ffffff; }
+    .theme-color .text-sub { color: #8b949e; }
+    .theme-color .btn-sub { background-color: #21262d; border-color: #30363d; color: #c9d1d9; }
+
     ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: #0f1115; }
-    ::-webkit-scrollbar-thumb { background: #272a30; border-radius: 2px; }
-    ::-webkit-scrollbar-thumb:hover { background: #3f444e; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3f444e; border-radius: 2px; }
   </style>
 </head>
-<body class="font-sans min-h-screen flex flex-col justify-between p-3 sm:p-6 text-slate-300">
+<body class="theme-dark font-sans min-h-screen flex flex-col justify-between p-3 sm:p-6 transition-colors duration-200">
 
   <!-- 主版面容器 -->
   <div class="max-w-7xl mx-auto space-y-4 w-full">
 
-    <!-- 頂部控制列 (Institutional Terminal Style) -->
-    <header class="bg-[#121418] border border-zinc-800/80 rounded-xl p-3.5 space-y-3">
+    <!-- 頂部控制列 -->
+    <header class="panel-bg border rounded-xl p-3.5 space-y-3">
       <div class="flex flex-wrap justify-between items-center gap-2">
         <div class="flex items-center gap-2.5">
           <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
           <div>
             <div class="flex items-center gap-2">
-              <h1 class="text-sm font-semibold tracking-wider text-zinc-100 uppercase">墨衡量化 ｜ Mohren Quant Matrix</h1>
+              <h1 class="text-sm font-semibold tracking-wider text-main uppercase">墨衡量化 ｜ Mohren Quant Matrix</h1>
               <span class="text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700/60 px-1.5 py-0.2 rounded font-mono">v0.2</span>
             </div>
-            <p class="text-[11px] text-zinc-500 font-mono mt-0.5" id="dataStatusText">正在載入市場特徵數據庫...</p>
+            <p class="text-[11px] text-sub font-mono mt-0.5" id="dataStatusText">正在載入市場特徵數據庫...</p>
           </div>
         </div>
 
-        <div class="flex items-center gap-2 font-mono">
-          <button onclick="openTokenModal()" class="text-[11px] bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 px-2.5 py-1.5 rounded-lg transition">
+        <!-- 功能按鈕與色彩模式切換 -->
+        <div class="flex flex-wrap items-center gap-2 font-mono">
+          <!-- 顏色選擇器 -->
+          <div class="flex items-center gap-1 bg-zinc-950/40 p-1 rounded-lg border border-zinc-700/40 text-[11px]">
+            <button onclick="setTheme('dark')" id="themeBtn-dark" class="px-2 py-0.5 rounded font-bold transition">低調黑</button>
+            <button onclick="setTheme('light')" id="themeBtn-light" class="px-2 py-0.5 rounded text-sub hover:text-main transition">閃瞎白</button>
+            <button onclick="setTheme('color')" id="themeBtn-color" class="px-2 py-0.5 rounded text-sub hover:text-main transition">清晰彩色</button>
+          </div>
+
+          <button onclick="openTokenModal()" class="btn-sub text-[11px] border px-2.5 py-1.5 rounded-lg transition">
             Token 設定
           </button>
-          <button onclick="fetchMarketData()" class="text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 px-3 py-1.5 rounded-lg transition">
+          <button onclick="fetchMarketData()" class="btn-sub text-[11px] border px-3 py-1.5 rounded-lg font-bold transition">
             重新計算
           </button>
         </div>
       </div>
 
-      <!-- 控制列：檔數與排序 -->
+      <!-- 控制列：檔數與排序維度 -->
       <div class="flex flex-wrap items-center justify-between gap-2.5 pt-2.5 border-t border-zinc-800/60 text-xs font-mono">
         <div class="flex items-center gap-2">
-          <span class="text-[11px] text-zinc-500">顯示檔數</span>
-          <div class="flex gap-1 bg-zinc-950 p-0.5 rounded-lg border border-zinc-800">
-            <button onclick="setDisplayLimit(3)" class="limit-btn px-2 py-0.5 rounded text-zinc-500 hover:text-zinc-300" data-limit="3">3</button>
-            <button onclick="setDisplayLimit(5)" class="limit-btn px-2 py-0.5 rounded bg-zinc-800 text-zinc-100 font-bold" data-limit="5">5</button>
-            <button onclick="setDisplayLimit(10)" class="limit-btn px-2 py-0.5 rounded text-zinc-500 hover:text-zinc-300" data-limit="10">10</button>
-            <button onclick="setDisplayLimit(20)" class="limit-btn px-2 py-0.5 rounded text-zinc-500 hover:text-zinc-300" data-limit="20">20</button>
+          <span class="text-[11px] text-sub">顯示檔數</span>
+          <div class="flex gap-1 bg-zinc-950/40 p-0.5 rounded-lg border border-zinc-700/40">
+            <button onclick="setDisplayLimit(3)" class="limit-btn px-2 py-0.5 rounded text-sub hover:text-main" data-limit="3">3</button>
+            <button onclick="setDisplayLimit(5)" class="limit-btn px-2 py-0.5 rounded bg-zinc-700/60 text-main font-bold" data-limit="5">5</button>
+            <button onclick="setDisplayLimit(10)" class="limit-btn px-2 py-0.5 rounded text-sub hover:text-main" data-limit="10">10</button>
+            <button onclick="setDisplayLimit(20)" class="limit-btn px-2 py-0.5 rounded text-sub hover:text-main" data-limit="20">20</button>
           </div>
         </div>
 
         <div class="flex items-center gap-2">
-          <span class="text-[11px] text-zinc-500">排序維度</span>
-          <select id="sortPriority" onchange="handleSortChange(this.value)" class="bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 px-2.5 py-1 rounded-lg focus:outline-none focus:border-zinc-600">
+          <span class="text-[11px] text-sub">排序維度</span>
+          <select id="sortPriority" onchange="handleSortChange(this.value)" class="panel-bg border text-xs text-main px-2.5 py-1 rounded-lg focus:outline-none">
             <option value="STRATEGY_SCORE">多因子模型評級 (Rank ▾)</option>
             <option value="MOMO_SHARPE">20日風險調整回報 Sharpe (穩定 ▾)</option>
             <option value="INSTITUTION">15日外資與投信籌碼 (買超 ▾)</option>
@@ -78,78 +113,78 @@
     <!-- 四大策略決策看盤 (4 欄響應式排版) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 
-      <!-- 專區 1: 觸底反彈 (新增你的回測策略) -->
-      <div class="bg-[#121418] border border-zinc-800/80 rounded-xl p-3 flex flex-col justify-between">
+      <!-- 專區 1: 觸底反彈 -->
+      <div class="panel-bg border rounded-xl p-3 flex flex-col justify-between">
         <div class="space-y-2">
           <div class="flex items-center justify-between border-b border-zinc-800/60 pb-2">
             <div class="flex items-center gap-1.5">
               <span class="text-sm">🎯</span>
-              <h2 class="text-xs font-bold text-zinc-200 uppercase tracking-wide">均線回測觸底反彈</h2>
+              <h2 class="text-xs font-bold text-main uppercase tracking-wide">均線回測觸底反彈</h2>
             </div>
-            <span class="text-[9px] bg-zinc-800/80 text-zinc-400 border border-zinc-700/50 px-1.5 py-0.2 rounded font-mono">MA20/60 Rebound</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-purple-400 bg-purple-950/40 border-purple-800/40">MA20/60 Rebound</span>
           </div>
-          <p class="text-[11px] text-zinc-500 leading-normal">
-            月季線雙重支撐 + 近3日回測2%內確認 + 今日紅K放量 + 排除無基之彈。
+          <p class="text-[11px] text-sub leading-normal">
+            月季線雙重支撐 + 近3日回測2%內確認 + 今日紅K放量 + 營收基本面支撐。
           </p>
           <div id="reboundList" class="space-y-1.5 pt-1">
-            <div class="text-zinc-600 text-xs text-center py-6 font-mono">計算中...</div>
+            <div class="text-sub text-xs text-center py-6 font-mono">計算中...</div>
           </div>
         </div>
       </div>
 
       <!-- 專區 2: 當沖動能 -->
-      <div class="bg-[#121418] border border-zinc-800/80 rounded-xl p-3 flex flex-col justify-between">
+      <div class="panel-bg border rounded-xl p-3 flex flex-col justify-between">
         <div class="space-y-2">
           <div class="flex items-center justify-between border-b border-zinc-800/60 pb-2">
             <div class="flex items-center gap-1.5">
               <span class="text-sm">⚡</span>
-              <h2 class="text-xs font-bold text-zinc-200 uppercase tracking-wide">盤中推進當沖標的</h2>
+              <h2 class="text-xs font-bold text-main uppercase tracking-wide">盤中推進當沖標的</h2>
             </div>
-            <span class="text-[9px] bg-zinc-800/80 text-zinc-400 border border-zinc-700/50 px-1.5 py-0.2 rounded font-mono">Intraday Momentum</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-rose-400 bg-rose-950/40 border-rose-800/40">Intraday Power</span>
           </div>
-          <p class="text-[11px] text-zinc-500 leading-normal">
+          <p class="text-[11px] text-sub leading-normal">
             過濾隔夜跳空虛胖誘多，鎖定開盤後盤中實質大單推升、量能充沛標的。
           </p>
           <div id="dayTradeList" class="space-y-1.5 pt-1">
-            <div class="text-zinc-600 text-xs text-center py-6 font-mono">計算中...</div>
+            <div class="text-sub text-xs text-center py-6 font-mono">計算中...</div>
           </div>
         </div>
       </div>
 
       <!-- 專區 3: 短期波段 -->
-      <div class="bg-[#121418] border border-zinc-800/80 rounded-xl p-3 flex flex-col justify-between">
+      <div class="panel-bg border rounded-xl p-3 flex flex-col justify-between">
         <div class="space-y-2">
           <div class="flex items-center justify-between border-b border-zinc-800/60 pb-2">
             <div class="flex items-center gap-1.5">
               <span class="text-sm">📈</span>
-              <h2 class="text-xs font-bold text-zinc-200 uppercase tracking-wide">強勢波段主升領頭</h2>
+              <h2 class="text-xs font-bold text-main uppercase tracking-wide">強勢波段主升領頭</h2>
             </div>
-            <span class="text-[9px] bg-zinc-800/80 text-zinc-400 border border-zinc-700/50 px-1.5 py-0.2 rounded font-mono">52W-High & Sharpe</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-amber-400 bg-amber-950/40 border-amber-800/40">52W-High & Sharpe</span>
           </div>
-          <p class="text-[11px] text-zinc-500 leading-normal">
+          <p class="text-[11px] text-sub leading-normal">
             FinLab 年化 22.5% 模型，緊貼年度高點（未曾崩跌做頭）且軌跡平穩者。
           </p>
           <div id="shortSwingList" class="space-y-1.5 pt-1">
-            <div class="text-zinc-600 text-xs text-center py-6 font-mono">計算中...</div>
+            <div class="text-sub text-xs text-center py-6 font-mono">計算中...</div>
           </div>
         </div>
       </div>
 
       <!-- 專區 4: 長期核心 -->
-      <div class="bg-[#121418] border border-zinc-800/80 rounded-xl p-3 flex flex-col justify-between">
+      <div class="panel-bg border rounded-xl p-3 flex flex-col justify-between">
         <div class="space-y-2">
           <div class="flex items-center justify-between border-b border-zinc-800/60 pb-2">
             <div class="flex items-center gap-1.5">
               <span class="text-sm">🛡️</span>
-              <h2 class="text-xs font-bold text-zinc-200 uppercase tracking-wide">穩健核心容量配置</h2>
+              <h2 class="text-xs font-bold text-main uppercase tracking-wide">穩健核心容量配置</h2>
             </div>
-            <span class="text-[9px] bg-zinc-800/80 text-zinc-400 border border-zinc-700/50 px-1.5 py-0.2 rounded font-mono">Volume & Yield</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-emerald-400 bg-emerald-950/40 border-emerald-800/40">Volume & Yield</span>
           </div>
-          <p class="text-[11px] text-zinc-500 leading-normal">
+          <p class="text-[11px] text-sub leading-normal">
             FinLab 年化 28.6% 模型，具備市場高流動性與安全 PE 門檻，抗系統風險。
           </p>
           <div id="longTermList" class="space-y-1.5 pt-1">
-            <div class="text-zinc-600 text-xs text-center py-6 font-mono">計算中...</div>
+            <div class="text-sub text-xs text-center py-6 font-mono">計算中...</div>
           </div>
         </div>
       </div>
@@ -158,73 +193,93 @@
 
   </div>
 
-  <!-- 個股診斷與走勢圖 Modal (彈窗) -->
-  <div id="stockDetailModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
-    <div class="bg-[#121418] border border-zinc-800 rounded-2xl w-full max-w-3xl shadow-2xl p-4 space-y-3.5 max-h-[95vh] flex flex-col font-sans">
+  <!-- 個股診斷與走勢圖 Modal -->
+  <div id="stockDetailModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="panel-bg border rounded-2xl w-full max-w-3xl shadow-2xl p-4 space-y-3.5 max-h-[95vh] flex flex-col font-sans">
       <div class="flex justify-between items-center border-b border-zinc-800/80 pb-2.5">
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="font-bold text-base text-zinc-100" id="modalTitle">--</h3>
-            <span id="modalCategory" class="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">--</span>
+            <h3 class="font-bold text-base text-main" id="modalTitle">--</h3>
+            <span id="modalCategory" class="text-[10px] px-2 py-0.5 rounded bg-zinc-800/50 text-sub font-mono">--</span>
           </div>
-          <p class="text-[11px] text-zinc-500 font-mono mt-0.5" id="modalSubTitle">--</p>
+          <p class="text-[11px] text-sub font-mono mt-0.5" id="modalSubTitle">--</p>
         </div>
         <div class="flex items-center gap-2">
-          <a id="modalYahooLink" href="#" target="_blank" class="text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-mono">
+          <a id="modalYahooLink" href="#" target="_blank" class="btn-sub text-[11px] border px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-mono">
             Yahoo 報價 ↗
           </a>
-          <button onclick="closeModal()" class="text-zinc-500 hover:text-zinc-200 text-lg px-2">✕</button>
+          <button onclick="closeModal()" class="text-sub hover:text-main text-lg px-2">✕</button>
         </div>
       </div>
 
       <div class="overflow-y-auto space-y-3 flex-1 pr-1">
         <!-- 走勢圖容器 -->
-        <div class="bg-zinc-950 p-2 rounded-xl border border-zinc-800 relative" style="height: 320px;">
+        <div class="card-bg p-2 rounded-xl border relative" style="height: 320px;">
           <div id="chartContainer" class="w-full h-full"></div>
         </div>
 
         <!-- 量化診斷與入選理由 -->
-        <div class="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800/80 space-y-2 text-xs">
-          <h4 class="font-bold text-zinc-300 flex items-center gap-1.5">
+        <div class="card-bg p-3.5 rounded-xl border space-y-2 text-xs">
+          <h4 class="font-bold text-main flex items-center gap-1.5">
             <span>📋</span> 量化模型入選理由與特徵分析
           </h4>
-          <div id="modalReason" class="text-zinc-400 space-y-1.5 leading-relaxed font-mono text-[11px]"></div>
+          <div id="modalReason" class="text-sub space-y-1.5 leading-relaxed font-mono text-[11px]"></div>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Token 彈窗 -->
-  <div id="tokenModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-mono">
-    <div class="bg-[#121418] border border-zinc-800 p-5 rounded-xl shadow-2xl w-full max-w-sm space-y-3">
-      <div class="flex justify-between items-center border-b border-zinc-800 pb-2">
-        <h3 class="font-bold text-xs text-zinc-200">FinLab API Token 設定</h3>
-        <button onclick="closeTokenModal()" class="text-zinc-500 hover:text-zinc-300">✕</button>
+  <div id="tokenModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-mono">
+    <div class="panel-bg border p-5 rounded-xl shadow-2xl w-full max-w-sm space-y-3">
+      <div class="flex justify-between items-center border-b border-zinc-800/60 pb-2">
+        <h3 class="font-bold text-xs text-main">FinLab API Token 設定</h3>
+        <button onclick="closeTokenModal()" class="text-sub hover:text-main">✕</button>
       </div>
-      <p class="text-[11px] text-zinc-500">
+      <p class="text-[11px] text-sub">
         金鑰僅存放於您本地瀏覽器。若無金鑰，系統將自動以同目錄之 market_data.json 進行分析。
       </p>
       <input id="tokenInput" type="password" placeholder="貼上 FinLab API Token" 
-             class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-600">
+             class="w-full card-bg border rounded-lg px-3 py-1.5 text-xs text-main focus:outline-none">
       <div class="flex justify-end gap-2 pt-1">
-        <button onclick="saveTokenAndFetch()" class="bg-zinc-200 hover:bg-white text-black text-xs px-3 py-1.5 rounded-lg font-bold transition">
+        <button onclick="saveTokenAndFetch()" class="btn-sub border text-xs px-3 py-1.5 rounded-lg font-bold transition">
           儲存並執行
         </button>
       </div>
     </div>
   </div>
 
-  <footer class="py-3 text-center text-[11px] text-zinc-600 font-mono">
+  <footer class="py-3 text-center text-[11px] text-sub font-mono">
     MOHREN QUANT MATRIX • SYSTEM RUNNING CLEAN
   </footer>
 
   <script>
     let CURRENT_LIMIT = 5;
     let CURRENT_SORT = "STRATEGY_SCORE";
+    let CURRENT_THEME = localStorage.getItem("MOHREN_THEME") || "dark";
     let COMPUTED_STOCKS = [];
     let currentChart = null;
 
-    // 核心量化運算引擎 (完整整合四大多因子策略)
+    // 主題切換邏輯
+    function setTheme(theme) {
+      CURRENT_THEME = theme;
+      localStorage.setItem("MOHREN_THEME", theme);
+      document.body.className = `theme-${theme} font-sans min-h-screen flex flex-col justify-between p-3 sm:p-6 transition-colors duration-200`;
+
+      // 頂部按鈕狀態更新
+      ['dark', 'light', 'color'].forEach(t => {
+        const btn = document.getElementById(`themeBtn-${t}`);
+        if (t === theme) {
+          btn.className = "px-2 py-0.5 rounded font-bold bg-zinc-700/60 text-main transition";
+        } else {
+          btn.className = "px-2 py-0.5 rounded text-sub hover:text-main transition";
+        }
+      });
+
+      renderAllSections();
+    }
+
+    // 核心多因子量化運算引擎
     function runQuantitativeEngine(rawStocks) {
       return rawStocks.map(s => {
         const kline = s.kline || [];
@@ -237,15 +292,13 @@
         const pe = s.pe !== undefined ? parseFloat(s.pe) : 18.0;
         const revYoy = s.rev_yoy !== undefined ? parseFloat(s.rev_yoy) : 8.0;
 
-        // 1. 當沖訊號：盤中實質推進比率
+        // 1. 當沖訊號
         const intradayRet = (closeP - openP) / (openP || 1);
         const dayTradeScore = intradayRet * 100;
 
-        // 2. 波段訊號：52週高點保留度與夏普比率
+        // 2. 波段訊號
         let maxHigh = closeP;
-        if (hasK) {
-          maxHigh = Math.max(...kline.map(k => k.high));
-        }
+        if (hasK) maxHigh = Math.max(...kline.map(k => k.high));
         const nearHighRatio = maxHigh > 0 ? (closeP / maxHigh) : 0.85;
 
         let sharpe20 = 0.5;
@@ -264,7 +317,7 @@
         }
         const swingScore = (nearHighRatio * 70) + (Math.max(0, Math.min(sharpe20, 3.0)) * 10);
 
-        // 3. 觸底反彈訊號 (依據你的 FinLab 回測策略代碼)
+        // 3. 觸底反彈訊號
         let isRebound = false;
         let reboundScore = 0;
         let sma20 = closeP, sma60 = closeP;
@@ -274,25 +327,16 @@
           sma20 = c20.reduce((a, b) => a + b, 0) / 20;
           sma60 = c60.reduce((a, b) => a + b, 0) / 60;
 
-          // 條件一：站上月線與季線
           const aboveMa = closeP > sma20 && closeP > sma60;
-
-          // 條件二：近3天低點回測月線或季線 2% 內
-          const last3Lows = kline.slice(-3).map(k => k.low);
-          const minLow3 = Math.min(...last3Lows);
+          const minLow3 = Math.min(...kline.slice(-3).map(k => k.low));
           const hitMa20 = minLow3 <= (sma20 * 1.02);
           const hitMa60 = minLow3 <= (sma60 * 1.02);
           const recentlyHit = hitMa20 || hitMa60;
-
-          // 條件三：今日收紅盤且量增 (或長度不足時收紅即可)
           const redCandle = closeP > openP;
-          
-          // 加上基本面過濾 (避免無基之彈)
           const fundFilter = revYoy > 0;
 
           if (aboveMa && recentlyHit && redCandle && fundFilter) {
             isRebound = true;
-            // 排序分數：20日動能 + 法人加分
             reboundScore = (momo20 * 50) + (net15 > 0 ? 20 : 0);
           }
         }
@@ -349,78 +393,75 @@
     }
 
     function renderAllSections() {
-      // 1. 觸底反彈推薦專區
+      // 1. 觸底反彈專區
       let reboundPool = COMPUTED_STOCKS.filter(s => s.isRebound);
       if (reboundPool.length === 0) {
-        // 若條件嚴格，取最接近回測月線且收紅的標的
         reboundPool = COMPUTED_STOCKS.filter(s => s.price > s.sma20 && s.price > s.openPrice);
       }
       reboundPool = sortArray(reboundPool, "reboundScore").slice(0, CURRENT_LIMIT);
-      renderCardList("reboundList", reboundPool, "MA支撐確認", s => `20日漲幅 ${( (s.momo20 - 1) * 100).toFixed(1)}%`, "REBOUND");
+      renderCardList("reboundList", reboundPool, s => `20日漲幅 ${( (s.momo20 - 1) * 100).toFixed(1)}%`, "REBOUND", "card-rebound");
 
-      // 2. 當沖推薦專區
+      // 2. 當沖專區
       let dayTradePool = [...COMPUTED_STOCKS];
       dayTradePool = sortArray(dayTradePool, "dayTradeScore").slice(0, CURRENT_LIMIT);
-      renderCardList("dayTradeList", dayTradePool, "盤中推升", s => `${s.intradayRet >= 0 ? '+' : ''}${(s.intradayRet * 100).toFixed(2)}%`, "DAYTRADE");
+      renderCardList("dayTradeList", dayTradePool, s => `${s.intradayRet >= 0 ? '+' : ''}${(s.intradayRet * 100).toFixed(2)}%`, "DAYTRADE", "card-daytrade");
 
       // 3. 短期波段專區
       let swingPool = COMPUTED_STOCKS.filter(s => s.nearHighRatio >= 0.85);
       if (swingPool.length < CURRENT_LIMIT) swingPool = [...COMPUTED_STOCKS];
       swingPool = sortArray(swingPool, "swingScore").slice(0, CURRENT_LIMIT);
-      renderCardList("shortSwingList", swingPool, "距年高", s => `-${((1 - s.nearHighRatio) * 100).toFixed(1)}%`, "SWING");
+      renderCardList("shortSwingList", swingPool, s => `-${((1 - s.nearHighRatio) * 100).toFixed(1)}%`, "SWING", "card-swing");
 
       // 4. 長期核心專區
       let longTermPool = [...COMPUTED_STOCKS];
       longTermPool = sortArray(longTermPool, "longTermScore").slice(0, CURRENT_LIMIT);
-      renderCardList("longTermList", longTermPool, "15日法人", s => `${s.net15Total >= 0 ? '+' : ''}${s.net15Total}張`, "LONG");
+      renderCardList("longTermList", longTermPool, s => `${s.net15Total >= 0 ? '+' : ''}${s.net15Total}張`, "LONG", "card-long");
     }
 
     function sortArray(list, defaultScoreKey) {
       const arr = [...list];
-      if (CURRENT_SORT === "STRATEGY_SCORE") {
-        arr.sort((a, b) => b[defaultScoreKey] - a[defaultScoreKey]);
-      } else if (CURRENT_SORT === "MOMO_SHARPE") {
-        arr.sort((a, b) => b.sharpe20 - a.sharpe20);
-      } else if (CURRENT_SORT === "INSTITUTION") {
-        arr.sort((a, b) => b.net15Total - a.net15Total);
-      } else if (CURRENT_SORT === "GROWTH") {
-        arr.sort((a, b) => b.rev_yoy - a.rev_yoy);
-      }
+      if (CURRENT_SORT === "STRATEGY_SCORE") arr.sort((a, b) => b[defaultScoreKey] - a[defaultScoreKey]);
+      else if (CURRENT_SORT === "MOMO_SHARPE") arr.sort((a, b) => b.sharpe20 - a.sharpe20);
+      else if (CURRENT_SORT === "INSTITUTION") arr.sort((a, b) => b.net15Total - a.net15Total);
+      else if (CURRENT_SORT === "GROWTH") arr.sort((a, b) => b.rev_yoy - a.rev_yoy);
       return arr;
     }
 
-    function renderCardList(containerId, list, tagLabel, tagValFn, strategyType) {
+    function renderCardList(containerId, list, tagValFn, strategyType, colorThemeClass) {
       const c = document.getElementById(containerId);
       if (!list || list.length === 0) {
-        c.innerHTML = `<div class="text-zinc-600 text-[11px] text-center py-6 font-mono">條件過濾無符合標的</div>`;
+        c.innerHTML = `<div class="text-sub text-[11px] text-center py-6 font-mono">無符合條件之標的</div>`;
         return;
       }
 
+      // 彩色模式套用不同色彩背景卡片，黑白模式維持統一卡片
+      const cardClass = CURRENT_THEME === 'color' ? colorThemeClass : 'card-bg';
+
       c.innerHTML = list.map((s, idx) => `
-        <div onclick="openStockDetail('${s.symbol}', '${strategyType}')" class="cursor-pointer bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80 hover:border-zinc-600 transition space-y-1 font-mono">
+        <div onclick="openStockDetail('${s.symbol}', '${strategyType}')" class="cursor-pointer ${cardClass} p-2.5 rounded-lg border transition space-y-1 font-mono">
           <div class="flex justify-between items-center">
             <div class="flex items-center gap-1.5">
-              <span class="text-[10px] text-zinc-600 font-bold">#${idx + 1}</span>
-              <span class="font-bold text-zinc-200 text-xs font-sans">${s.name}</span>
-              <span class="text-[10px] text-zinc-500">(${s.symbol})</span>
+              <span class="text-[10px] text-sub font-bold">#${idx + 1}</span>
+              <span class="font-bold text-main text-xs font-sans">${s.name}</span>
+              <span class="text-[10px] text-sub">(${s.symbol})</span>
             </div>
-            <span class="text-[9px] px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+            <span class="text-[9px] px-1.5 py-0.2 rounded border bg-zinc-950/20 border-zinc-700/30 text-sub">
               ${tagValFn(s)}
             </span>
           </div>
 
           <div class="flex justify-between items-center text-[11px]">
-            <span class="text-zinc-300 font-bold">$${s.price.toFixed(2)}</span>
-            <div class="flex items-center gap-2 text-[10px] text-zinc-500">
-              <span>PE: <b class="text-zinc-400">${s.pe}x</b></span>
-              <span>YoY: <b class="${s.rev_yoy >= 0 ? 'text-zinc-300':'text-zinc-500'}">${s.rev_yoy}%</b></span>
+            <span class="text-main font-bold">$${s.price.toFixed(2)}</span>
+            <div class="flex items-center gap-2 text-[10px] text-sub">
+              <span>PE: <b class="text-main">${s.pe}x</b></span>
+              <span>YoY: <b class="${s.rev_yoy >= 0 ? 'text-rose-500':'text-emerald-500'}">${s.rev_yoy}%</b></span>
             </div>
           </div>
         </div>
       `).join('');
     }
 
-    // 打開個股診斷 Modal 並繪製專業 K 線走勢
+    // 走勢圖與診斷浮窗
     function openStockDetail(symbol, strategyType) {
       const stock = COMPUTED_STOCKS.find(s => s.symbol === symbol);
       if (!stock) return;
@@ -428,31 +469,26 @@
       document.getElementById("modalTitle").textContent = `${stock.name} (${stock.symbol})`;
       document.getElementById("modalCategory").textContent = stock.category;
       document.getElementById("modalSubTitle").textContent = `實收價: $${stock.price.toFixed(2)} | 本益比: ${stock.pe}x | 營收年增: ${stock.rev_yoy}% | 15日法人累計: ${stock.net15Total} 張`;
-      
-      // Yahoo 奇摩即時走勢直連連結
       document.getElementById("modalYahooLink").href = `https://tw.stock.yahoo.com/quote/${stock.symbol}`;
 
-      // 動態生成「為什麼選這檔」的機構量化理由
       let reasons = [];
       if (strategyType === "REBOUND") {
-        reasons.push(`• 【均線回測確認】：股價現為 $${stock.price.toFixed(2)}，精準守在月線 ($${stock.sma20.toFixed(2)}) 與季線 ($${stock.sma60.toFixed(2)}) 之上，近 3 日低點成功完成回測踩穩。`);
-        reasons.push(`• 【動能防守】：過去 20 天動能累積提升 ${( (stock.momo20 - 1) * 100).toFixed(1)}%，屬於強者拉回支撐點火形態。`);
-        reasons.push(`• 【獲利過濾】：月營收年增達 ${stock.rev_yoy}%，具備實質基本面支撐，非單純籌碼誘多的「無基之彈」。`);
+        reasons.push(`• 【均線回測確認】：股價現為 $${stock.price.toFixed(2)}，守於月線 ($${stock.sma20.toFixed(2)}) 與季線 ($${stock.sma60.toFixed(2)}) 之上，近3日低點完成回測踩穩。`);
+        reasons.push(`• 【動能防守】：過去 20 天動能提升 ${( (stock.momo20 - 1) * 100).toFixed(1)}%，屬於強者拉回支撐點火形態。`);
+        reasons.push(`• 【獲利過濾】：月營收年增達 ${stock.rev_yoy}%，具備實質基本面支撐，排除無基之彈。`);
       } else if (strategyType === "DAYTRADE") {
-        reasons.push(`• 【盤中實質推升】：今日開盤 $${stock.openPrice.toFixed(2)}，盤中實質推升幅度達 ${(stock.intradayRet * 100).toFixed(2)}%，排除開高倒貨跳空陷阱。`);
-        reasons.push(`• 【波段張力】：盤中實體紅 K 線力道顯著，日內買盤意願積極。`);
+        reasons.push(`• 【盤中實質推升】：開盤 $${stock.openPrice.toFixed(2)}，盤中推升達 ${(stock.intradayRet * 100).toFixed(2)}%，排除開高倒貨跳空陷阱。`);
+        reasons.push(`• 【日內買力】：收紅攻堅，實體紅 K 線力道顯著。`);
       } else if (strategyType === "SWING") {
-        reasons.push(`• 【高點保留率】：最新價距 52 週最高價僅衰退 ${((1 - stock.nearHighRatio) * 100).toFixed(1)}% (保留度 ${(stock.nearHighRatio * 100).toFixed(1)}%)，符合 FinLab 年化 22.5% 強勢守成標準。`);
-        reasons.push(`• 【軌跡平穩度】：近 20 日風險調整夏普值為 ${stock.sharpe20.toFixed(2)}，股價呈現健康爬坡主升段。`);
+        reasons.push(`• 【高點保留率】：最新價距 52 週最高點僅衰退 ${((1 - stock.nearHighRatio) * 100).toFixed(1)}%，符合 FinLab 年化 22.5% 強勢守成標準。`);
+        reasons.push(`• 【軌跡平穩度】：近 20 日風險調整夏普值為 ${stock.sharpe20.toFixed(2)}，呈現平穩主升段。`);
       } else {
-        reasons.push(`• 【籌碼容量鎖碼】：近 15 日三大法人買超達 ${stock.net15Total} 張，在大額資金推動下具備優質流動性承載力。`);
+        reasons.push(`• 【籌碼容量鎖碼】：近 15 日三大法人買超達 ${stock.net15Total} 張，流動性承載力強。`);
         reasons.push(`• 【安全估值】：考量週期性安全邊際，營收成長對應估值性價比表現穩健。`);
       }
       document.getElementById("modalReason").innerHTML = reasons.map(r => `<div>${r}</div>`).join('');
 
       document.getElementById("stockDetailModal").classList.remove("hidden");
-
-      // 繪製 TradingView Lightweight 走勢圖
       setTimeout(() => renderModalChart(stock), 50);
     }
 
@@ -464,13 +500,20 @@
         currentChart = null;
       }
 
+      const isLight = CURRENT_THEME === 'light';
       currentChart = LightweightCharts.createChart(container, {
         width: container.clientWidth,
         height: 300,
-        layout: { background: { color: '#090a0d' }, textColor: '#64748b' },
-        grid: { vertLines: { color: '#14161b' }, horzLines: { color: '#14161b' } },
+        layout: { 
+          background: { color: isLight ? '#ffffff' : '#090a0d' }, 
+          textColor: isLight ? '#64748b' : '#94a3b8' 
+        },
+        grid: { 
+          vertLines: { color: isLight ? '#f1f5f9' : '#14161b' }, 
+          horzLines: { color: isLight ? '#f1f5f9' : '#14161b' } 
+        },
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-        timeScale: { borderColor: '#1f2228', timeVisible: false }
+        timeScale: { borderColor: isLight ? '#e2e8f0' : '#1f2228', timeVisible: false }
       });
 
       const candleSeries = currentChart.addCandlestickSeries({
@@ -486,20 +529,16 @@
         candleSeries.setData(stock.kline);
         currentChart.timeScale().fitContent();
       } else {
-        container.innerHTML = `<div class="flex items-center justify-center h-full text-zinc-600 text-xs font-mono">暫無完整歷史日 K 序列，可點右上角開啟 Yahoo 實時圖表</div>`;
+        container.innerHTML = `<div class="flex items-center justify-center h-full text-sub text-xs font-mono">暫無完整歷史日 K 序列，可點右上角開啟 Yahoo 實時圖表</div>`;
       }
     }
 
-    function closeModal() {
-      document.getElementById("stockDetailModal").classList.add("hidden");
-    }
-
+    function closeModal() { document.getElementById("stockDetailModal").classList.add("hidden"); }
     function openTokenModal() {
       document.getElementById("tokenInput").value = localStorage.getItem("FINLAB_API_TOKEN") || "";
       document.getElementById("tokenModal").classList.remove("hidden");
     }
     function closeTokenModal() { document.getElementById("tokenModal").classList.add("hidden"); }
-
     function saveTokenAndFetch() {
       const t = document.getElementById("tokenInput").value.trim();
       if (t) localStorage.setItem("FINLAB_API_TOKEN", t);
@@ -507,25 +546,26 @@
       closeTokenModal();
       fetchMarketData();
     }
-
     function setDisplayLimit(n) {
       CURRENT_LIMIT = n;
       document.querySelectorAll('.limit-btn').forEach(btn => {
         if (parseInt(btn.getAttribute('data-limit')) === n) {
-          btn.className = "limit-btn px-2 py-0.5 rounded bg-zinc-800 text-zinc-100 font-bold";
+          btn.className = "limit-btn px-2 py-0.5 rounded bg-zinc-700/60 text-main font-bold";
         } else {
-          btn.className = "limit-btn px-2 py-0.5 rounded text-zinc-500 hover:text-zinc-300";
+          btn.className = "limit-btn px-2 py-0.5 rounded text-sub hover:text-main";
         }
       });
       renderAllSections();
     }
-
     function handleSortChange(v) {
       CURRENT_SORT = v;
       renderAllSections();
     }
 
-    window.onload = fetchMarketData;
+    window.onload = () => {
+      setTheme(CURRENT_THEME);
+      fetchMarketData();
+    };
   </script>
 </body>
 </html>
