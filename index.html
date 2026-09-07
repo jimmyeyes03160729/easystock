@@ -62,13 +62,13 @@
           <div>
             <div class="flex items-center gap-2">
               <h1 class="text-sm font-semibold tracking-wider text-main uppercase">墨衡量化 ｜ Mohren Quant Matrix</h1>
-              <span class="text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700/60 px-1.5 py-0.2 rounded font-mono">v0.25 填息增強</span>
+              <span class="text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700/60 px-1.5 py-0.2 rounded font-mono">v0.25</span>
             </div>
-            <p class="text-[11px] text-sub font-mono mt-0.5" id="dataStatusText">正在載入市場特徵數據庫...</p>
+            <p class="text-[11px] text-sub font-mono mt-0.5" id="dataStatusText">正在從 Firebase 載入市場數據...</p>
           </div>
         </div>
 
-        <!-- 功能按鈕與色彩模式切換 -->
+        <!-- 色彩模式切換與重新計算按鈕 -->
         <div class="flex flex-wrap items-center gap-2 font-mono">
           <div class="flex items-center gap-1 bg-zinc-950/40 p-1 rounded-lg border border-zinc-700/40 text-[11px]">
             <button onclick="setTheme('color')" id="themeBtn-color" class="px-2 py-0.5 rounded font-bold transition">清晰彩色</button>
@@ -76,9 +76,6 @@
             <button onclick="setTheme('light')" id="themeBtn-light" class="px-2 py-0.5 rounded text-sub hover:text-main transition">閃瞎白</button>
           </div>
 
-          <button onclick="openTokenModal()" class="btn-sub text-[11px] border px-2.5 py-1.5 rounded-lg transition">
-            Token 設定
-          </button>
           <button onclick="fetchMarketData()" class="btn-sub text-[11px] border px-3 py-1.5 rounded-lg font-bold transition">
             重新計算
           </button>
@@ -170,7 +167,7 @@
         </div>
       </div>
 
-      <!-- 專區 4: 長期核心 (含填息動能與容量) -->
+      <!-- 專區 4: 長期核心 -->
       <div class="panel-bg border rounded-xl p-3 flex flex-col justify-between">
         <div class="space-y-2">
           <div class="flex items-center justify-between border-b border-zinc-800/60 pb-2">
@@ -227,26 +224,6 @@
     </div>
   </div>
 
-  <!-- Token 彈窗 -->
-  <div id="tokenModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-mono">
-    <div class="panel-bg border p-5 rounded-xl shadow-2xl w-full max-w-sm space-y-3">
-      <div class="flex justify-between items-center border-b border-zinc-800/60 pb-2">
-        <h3 class="font-bold text-xs text-main">FinLab API Token 設定</h3>
-        <button onclick="closeTokenModal()" class="text-sub hover:text-main">✕</button>
-      </div>
-      <p class="text-[11px] text-sub">
-        金鑰僅存放於您本地瀏覽器。若無金鑰，系統將自動以同目錄之 market_data.json 進行分析。
-      </p>
-      <input id="tokenInput" type="password" placeholder="貼上 FinLab API Token" 
-             class="w-full card-bg border rounded-lg px-3 py-1.5 text-xs text-main focus:outline-none">
-      <div class="flex justify-end gap-2 pt-1">
-        <button onclick="saveTokenAndFetch()" class="btn-sub border text-xs px-3 py-1.5 rounded-lg font-bold transition">
-          儲存並執行
-        </button>
-      </div>
-    </div>
-  </div>
-
   <footer class="py-3 text-center text-[11px] text-sub font-mono">
     MOHREN QUANT MATRIX • SYSTEM RUNNING CLEAN
   </footer>
@@ -275,7 +252,7 @@
       renderAllSections();
     }
 
-    // 核心多因子量化運算引擎 (完整納入填息修復力)
+    // 核心多因子量化運算引擎
     function runQuantitativeEngine(rawStocks) {
       return rawStocks.map(s => {
         const kline = s.kline || [];
@@ -288,7 +265,6 @@
         const pe = s.pe !== undefined ? parseFloat(s.pe) : 18.0;
         const revYoy = s.rev_yoy !== undefined ? parseFloat(s.rev_yoy) : 8.0;
         
-        // 股利與殖利率
         const dividend = s.dividend !== undefined ? parseFloat(s.dividend) : (closeP * 0.04);
         const yieldPct = closeP > 0 ? ((dividend / closeP) * 100) : 0.0;
 
@@ -344,14 +320,13 @@
           }
         }
 
-        // 4. 長線容量訊號：計算「填息修復動能」
-        const isFilled = closeP >= sma60; // 股價站穩季線，代表除息缺口已完成填息或處於多頭填息軌道
+        // 4. 長線容量與填息評分
+        const isFilled = closeP >= sma60;
         const fillBonus = isFilled ? 15 : 0;
         const peSafe = Math.max(pe, 8.0);
         const growthValRatio = revYoy / peSafe;
-        const cappedYield = Math.min(yieldPct, 8.0); // 截斷於8%，杜絕貼息地雷
+        const cappedYield = Math.min(yieldPct, 8.0);
         
-        // 填息與長線綜合分
         const longTermScore = (net15 > 0 ? Math.log10(net15 + 1) * 10 : 0) + 
                               (cappedYield * 4) + 
                               (growthValRatio * 6) + 
@@ -386,24 +361,29 @@
       });
     }
 
+    // 直接從 Firebase 讀取資料
     async function fetchMarketData() {
       const statusText = document.getElementById("dataStatusText");
-      statusText.textContent = "正在載入數據並進行多維張量計算...";
+      statusText.textContent = "正在從 Firebase 資料庫讀取行情...";
 
       try {
-        const res = await fetch('./market_data.json?t=' + Date.now(), { cache: 'no-cache' });
+        const dbUrl = "https://money-7c81c-default-rtdb.firebaseio.com/.json";
+        const res = await fetch(dbUrl);
         if (res.ok) {
           const data = await res.json();
-          if (data.stocks && data.stocks.length > 0) {
-            COMPUTED_STOCKS = runQuantitativeEngine(data.stocks);
-            statusText.textContent = `同步完成：收錄 ${COMPUTED_STOCKS.length} 檔有效標的 (基準日期: ${data.updated_at || '最新'})`;
+          if (data && data.stocks) {
+            const stocksArray = Array.isArray(data.stocks) ? data.stocks : Object.values(data.stocks);
+            COMPUTED_STOCKS = runQuantitativeEngine(stocksArray);
+            statusText.textContent = `Firebase 同步完成：共 ${COMPUTED_STOCKS.length} 檔標的 (更新日: ${data.updated_at || '最新'})`;
             renderAllSections();
             return;
           }
         }
-      } catch (err) {}
+      } catch (err) {
+        console.warn("無法從 Firebase 讀取", err);
+      }
 
-      statusText.textContent = "讀取失敗，請確認同目錄已放置 market_data.json";
+      statusText.textContent = "讀取失敗，請確認 Firebase 連線與資料節點！";
     }
 
     function renderAllSections() {
@@ -426,7 +406,7 @@
       swingPool = sortArray(swingPool, "swingScore").slice(0, CURRENT_LIMIT);
       renderCardList("shortSwingList", swingPool, s => `-${((1 - s.nearHighRatio) * 100).toFixed(1)}%`, "SWING", "card-swing");
 
-      // 4. 長期核心專區 (直接標示填息狀態與殖利率)
+      // 4. 長期核心專區
       let longTermPool = [...COMPUTED_STOCKS];
       longTermPool = sortArray(longTermPool, "longTermScore").slice(0, CURRENT_LIMIT);
       renderCardList("longTermList", longTermPool, s => `${s.isFilled ? '🟢 填息力強' : '🟡 蓄勢中'} ${s.yieldPct.toFixed(1)}%`, "LONG", "card-long");
@@ -550,18 +530,6 @@
     }
 
     function closeModal() { document.getElementById("stockDetailModal").classList.add("hidden"); }
-    function openTokenModal() {
-      document.getElementById("tokenInput").value = localStorage.getItem("FINLAB_API_TOKEN") || "";
-      document.getElementById("tokenModal").classList.remove("hidden");
-    }
-    function closeTokenModal() { document.getElementById("tokenModal").classList.add("hidden"); }
-    function saveTokenAndFetch() {
-      const t = document.getElementById("tokenInput").value.trim();
-      if (t) localStorage.setItem("FINLAB_API_TOKEN", t);
-      else localStorage.removeItem("FINLAB_API_TOKEN");
-      closeTokenModal();
-      fetchMarketData();
-    }
     function setDisplayLimit(n) {
       CURRENT_LIMIT = n;
       document.querySelectorAll('.limit-btn').forEach(btn => {
