@@ -38,7 +38,7 @@
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
             <h1 class="text-sm font-bold tracking-[0.16em] text-main">墨衡量化 ｜ MOHREN QUANT MATRIX</h1>
-            <span class="text-[10px] rounded border px-1.5 py-0.5 text-sub">v0.71</span>
+            <span class="text-[10px] rounded border px-1.5 py-0.5 text-sub">v0.73</span>
           </div>
           <div id="dataStatusText" class="text-[11px] text-sub font-mono mt-1">正在從 Firebase 載入市場資料…</div>
         </div>
@@ -61,8 +61,15 @@
 
       <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
         <div class="text-sub font-mono">股票池：<span class="text-main">TWSE+TPEx 成交金額前 500 檔四位數普通股（排除 0 開頭 ETF/ETN）</span></div>
-        <div class="flex gap-2 items-center">
+        <div class="flex flex-wrap gap-2 items-center justify-end">
           <span class="text-[10px] text-sub hidden sm:inline">各專區依專屬多層規則排序</span>
+          <div class="flex items-center gap-1.5 rounded-lg border muted-border px-2 py-1">
+            <span class="text-[10px] text-sub">價格</span>
+            <input id="priceMin" type="number" min="0" step="1" inputmode="decimal" placeholder="最低" oninput="setPriceRange()" class="w-16 bg-transparent text-xs text-main outline-none text-right" />
+            <span class="text-[10px] text-sub">～</span>
+            <input id="priceMax" type="number" min="0" step="1" inputmode="decimal" placeholder="最高" oninput="setPriceRange()" class="w-16 bg-transparent text-xs text-main outline-none text-right" />
+            <button onclick="resetPriceRange()" class="text-[10px] text-sub hover:text-main px-1" title="清除價格區間">重設</button>
+          </div>
           <select onchange="setDisplayLimit(Number(this.value))" class="panel rounded-lg px-2.5 py-1.5 text-xs text-main">
             <option value="5">Top 5</option><option value="10">Top 10</option><option value="20">Top 20</option>
           </select>
@@ -145,6 +152,8 @@
   const LONG_MIN_YIELD = 4;
 
   let CURRENT_LIMIT = 5;
+  let PRICE_MIN = null;
+  let PRICE_MAX = null;
   let CURRENT_THEME = localStorage.getItem("MOHREN_THEME") || "color";
   let COMPUTED_STOCKS = [];
   let META = {};
@@ -327,19 +336,31 @@
     return arr;
   }
 
+  function priceFilteredStocks() {
+    return COMPUTED_STOCKS.filter(s=>{
+      const p=n(s.price);
+      if (p===null) return false;
+      if (PRICE_MIN!==null && p<PRICE_MIN) return false;
+      if (PRICE_MAX!==null && p>PRICE_MAX) return false;
+      return true;
+    });
+  }
+
   function renderAllSections() {
-    let rebound = COMPUTED_STOCKS.filter(s=>s.isRebound);
-    if (!rebound.length) rebound=[...COMPUTED_STOCKS];
+    const pool=priceFilteredStocks();
+
+    let rebound = pool.filter(s=>s.isRebound);
+    if (!rebound.length) rebound=[...pool];
     renderCardList("reboundList",sortByKeys(rebound,["reboundScore","net15Total","sharpe20","strategyScore"]).slice(0,CURRENT_LIMIT),"REBOUND");
 
-    renderCardList("dayTradeList",sortByKeys(COMPUTED_STOCKS,["dayTradeScore","amount","net15Total","strategyScore"]).slice(0,CURRENT_LIMIT),"DAYTRADE");
+    renderCardList("dayTradeList",sortByKeys(pool,["dayTradeScore","amount","net15Total","strategyScore"]).slice(0,CURRENT_LIMIT),"DAYTRADE");
 
-    let swing=COMPUTED_STOCKS.filter(s=>(s.nearHighRatio??0)>=.85);
-    if (!swing.length) swing=[...COMPUTED_STOCKS];
+    let swing=pool.filter(s=>(s.nearHighRatio??0)>=.85);
+    if (!swing.length) swing=[...pool];
     renderCardList("shortSwingList",sortByKeys(swing,["swingScore","sharpe20","strategyScore","net15Total"]).slice(0,CURRENT_LIMIT),"SWING");
 
-    let long=COMPUTED_STOCKS.filter(s=>s.longTermEligible);
-    if (!long.length) long=[...COMPUTED_STOCKS];
+    let long=pool.filter(s=>s.longTermEligible);
+    if (!long.length) long=[...pool];
     renderCardList("longTermList",sortByKeys(long,["longTermScore","roe","rev_yoy","strategyScore"]).slice(0,CURRENT_LIMIT),"LONG");
     renderBacktest();
   }
@@ -492,6 +513,37 @@
     if (currentChart) { currentChart.remove(); currentChart=null; }
   }
   function setDisplayLimit(v) { CURRENT_LIMIT=v; renderAllSections(); }
+  function setPriceRange() {
+    const minEl=document.getElementById("priceMin");
+    const maxEl=document.getElementById("priceMax");
+    const minVal=minEl && minEl.value!=="" ? Number(minEl.value) : null;
+    const maxVal=maxEl && maxEl.value!=="" ? Number(maxEl.value) : null;
+    PRICE_MIN=Number.isFinite(minVal) && minVal>=0 ? minVal : null;
+    PRICE_MAX=Number.isFinite(maxVal) && maxVal>=0 ? maxVal : null;
+    localStorage.setItem("MOHREN_PRICE_MIN", PRICE_MIN===null ? "" : String(PRICE_MIN));
+    localStorage.setItem("MOHREN_PRICE_MAX", PRICE_MAX===null ? "" : String(PRICE_MAX));
+    renderAllSections();
+  }
+  function resetPriceRange() {
+    PRICE_MIN=null; PRICE_MAX=null;
+    const minEl=document.getElementById("priceMin");
+    const maxEl=document.getElementById("priceMax");
+    if (minEl) minEl.value="";
+    if (maxEl) maxEl.value="";
+    localStorage.removeItem("MOHREN_PRICE_MIN");
+    localStorage.removeItem("MOHREN_PRICE_MAX");
+    renderAllSections();
+  }
+  function restorePriceRange() {
+    const minSaved=localStorage.getItem("MOHREN_PRICE_MIN");
+    const maxSaved=localStorage.getItem("MOHREN_PRICE_MAX");
+    PRICE_MIN=minSaved!==null && minSaved!=="" && Number.isFinite(Number(minSaved)) ? Number(minSaved) : null;
+    PRICE_MAX=maxSaved!==null && maxSaved!=="" && Number.isFinite(Number(maxSaved)) ? Number(maxSaved) : null;
+    const minEl=document.getElementById("priceMin");
+    const maxEl=document.getElementById("priceMax");
+    if (minEl && PRICE_MIN!==null) minEl.value=PRICE_MIN;
+    if (maxEl && PRICE_MAX!==null) maxEl.value=PRICE_MAX;
+  }
   function escapeHtml(str) { return String(str??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch])); }
 
   async function fetchJson(url) {
@@ -550,7 +602,8 @@
   window.addEventListener("click",e=>{ if (e.target.id==="stockDetailModal") closeModal(); });
   window.addEventListener("keydown",e=>{ if (e.key==="Escape") closeModal(); });
   window.addEventListener("resize",()=>{ if (currentChart) { const c=document.getElementById("chartContainer"); currentChart.applyOptions({width:c.clientWidth}); } });
-  window.onload=()=>{ setTheme(CURRENT_THEME); fetchMarketData(); };
+  window.onload=()=>{ setTheme(CURRENT_THEME); restorePriceRange();
+  fetchMarketData(); };
 </script>
 </body>
 </html>
