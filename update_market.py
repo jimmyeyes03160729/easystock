@@ -30,7 +30,7 @@ HTTP_TIMEOUT = float(os.environ.get("HTTP_TIMEOUT", "12"))
 FUGLE_MIN_INTERVAL_SECONDS = float(os.environ.get("FUGLE_MIN_INTERVAL_SECONDS", "1.05"))
 FUGLE_BOOTSTRAP_MAX_PER_RUN = int(os.environ.get("FUGLE_BOOTSTRAP_MAX_PER_RUN", "20"))
 HTTP_WORKERS = max(2, min(8, int(os.environ.get("HTTP_WORKERS", "6"))))
-MODEL_VERSION = "0.61"
+MODEL_VERSION = "0.63"
 
 TWSE_BASE = "https://openapi.twse.com.tw/v1"
 TPEX_BASE = "https://www.tpex.org.tw/openapi/v1"
@@ -38,7 +38,7 @@ TWSE_T86_URL = "https://www.twse.com.tw/rwd/zh/fund/T86"
 FUGLE_BASE = "https://api.fugle.tw/marketdata/v1.0/stock"
 
 DEFAULT_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; easystock/0.61; +https://github.com/jimmyeyes03160729/easystock)",
+    "User-Agent": "Mozilla/5.0 (compatible; easystock/0.63; +https://github.com/jimmyeyes03160729/easystock)",
     "Accept": "application/json,text/plain,*/*",
 }
 _THREAD_LOCAL = threading.local()

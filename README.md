@@ -296,3 +296,17 @@ python update_market.py
 - `concurrency.cancel-in-progress: true` 保留，新一次更新會取消同群組尚未完成的舊執行。
 
 可透過 workflow 環境變數調整：`HTTP_TIMEOUT`、`HTTP_WORKERS`、`FUGLE_BOOTSTRAP_MAX_PER_RUN`。
+
+## v0.63 — Fugle History Backfill
+
+新增一次性、可續跑的 Fugle 歷史 K 線補檔：
+
+- Secret：`FUGLE_API_KEY`
+- Workflow：`Historical K-line Backfill (Fugle)`
+- 最多補 500 檔，每檔保存最近 250 根日 K。
+- 已有 220 根以上直接跳過，因此可安全重跑。
+- 每補完一檔立即寫 Firebase；中途停止不會前功盡棄。
+- 補檔完成後自動刷新一次量化分數。
+- Daily workflow 的 Fugle bootstrap 限制為每次最多 5 檔，維持快速日常更新。
+
+詳細步驟見 `FUGLE_SETUP.md`。
