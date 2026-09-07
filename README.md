@@ -1,22 +1,91 @@
 # easystock / 墨衡量化 Mohren Quant Matrix
 
-台股量化觀察儀表板。後端使用 FinLab 取得價格、基本面、股利與法人資料，GitHub Actions 每個交易日更新 Firebase Realtime Database；前端為純 `index.html`，可部署於 GitHub Pages。
+台股量化觀察儀表板。v0.60 起 **完全移除 FinLab API 與 `finlab` Python 套件**，資料核心改為 TWSE（臺灣證券交易所）與 TPEx（證券櫃檯買賣中心）官方公開 API；Fugle 只作為選配的歷史 K 線初始化／缺口補齊來源。
 
 > 本專案為資料整理與量化研究用途，不構成投資建議。
 
-## v0.50 主要修正
+## v0.60：FinLab Free
 
-- Firebase 不再覆寫資料庫根目錄，只寫入 `/market_data`。
-- Firebase 結構拆為 `summary` 與 `kline`；首頁只讀摘要，點個股時才下載 250 日 K 線。
-- 前端保留舊版 Firebase root fallback，方便不中斷升級。
-- 修正 `longTermScore` 未建立、長期專區未真正篩選、排序下拉選單未生效。
-- 修正 `momo20` 顯示但未計算。
-- 現金股利改為「近 365 日正現金股利紀錄加總」，殖利率使用 TTM 股利 / 最新收盤價。
-- 配息連續性改為按「日曆年度」計算，最多 5 年，不再把季配/半年配每筆當成一年。
-- 「盤中當沖」改名為「日線短線動能」，避免把日線代理模型誤認為即時 5/15 分 K 策略。
-- 回測標示改為 `SAMPLE-IN TEST`，明確說明目前股票池選擇偏誤。
-- GitHub Action 增加 Secrets 格式檢查、concurrency、timeout 與 dependency check。
-- GitHub Actions 更新到 Node 24 系列的 `actions/checkout@v6`、`actions/setup-python@v6`。
+主要變更：
+
+- 移除 `FINLAB_API_TOKEN`、`finlab` 套件與所有 `data.get()`。
+- TWSE + TPEx 官方資料負責：
+  - 當日 OHLCV / 成交金額
+  - PE / PB / 官方殖利率
+  - 月營收 YoY
+  - 股利分派
+  - 財務報表
+  - 外資 + 投信每日買賣超
+- 既有 Firebase K 線會沿用，每天只追加最新官方日 K。
+- `FUGLE_API_KEY` 改為 **選配**：只有某檔股票歷史 K 線不足時才查 Fugle。
+- 15 日法人資料改為「每日官方資料持續累積」，不再每天下載整段歷史矩陣。
+- 基本面官方欄位缺失時，不再硬補 `0`；前端依「實際可得因子」重新加權。
+- 為不中斷 v0.50 → v0.60 遷移，近期舊基本面可暫時 fallback，預設最多 120 天，之後自動失效。
+- 修正上櫃股票 Yahoo 連結：TPEx 使用 `.TWO`。
+- 股票池預設排除 `0` 開頭 ETF / ETN，聚焦四位數普通股。
+
+## 資料來源
+
+### TWSE 官方 OpenAPI
+
+Base URL：
+
+```text
+https://openapi.twse.com.tw/v1
+```
+
+核心 endpoints：
+
+```text
+/exchangeReport/STOCK_DAY_ALL
+/exchangeReport/BWIBBU_ALL
+/opendata/t187ap03_L
+/opendata/t187ap05_L
+/opendata/t187ap45_L
+/opendata/t187ap06_L_*
+/opendata/t187ap07_L_*
+```
+
+上市法人：
+
+```text
+https://www.twse.com.tw/rwd/zh/fund/T86
+```
+
+### TPEx 官方 OpenAPI
+
+Base URL：
+
+```text
+https://www.tpex.org.tw/openapi/v1
+```
+
+核心 endpoints：
+
+```text
+/tpex_mainboard_daily_close_quotes
+/tpex_mainboard_peratio_analysis
+/tpex_3insti_daily_trading
+/mopsfin_t187ap03_O
+/mopsfin_t187ap05_O
+/mopsfin_t187ap39_O
+/mopsfin_t187ap06_O_*
+/mopsfin_t187ap07_O_*
+```
+
+### Fugle（選配）
+
+只有歷史 K 線不足時才使用：
+
+```text
+https://api.fugle.tw/marketdata/v1.0/stock/historical/candles/{symbol}
+```
+
+如果不設定 `FUGLE_API_KEY`：
+
+- v0.50 已存在的 Firebase K 線照常沿用。
+- 新進熱門股票從當天開始累積官方日 K。
+- 在累積滿足技術指標所需天數前，部分 MA / Sharpe / 回測會顯示 N/A。
 
 ## Firebase 資料結構
 
@@ -42,7 +111,7 @@ market_data/
 /market_data/summary.json
 ```
 
-使用者點進個股後才下載：
+點進個股才下載：
 
 ```text
 /market_data/kline/2330.json
@@ -50,27 +119,34 @@ market_data/
 
 ## GitHub Secrets
 
-Repository → **Settings → Secrets and variables → Actions → New repository secret**，建立：
+Repository → **Settings → Secrets and variables → Actions**。
 
-1. `FINLAB_API_TOKEN`
-2. `FIREBASE_DATABASE_URL`
-3. `FIREBASE_SERVICE_ACCOUNT_JSON`
+### 必要
 
-### FIREBASE_DATABASE_URL
+1. `FIREBASE_DATABASE_URL`
+2. `FIREBASE_SERVICE_ACCOUNT_JSON`
 
-格式例如：
+### 選配
+
+3. `FUGLE_API_KEY`
+
+### v0.60 可以刪除
+
+```text
+FINLAB_API_TOKEN
+```
+
+`FIREBASE_DATABASE_URL` 格式例如：
 
 ```text
 https://YOUR-PROJECT-default-rtdb.firebaseio.com
 ```
 
-### FIREBASE_SERVICE_ACCOUNT_JSON
-
-請把 Firebase / Google Cloud service account JSON **整份 JSON 文字**放進 Secret，不要把私鑰檔案 commit 到 repository。
+`FIREBASE_SERVICE_ACCOUNT_JSON` 請放「整份 service account JSON 文字」進 Secret；不要把私鑰 JSON commit 到 repo。
 
 ## Firebase Rules
 
-若這是公開 GitHub Pages 儀表板，可只開放市場資料讀取；Admin SDK 使用 service account 寫入時不依賴一般 client rules：
+若 GitHub Pages 是公開儀表板，可只允許市場資料公開讀取：
 
 ```json
 {
@@ -83,30 +159,47 @@ https://YOUR-PROJECT-default-rtdb.firebaseio.com
 }
 ```
 
-如果資料不希望公開，請不要使用上述 public read 規則，需改成有登入驗證的前端架構。
+Admin SDK 使用 service account 寫入，不依賴一般前端 client write rules。
 
-## 第一次升級 v0.50
+## v0.50 → v0.60 升級
 
-把新版檔案覆蓋回 repository 後，**另外刪除舊檔**：
+把新版檔案覆蓋 repository：
+
+```text
+index.html
+update_market.py
+requirements.txt
+.github/workflows/update.yml
+.gitignore
+README.md
+```
+
+如果舊 repo 還有以下檔案，刪除：
 
 ```bash
 git rm serviceAccountKey.json
 git rm market_data.json
 ```
 
-`serviceAccountKey.json` 在舊 repo 中雖不是實際金鑰 JSON，但檔名與用途錯誤，而且與新版流程重複，建議刪除。
-
 接著：
 
 ```bash
 git add .
-git commit -m "Upgrade Mohren Quant Matrix to v0.50"
+git commit -m "Upgrade Mohren Quant Matrix to v0.60 FinLab Free"
 git push
 ```
 
-然後到 GitHub → **Actions → Daily Stock Data Update → Run workflow** 手動跑一次。
+到 GitHub → **Actions → Daily Stock Data Update → Run workflow** 手動跑一次。
 
-第一次成功後，Firebase 會產生 `/market_data`；新版前端之後會自動使用分離式資料。第一次 Action 尚未成功前，前端會嘗試讀取舊版 root 格式。
+### 第一次 v0.60 Action 的預期行為
+
+1. 先讀取現有 `/market_data`。
+2. 抓 TWSE / TPEx 最新官方資料。
+3. 沿用既有 K 線，對同一天資料去重後追加最新日 K。
+4. 若某檔歷史少於 60 日且有 `FUGLE_API_KEY`，才向 Fugle補歷史。
+5. 重新寫回 `/market_data`。
+
+因此從 v0.50 升級時，不需要重新下載 500 × 250 根 K 線。
 
 ## GitHub Pages
 
@@ -116,72 +209,78 @@ Repository → **Settings → Pages**：
 - Branch: `main`
 - Folder: `/ (root)`
 
-`index.html` 放在 repository root 即可。
-
 ## 排程
-
-`.github/workflows/update.yml`：
 
 ```yaml
 - cron: "30 7 * * 1-5"
 ```
 
-GitHub Actions cron 使用 UTC，因此為台灣時間週一至週五 15:30。
+GitHub Actions cron 使用 UTC，等於台灣時間週一至週五 15:30。
 
-## 模型說明
+## 指標與資料限制
 
-### 均線回踩轉強
+### 法人 15 日
 
-- 收盤價位於 MA20、MA60 上方
-- 近 3 日低點靠近 MA20 或 MA60
-- 當日紅 K
-- 營收年增若有資料則要求為正
-- 成交金額與法人資料參與排名
+v0.60 不再向第三方一次抓 15 日歷史，而是每天將 TWSE / TPEx 當日外資 + 投信買賣超追加到 Firebase。
 
-### 日線短線動能
+- v0.50 升級：會沿用既有 `institution_history`。
+- 全新安裝：從第一天開始累積，最多保留 15 筆交易日資料。
 
-使用日線資料：
+### ROE
 
-- 開收漲幅
-- 20 日量比
-- 成交金額百分位
-- 收盤在當日高低區間的位置
+官方 OpenAPI 財報為累計申報資料，本專案以：
 
-這不是即時當沖訊號，也沒有 5/15 分 K、委買委賣或逐筆成交資料。
+```text
+最新累計歸屬母公司淨利 × 年化係數 / 期末權益
+```
 
-### 強勢波段
+作為近似 ROE。它不是使用平均股東權益的完整會計版 ROE，因此頁面應視為量化篩選指標，不應當成財報網站的精確 ROE 定義。
 
-- 接近 250 日高點
-- 20 日年化 Sharpe
-- MA20 / MA60 趨勢
+### FCF
 
-### 穩健長期核心
+TWSE / TPEx OpenAPI 在目前使用的端點中沒有與 FinLab `自由現金流量` 一模一樣、可穩定跨產業直接取得的欄位。因此：
 
-目前前端預設 eligibility：
+- 遷移初期可沿用 v0.50 近期值，最多 120 天。
+- 過期後沒有可靠官方值就顯示 N/A。
+- 前端 v0.60 會按可得基本面重新加權，不會把缺 FCF 當成 0 分。
 
-- TTM 殖利率 ≥ 4%
-- ROE 若有資料需 > 0
-- FCF 若有資料需 ≥ 0
-- 負債率若有資料需 < 70%
+### 股利
 
-排序分數另外綜合基本面、股利、穩定度與估值。門檻可在 `index.html` 的 `LONG_MIN_YIELD` 調整。
+- 現金股利從官方股利分派資料中的「元/股」現金項目加總。
+- 近 365 日有董事會分派日期時，依日期計算 TTM。
+- 沒有可用日期時，以最近股利年度加總作 fallback。
+- 官方每日估值 endpoint 的殖利率保留為 `exchange_yield_pct`，當自行計算 TTM 缺失時可作 fallback。
 
-## 回測限制
+### 回測
 
-目前回測是「今天熱門股票池」的近 250 日樣本內測試，因此：
+仍是「今天熱門股票池」的近 250 日樣本內測試：
 
 - 不是完整 point-in-time universe。
-- 存在股票池選擇偏誤 / survivorship-like selection bias。
-- 未納入所有手續費、交易稅、滑價、漲跌停無法成交等情境。
-- 日線短線策略只是一個 daily-data proxy。
-
-如需做真正 walk-forward，必須保存每個歷史交易日當時的 universe 與當時可得的基本面資料。
+- 存在股票池選擇偏誤。
+- 未完整納入手續費、交易稅、滑價、漲跌停無法成交等情境。
+- 日線短線策略只是 daily-data proxy。
 
 ## 本機檢查
 
+安裝套件：
+
 ```bash
 python -m pip install -r requirements.txt
-python -m py_compile update_market.py
 ```
 
-真正執行 `update_market.py` 需要三個環境變數 Secrets。
+語法與 parser 測試：
+
+```bash
+python -m py_compile update_market.py
+python tests/test_parsers.py
+```
+
+真正執行：
+
+```bash
+export FIREBASE_DATABASE_URL="..."
+export FIREBASE_SERVICE_ACCOUNT_JSON='...'
+# optional
+export FUGLE_API_KEY="..."
+python update_market.py
+```

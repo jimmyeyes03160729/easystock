@@ -1,20 +1,83 @@
-# v0.50 部署檢查表
+# v0.60 FinLab Free 部署檢查表
 
-1. 覆蓋：`index.html`
-2. 覆蓋：`update_market.py`
-3. 覆蓋：`.github/workflows/update.yml`
-4. 覆蓋：`.gitignore`
-5. 覆蓋：`README.md`
-6. 保留/覆蓋：`requirements.txt`
-7. 刪除：`serviceAccountKey.json`
-8. 刪除：`market_data.json`
-9. GitHub Secrets 確認三個值均存在：
-   - `FINLAB_API_TOKEN`
-   - `FIREBASE_DATABASE_URL`
-   - `FIREBASE_SERVICE_ACCOUNT_JSON`
-10. GitHub Actions 手動 `Run workflow`
-11. 確認 Firebase 出現 `/market_data/meta`、`summary`、`kline`
-12. 開啟 GitHub Pages，確認頁首顯示「摘要/K線分離」
-13. 點任一股票，確認 K 線可正常載入
+## 1. 覆蓋檔案
 
-如果 Action 失敗，先看 `Validate Secrets`；它會指出缺哪個 Secret 或 JSON 格式錯誤，但不會輸出 Secret 內容。
+- `index.html`
+- `update_market.py`
+- `requirements.txt`
+- `.github/workflows/update.yml`
+- `.gitignore`
+- `README.md`
+
+## 2. 刪除舊檔（若還存在）
+
+- `serviceAccountKey.json`
+- `market_data.json`
+
+## 3. GitHub Secrets
+
+必須保留：
+
+- `FIREBASE_DATABASE_URL`
+- `FIREBASE_SERVICE_ACCOUNT_JSON`
+
+選配：
+
+- `FUGLE_API_KEY`
+
+可以刪除：
+
+- `FINLAB_API_TOKEN`
+
+## 4. Commit / Push
+
+```bash
+git add .
+git commit -m "Upgrade Mohren Quant Matrix to v0.60 FinLab Free"
+git push
+```
+
+## 5. 第一次執行
+
+GitHub → **Actions → Daily Stock Data Update → Run workflow**。
+
+檢查 log：
+
+- `Validate Required Secrets`：Success
+- `Check Optional Fugle Secret`：有／無 Key 都可以 Success
+- `Verify Dependencies and Syntax`：Success
+- `Update TWSE TPEx Data to Firebase`：Success
+
+## 6. Firebase
+
+確認：
+
+```text
+/market_data/meta/version = 0.60
+/market_data/meta/source = TWSE + TPEx
+/market_data/summary
+/market_data/kline
+```
+
+若從 v0.50 升級，既有 K 線應被保留並只追加最新交易日，不應整批消失。
+
+## 7. 網站
+
+重新整理 GitHub Pages 後確認：
+
+- 頁首顯示 `v0.60`
+- 狀態列顯示 `TWSE + TPEx`
+- 上市、上櫃股票皆可出現
+- 點上櫃股票時 Yahoo 連結使用 `.TWO`
+- 點個股可正常載入 K 線
+- 缺少 FCF 等欄位時顯示 `N/A`，不是 `0`
+
+## 8. 若沒有 Fugle Key
+
+這不是錯誤。
+
+- 舊 K 線直接沿用。
+- 新進股票從官方日資料開始累積。
+- 歷史不足的股票暫時沒有完整 MA60 / 回測。
+
+若想讓新進股票立即擁有歷史 K 線，再新增 `FUGLE_API_KEY`。

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="墨衡量化 Mohren Quant Matrix - 台股量化觀察儀表板" />
-  <title>墨衡量化 Mohren Quant Matrix v0.50</title>
+  <title>墨衡量化 Mohren Quant Matrix v0.60</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <style>
@@ -38,7 +38,7 @@
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
             <h1 class="text-sm font-bold tracking-[0.16em] text-main">墨衡量化 ｜ MOHREN QUANT MATRIX</h1>
-            <span class="text-[10px] rounded border px-1.5 py-0.5 text-sub">v0.50</span>
+            <span class="text-[10px] rounded border px-1.5 py-0.5 text-sub">v0.60</span>
           </div>
           <div id="dataStatusText" class="text-[11px] text-sub font-mono mt-1">正在從 Firebase 載入市場資料…</div>
         </div>
@@ -60,7 +60,7 @@
       </div>
 
       <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-        <div class="text-sub font-mono">股票池：<span class="text-main">最新成交金額前 500 檔四位數台股</span></div>
+        <div class="text-sub font-mono">股票池：<span class="text-main">TWSE+TPEx 成交金額前 500 檔四位數普通股（排除 0 開頭 ETF/ETN）</span></div>
         <div class="flex gap-2 items-center">
           <select id="sortPriority" onchange="handleSortChange(this.value)" class="panel rounded-lg px-2.5 py-1.5 text-xs text-main">
             <option value="STRATEGY_SCORE">各專區策略分數</option>
@@ -98,7 +98,7 @@
       </div>
       <div class="panel rounded-2xl p-3">
         <div class="flex items-center justify-between border-b muted-border pb-2"><div class="font-bold text-xs text-main">🛡️ 穩健長期核心</div><span class="text-[9px] text-emerald-300">LONG</span></div>
-        <div class="text-[11px] text-sub mt-2 leading-relaxed">TTM 股利殖利率 + ROE + FCF + 負債 + 股價穩定度；預設殖利率門檻 4%。</div>
+        <div class="text-[11px] text-sub mt-2 leading-relaxed">TTM 股利殖利率 + 可得基本面 + 負債 + 股價穩定度；缺值因子不硬算 0 分，預設殖利率門檻 4%。</div>
         <div id="longTermList" class="space-y-1.5 mt-2"><div class="text-xs text-sub text-center py-8">計算中…</div></div>
       </div>
     </section>
@@ -112,7 +112,7 @@
     </section>
 
     <section class="panel rounded-2xl p-4 text-[10px] text-sub leading-relaxed">
-      本頁為資料整理與量化研究工具，不構成投資建議。短線動能使用日線資料代理；回測未納入所有交易成本、滑價與完整歷史股票池重建。
+      本頁為資料整理與量化研究工具，不構成投資建議。資料核心為 TWSE / TPEx 官方公開資料；歷史 K 線不足時可選用 Fugle 補齊。短線動能使用日線資料代理；回測未納入所有交易成本、滑價與完整歷史股票池重建。
     </section>
   </div>
 
@@ -162,6 +162,12 @@
   const n = v => (v===null || v===undefined || Number.isNaN(Number(v))) ? null : Number(v);
   const fmt = (v,d=1) => n(v)===null ? "N/A" : Number(v).toFixed(d);
   const pct = (v,d=1) => n(v)===null ? "N/A" : `${Number(v).toFixed(d)}%`;
+  const weightedAvailable = (pairs,fallback=50) => {
+    const available=pairs.filter(([value,weight])=>n(value)!==null && Number(weight)>0);
+    const totalWeight=available.reduce((sum,[,weight])=>sum+Number(weight),0);
+    if (!totalWeight) return fallback;
+    return available.reduce((sum,[value,weight])=>sum+Number(value)*Number(weight),0)/totalWeight;
+  };
 
   function setTheme(theme) {
     CURRENT_THEME = theme;
@@ -279,24 +285,26 @@
         (sma20!==null && sma60!==null ? (close>sma20 && close>sma60 ? 20 : 5) : 0)
       );
 
-      const roeScore = roe===null ? 0 : clamp((roe+10)/40,0,1)*100;
-      const growthScore = rev===null ? 0 : clamp((rev+20)/60,0,1)*100;
-      const fcfScore = fcf===null ? 0 : (fcf>0 ? 85 : 15);
-      const debtScore = debt===null ? 0 : clamp(100-debt,0,100);
-      const valueScore = pe===null ? 0 : (pe>0 ? clamp(100-pe*2.2,0,100) : 70);
-      const stabilityScore = sharpe20===null ? 0 : clamp((sharpe20+1)/2.5,0,1)*100;
-      const yieldScore = yieldPct===null ? 0 : clamp(yieldPct/8,0,1)*100;
-      const continuityScore = clamp((n(s.dividend_continuity_years)??0)/5,0,1)*100;
+      const roeScore = roe===null ? null : clamp((roe+10)/40,0,1)*100;
+      const growthScore = rev===null ? null : clamp((rev+20)/60,0,1)*100;
+      const fcfScore = fcf===null ? null : (fcf>0 ? 85 : 15);
+      const debtScore = debt===null ? null : clamp(100-debt,0,100);
+      const valueScore = pe===null ? null : (pe>0 ? clamp(100-pe*2.2,0,100) : 70);
+      const stabilityScore = sharpe20===null ? null : clamp((sharpe20+1)/2.5,0,1)*100;
+      const yieldScore = yieldPct===null ? null : clamp(yieldPct/8,0,1)*100;
+      const continuityYears = n(s.dividend_continuity_years);
+      const continuityScore = continuityYears===null ? null : clamp(continuityYears/5,0,1)*100;
+      const trendScore = sma20!==null && sma60!==null ? (close>sma20 && close>sma60 ? 50 : 10) : null;
 
       const scoreParts = {
-        technical: Math.round(stabilityScore*.5 + (sma20!==null && sma60!==null && close>sma20 && close>sma60 ? 50 : 10)*.5),
-        momentum: Math.round(swingScore*.6 + dayTradeScore*.4),
-        fundamental: Math.round(roeScore*.28 + growthScore*.24 + fcfScore*.20 + debtScore*.14 + valueScore*.14),
-        dividend: Math.round(yieldScore*.65 + continuityScore*.35),
+        technical: Math.round(weightedAvailable([[stabilityScore,.5],[trendScore,.5]],50)),
+        momentum: Math.round(weightedAvailable([[swingScore,.6],[dayTradeScore,.4]],50)),
+        fundamental: Math.round(weightedAvailable([[roeScore,.28],[growthScore,.24],[fcfScore,.20],[debtScore,.14],[valueScore,.14]],50)),
+        dividend: Math.round(weightedAvailable([[yieldScore,.65],[continuityScore,.35]],50)),
       };
 
-      const strategyScore = Math.round(scoreParts.technical*.25 + scoreParts.momentum*.25 + scoreParts.fundamental*.35 + scoreParts.dividend*.15);
-      const longTermScore = Math.round(scoreParts.fundamental*.35 + scoreParts.dividend*.35 + stabilityScore*.20 + valueScore*.10);
+      const strategyScore = Math.round(weightedAvailable([[scoreParts.technical,.25],[scoreParts.momentum,.25],[scoreParts.fundamental,.35],[scoreParts.dividend,.15]],50));
+      const longTermScore = Math.round(weightedAvailable([[scoreParts.fundamental,.35],[scoreParts.dividend,.35],[stabilityScore,.20],[valueScore,.10]],50));
       const longTermEligible = yieldPct!==null && yieldPct>=LONG_MIN_YIELD && (roe===null || roe>0) && (fcf===null || fcf>=0) && (debt===null || debt<70);
 
       return {
@@ -399,7 +407,7 @@
     document.getElementById("modalTitle").textContent=`${stock.symbol} ${stock.name}`;
     document.getElementById("modalCategory").textContent=stock.category||"一般";
     document.getElementById("modalSubTitle").textContent=`資料日期 ${stock.updated_at||META.updated_at||"--"} · 股票池 #${stock.hot_rank||"--"}`;
-    document.getElementById("modalYahooLink").href=`https://tw.stock.yahoo.com/quote/${stock.symbol}.TW`;
+    document.getElementById("modalYahooLink").href=`https://tw.stock.yahoo.com/quote/${stock.symbol}.${stock.exchange==="TPEx"?"TWO":"TW"}`;
     const score=clamp(stock.strategyScore??0,0,100);
     document.getElementById("scoreValue").textContent=score.toFixed(0);
     document.getElementById("scoreLabel").textContent=scoreLabel(score);
@@ -485,7 +493,7 @@
       document.getElementById("metaQuality").textContent=`${avgQuality}%`;
       const signalCount=Object.values(META.backtests||{}).reduce((a,b)=>a+(Number(b?.signals)||0),0);
       document.getElementById("metaSignals").textContent=signalCount.toLocaleString();
-      status.textContent=`Firebase 同步完成 · ${raw.length} 檔 · 更新日 ${META.updated_at||"N/A"} · ${DATA_MODE==="split"?"摘要/K線分離":"舊版相容模式"}`;
+      status.textContent=`Firebase 同步完成 · ${raw.length} 檔 · 更新日 ${META.updated_at||"N/A"} · ${META.source||"資料來源未標示"} · ${DATA_MODE==="split"?"摘要/K線分離":"舊版相容模式"}`;
       renderAllSections();
     } catch (err) {
       console.error(err);

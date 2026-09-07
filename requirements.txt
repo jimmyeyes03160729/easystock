@@ -1,4 +1,3 @@
-finlab>=0.4.0
-pandas>=2.2.0
+requests>=2.32.0
 numpy>=1.26.0
 firebase-admin>=6.5.0
