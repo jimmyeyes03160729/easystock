@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resumable Fugle historical backfill for EasyStock v0.70.
+"""Resumable Fugle historical backfill for EasyStock v0.71.
 
 Purpose
 -------
@@ -41,7 +41,7 @@ MAX_RETRIES = max(1, int(os.environ.get("FUGLE_MAX_RETRIES", "4")))
 CHUNK_DAYS = 360
 
 FUGLE_HISTORY_URL = "https://api.fugle.tw/marketdata/v1.0/stock/historical/candles/{symbol}"
-USER_AGENT = "Mozilla/5.0 (compatible; easystock/0.70-fugle-backfill; +https://github.com/jimmyeyes03160729/easystock)"
+USER_AGENT = "Mozilla/5.0 (compatible; easystock/0.71-fugle-backfill; +https://github.com/jimmyeyes03160729/easystock)"
 _last_fugle_call = 0.0
 
 

@@ -1,346 +1,108 @@
-# easystock / 墨衡量化 Mohren Quant Matrix
+# easystock / 墨衡量化 Mohren Quant Matrix v1.0
 
-台股量化觀察儀表板。v0.60 起 **完全移除 FinLab API 與 `finlab` Python 套件**，資料核心改為 TWSE（臺灣證券交易所）與 TPEx（證券櫃檯買賣中心）官方公開 API；Fugle 只作為選配的歷史 K 線初始化／缺口補齊來源。
+台股「無腦選股」量化儀表板。正式版首頁採 **先給答案、再看理由** 的設計：市場燈號 → 今日首選 TOP 3 → 短波段 / 長期核心 / 隔日短線 → 模型可信度 → 完整研究回測。
 
 > 本專案為資料整理與量化研究用途，不構成投資建議。
 
-## v0.60：FinLab Free
+## v1.0 正式版重點
 
-主要變更：
-
-- 移除 `FINLAB_API_TOKEN`、`finlab` 套件與所有 `data.get()`。
-- TWSE + TPEx 官方資料負責：
-  - 當日 OHLCV / 成交金額
-  - PE / PB / 官方殖利率
-  - 月營收 YoY
-  - 股利分派
-  - 財務報表
-  - 外資 + 投信每日買賣超
-- 既有 Firebase K 線會沿用，每天只追加最新官方日 K。
-- `FUGLE_API_KEY` 改為 **選配**：只有某檔股票歷史 K 線不足時才查 Fugle。
-- 15 日法人資料改為「每日官方資料持續累積」，不再每天下載整段歷史矩陣。
-- 基本面官方欄位缺失時，不再硬補 `0`；前端依「實際可得因子」重新加權。
-- 為不中斷 v0.50 → v0.60 遷移，近期舊基本面可暫時 fallback，預設最多 120 天，之後自動失效。
-- 修正上櫃股票 Yahoo 連結：TPEx 使用 `.TWO`。
-- 股票池預設排除 `0` 開頭 ETF / ETN，聚焦四位數普通股。
+- **今日市場燈號**：依熱門股票池的均線多頭比例與 20 日平均動能分為正常 / 保守 / 觀望。
+- **今日首選 TOP 3**：自動比較回踩、波段、長期與有效短線策略，產生綜合信心分數。
+- **綜合信心**：策略分數、多因子總分、法人、20D Sharpe、資料完整度與模型回測可信度共同加權。
+- **紅燈不硬選**：市場偏弱時首頁直接建議觀望，不為了湊滿 3 檔而強迫推薦。
+- **短波段候選**：合併均線回踩與強勢波段，自動標示較適合型態。
+- **隔日短線自動閘門**：只有 rolling-forward 回測在交易成本後仍為正、且 Profit Factor > 1 才列入推薦。
+- **長期核心**：基本面、股利、估值、穩定度綜合排序。
+- **快速價格帶**：不限 / 50 以下 / 100 以下 / 200 以下 / 自訂區間。
+- **單張預算**：以台股一張約 1000 股估算可負擔價格；零股交易不受此限制。
+- **完整回測預設折疊**：首頁只顯示訊號數、勝率、成本後平均與可信度，研究細節按需展開。
 
 ## 資料來源
 
-### TWSE 官方 OpenAPI
+### TWSE / TPEx 官方公開資料
 
-Base URL：
+負責：
 
-```text
-https://openapi.twse.com.tw/v1
-```
+- 每日 OHLCV / 成交金額
+- PE / PB / 殖利率
+- 月營收
+- 財務報表
+- 三大法人
+- 股利資料
 
-核心 endpoints：
+### Fugle
 
-```text
-/exchangeReport/STOCK_DAY_ALL
-/exchangeReport/BWIBBU_ALL
-/opendata/t187ap03_L
-/opendata/t187ap05_L
-/opendata/t187ap45_L
-/opendata/t187ap06_L_*
-/opendata/t187ap07_L_*
-```
-
-上市法人：
+負責 3–5 年歷史 K 線研究與缺口補齊。Fugle Key 請放在 GitHub Actions Secret：
 
 ```text
-https://www.twse.com.tw/rwd/zh/fund/T86
+FUGLE_API_KEY
 ```
 
-### TPEx 官方 OpenAPI
+不要把 API Key 寫進公開程式碼。
 
-Base URL：
-
-```text
-https://www.tpex.org.tw/openapi/v1
-```
-
-核心 endpoints：
-
-```text
-/tpex_mainboard_daily_close_quotes
-/tpex_mainboard_peratio_analysis
-/tpex_3insti_daily_trading
-/mopsfin_t187ap03_O
-/mopsfin_t187ap05_O
-/mopsfin_t187ap39_O
-/mopsfin_t187ap06_O_*
-/mopsfin_t187ap07_O_*
-```
-
-### Fugle（選配）
-
-只有歷史 K 線不足時才使用：
-
-```text
-https://api.fugle.tw/marketdata/v1.0/stock/historical/candles/{symbol}
-```
-
-如果不設定 `FUGLE_API_KEY`：
-
-- v0.50 已存在的 Firebase K 線照常沿用。
-- 新進熱門股票從當天開始累積官方日 K。
-- 在累積滿足技術指標所需天數前，部分 MA / Sharpe / 回測會顯示 N/A。
-
-## Firebase 資料結構
+## Firebase
 
 ```text
 market_data/
   meta/
   backtests/
   summary/
-    2330/
-    2317/
-    ...
   kline/
-    2330/
-    2317/
-    ...
+  history/
 ```
 
-首頁只下載：
-
-```text
-/market_data/meta.json
-/market_data/backtests.json
-/market_data/summary.json
-```
-
-點進個股才下載：
-
-```text
-/market_data/kline/2330.json
-```
+首頁只載入摘要資料；個股 K 線在點入個股時才讀取。v0.72 起採分批寫入 Firebase，避免研究資料過大造成單次 PUT 超限。
 
 ## GitHub Secrets
 
-Repository → **Settings → Secrets and variables → Actions**。
+必要：
 
-### 必要
+```text
+FIREBASE_DATABASE_URL
+FIREBASE_SERVICE_ACCOUNT_JSON
+```
 
-1. `FIREBASE_DATABASE_URL`
-2. `FIREBASE_SERVICE_ACCOUNT_JSON`
+研究歷史需要：
 
-### 選配
+```text
+FUGLE_API_KEY
+```
 
-3. `FUGLE_API_KEY`
-
-### v0.60 可以刪除
+已不再需要：
 
 ```text
 FINLAB_API_TOKEN
 ```
 
-`FIREBASE_DATABASE_URL` 格式例如：
+## GitHub Actions
+
+### Daily Stock Data Update
+
+平日台灣時間 15:30 自動執行，更新官方行情、基本面、法人與 rolling-forward 驗證。
+
+### Historical Research Backfill (Fugle)
+
+第一次部署正式版後建議手動執行：
 
 ```text
-https://YOUR-PROJECT-default-rtdb.firebaseio.com
+years = 3
+max_symbols = 500
 ```
 
-`FIREBASE_SERVICE_ACCOUNT_JSON` 請放「整份 service account JSON 文字」進 Secret；不要把私鑰 JSON commit 到 repo。
+需要涵蓋更多市場循環時可再執行 5 年版本。
 
-## Firebase Rules
+## 首頁使用方式
 
-若 GitHub Pages 是公開儀表板，可只允許市場資料公開讀取：
+1. 先看 **市場燈號**：紅燈直接觀望。
+2. 設定可接受的 **價格區間 / 單張預算**。
+3. 優先看 **今日首選 TOP 3** 的信心分數、三個理由與一個風險。
+4. 想擴大候選再看 **短波段 / 長期核心**。
+5. **隔日短線** 若驗證未達標會自動停止推薦。
+6. 需要研究模型再展開完整回測。
 
-```json
-{
-  "rules": {
-    "market_data": {
-      ".read": true,
-      ".write": false
-    }
-  }
-}
-```
+## 重要限制
 
-Admin SDK 使用 service account 寫入，不依賴一般前端 client write rules。
-
-## v0.50 → v0.60 升級
-
-把新版檔案覆蓋 repository：
-
-```text
-index.html
-update_market.py
-requirements.txt
-.github/workflows/update.yml
-.gitignore
-README.md
-```
-
-如果舊 repo 還有以下檔案，刪除：
-
-```bash
-git rm serviceAccountKey.json
-git rm market_data.json
-```
-
-接著：
-
-```bash
-git add .
-git commit -m "Upgrade Mohren Quant Matrix to v0.60 FinLab Free"
-git push
-```
-
-到 GitHub → **Actions → Daily Stock Data Update → Run workflow** 手動跑一次。
-
-### 第一次 v0.60 Action 的預期行為
-
-1. 先讀取現有 `/market_data`。
-2. 抓 TWSE / TPEx 最新官方資料。
-3. 沿用既有 K 線，對同一天資料去重後追加最新日 K。
-4. 若某檔歷史少於 60 日且有 `FUGLE_API_KEY`，才向 Fugle補歷史。
-5. 重新寫回 `/market_data`。
-
-因此從 v0.50 升級時，不需要重新下載 500 × 250 根 K 線。
-
-## GitHub Pages
-
-Repository → **Settings → Pages**：
-
-- Source: `Deploy from a branch`
-- Branch: `main`
-- Folder: `/ (root)`
-
-## 排程
-
-```yaml
-- cron: "30 7 * * 1-5"
-```
-
-GitHub Actions cron 使用 UTC，等於台灣時間週一至週五 15:30。
-
-## 指標與資料限制
-
-### 法人 15 日
-
-v0.60 不再向第三方一次抓 15 日歷史，而是每天將 TWSE / TPEx 當日外資 + 投信買賣超追加到 Firebase。
-
-- v0.50 升級：會沿用既有 `institution_history`。
-- 全新安裝：從第一天開始累積，最多保留 15 筆交易日資料。
-
-### ROE
-
-官方 OpenAPI 財報為累計申報資料，本專案以：
-
-```text
-最新累計歸屬母公司淨利 × 年化係數 / 期末權益
-```
-
-作為近似 ROE。它不是使用平均股東權益的完整會計版 ROE，因此頁面應視為量化篩選指標，不應當成財報網站的精確 ROE 定義。
-
-### FCF
-
-TWSE / TPEx OpenAPI 在目前使用的端點中沒有與 FinLab `自由現金流量` 一模一樣、可穩定跨產業直接取得的欄位。因此：
-
-- 遷移初期可沿用 v0.50 近期值，最多 120 天。
-- 過期後沒有可靠官方值就顯示 N/A。
-- 前端 v0.60 會按可得基本面重新加權，不會把缺 FCF 當成 0 分。
-
-### 股利
-
-- 現金股利從官方股利分派資料中的「元/股」現金項目加總。
-- 近 365 日有董事會分派日期時，依日期計算 TTM。
-- 沒有可用日期時，以最近股利年度加總作 fallback。
-- 官方每日估值 endpoint 的殖利率保留為 `exchange_yield_pct`，當自行計算 TTM 缺失時可作 fallback。
-
-### 回測 / v0.70 Research Validation
-
-v0.70 將舊的 250D SAMPLE-IN TEST 升級為研究用途的 rolling-forward 驗證。
-
-主要變更：
-
-- Fugle 一次性補 3 年或 5 年日 K，研究資料保存在 `/market_data/history/{symbol}`。
-- 瀏覽器個股圖仍只讀最近 250 根 `/market_data/kline/{symbol}`，不會一次下載 3–5 年。
-- 主要驗證窗預設為最後 252 個交易日；每個訊號只使用訊號日以前的價格與成交量資料。
-- 同一檔股票在持有期間不重複建立新交易，降低重疊樣本膨脹。
-- 預設每筆交易扣除 70 bps（0.70%）研究用總交易摩擦成本，可由 `BACKTEST_TOTAL_COST_BPS` 調整。
-- 同時統計 1D / 5D / 10D / 20D 報酬、勝率、平均/中位數、Profit Factor、盈虧比、最大回撤、Sharpe、等權基準與超額報酬。
-- 回測依市場模式拆分為多頭 / 盤整 / 空頭，並做歷史代理分數分層。
-
-仍有一項重要限制：歷史股票池仍由「目前熱門股」回推，尚未建立每個歷史日期各自的 point-in-time Top 500，因此仍存在 current-universe 選擇偏誤。網站會明確標示這項限制。
-
-#### 四個區塊建議怎麼看
-
-| 區塊 | 建議觀察模式 | 主要持有期 | 最重要欄位 | 不適合怎麼用 |
-|---|---|---:|---|---|
-| 均線回踩轉強 | 多頭 / 震盪回升 | 10D | 10D 成本後報酬、中位數、Profit Factor、多頭/盤整結果 | 空頭環境硬接反彈 |
-| 日線短線動能 | 研究模式 | 1D | 1D 成本後報酬、勝率、樣本數、交易成本後是否仍為正 | 當成真正 5/15 分鐘當沖訊號 |
-| 強勢波段主升 | 多頭趨勢 | 10–20D | 10D/20D 超額報酬、Profit Factor、最大回撤、90+ 分層 | 只看勝率，不看盈虧比與回撤 |
-| 穩健長期核心 | 基本面 / 季頻 | 3–12M | ROE、營收、估值、股利、負債、穩定度 | 用 1D/10D 日線回測判斷長期投資品質 |
-
-判讀優先順序建議：
-
-1. 樣本數是否足夠。
-2. 成本後平均報酬與中位數是否同時為正。
-3. Profit Factor 是否大於 1，盈虧比是否合理。
-4. 最大回撤是否可接受。
-5. 超額報酬是否優於等權基準。
-6. 80–89、90+ 分層是否真的優於低分組。
-7. 多頭、盤整、空頭哪一種市場模式最適合該策略。
-
-## 本機檢查
-
-安裝套件：
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-語法與 parser 測試：
-
-```bash
-python -m py_compile update_market.py
-python tests/test_parsers.py
-```
-
-真正執行：
-
-```bash
-export FIREBASE_DATABASE_URL="..."
-export FIREBASE_SERVICE_ACCOUNT_JSON='...'
-# optional
-export FUGLE_API_KEY="..."
-python update_market.py
-```
-
-## v0.61 Fast 更新
-
-為避免單次 Daily Stock Data Update 因官方 API 延遲而拖太久：
-
-- GitHub Actions job 最長 8 分鐘，超時自動停止。
-- 單一 HTTP request timeout 由 30 秒降為 12 秒。
-- TWSE / TPEx 可獨立取得的資料改為最多 6 個 worker 並行下載。
-- Fugle 歷史補洞每次最多 20 檔，剩餘缺口留待下一次執行補齊。
-- `concurrency.cancel-in-progress: true` 保留，新一次更新會取消同群組尚未完成的舊執行。
-
-可透過 workflow 環境變數調整：`HTTP_TIMEOUT`、`HTTP_WORKERS`、`FUGLE_BOOTSTRAP_MAX_PER_RUN`。
-
-## v0.63 — Fugle History Backfill
-
-新增一次性、可續跑的 Fugle 歷史 K 線補檔：
-
-- Secret：`FUGLE_API_KEY`
-- Workflow：`Historical K-line Backfill (Fugle)`
-- 最多補 500 檔，每檔保存最近 250 根日 K。
-- 已有 220 根以上直接跳過，因此可安全重跑。
-- 每補完一檔立即寫 Firebase；中途停止不會前功盡棄。
-- 補檔完成後自動刷新一次量化分數。
-- Daily workflow 的 Fugle bootstrap 限制為每次最多 5 檔，維持快速日常更新。
-
-詳細步驟見 `FUGLE_SETUP.md`。
-
-
-## v0.70 — Research Validation
-
-- Fugle 歷史回填改為可選 3Y / 5Y 研究資料。
-- 新增 `/history` 長歷史與 `/kline` 250 根顯示資料分離。
-- 新增 rolling-forward 驗證、交易成本、持有期比較、市場模式、分數分層、benchmark / excess return。
-- 前端每個策略區塊直接標示建議觀察模式與持有期。
+- 歷史回測不代表未來績效。
+- 研究股票池仍可能存在 current-universe 選擇偏誤。
+- 市場燈號與信心分數是規則式研究指標，不是保證獲利機率。
+- 單張預算以 1000 股估算；實際可用零股交易。

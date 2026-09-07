@@ -33,7 +33,7 @@ HTTP_WORKERS = max(2, min(8, int(os.environ.get("HTTP_WORKERS", "6"))))
 BACKTEST_HISTORY_BARS = max(KLINE_DAYS, int(os.environ.get("BACKTEST_HISTORY_BARS", "1260")))
 VALIDATION_OOS_DAYS = max(60, int(os.environ.get("VALIDATION_OOS_DAYS", "252")))
 BACKTEST_TOTAL_COST_BPS = max(0.0, float(os.environ.get("BACKTEST_TOTAL_COST_BPS", "70")))
-MODEL_VERSION = "0.71"
+MODEL_VERSION = "1.0"
 
 TWSE_BASE = "https://openapi.twse.com.tw/v1"
 TPEX_BASE = "https://www.tpex.org.tw/openapi/v1"
@@ -41,7 +41,7 @@ TWSE_T86_URL = "https://www.twse.com.tw/rwd/zh/fund/T86"
 FUGLE_BASE = "https://api.fugle.tw/marketdata/v1.0/stock"
 
 DEFAULT_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; easystock/0.71; +https://github.com/jimmyeyes03160729/easystock)",
+    "User-Agent": "Mozilla/5.0 (compatible; easystock/1.0; +https://github.com/jimmyeyes03160729/easystock)",
     "Accept": "application/json,text/plain,*/*",
 }
 _THREAD_LOCAL = threading.local()
@@ -1100,6 +1100,59 @@ def choose_metric(current: Any, previous_summary: dict, key: str, latest_day: st
 
 
 # ============================================================
+# Firebase chunked writer
+# ============================================================
+def _json_size_bytes(value: Any) -> int:
+    return len(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+
+
+def firebase_replace_mapping_chunked(ref, mapping: dict, previous_mapping: dict | None = None,
+                                     max_payload_bytes: int = 6_000_000, max_items: int = 50,
+                                     label: str = "branch") -> None:
+    """Replace a mapping branch without sending one oversized RTDB request.
+
+    Existing keys not present in mapping are deleted. Current keys are PATCHed
+    in payloads capped by both item count and approximate JSON byte size.
+    """
+    previous_mapping = previous_mapping or {}
+    stale_keys = sorted(set(previous_mapping) - set(mapping))
+    if stale_keys:
+        for start in range(0, len(stale_keys), 100):
+            ref.update({key: None for key in stale_keys[start:start + 100]})
+        print(f"[Firebase] {label}: removed {len(stale_keys)} stale keys")
+
+    batch: dict[str, Any] = {}
+    batch_bytes = 2
+    written = 0
+    requests_count = 0
+
+    def flush() -> None:
+        nonlocal batch, batch_bytes, written, requests_count
+        if not batch:
+            return
+        ref.update(batch)
+        written += len(batch)
+        requests_count += 1
+        batch = {}
+        batch_bytes = 2
+
+    for key, value in mapping.items():
+        item_bytes = _json_size_bytes({key: value})
+        if item_bytes > max_payload_bytes:
+            flush()
+            ref.child(str(key)).set(value)
+            written += 1
+            requests_count += 1
+            continue
+        if batch and (len(batch) >= max_items or batch_bytes + item_bytes > max_payload_bytes):
+            flush()
+        batch[str(key)] = value
+        batch_bytes += item_bytes
+    flush()
+    print(f"[Firebase] {label}: wrote {written} keys in {requests_count} request(s)")
+
+
+# ============================================================
 # Main
 # ============================================================
 def main() -> None:
@@ -1377,7 +1430,22 @@ def main() -> None:
         "history": histories,
     }
 
-    market_ref.set(output)
+    # RTDB rejects oversized single PUT requests. Keep the schema unchanged,
+    # but write large stock branches in small PATCH batches.
+    market_ref.child("meta").set(output["meta"])
+    market_ref.child("backtests").set(output["backtests"])
+    firebase_replace_mapping_chunked(
+        market_ref.child("summary"), output["summary"], previous_summary_map,
+        max_payload_bytes=6_000_000, max_items=100, label="summary",
+    )
+    firebase_replace_mapping_chunked(
+        market_ref.child("kline"), output["kline"], previous_kline_map,
+        max_payload_bytes=6_000_000, max_items=40, label="kline",
+    )
+    firebase_replace_mapping_chunked(
+        market_ref.child("history"), output["history"], previous_history_map,
+        max_payload_bytes=6_000_000, max_items=12, label="history",
+    )
     print(
         f"完成：{len(summaries)} 檔，資料日 {latest_day}，品質 {data_quality_pct}%，"
         f"Fugle 補歷史 {fugle_bootstrap_count} 檔，舊基本面 fallback {legacy_fallback_count} 檔。"
