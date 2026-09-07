@@ -2,76 +2,92 @@ name: Daily Stock Data Update
 
 on:
   schedule:
-    # 台灣時間 15:30，週一～週五
+    # UTC 07:30 = 台灣時間 15:30，週一～週五
     - cron: "30 7 * * 1-5"
-
-  # 可以從 GitHub Actions 手動執行
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: easystock-daily-update
+  cancel-in-progress: true
+
 jobs:
   update-data:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONUNBUFFERED: "1"
+      FIREBASE_ROOT_PATH: "market_data"
+      HOT_STOCK_COUNT: "500"
+      KLINE_DAYS: "250"
+      INSTITUTION_DAYS: "15"
+      LEGACY_FUNDAMENTAL_MAX_AGE_DAYS: "120"
 
     steps:
-
-      # ==========================================
-      # 1. 下載 Repository
-      # ==========================================
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      # ==========================================
-      # 2. 安裝 Python
-      # ==========================================
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: "pip"
 
-      # ==========================================
-      # 3. 確認 Python 版本
-      # ==========================================
-      - name: Check Python
-        run: |
-          python --version
-          python -m pip --version
-
-      # ==========================================
-      # 4. 更新 pip
-      # ==========================================
-      - name: Upgrade pip
-        run: |
-          python -m pip install --upgrade pip
-
-      # ==========================================
-      # 5. 安裝套件
-      # ==========================================
-      - name: Install Dependencies
-        run: |
-          python -m pip install -r requirements.txt
-
-      # ==========================================
-      # 6. 確認 Firebase Admin 已安裝
-      # ==========================================
-      - name: Verify Dependencies
-        run: |
-          python -c "import firebase_admin; print('firebase-admin:', firebase_admin.__version__)"
-          python -c "import finlab; print('finlab OK')"
-          python -c "import pandas; print('pandas:', pandas.__version__)"
-          python -c "import numpy; print('numpy:', numpy.__version__)"
-
-      # ==========================================
-      # 7. 執行資料更新
-      # ==========================================
-      - name: Update FinLab to Firebase
+      - name: Validate Required Secrets
         env:
-          FINLAB_API_TOKEN: ${{ secrets.FINLAB_API_TOKEN }}
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
-
         run: |
-          python update_market.py
+          test -n "$FIREBASE_DATABASE_URL" || (echo "::error::Missing FIREBASE_DATABASE_URL" && exit 1)
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON" || (echo "::error::Missing FIREBASE_SERVICE_ACCOUNT_JSON" && exit 1)
+
+          python - <<'PY'
+          import json
+          import os
+
+          url = os.environ["FIREBASE_DATABASE_URL"]
+          if not url.startswith("https://"):
+              raise SystemExit("::error::FIREBASE_DATABASE_URL must start with https://")
+
+          payload = json.loads(os.environ["FIREBASE_SERVICE_ACCOUNT_JSON"])
+          required = {"type", "project_id", "private_key", "client_email"}
+          missing = sorted(required - set(payload))
+          if missing:
+              raise SystemExit(f"::error::Firebase service account missing: {', '.join(missing)}")
+
+          print("Required secrets format validation OK (values hidden).")
+          PY
+
+      - name: Check Optional Fugle Secret
+        env:
+          FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
+        run: |
+          if [ -n "$FUGLE_API_KEY" ]; then
+            echo "FUGLE_API_KEY detected: historical bootstrap/fill enabled."
+          else
+            echo "FUGLE_API_KEY not set: existing Firebase K-lines will be reused; new symbols start accumulating from official daily data."
+          fi
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip check
+
+      - name: Verify Dependencies and Syntax
+        run: |
+          python --version
+          python -c "import requests; print('requests:', requests.__version__)"
+          python -c "import firebase_admin; print('firebase-admin:', firebase_admin.__version__)"
+          python -c "import numpy; print('numpy:', numpy.__version__)"
+          python -m py_compile update_market.py
+          python tests/test_parsers.py
+
+      - name: Update TWSE TPEx Data to Firebase
+        env:
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
+        run: python update_market.py
