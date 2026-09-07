@@ -81,3 +81,10 @@ GitHub → **Actions → Daily Stock Data Update → Run workflow**。
 - 歷史不足的股票暫時沒有完整 MA60 / 回測。
 
 若想讓新進股票立即擁有歷史 K 線，再新增 `FUGLE_API_KEY`。
+
+## v0.61 Fast 部署後檢查
+
+- `.github/workflows/update.yml` 的 `timeout-minutes` 應為 `8`。
+- env 應包含 `HTTP_TIMEOUT: "12"`、`HTTP_WORKERS: "6"`、`FUGLE_BOOTSTRAP_MAX_PER_RUN: "20"`。
+- Action log 的財報階段應看到多個 `[HTTP]` 幾乎同時開始，而不是逐一等待。
+- 正常情況建議目標約 1–3 分鐘；若官方 API 異常，最晚 8 分鐘由 GitHub 自動中止。

@@ -284,3 +284,15 @@ export FIREBASE_SERVICE_ACCOUNT_JSON='...'
 export FUGLE_API_KEY="..."
 python update_market.py
 ```
+
+## v0.61 Fast 更新
+
+為避免單次 Daily Stock Data Update 因官方 API 延遲而拖太久：
+
+- GitHub Actions job 最長 8 分鐘，超時自動停止。
+- 單一 HTTP request timeout 由 30 秒降為 12 秒。
+- TWSE / TPEx 可獨立取得的資料改為最多 6 個 worker 並行下載。
+- Fugle 歷史補洞每次最多 20 檔，剩餘缺口留待下一次執行補齊。
+- `concurrency.cancel-in-progress: true` 保留，新一次更新會取消同群組尚未完成的舊執行。
+
+可透過 workflow 環境變數調整：`HTTP_TIMEOUT`、`HTTP_WORKERS`、`FUGLE_BOOTSTRAP_MAX_PER_RUN`。

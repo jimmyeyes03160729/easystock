@@ -3,6 +3,8 @@ import math
 import os
 import re
 import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Iterable
 
@@ -24,23 +26,32 @@ KLINE_DAYS = int(os.environ.get("KLINE_DAYS", "250"))
 MIN_TECHNICAL_DAYS = int(os.environ.get("MIN_TECHNICAL_DAYS", "60"))
 INSTITUTION_DAYS = int(os.environ.get("INSTITUTION_DAYS", "15"))
 LEGACY_FUNDAMENTAL_MAX_AGE_DAYS = int(os.environ.get("LEGACY_FUNDAMENTAL_MAX_AGE_DAYS", "120"))
-HTTP_TIMEOUT = float(os.environ.get("HTTP_TIMEOUT", "30"))
+HTTP_TIMEOUT = float(os.environ.get("HTTP_TIMEOUT", "12"))
 FUGLE_MIN_INTERVAL_SECONDS = float(os.environ.get("FUGLE_MIN_INTERVAL_SECONDS", "1.05"))
-MODEL_VERSION = "0.60"
+FUGLE_BOOTSTRAP_MAX_PER_RUN = int(os.environ.get("FUGLE_BOOTSTRAP_MAX_PER_RUN", "20"))
+HTTP_WORKERS = max(2, min(8, int(os.environ.get("HTTP_WORKERS", "6"))))
+MODEL_VERSION = "0.61"
 
 TWSE_BASE = "https://openapi.twse.com.tw/v1"
 TPEX_BASE = "https://www.tpex.org.tw/openapi/v1"
 TWSE_T86_URL = "https://www.twse.com.tw/rwd/zh/fund/T86"
 FUGLE_BASE = "https://api.fugle.tw/marketdata/v1.0/stock"
 
-SESSION = requests.Session()
-SESSION.headers.update(
-    {
-        "User-Agent": "Mozilla/5.0 (compatible; easystock/0.60; +https://github.com/jimmyeyes03160729/easystock)",
-        "Accept": "application/json,text/plain,*/*",
-    }
-)
+DEFAULT_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; easystock/0.61; +https://github.com/jimmyeyes03160729/easystock)",
+    "Accept": "application/json,text/plain,*/*",
+}
+_THREAD_LOCAL = threading.local()
 _LAST_FUGLE_CALL = 0.0
+
+
+def get_http_session() -> requests.Session:
+    session = getattr(_THREAD_LOCAL, "session", None)
+    if session is None:
+        session = requests.Session()
+        session.headers.update(DEFAULT_HEADERS)
+        _THREAD_LOCAL.session = session
+    return session
 
 # ============================================================
 # Generic helpers
@@ -150,7 +161,7 @@ def name_from_row(row: dict) -> str:
 def fetch_json(url: str, *, params: dict | None = None, required: bool = False, label: str = "") -> Any:
     try:
         print(f"[HTTP] {label or url}")
-        response = SESSION.get(url, params=params, timeout=HTTP_TIMEOUT)
+        response = get_http_session().get(url, params=params, timeout=HTTP_TIMEOUT)
         response.raise_for_status()
         payload = response.json()
         if required and payload in (None, [], {}):
@@ -161,6 +172,29 @@ def fetch_json(url: str, *, params: dict | None = None, required: bool = False, 
         if required:
             raise
         return None
+
+
+def fetch_many(requests_spec: list[dict]) -> dict[str, Any]:
+    """Fetch independent JSON endpoints concurrently and return them by key."""
+    out: dict[str, Any] = {}
+    if not requests_spec:
+        return out
+    workers = min(HTTP_WORKERS, len(requests_spec))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        future_map = {
+            pool.submit(
+                fetch_json,
+                spec["url"],
+                params=spec.get("params"),
+                required=bool(spec.get("required", False)),
+                label=spec.get("label", spec["key"]),
+            ): spec["key"]
+            for spec in requests_spec
+        }
+        for future in as_completed(future_map):
+            key = future_map[future]
+            out[key] = future.result()
+    return out
 
 
 def validate_environment() -> None:
@@ -908,8 +942,12 @@ def main() -> None:
     previous_kline_map = previous.get("kline") or {}
 
     print("[1/8] 讀取 TWSE / TPEx 當日行情…")
-    twse_quotes = parse_twse_quotes(fetch_json(f"{TWSE_BASE}/exchangeReport/STOCK_DAY_ALL", required=True, label="TWSE daily quotes") or [])
-    tpex_quotes = parse_tpex_quotes(fetch_json(f"{TPEX_BASE}/tpex_mainboard_daily_close_quotes", required=True, label="TPEx daily quotes") or [])
+    quote_payloads = fetch_many([
+        {"key": "twse", "url": f"{TWSE_BASE}/exchangeReport/STOCK_DAY_ALL", "required": True, "label": "TWSE daily quotes"},
+        {"key": "tpex", "url": f"{TPEX_BASE}/tpex_mainboard_daily_close_quotes", "required": True, "label": "TPEx daily quotes"},
+    ])
+    twse_quotes = parse_twse_quotes(quote_payloads.get("twse") or [])
+    tpex_quotes = parse_tpex_quotes(quote_payloads.get("tpex") or [])
     quotes = {**twse_quotes, **tpex_quotes}
     if not quotes:
         raise RuntimeError("TWSE / TPEx 均沒有可用行情資料")
@@ -920,50 +958,68 @@ def main() -> None:
         print(f"[WARN] TWSE/TPEx snapshot 日期不一致：{quote_dates}；個股保留各自來源日期，meta 使用最新日期 {latest_day}")
 
     print("[2/8] 讀取估值、公司基本資料與月營收…")
+    base_payloads = fetch_many([
+        {"key": "twse_val", "url": f"{TWSE_BASE}/exchangeReport/BWIBBU_ALL", "label": "TWSE valuation"},
+        {"key": "tpex_val", "url": f"{TPEX_BASE}/tpex_mainboard_peratio_analysis", "label": "TPEx valuation"},
+        {"key": "twse_company", "url": f"{TWSE_BASE}/opendata/t187ap03_L", "label": "TWSE company basics"},
+        {"key": "tpex_company", "url": f"{TPEX_BASE}/mopsfin_t187ap03_O", "label": "TPEx company basics"},
+        {"key": "twse_revenue", "url": f"{TWSE_BASE}/opendata/t187ap05_L", "label": "TWSE monthly revenue"},
+        {"key": "tpex_revenue", "url": f"{TPEX_BASE}/mopsfin_t187ap05_O", "label": "TPEx monthly revenue"},
+    ])
     valuation = {}
-    valuation.update(parse_valuation(fetch_json(f"{TWSE_BASE}/exchangeReport/BWIBBU_ALL", label="TWSE valuation") or [], "TWSE"))
-    valuation.update(parse_valuation(fetch_json(f"{TPEX_BASE}/tpex_mainboard_peratio_analysis", label="TPEx valuation") or [], "TPEx"))
-
+    valuation.update(parse_valuation(base_payloads.get("twse_val") or [], "TWSE"))
+    valuation.update(parse_valuation(base_payloads.get("tpex_val") or [], "TPEx"))
     company = {}
-    company.update(parse_company_basic(fetch_json(f"{TWSE_BASE}/opendata/t187ap03_L", label="TWSE company basics") or [], "TWSE"))
-    company.update(parse_company_basic(fetch_json(f"{TPEX_BASE}/mopsfin_t187ap03_O", label="TPEx company basics") or [], "TPEx"))
-
+    company.update(parse_company_basic(base_payloads.get("twse_company") or [], "TWSE"))
+    company.update(parse_company_basic(base_payloads.get("tpex_company") or [], "TPEx"))
     revenue = {}
-    revenue.update(parse_revenue(fetch_json(f"{TWSE_BASE}/opendata/t187ap05_L", label="TWSE monthly revenue") or []))
-    revenue.update(parse_revenue(fetch_json(f"{TPEX_BASE}/mopsfin_t187ap05_O", label="TPEx monthly revenue") or []))
+    revenue.update(parse_revenue(base_payloads.get("twse_revenue") or []))
+    revenue.update(parse_revenue(base_payloads.get("tpex_revenue") or []))
 
     print("[3/8] 讀取股利資料…")
     asof = parse_iso_date(latest_day) or date.today()
-    dividend_rows = []
-    dividend_rows.extend(fetch_json(f"{TWSE_BASE}/opendata/t187ap45_L", label="TWSE dividends") or [])
-    dividend_rows.extend(fetch_json(f"{TPEX_BASE}/mopsfin_t187ap39_O", label="TPEx dividends") or [])
+    dividend_payloads = fetch_many([
+        {"key": "twse", "url": f"{TWSE_BASE}/opendata/t187ap45_L", "label": "TWSE dividends"},
+        {"key": "tpex", "url": f"{TPEX_BASE}/mopsfin_t187ap39_O", "label": "TPEx dividends"},
+    ])
+    dividend_rows = (dividend_payloads.get("twse") or []) + (dividend_payloads.get("tpex") or [])
     dividends = parse_dividends(dividend_rows, asof)
 
-    print("[4/8] 讀取最新財務報表（失敗時允許沿用近期舊值）…")
-    income_rows: list[dict] = []
-    balance_rows: list[dict] = []
+    print("[4/8] 讀取最新財務報表（並行下載；失敗時允許沿用近期舊值）…")
     twse_income_endpoints = ["t187ap06_L_ci", "t187ap06_L_basi", "t187ap06_L_bd", "t187ap06_L_fh", "t187ap06_L_ins", "t187ap06_L_mim"]
     twse_balance_endpoints = ["t187ap07_L_ci", "t187ap07_L_basi", "t187ap07_L_bd", "t187ap07_L_fh", "t187ap07_L_ins", "t187ap07_L_mim"]
     tpex_income_endpoints = ["mopsfin_t187ap06_O_ci", "mopsfin_t187ap06_O_basi", "mopsfin_t187ap06_O_bd", "mopsfin_t187ap06_O_fh", "mopsfin_t187ap06_O_ins", "mopsfin_t187ap06_O_mim"]
     tpex_balance_endpoints = ["mopsfin_t187ap07_O_ci", "mopsfin_t187ap07_O_basi", "mopsfin_t187ap07_O_bd", "mopsfin_t187ap07_O_fh", "mopsfin_t187ap07_O_ins", "mopsfin_t187ap07_O_mim"]
+    finance_specs = []
+    for endpoint in twse_income_endpoints + twse_balance_endpoints:
+        finance_specs.append({"key": f"twse:{endpoint}", "url": f"{TWSE_BASE}/opendata/{endpoint}", "label": f"TWSE {endpoint}"})
+    for endpoint in tpex_income_endpoints + tpex_balance_endpoints:
+        finance_specs.append({"key": f"tpex:{endpoint}", "url": f"{TPEX_BASE}/{endpoint}", "label": f"TPEx {endpoint}"})
+    finance_payloads = fetch_many(finance_specs)
+    income_rows: list[dict] = []
+    balance_rows: list[dict] = []
     for endpoint in twse_income_endpoints:
-        income_rows.extend(fetch_json(f"{TWSE_BASE}/opendata/{endpoint}", label=f"TWSE {endpoint}") or [])
+        income_rows.extend(finance_payloads.get(f"twse:{endpoint}") or [])
     for endpoint in twse_balance_endpoints:
-        balance_rows.extend(fetch_json(f"{TWSE_BASE}/opendata/{endpoint}", label=f"TWSE {endpoint}") or [])
+        balance_rows.extend(finance_payloads.get(f"twse:{endpoint}") or [])
     for endpoint in tpex_income_endpoints:
-        income_rows.extend(fetch_json(f"{TPEX_BASE}/{endpoint}", label=f"TPEx {endpoint}") or [])
+        income_rows.extend(finance_payloads.get(f"tpex:{endpoint}") or [])
     for endpoint in tpex_balance_endpoints:
-        balance_rows.extend(fetch_json(f"{TPEX_BASE}/{endpoint}", label=f"TPEx {endpoint}") or [])
+        balance_rows.extend(finance_payloads.get(f"tpex:{endpoint}") or [])
     fundamentals = combine_fundamentals(parse_income_statements(income_rows), parse_balance_sheets(balance_rows))
 
     print("[5/8] 讀取三大法人當日資料並累積 15 日歷史…")
-    twse_inst_payload = fetch_json(
-        TWSE_T86_URL,
-        params={"response": "json", "date": iso_to_yyyymmdd(latest_day), "selectType": "ALLBUT0999"},
-        label="TWSE T86",
-    )
-    twse_inst = parse_twse_t86(twse_inst_payload or {})
-    tpex_inst = parse_tpex_institution(fetch_json(f"{TPEX_BASE}/tpex_3insti_daily_trading", label="TPEx institutional") or [])
+    institution_payloads = fetch_many([
+        {
+            "key": "twse",
+            "url": TWSE_T86_URL,
+            "params": {"response": "json", "date": iso_to_yyyymmdd(latest_day), "selectType": "ALLBUT0999"},
+            "label": "TWSE T86",
+        },
+        {"key": "tpex", "url": f"{TPEX_BASE}/tpex_3insti_daily_trading", "label": "TPEx institutional"},
+    ])
+    twse_inst = parse_twse_t86(institution_payloads.get("twse") or {})
+    tpex_inst = parse_tpex_institution(institution_payloads.get("tpex") or [])
     institution_today = {**twse_inst, **tpex_inst}
 
     print("[6/8] 建立最新成交金額熱門股票池…")
@@ -987,7 +1043,11 @@ def main() -> None:
         prev_summary = previous_summary_map.get(sym) or {}
         existing = normalize_kline(previous_kline_map.get(sym) or prev_summary.get("kline") or [])
         fugle_rows = []
-        if len(existing) < MIN_TECHNICAL_DAYS and FUGLE_API_KEY:
+        if (
+            len(existing) < MIN_TECHNICAL_DAYS
+            and FUGLE_API_KEY
+            and fugle_bootstrap_count < FUGLE_BOOTSTRAP_MAX_PER_RUN
+        ):
             fugle_rows = fetch_fugle_history(sym, quote["date"])
             if fugle_rows:
                 fugle_bootstrap_count += 1
@@ -1087,6 +1147,7 @@ def main() -> None:
             "source": "TWSE + TPEx",
             "history_source": "Firebase accumulated daily bars; Fugle optional bootstrap/fill",
             "version": MODEL_VERSION,
+            "performance": {"http_timeout_seconds": HTTP_TIMEOUT, "http_workers": HTTP_WORKERS, "fugle_bootstrap_max_per_run": FUGLE_BOOTSTRAP_MAX_PER_RUN},
             "universe": {
                 "name": f"熱門{HOT_STOCK_COUNT}檔",
                 "definition": f"TWSE+TPEx 最新成交金額排名前{HOT_STOCK_COUNT}檔四位數普通股；排除0開頭ETF/ETN",
@@ -1101,6 +1162,8 @@ def main() -> None:
             "legacy_fallback_stock_count": legacy_fallback_count,
             "notes": [
                 "FinLab API 與 finlab 套件已完全移除。",
+                f"官方 API 以最多 {HTTP_WORKERS} 個並行 worker 抓取，單一 HTTP 最長等待 {HTTP_TIMEOUT:g} 秒。",
+                f"Fugle 每次最多補 {FUGLE_BOOTSTRAP_MAX_PER_RUN} 檔，避免單次 workflow 過久。",
                 "TWSE/TPEx 官方 OpenAPI 提供當日行情、估值、營收、股利與財報；法人15日歷史由每日官方資料持續累積。",
                 "既有 Firebase K 線會沿用並每日追加；只有歷史不足且設定 FUGLE_API_KEY 時才呼叫 Fugle 歷史 K 線。",
                 f"近期舊版基本面欄位最多只允許沿用 {LEGACY_FUNDAMENTAL_MAX_AGE_DAYS} 天，避免永久使用過期值。",
