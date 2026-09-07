@@ -33,7 +33,7 @@ HTTP_WORKERS = max(2, min(8, int(os.environ.get("HTTP_WORKERS", "6"))))
 BACKTEST_HISTORY_BARS = max(KLINE_DAYS, int(os.environ.get("BACKTEST_HISTORY_BARS", "1260")))
 VALIDATION_OOS_DAYS = max(60, int(os.environ.get("VALIDATION_OOS_DAYS", "252")))
 BACKTEST_TOTAL_COST_BPS = max(0.0, float(os.environ.get("BACKTEST_TOTAL_COST_BPS", "70")))
-MODEL_VERSION = "0.70"
+MODEL_VERSION = "0.71"
 
 TWSE_BASE = "https://openapi.twse.com.tw/v1"
 TPEX_BASE = "https://www.tpex.org.tw/openapi/v1"
@@ -41,7 +41,7 @@ TWSE_T86_URL = "https://www.twse.com.tw/rwd/zh/fund/T86"
 FUGLE_BASE = "https://api.fugle.tw/marketdata/v1.0/stock"
 
 DEFAULT_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; easystock/0.70; +https://github.com/jimmyeyes03160729/easystock)",
+    "User-Agent": "Mozilla/5.0 (compatible; easystock/0.71; +https://github.com/jimmyeyes03160729/easystock)",
     "Accept": "application/json,text/plain,*/*",
 }
 _THREAD_LOCAL = threading.local()
