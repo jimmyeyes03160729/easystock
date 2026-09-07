@@ -8,7 +8,7 @@
   <!-- 輕量走勢圖庫 -->
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <style>
-    /* 主題色彩定義 */
+    /* 主題色彩定義：預設清晰彩色 */
     body.theme-color {
       background-color: #0d1117 !important;
       color: #c9d1d9;
@@ -68,9 +68,8 @@
           </div>
         </div>
 
-        <!-- 功能按鈕與色彩模式切換 -->
+        <!-- 功能按鈕與色彩模式切換 (預設選中清晰彩色) -->
         <div class="flex flex-wrap items-center gap-2 font-mono">
-          <!-- 顏色選擇器 (預設選中清晰彩色) -->
           <div class="flex items-center gap-1 bg-zinc-950/40 p-1 rounded-lg border border-zinc-700/40 text-[11px]">
             <button onclick="setTheme('color')" id="themeBtn-color" class="px-2 py-0.5 rounded font-bold transition">清晰彩色</button>
             <button onclick="setTheme('dark')" id="themeBtn-dark" class="px-2 py-0.5 rounded text-sub hover:text-main transition">低調黑</button>
@@ -102,6 +101,7 @@
           <span class="text-[11px] text-sub">排序維度</span>
           <select id="sortPriority" onchange="handleSortChange(this.value)" class="panel-bg border text-xs text-main px-2.5 py-1 rounded-lg focus:outline-none">
             <option value="STRATEGY_SCORE">多因子模型評級 (Rank ▾)</option>
+            <option value="DIVIDEND">現金殖利率 (高配息 ▾)</option>
             <option value="MOMO_SHARPE">20日風險調整回報 Sharpe (穩定 ▾)</option>
             <option value="INSTITUTION">15日外資與投信籌碼 (買超 ▾)</option>
             <option value="GROWTH">營收年增率 YoY (成長 ▾)</option>
@@ -170,7 +170,7 @@
         </div>
       </div>
 
-      <!-- 專區 4: 長期核心 -->
+      <!-- 專區 4: 長期核心 (含高股利與容量) -->
       <div class="panel-bg border rounded-xl p-3 flex flex-col justify-between">
         <div class="space-y-2">
           <div class="flex items-center justify-between border-b border-zinc-800/60 pb-2">
@@ -178,10 +178,10 @@
               <span class="text-sm">🛡️</span>
               <h2 class="text-xs font-bold text-main uppercase tracking-wide">穩健核心容量配置</h2>
             </div>
-            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-emerald-400 bg-emerald-950/40 border-emerald-800/40">Volume & Yield</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-emerald-400 bg-emerald-950/40 border-emerald-800/40">Volume & Dividend</span>
           </div>
           <p class="text-[11px] text-sub leading-normal">
-            FinLab 年化 28.6% 模型，具備市場高流動性與安全 PE 門檻，抗系統風險。
+            FinLab 實證容量模型，考量<b>現金殖利率</b>、法人籌碼與安全 PE 門檻，杜絕貼息陷阱。
           </p>
           <div id="longTermList" class="space-y-1.5 pt-1">
             <div class="text-sub text-xs text-center py-6 font-mono">計算中...</div>
@@ -213,12 +213,10 @@
       </div>
 
       <div class="overflow-y-auto space-y-3 flex-1 pr-1">
-        <!-- 走勢圖容器 -->
         <div class="card-bg p-2 rounded-xl border relative" style="height: 320px;">
           <div id="chartContainer" class="w-full h-full"></div>
         </div>
 
-        <!-- 量化診斷與入選理由 -->
         <div class="card-bg p-3.5 rounded-xl border space-y-2 text-xs">
           <h4 class="font-bold text-main flex items-center gap-1.5">
             <span>📋</span> 量化模型入選理由與特徵分析
@@ -256,18 +254,15 @@
   <script>
     let CURRENT_LIMIT = 5;
     let CURRENT_SORT = "STRATEGY_SCORE";
-    // 預設採用清晰彩色模式
     let CURRENT_THEME = localStorage.getItem("MOHREN_THEME") || "color";
     let COMPUTED_STOCKS = [];
     let currentChart = null;
 
-    // 主題切換邏輯
     function setTheme(theme) {
       CURRENT_THEME = theme;
       localStorage.setItem("MOHREN_THEME", theme);
       document.body.className = `theme-${theme} font-sans min-h-screen flex flex-col justify-between p-3 sm:p-6 transition-colors duration-200`;
 
-      // 頂部按鈕狀態更新
       ['color', 'dark', 'light'].forEach(t => {
         const btn = document.getElementById(`themeBtn-${t}`);
         if (t === theme) {
@@ -280,7 +275,7 @@
       renderAllSections();
     }
 
-    // 核心多因子量化運算引擎
+    // 核心多因子量化運算引擎 (納入現金殖利率與股利評分)
     function runQuantitativeEngine(rawStocks) {
       return rawStocks.map(s => {
         const kline = s.kline || [];
@@ -292,6 +287,10 @@
         const net15 = s.net15Total !== undefined ? parseInt(s.net15Total) : 0;
         const pe = s.pe !== undefined ? parseFloat(s.pe) : 18.0;
         const revYoy = s.rev_yoy !== undefined ? parseFloat(s.rev_yoy) : 8.0;
+        
+        // 股利計算：若未提供，預估合理殖利率 (以 4% 安全估計)
+        const dividend = s.dividend !== undefined ? parseFloat(s.dividend) : (closeP * 0.04);
+        const yieldPct = closeP > 0 ? ((dividend / closeP) * 100) : 0.0;
 
         // 1. 當沖訊號
         const intradayRet = (closeP - openP) / (openP || 1);
@@ -342,10 +341,11 @@
           }
         }
 
-        // 4. 長線容量訊號
+        // 4. 長線容量訊號：整合現金殖利率 + 法人買賣超 + PE安全比
         const peSafe = Math.max(pe, 8.0);
         const growthValRatio = revYoy / peSafe;
-        const longTermScore = (net15 > 0 ? Math.log10(net15 + 1) * 15 : 0) + (growthValRatio * 10);
+        const cappedYield = Math.min(yieldPct, 10.0); // 殖利率上限10%，避免高殖利率衰退陷阱
+        const longTermScore = (net15 > 0 ? Math.log10(net15 + 1) * 12 : 0) + (cappedYield * 4) + (growthValRatio * 6);
 
         return {
           symbol: String(s.symbol).trim(),
@@ -356,6 +356,8 @@
           pe: pe,
           rev_yoy: revYoy,
           net15Total: net15,
+          dividend: dividend,
+          yieldPct: yieldPct,
           intradayRet: intradayRet,
           dayTradeScore: dayTradeScore,
           nearHighRatio: nearHighRatio,
@@ -413,15 +415,16 @@
       swingPool = sortArray(swingPool, "swingScore").slice(0, CURRENT_LIMIT);
       renderCardList("shortSwingList", swingPool, s => `-${((1 - s.nearHighRatio) * 100).toFixed(1)}%`, "SWING", "card-swing");
 
-      // 4. 長期核心專區
+      // 4. 長期核心專區 (顯示殖利率)
       let longTermPool = [...COMPUTED_STOCKS];
       longTermPool = sortArray(longTermPool, "longTermScore").slice(0, CURRENT_LIMIT);
-      renderCardList("longTermList", longTermPool, s => `${s.net15Total >= 0 ? '+' : ''}${s.net15Total}張`, "LONG", "card-long");
+      renderCardList("longTermList", longTermPool, s => `殖利率 ${s.yieldPct.toFixed(1)}%`, "LONG", "card-long");
     }
 
     function sortArray(list, defaultScoreKey) {
       const arr = [...list];
       if (CURRENT_SORT === "STRATEGY_SCORE") arr.sort((a, b) => b[defaultScoreKey] - a[defaultScoreKey]);
+      else if (CURRENT_SORT === "DIVIDEND") arr.sort((a, b) => b.yieldPct - a.yieldPct);
       else if (CURRENT_SORT === "MOMO_SHARPE") arr.sort((a, b) => b.sharpe20 - a.sharpe20);
       else if (CURRENT_SORT === "INSTITUTION") arr.sort((a, b) => b.net15Total - a.net15Total);
       else if (CURRENT_SORT === "GROWTH") arr.sort((a, b) => b.rev_yoy - a.rev_yoy);
@@ -435,7 +438,6 @@
         return;
       }
 
-      // 彩色模式套用專屬卡片底色，黑白模式則維持統一卡片樣式
       const cardClass = CURRENT_THEME === 'color' ? colorThemeClass : 'card-bg';
 
       c.innerHTML = list.map((s, idx) => `
@@ -454,22 +456,21 @@
           <div class="flex justify-between items-center text-[11px]">
             <span class="text-main font-bold">$${s.price.toFixed(2)}</span>
             <div class="flex items-center gap-2 text-[10px] text-sub">
+              <span>股利: <b class="text-main">$${s.dividend.toFixed(1)}</b></span>
               <span>PE: <b class="text-main">${s.pe}x</b></span>
-              <span>YoY: <b class="${s.rev_yoy >= 0 ? 'text-rose-500':'text-emerald-500'}">${s.rev_yoy}%</b></span>
             </div>
           </div>
         </div>
       `).join('');
     }
 
-    // 走勢圖與診斷浮窗
     function openStockDetail(symbol, strategyType) {
       const stock = COMPUTED_STOCKS.find(s => s.symbol === symbol);
       if (!stock) return;
 
       document.getElementById("modalTitle").textContent = `${stock.name} (${stock.symbol})`;
       document.getElementById("modalCategory").textContent = stock.category;
-      document.getElementById("modalSubTitle").textContent = `實收價: $${stock.price.toFixed(2)} | 本益比: ${stock.pe}x | 營收年增: ${stock.rev_yoy}% | 15日法人累計: ${stock.net15Total} 張`;
+      document.getElementById("modalSubTitle").textContent = `實收價: $${stock.price.toFixed(2)} | 現金殖利率: ${stock.yieldPct.toFixed(2)}% (股利 $${stock.dividend.toFixed(2)}) | 15日法人累計: ${stock.net15Total} 張`;
       document.getElementById("modalYahooLink").href = `https://tw.stock.yahoo.com/quote/${stock.symbol}`;
 
       let reasons = [];
@@ -484,8 +485,9 @@
         reasons.push(`• 【高點保留率】：最新價距 52 週最高點僅衰退 ${((1 - stock.nearHighRatio) * 100).toFixed(1)}%，符合 FinLab 年化 22.5% 強勢守成標準。`);
         reasons.push(`• 【軌跡平穩度】：近 20 日風險調整夏普值為 ${stock.sharpe20.toFixed(2)}，呈現平穩主升段。`);
       } else {
-        reasons.push(`• 【籌碼容量鎖碼】：近 15 日三大法人買超達 ${stock.net15Total} 張，流動性承載力強。`);
-        reasons.push(`• 【安全估值】：考量週期性安全邊際，營收成長對應估值性價比表現穩健。`);
+        reasons.push(`• 【現金殖利率與收益】：預估現金殖利率達 ${stock.yieldPct.toFixed(2)}%（每股配發約 $${stock.dividend.toFixed(2)} 元），提供實質下檔防禦保護。`);
+        reasons.push(`• 【籌碼容量鎖碼】：近 15 日三大法人買超達 ${stock.net15Total} 張，在大額資金推動下具備優質流動性承載力。`);
+        reasons.push(`• 【安全估值邊際】：本益比為 ${stock.pe}x，搭配營收成長，避免陷入傳統高殖利率但本業衰退之貼息陷阱。`);
       }
       document.getElementById("modalReason").innerHTML = reasons.map(r => `<div>${r}</div>`).join('');
 
