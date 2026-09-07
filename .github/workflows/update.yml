@@ -1,0 +1,37 @@
+name: Daily Stock Data Update
+
+on:
+  schedule:
+    # 台灣時間週一至週五下午 15:30 自動執行 (UTC 時間 07:30)
+    - cron: '30 7 * * 1-5'
+  workflow_dispatch: # 支援在 GitHub 網頁手動點擊立即執行
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install finlab pandas numpy
+
+      - name: Fetch and Compute Market Data
+        env:
+          FINLAB_API_TOKEN: ${{ secrets.FINLAB_API_TOKEN }}
+        run: |
+          python update_market.py
+
+      - name: Commit and Push Updated Data
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add market_data.json
+          git diff-index --quiet HEAD || git commit -m "Auto-update market_data.json [skip ci]"
+          git push
