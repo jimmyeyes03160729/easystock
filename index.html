@@ -3,48 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
-  <title>墨衡量化 Mohren Quant Matrix v0.40</title>
-
+  <meta name="description" content="墨衡量化 Mohren Quant Matrix - 台股量化觀察儀表板" />
+  <title>墨衡量化 Mohren Quant Matrix v0.50</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
-
   <style>
-    body { background:#0d1117; color:#c9d1d9; }
-    .panel { background:#161b22; border:1px solid #30363d; }
+    :root {
+      --bg:#0d1117; --panel:#161b22; --border:#30363d; --main:#f8fafc; --sub:#8b949e;
+    }
+    body { background:var(--bg); color:#c9d1d9; }
+    .panel { background:var(--panel); border:1px solid var(--border); }
+    .text-main { color:var(--main); }
+    .text-sub { color:var(--sub); }
+    .btn { background:#21262d; border:1px solid var(--border); }
+    .muted-border { border-color:rgba(63,63,70,.55); }
+    .metric-good { color:#34d399; }
+    .metric-warn { color:#fbbf24; }
+    .metric-bad { color:#fb7185; }
+    .score-ring { background:conic-gradient(from 180deg,#34d399 0 var(--score),#30363d var(--score) 100%); }
     .card-rebound { background:#1c1427; border-color:rgba(168,85,247,.38); }
     .card-daytrade { background:#271418; border-color:rgba(244,63,94,.38); }
     .card-swing { background:#241c10; border-color:rgba(245,158,11,.38); }
     .card-long { background:#10241b; border-color:rgba(16,185,129,.38); }
-    .text-main { color:#f8fafc; }
-    .text-sub { color:#8b949e; }
-    .btn { background:#21262d; border:1px solid #30363d; }
-    .metric-good { color:#34d399; }
-    .metric-warn { color:#fbbf24; }
-    .metric-bad { color:#fb7185; }
-    .muted-border { border-color:rgba(63,63,70,.55); }
-    .score-ring { background:conic-gradient(from 180deg, #34d399 0 var(--score), #30363d var(--score) 100%); }
     ::-webkit-scrollbar { width:5px; height:5px; }
     ::-webkit-scrollbar-thumb { background:#3f444e; border-radius:3px; }
-    @media (max-width: 640px) {
-      .modal-wide { max-height:96vh; }
-    }
+    @media (max-width:640px) { .modal-wide { max-height:96vh; } }
   </style>
 </head>
-
 <body class="min-h-screen font-sans">
   <div class="max-w-7xl mx-auto p-3 sm:p-6 space-y-4">
-
     <header class="panel rounded-2xl p-4 space-y-3">
       <div class="flex flex-wrap justify-between items-center gap-3">
         <div>
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
             <h1 class="text-sm font-bold tracking-[0.16em] text-main">墨衡量化 ｜ MOHREN QUANT MATRIX</h1>
-            <span class="text-[10px] rounded border px-1.5 py-0.5 text-sub">v0.40</span>
+            <span class="text-[10px] rounded border px-1.5 py-0.5 text-sub">v0.50</span>
           </div>
           <div id="dataStatusText" class="text-[11px] text-sub font-mono mt-1">正在從 Firebase 載入市場資料…</div>
         </div>
-
         <div class="flex flex-wrap items-center gap-2">
           <div class="flex gap-1 p-1 rounded-lg border muted-border bg-black/10">
             <button onclick="setTheme('color')" id="theme-color" class="px-2 py-1 text-[11px] rounded">彩色</button>
@@ -56,39 +53,28 @@
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t muted-border">
-        <div class="rounded-xl border muted-border p-2.5">
-          <div class="text-[10px] text-sub">熱門股票池</div>
-          <div id="metaStocks" class="text-lg font-bold text-main mt-1">--</div>
-        </div>
-        <div class="rounded-xl border muted-border p-2.5">
-          <div class="text-[10px] text-sub">資料日期</div>
-          <div id="metaDate" class="text-sm font-bold text-main mt-2">--</div>
-        </div>
-        <div class="rounded-xl border muted-border p-2.5">
-          <div class="text-[10px] text-sub">模型資料完整度</div>
-          <div id="metaQuality" class="text-lg font-bold text-main mt-1">--</div>
-        </div>
-        <div class="rounded-xl border muted-border p-2.5">
-          <div class="text-[10px] text-sub">回測訊號數</div>
-          <div id="metaSignals" class="text-lg font-bold text-main mt-1">--</div>
-        </div>
+        <div class="rounded-xl border muted-border p-2.5"><div class="text-[10px] text-sub">熱門股票池</div><div id="metaStocks" class="text-lg font-bold text-main mt-1">--</div></div>
+        <div class="rounded-xl border muted-border p-2.5"><div class="text-[10px] text-sub">資料日期</div><div id="metaDate" class="text-sm font-bold text-main mt-2">--</div></div>
+        <div class="rounded-xl border muted-border p-2.5"><div class="text-[10px] text-sub">模型資料完整度</div><div id="metaQuality" class="text-lg font-bold text-main mt-1">--</div></div>
+        <div class="rounded-xl border muted-border p-2.5"><div class="text-[10px] text-sub">回測訊號數</div><div id="metaSignals" class="text-lg font-bold text-main mt-1">--</div></div>
       </div>
 
       <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-        <div class="text-sub font-mono">
-          股票池定義：<span class="text-main">最新成交金額排名前 500 檔四位數台股</span>
-        </div>
-        <div>
-          <select id="sortPriority" onchange="handleSortChange(this.value)"
-            class="panel rounded-lg px-2.5 py-1.5 text-xs text-main">
-            <option value="STRATEGY_SCORE">多因子模型總分</option>
-            <option value="DAYTRADE">當沖動能</option>
+        <div class="text-sub font-mono">股票池：<span class="text-main">最新成交金額前 500 檔四位數台股</span></div>
+        <div class="flex gap-2 items-center">
+          <select id="sortPriority" onchange="handleSortChange(this.value)" class="panel rounded-lg px-2.5 py-1.5 text-xs text-main">
+            <option value="STRATEGY_SCORE">各專區策略分數</option>
+            <option value="TOTAL">多因子模型總分</option>
+            <option value="DAYTRADE">短線動能</option>
             <option value="SWING">波段強度</option>
-            <option value="DIVIDEND">高息／長期核心</option>
-            <option value="SHARPE20">20日風險調整報酬</option>
+            <option value="DIVIDEND">長期核心</option>
+            <option value="SHARPE20">20日 Sharpe</option>
             <option value="INSTITUTION">15日法人買超</option>
             <option value="GROWTH">營收年增率</option>
             <option value="ROE">ROE</option>
+          </select>
+          <select onchange="setDisplayLimit(Number(this.value))" class="panel rounded-lg px-2.5 py-1.5 text-xs text-main">
+            <option value="5">Top 5</option><option value="10">Top 10</option><option value="20">Top 20</option>
           </select>
         </div>
       </div>
@@ -96,177 +82,120 @@
 
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <div class="panel rounded-2xl p-3">
-        <div class="flex items-center justify-between border-b muted-border pb-2">
-          <div class="font-bold text-xs text-main">🎯 均線回踩轉強</div>
-          <span class="text-[9px] text-purple-300">REBOUND</span>
-        </div>
-        <div class="text-[11px] text-sub mt-2 leading-relaxed">
-          MA20/60 之上 + 近3日回踩 + 紅K + 基本面正向。
-        </div>
-        <div id="reboundList" class="space-y-1.5 mt-2">
-          <div class="text-xs text-sub text-center py-8">計算中…</div>
-        </div>
+        <div class="flex items-center justify-between border-b muted-border pb-2"><div class="font-bold text-xs text-main">🎯 均線回踩轉強</div><span class="text-[9px] text-purple-300">REBOUND</span></div>
+        <div class="text-[11px] text-sub mt-2 leading-relaxed">MA20/60 之上 + 近3日回踩 + 紅K + 營收條件。</div>
+        <div id="reboundList" class="space-y-1.5 mt-2"><div class="text-xs text-sub text-center py-8">計算中…</div></div>
       </div>
-
       <div class="panel rounded-2xl p-3">
-        <div class="flex items-center justify-between border-b muted-border pb-2">
-          <div class="font-bold text-xs text-main">⚡ 盤中推進當沖</div>
-          <span class="text-[9px] text-rose-300">DAYTRADE</span>
-        </div>
-        <div class="text-[11px] text-sub mt-2 leading-relaxed">
-          日內漲幅、量比、成交金額與收盤區間位置綜合評分。
-        </div>
-        <div id="dayTradeList" class="space-y-1.5 mt-2">
-          <div class="text-xs text-sub text-center py-8">計算中…</div>
-        </div>
+        <div class="flex items-center justify-between border-b muted-border pb-2"><div class="font-bold text-xs text-main">⚡ 日線短線動能</div><span class="text-[9px] text-rose-300">MOMENTUM</span></div>
+        <div class="text-[11px] text-sub mt-2 leading-relaxed">單日漲幅、20日量比、成交金額與收盤區間位置；不是即時盤中訊號。</div>
+        <div id="dayTradeList" class="space-y-1.5 mt-2"><div class="text-xs text-sub text-center py-8">計算中…</div></div>
       </div>
-
       <div class="panel rounded-2xl p-3">
-        <div class="flex items-center justify-between border-b muted-border pb-2">
-          <div class="font-bold text-xs text-main">📈 強勢波段主升</div>
-          <span class="text-[9px] text-amber-300">SWING</span>
-        </div>
-        <div class="text-[11px] text-sub mt-2 leading-relaxed">
-          接近 250D 高點 + 20日風險調整報酬 + 趨勢品質。
-        </div>
-        <div id="shortSwingList" class="space-y-1.5 mt-2">
-          <div class="text-xs text-sub text-center py-8">計算中…</div>
-        </div>
+        <div class="flex items-center justify-between border-b muted-border pb-2"><div class="font-bold text-xs text-main">📈 強勢波段主升</div><span class="text-[9px] text-amber-300">SWING</span></div>
+        <div class="text-[11px] text-sub mt-2 leading-relaxed">接近 250D 高點 + 20日風險調整報酬 + 均線趨勢。</div>
+        <div id="shortSwingList" class="space-y-1.5 mt-2"><div class="text-xs text-sub text-center py-8">計算中…</div></div>
       </div>
-
       <div class="panel rounded-2xl p-3">
-        <div class="flex items-center justify-between border-b muted-border pb-2">
-          <div class="font-bold text-xs text-main">🛡️ 穩健長期核心</div>
-          <span class="text-[9px] text-emerald-300">LONG</span>
-        </div>
-        <div class="text-[11px] text-sub mt-2 leading-relaxed">
-          真實現金股利殖利率 + ROE + FCF + 負債 + 股價穩定度。
-        </div>
-        <div id="longTermList" class="space-y-1.5 mt-2">
-          <div class="text-xs text-sub text-center py-8">計算中…</div>
-        </div>
+        <div class="flex items-center justify-between border-b muted-border pb-2"><div class="font-bold text-xs text-main">🛡️ 穩健長期核心</div><span class="text-[9px] text-emerald-300">LONG</span></div>
+        <div class="text-[11px] text-sub mt-2 leading-relaxed">TTM 股利殖利率 + ROE + FCF + 負債 + 股價穩定度；預設殖利率門檻 4%。</div>
+        <div id="longTermList" class="space-y-1.5 mt-2"><div class="text-xs text-sub text-center py-8">計算中…</div></div>
       </div>
     </section>
 
     <section class="panel rounded-2xl p-4">
       <div class="flex items-center justify-between gap-2 border-b muted-border pb-2">
-        <div>
-          <h2 class="text-sm font-bold text-main">📊 模型回測驗證</h2>
-          <p class="text-[10px] text-sub mt-1">
-            以目前儲存的 250 日資料做樣本內檢驗；回測結果不是未來報酬保證。
-          </p>
-        </div>
-        <span class="text-[10px] text-sub font-mono">250D WALK-FORWARD SAFE</span>
+        <div><h2 class="text-sm font-bold text-main">📊 模型回測驗證</h2><p class="text-[10px] text-sub mt-1">目前熱門股票池的 250 日樣本內檢驗；存在股票池選擇偏誤，不代表未來績效。</p></div>
+        <span class="text-[10px] text-sub font-mono">250D SAMPLE-IN TEST</span>
       </div>
-      <div id="backtestGrid" class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
-        <div class="text-sub text-xs text-center py-8">讀取中…</div>
-      </div>
+      <div id="backtestGrid" class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3"></div>
     </section>
 
-    <footer class="py-3 text-center text-[10px] text-sub font-mono leading-relaxed">
-      MOHREN QUANT MATRIX • DATA SOURCE: FINLAB → FIREBASE • RESEARCH ONLY<br/>
-      本系統僅供研究與資訊整理，不構成投資建議。
-    </footer>
+    <section class="panel rounded-2xl p-4 text-[10px] text-sub leading-relaxed">
+      本頁為資料整理與量化研究工具，不構成投資建議。短線動能使用日線資料代理；回測未納入所有交易成本、滑價與完整歷史股票池重建。
+    </section>
   </div>
 
   <div id="stockDetailModal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm p-3 flex items-center justify-center">
-    <div class="panel modal-wide rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
-      <div class="p-4 border-b muted-border flex items-center justify-between gap-2">
+    <div class="modal-wide panel rounded-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden">
+      <div class="flex items-center justify-between gap-3 p-4 border-b muted-border">
         <div>
-          <div class="flex items-center gap-2">
-            <h3 id="modalTitle" class="font-bold text-base text-main">--</h3>
-            <span id="modalCategory" class="text-[10px] px-2 py-0.5 rounded border muted-border text-sub">--</span>
-          </div>
+          <div class="flex items-center gap-2"><h2 id="modalTitle" class="font-bold text-main">--</h2><span id="modalCategory" class="text-[10px] px-2 py-0.5 rounded border muted-border text-sub">--</span></div>
           <div id="modalSubTitle" class="text-[10px] text-sub font-mono mt-1">--</div>
         </div>
-        <div class="flex items-center gap-2">
-          <a id="modalYahooLink" target="_blank" class="btn text-[10px] px-2.5 py-1.5 rounded-lg">Yahoo ↗</a>
-          <button onclick="closeModal()" class="text-sub hover:text-main text-xl px-2">✕</button>
-        </div>
+        <div class="flex items-center gap-2"><a id="modalYahooLink" target="_blank" rel="noopener noreferrer" class="btn text-[10px] px-2.5 py-1.5 rounded-lg">Yahoo ↗</a><button onclick="closeModal()" class="text-sub hover:text-main text-xl px-2">✕</button></div>
       </div>
-
-      <div class="overflow-y-auto p-4 space-y-3">
+      <div class="overflow-y-auto p-4 space-y-3 max-h-[82vh]">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <div class="lg:col-span-2 panel rounded-xl p-2">
-            <div id="chartContainer" style="height:340px;"></div>
-          </div>
-
+          <div class="lg:col-span-2 panel rounded-xl p-2"><div id="chartContainer" style="height:340px;"></div></div>
           <div class="space-y-2">
             <div class="panel rounded-xl p-3">
               <div class="flex items-center gap-3">
-                <div id="scoreCircle" class="w-16 h-16 rounded-full p-1 score-ring">
-                  <div class="w-full h-full rounded-full panel flex items-center justify-center">
-                    <span id="scoreValue" class="text-lg font-bold text-main">--</span>
-                  </div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-sub">多因子模型</div>
-                  <div id="scoreLabel" class="text-sm font-bold text-main mt-1">--</div>
-                  <div id="scoreQuality" class="text-[10px] text-sub mt-1">--</div>
-                </div>
+                <div id="scoreCircle" class="w-16 h-16 rounded-full p-1 score-ring"><div class="w-full h-full rounded-full panel flex items-center justify-center"><span id="scoreValue" class="text-lg font-bold text-main">--</span></div></div>
+                <div><div class="text-[10px] text-sub">多因子模型</div><div id="scoreLabel" class="text-sm font-bold text-main mt-1">--</div><div id="scoreQuality" class="text-[10px] text-sub mt-1">--</div></div>
               </div>
             </div>
-
             <div id="factorGrid" class="grid grid-cols-2 gap-2"></div>
           </div>
         </div>
-
-        <div class="panel rounded-xl p-3">
-          <div class="text-xs font-bold text-main mb-2">基本面／估值</div>
-          <div id="fundamentalGrid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2"></div>
-        </div>
-
-        <div class="panel rounded-xl p-3">
-          <div class="text-xs font-bold text-main mb-2">量化模型入選理由</div>
-          <div id="modalReason" class="text-[11px] text-sub leading-relaxed space-y-1.5"></div>
-        </div>
-
-        <div class="panel rounded-xl p-3">
-          <div class="text-xs font-bold text-main mb-2">個股策略回測</div>
-          <div id="stockBacktest" class="grid grid-cols-1 sm:grid-cols-3 gap-2"></div>
-        </div>
+        <div class="panel rounded-xl p-3"><div class="text-xs font-bold text-main mb-2">基本面／估值</div><div id="fundamentalGrid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2"></div></div>
+        <div class="panel rounded-xl p-3"><div class="text-xs font-bold text-main mb-2">量化模型入選理由</div><div id="modalReason" class="text-[11px] text-sub leading-relaxed space-y-1.5"></div></div>
+        <div class="panel rounded-xl p-3"><div class="text-xs font-bold text-main mb-2">個股策略回測</div><div id="stockBacktest" class="grid grid-cols-1 sm:grid-cols-3 gap-2"></div></div>
       </div>
     </div>
   </div>
 
 <script>
-  const FIREBASE_URL = "https://money-7c81c-default-rtdb.firebaseio.com/.json";
+  const FIREBASE_ORIGIN = "https://money-7c81c-default-rtdb.firebaseio.com";
+  const FIREBASE_ROOT = `${FIREBASE_ORIGIN}/market_data`;
+  const LONG_MIN_YIELD = 4;
 
   let CURRENT_LIMIT = 5;
   let CURRENT_SORT = "STRATEGY_SCORE";
   let CURRENT_THEME = localStorage.getItem("MOHREN_THEME") || "color";
   let COMPUTED_STOCKS = [];
   let META = {};
+  let DATA_MODE = "split";
   let currentChart = null;
 
-  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-  const n = v => (v === null || v === undefined || Number.isNaN(Number(v)) ? null : Number(v));
-  const fmt = (v, digits=1) => n(v) === null ? "N/A" : Number(v).toFixed(digits);
-  const pct = (v, digits=1) => n(v) === null ? "N/A" : `${Number(v).toFixed(digits)}%`;
+  const clamp = (v,min,max) => Math.max(min,Math.min(max,v));
+  const n = v => (v===null || v===undefined || Number.isNaN(Number(v))) ? null : Number(v);
+  const fmt = (v,d=1) => n(v)===null ? "N/A" : Number(v).toFixed(d);
+  const pct = (v,d=1) => n(v)===null ? "N/A" : `${Number(v).toFixed(d)}%`;
 
   function setTheme(theme) {
     CURRENT_THEME = theme;
     localStorage.setItem("MOHREN_THEME", theme);
-
     if (theme === "light") {
-      document.body.style.background = "#f8fafc";
+      document.documentElement.style.setProperty("--bg", "#f8fafc");
+      document.documentElement.style.setProperty("--panel", "#ffffff");
+      document.documentElement.style.setProperty("--border", "#cbd5e1");
+      document.documentElement.style.setProperty("--main", "#0f172a");
+      document.documentElement.style.setProperty("--sub", "#64748b");
       document.body.style.color = "#334155";
     } else if (theme === "dark") {
-      document.body.style.background = "#08090b";
+      document.documentElement.style.setProperty("--bg", "#08090b");
+      document.documentElement.style.setProperty("--panel", "#111318");
+      document.documentElement.style.setProperty("--border", "#272a30");
+      document.documentElement.style.setProperty("--main", "#f8fafc");
+      document.documentElement.style.setProperty("--sub", "#8b949e");
       document.body.style.color = "#94a3b8";
     } else {
-      document.body.style.background = "#0d1117";
+      document.documentElement.style.setProperty("--bg", "#0d1117");
+      document.documentElement.style.setProperty("--panel", "#161b22");
+      document.documentElement.style.setProperty("--border", "#30363d");
+      document.documentElement.style.setProperty("--main", "#f8fafc");
+      document.documentElement.style.setProperty("--sub", "#8b949e");
       document.body.style.color = "#c9d1d9";
     }
-
     ["color","dark","light"].forEach(t => {
       const b = document.getElementById(`theme-${t}`);
-      b.className = `px-2 py-1 text-[11px] rounded ${t === theme ? "bg-zinc-700 text-white font-bold" : "text-sub"}`;
+      b.className = `px-2 py-1 text-[11px] rounded ${t===theme ? "bg-zinc-700 text-white font-bold" : "text-sub"}`;
     });
   }
 
   function dataQuality(stock) {
-    const fields = ["roe","eps","rev_yoy","fcf","debt_ratio","dividend","volume","sharpe20"];
+    const fields = ["roe","eps","rev_yoy","fcf","debt_ratio","dividend_ttm","volume","sharpe20","net15Total","pe"];
     return Math.round(fields.filter(k => n(stock[k]) !== null).length / fields.length * 100);
   }
 
@@ -278,445 +207,296 @@
     return "弱勢";
   }
 
+  function legacyMetrics(s) {
+    const kline = Array.isArray(s.kline) ? s.kline.filter(k=>k && k.close!=null) : [];
+    if (!kline.length) return {};
+    const closes = kline.map(k=>n(k.close)).filter(v=>v!==null);
+    const latest = kline[kline.length-1] || {};
+    const avg = xs => xs.length ? xs.reduce((a,b)=>a+b,0)/xs.length : null;
+    const ma = days => closes.length>=days ? avg(closes.slice(-days)) : null;
+    const high250 = Math.max(...kline.map(k=>n(k.high) ?? n(k.close) ?? 0));
+    const prevVol = kline.slice(-21,-1).map(k=>n(k.volume)).filter(v=>v && v>0);
+    const volumeRatio = prevVol.length && n(latest.volume) ? n(latest.volume)/avg(prevVol) : null;
+    const range = (n(latest.high)??0) - (n(latest.low)??0);
+    return {
+      sma20: ma(20), sma60: ma(60),
+      near_high_ratio: high250 ? (n(latest.close)??0)/high250 : null,
+      momo20: closes.length>=21 && closes[closes.length-21] ? closes.at(-1)/closes[closes.length-21] : null,
+      intraday_ret: n(latest.open) ? ((n(latest.close)-n(latest.open))/n(latest.open)) : null,
+      volume_ratio: volumeRatio,
+      range_position: range>0 ? ((n(latest.close)-n(latest.low))/range) : .5,
+      recent_min_low_3: Math.min(...kline.slice(-3).map(k=>n(k.low)??Infinity)),
+    };
+  }
+
   function runQuantitativeEngine(rawStocks) {
     return rawStocks.map(s => {
-      const kline = Array.isArray(s.kline) ? s.kline.filter(k => k && k.close != null) : [];
-      const latest = kline[kline.length - 1] || {};
-      const close = n(s.price) ?? n(latest.close);
-      if (close === null || close <= 0) return null;
+      const legacy = legacyMetrics(s);
+      const close = n(s.price) ?? n(s.kline?.at?.(-1)?.close);
+      if (close===null || close<=0) return null;
 
-      const open = n(s.open) ?? n(latest.open);
-      const high = n(s.high) ?? n(latest.high);
-      const low = n(s.low) ?? n(latest.low);
-      const volume = n(s.volume) ?? n(latest.volume);
-      const amount = n(s.amount) ?? n(latest.amount);
-
-      const net15 = n(s.net15Total);
-      const pe = n(s.pe);
-      const pb = n(s.pb);
-      const rev = n(s.rev_yoy);
-      const roe = n(s.roe);
-      const eps = n(s.eps);
-      const opMargin = n(s.operating_margin);
-      const grossMargin = n(s.gross_margin);
-      const fcf = n(s.fcf);
-      const debt = n(s.debt_ratio);
-      const dividend = n(s.dividend);
+      const open = n(s.open) ?? n(s.kline?.at?.(-1)?.open);
+      const high = n(s.high) ?? n(s.kline?.at?.(-1)?.high);
+      const low = n(s.low) ?? n(s.kline?.at?.(-1)?.low);
+      const amount = n(s.amount);
+      const volume = n(s.volume);
+      const pe = n(s.pe), pb=n(s.pb), rev=n(s.rev_yoy), roe=n(s.roe), eps=n(s.eps);
+      const fcf=n(s.fcf), debt=n(s.debt_ratio), grossMargin=n(s.gross_margin), opMargin=n(s.operating_margin);
+      const dividend = n(s.dividend_ttm) ?? n(s.dividend);
       const yieldPct = n(s.yield_pct);
+      const net15 = n(s.net15Total);
+      const sharpe20 = n(s.sharpe20);
+      const sma20 = n(s.sma20) ?? n(legacy.sma20);
+      const sma60 = n(s.sma60) ?? n(legacy.sma60);
+      const nearHighRatio = n(s.near_high_ratio) ?? n(legacy.near_high_ratio);
+      const momo20 = n(s.momo20) ?? n(legacy.momo20);
+      const intradayRet = n(s.intraday_ret) ?? n(legacy.intraday_ret);
+      const volumeRatio = n(s.volume_ratio) ?? n(legacy.volume_ratio);
+      const rangePosition = n(s.range_position) ?? n(legacy.range_position);
+      const recentMinLow3 = n(s.recent_min_low_3) ?? n(legacy.recent_min_low_3);
+      const volumeRank = clamp(n(s.amount_rank_pct) ?? .5,0,1);
+      const instRank = net15===null ? null : clamp((net15 + 2_000_000) / 4_000_000,0,1);
 
-      const returns20 = [];
-      for (let i = Math.max(1, kline.length - 20); i < kline.length; i++) {
-        const prev = n(kline[i-1].close);
-        const cur = n(kline[i].close);
-        if (prev && cur) returns20.push((cur-prev)/prev);
-      }
-
-      let sharpe20 = n(s.sharpe20);
-      if (sharpe20 === null && returns20.length >= 10) {
-        const mean = returns20.reduce((a,b)=>a+b,0) / returns20.length;
-        const variance = returns20.reduce((sum,r)=>sum+Math.pow(r-mean,2),0) / Math.max(1,returns20.length-1);
-        const std = Math.sqrt(variance);
-        sharpe20 = std > 0 ? (mean/std) * Math.sqrt(252) : 0;
-      }
-
-      const maxHigh = kline.length ? Math.max(...kline.map(x => n(x.high) ?? n(x.close) ?? 0)) : null;
-      const nearHighRatio = maxHigh ? close/maxHigh : null;
-
-      const sma = days => {
-        if (kline.length < days) return null;
-        const xs = kline.slice(-days).map(x=>n(x.close)).filter(v=>v!==null);
-        return xs.length === days ? xs.reduce((a,b)=>a+b,0)/days : null;
-      };
-      const sma20 = sma(20);
-      const sma60 = sma(60);
-
-      const intradayRet = (open && open > 0) ? (close-open)/open : null;
-      const rangePosition = (high != null && low != null && high > low) ? (close-low)/(high-low) : null;
-
-      const avgVol20 = kline.length >= 21
-        ? kline.slice(-21,-1).map(x=>n(x.volume)).filter(v=>v!=null).reduce((a,b)=>a+b,0) /
-          Math.max(1,kline.slice(-21,-1).map(x=>n(x.volume)).filter(v=>v!=null).length)
-        : null;
-      const volumeRatio = avgVol20 && volume ? volume/avgVol20 : null;
-
-      const instRank = net15 === null ? null : clamp((net15 + 200000) / 400000, 0, 1);
-      const intradayRank = intradayRet === null ? 0 : clamp((intradayRet + 0.03) / 0.10, 0, 1);
-      const volumeRank = volumeRatio === null ? 0 : clamp((volumeRatio - 0.5) / 2.5, 0, 1);
-      const rangeRank = rangePosition === null ? 0 : clamp(rangePosition, 0, 1);
-      const amountRank = n(s.amount_rank_pct) ?? 0.5;
       const dayTradeScore = Math.round(
-        intradayRank*30 + volumeRank*30 + amountRank*20 + rangeRank*20
+        clamp(((intradayRet ?? 0) + .02) / .08,0,1)*35 +
+        clamp((volumeRatio ?? 0) / 3,0,1)*25 +
+        volumeRank*25 +
+        clamp(rangePosition ?? .5,0,1)*15
       );
 
-      let isRebound = false;
-      let reboundScore = 0;
-      if (sma20 !== null && sma60 !== null && kline.length >= 3 && open !== null) {
-        const lows = kline.slice(-3).map(x=>n(x.low)).filter(v=>v!==null);
-        const recentMinLow = lows.length ? Math.min(...lows) : null;
-        const hit20 = recentMinLow !== null && recentMinLow <= sma20*1.02;
-        const hit60 = recentMinLow !== null && recentMinLow <= sma60*1.02;
-        const red = close > open;
-        const fundOK = rev === null ? true : rev > 0;
-        isRebound = close > sma20 && close > sma60 && (hit20 || hit60) && red && fundOK;
-        reboundScore = (isRebound ? 50 : 0)
-          + (nearHighRatio !== null ? nearHighRatio*20 : 0)
-          + (volumeRank*15)
-          + (instRank === null ? 0 : instRank*15);
-      }
+      const hit20 = sma20!==null && recentMinLow3!==null && recentMinLow3 <= sma20*1.02;
+      const hit60 = sma60!==null && recentMinLow3!==null && recentMinLow3 <= sma60*1.02;
+      const red = open!==null ? close>open : false;
+      const fundOK = rev===null ? true : rev>0;
+      const isRebound = sma20!==null && sma60!==null && close>sma20 && close>sma60 && (hit20||hit60) && red && fundOK;
+      const reboundScore = Math.round(
+        (isRebound?45:0) + clamp(nearHighRatio??0,0,1)*20 + volumeRank*20 + (instRank===null?0:instRank*15)
+      );
 
       const swingScore = Math.round(
-        clamp(nearHighRatio ?? 0, 0, 1)*55 +
-        clamp(((sharpe20 ?? 0) + 1)/3, 0, 1)*25 +
-        (sma20 && sma60 ? (close>sma20 && close>sma60 ? 20 : 8) : 0)
+        clamp(nearHighRatio??0,0,1)*50 +
+        clamp(((sharpe20??0)+1)/3,0,1)*30 +
+        (sma20!==null && sma60!==null ? (close>sma20 && close>sma60 ? 20 : 5) : 0)
       );
 
-      const roeScore = roe === null ? 0 : clamp((roe+10)/40,0,1)*100;
-      const growthScore = rev === null ? 0 : clamp((rev+20)/60,0,1)*100;
-      const fcfScore = fcf === null ? 0 : (fcf > 0 ? 80 : 20);
-      const debtScore = debt === null ? 0 : clamp(100 - debt, 0, 100);
-      const valueScore = pe === null ? 0 : (pe > 0 ? clamp(100 - pe*2.2, 0, 100) : 75);
-      const stabilityScore = sharpe20 === null ? 0 : clamp((sharpe20+1)/2.5,0,1)*100;
-      const yieldScore = yieldPct === null ? 0 : clamp(yieldPct/10,0,1)*100;
+      const roeScore = roe===null ? 0 : clamp((roe+10)/40,0,1)*100;
+      const growthScore = rev===null ? 0 : clamp((rev+20)/60,0,1)*100;
+      const fcfScore = fcf===null ? 0 : (fcf>0 ? 85 : 15);
+      const debtScore = debt===null ? 0 : clamp(100-debt,0,100);
+      const valueScore = pe===null ? 0 : (pe>0 ? clamp(100-pe*2.2,0,100) : 70);
+      const stabilityScore = sharpe20===null ? 0 : clamp((sharpe20+1)/2.5,0,1)*100;
+      const yieldScore = yieldPct===null ? 0 : clamp(yieldPct/8,0,1)*100;
+      const continuityScore = clamp((n(s.dividend_continuity_years)??0)/5,0,1)*100;
+
       const scoreParts = {
-        technical: Math.round((stabilityScore*0.5) + ((sma20 && sma60 && close>sma20 && close>sma60)?50:10)*0.5),
-        momentum: Math.round((swingScore*0.6) + (dayTradeScore*0.4)),
-        fundamental: Math.round((roeScore*0.28)+(growthScore*0.24)+(fcfScore*0.20)+(debtScore*0.14)+(valueScore*0.14)),
-        dividend: Math.round(yieldScore*0.7 + (n(s.dividend_continuity_years) ?? 0)*6)
+        technical: Math.round(stabilityScore*.5 + (sma20!==null && sma60!==null && close>sma20 && close>sma60 ? 50 : 10)*.5),
+        momentum: Math.round(swingScore*.6 + dayTradeScore*.4),
+        fundamental: Math.round(roeScore*.28 + growthScore*.24 + fcfScore*.20 + debtScore*.14 + valueScore*.14),
+        dividend: Math.round(yieldScore*.65 + continuityScore*.35),
       };
-      const strategyScore = Math.round(
-        scoreParts.technical*0.25 +
-        scoreParts.momentum*0.25 +
-        scoreParts.fundamental*0.35 +
-        scoreParts.dividend*0.15
-      );
 
-      const longTermEligible = yieldPct !== null && yieldPct >= 8
-        ? (roe === null ? true : roe > 0)
-        : false;
-
-      const backtest = s.backtest || {};
+      const strategyScore = Math.round(scoreParts.technical*.25 + scoreParts.momentum*.25 + scoreParts.fundamental*.35 + scoreParts.dividend*.15);
+      const longTermScore = Math.round(scoreParts.fundamental*.35 + scoreParts.dividend*.35 + stabilityScore*.20 + valueScore*.10);
+      const longTermEligible = yieldPct!==null && yieldPct>=LONG_MIN_YIELD && (roe===null || roe>0) && (fcf===null || fcf>=0) && (debt===null || debt<70);
 
       return {
         ...s,
-        name: s.name || s.symbol,
-        category: s.category || "一般",
-        price: close,
-        openPrice: open,
-        high, low, volume, amount,
-        net15Total: net15,
-        pe,pb,rev_yoy:rev,roe,eps,operating_margin:opMargin,gross_margin:grossMargin,
-        fcf,debt_ratio:debt,dividend,yieldPct,
-        sharpe20,sma20,sma60,nearHighRatio,
-        intradayRet,volumeRatio,rangePosition,
-        dayTradeScore,reboundScore,isRebound,swingScore,longTermEligible,
-        strategyScore, scoreParts, dataQuality: dataQuality({...s, yield_pct:yieldPct}),
-        backtest
+        name:s.name||s.symbol, category:s.category||"一般", price:close, openPrice:open, high, low, amount, volume,
+        pe,pb,rev_yoy:rev,roe,eps,fcf,debt_ratio:debt,gross_margin:grossMargin,operating_margin:opMargin,
+        dividend_ttm:dividend, yieldPct, net15Total:net15, sharpe20,sma20,sma60,nearHighRatio,momo20,
+        intradayRet,volumeRatio,rangePosition,dayTradeScore,reboundScore,isRebound,swingScore,
+        longTermScore,longTermEligible,strategyScore,scoreParts,dataQuality:dataQuality({...s,dividend_ttm:dividend}),
+        backtest:s.backtest||{}
       };
     }).filter(Boolean);
   }
 
   function sortArray(list, defaultKey) {
-    const arr = [...list];
-    const keyMap = {
-      STRATEGY_SCORE: "strategyScore",
-      DAYTRADE: "dayTradeScore",
-      SWING: "swingScore",
-      DIVIDEND: "longTermScore",
-      SHARPE20: "sharpe20",
-      INSTITUTION: "net15Total",
-      GROWTH: "rev_yoy",
-      ROE: "roe"
-    };
-    const key = CURRENT_SORT === "STRATEGY_SCORE" ? "strategyScore" : (keyMap[CURRENT_SORT] || defaultKey);
+    const arr=[...list];
+    const keyMap={TOTAL:"strategyScore",DAYTRADE:"dayTradeScore",SWING:"swingScore",DIVIDEND:"longTermScore",SHARPE20:"sharpe20",INSTITUTION:"net15Total",GROWTH:"rev_yoy",ROE:"roe"};
+    const key = CURRENT_SORT==="STRATEGY_SCORE" ? defaultKey : (keyMap[CURRENT_SORT] || defaultKey);
     arr.sort((a,b)=>(n(b[key])??-Infinity)-(n(a[key])??-Infinity));
     return arr;
   }
 
   function renderAllSections() {
-    let rebound = COMPUTED_STOCKS.filter(s => s.isRebound).sort((a,b)=>b.reboundScore-a.reboundScore);
-    if (!rebound.length) rebound = [...COMPUTED_STOCKS].sort((a,b)=>b.reboundScore-a.reboundScore);
-    renderCardList("reboundList", rebound.slice(0,CURRENT_LIMIT), "REBOUND");
+    let rebound = COMPUTED_STOCKS.filter(s=>s.isRebound);
+    if (!rebound.length) rebound=[...COMPUTED_STOCKS];
+    renderCardList("reboundList",sortArray(rebound,"reboundScore").slice(0,CURRENT_LIMIT),"REBOUND");
 
-    const day = [...COMPUTED_STOCKS].sort((a,b)=>b.dayTradeScore-a.dayTradeScore);
-    renderCardList("dayTradeList", day.slice(0,CURRENT_LIMIT), "DAYTRADE");
+    renderCardList("dayTradeList",sortArray(COMPUTED_STOCKS,"dayTradeScore").slice(0,CURRENT_LIMIT),"DAYTRADE");
 
-    const swing = COMPUTED_STOCKS.filter(s=>(s.nearHighRatio??0) >= 0.85).sort((a,b)=>b.swingScore-a.swingScore);
-    renderCardList("shortSwingList", (swing.length? swing : [...COMPUTED_STOCKS].sort((a,b)=>b.swingScore-a.swingScore)).slice(0,CURRENT_LIMIT), "SWING");
+    let swing=COMPUTED_STOCKS.filter(s=>(s.nearHighRatio??0)>=.85);
+    if (!swing.length) swing=[...COMPUTED_STOCKS];
+    renderCardList("shortSwingList",sortArray(swing,"swingScore").slice(0,CURRENT_LIMIT),"SWING");
 
-    const long = [...COMPUTED_STOCKS].sort((a,b)=>(b.longTermScore??0)-(a.longTermScore??0));
-    renderCardList("longTermList", long.slice(0,CURRENT_LIMIT), "LONG");
-
+    let long=COMPUTED_STOCKS.filter(s=>s.longTermEligible);
+    if (!long.length) long=[...COMPUTED_STOCKS];
+    renderCardList("longTermList",sortArray(long,"longTermScore").slice(0,CURRENT_LIMIT),"LONG");
     renderBacktest();
   }
 
-  function renderCardList(containerId, list, strategy) {
-    const c = document.getElementById(containerId);
-    if (!list.length) {
-      c.innerHTML = `<div class="text-[11px] text-sub text-center py-8">無符合條件之標的</div>`;
-      return;
-    }
-
-    c.innerHTML = list.map((s,idx)=>{
-      const tag = strategy === "DAYTRADE"
-        ? `${s.intradayRet >= 0 ? "+" : ""}${pct((s.intradayRet??0)*100,2)} · 量比 ${fmt(s.volumeRatio,1)}x`
-        : strategy === "SWING"
-        ? `距250D高 ${pct((1-(s.nearHighRatio??0))*100,1)}`
-        : strategy === "LONG"
-        ? `${s.yieldPct !== null ? `殖利率 ${pct(s.yieldPct,1)}` : "殖利率 N/A"}`
-        : `20D ${s.momo20 ? pct((s.momo20-1)*100,1) : ""}`;
-
-      const score = strategy === "REBOUND" ? s.reboundScore
-        : strategy === "DAYTRADE" ? s.dayTradeScore
-        : strategy === "SWING" ? s.swingScore
-        : s.strategyScore;
-
-      return `
-        <div onclick="openStockDetail('${s.symbol}','${strategy}')"
-          class="cursor-pointer panel p-2.5 rounded-xl border hover:translate-y-[-1px] transition">
-          <div class="flex justify-between items-center gap-2">
-            <div class="min-w-0">
-              <div class="flex items-center gap-1.5">
-                <span class="text-[9px] text-sub">#${idx+1}</span>
-                <span class="font-bold text-xs text-main truncate">${escapeHtml(s.name)}</span>
-                <span class="text-[9px] text-sub">${s.symbol}</span>
-              </div>
-              <div class="text-[10px] text-sub mt-1">${tag}</div>
-            </div>
-            <div class="text-right shrink-0">
-              <div class="text-sm font-bold text-main">${fmt(s.price,2)}</div>
-              <div class="text-[9px] text-emerald-300">模型 ${fmt(score,0)}</div>
-            </div>
-          </div>
-        </div>`;
+  function renderCardList(containerId,list,strategy) {
+    const c=document.getElementById(containerId);
+    if (!list.length) { c.innerHTML='<div class="text-[11px] text-sub text-center py-8">無符合條件之標的</div>'; return; }
+    const cls = strategy==="REBOUND" ? "card-rebound" : strategy==="DAYTRADE" ? "card-daytrade" : strategy==="SWING" ? "card-swing" : "card-long";
+    c.innerHTML=list.map((s,idx)=>{
+      const tag = strategy==="DAYTRADE" ? `${pct((s.intradayRet??0)*100,2)} · 量比 ${fmt(s.volumeRatio,1)}x`
+        : strategy==="SWING" ? `距250D高 ${pct((1-(s.nearHighRatio??0))*100,1)}`
+        : strategy==="LONG" ? `TTM殖利率 ${pct(s.yieldPct,1)} · 連續 ${s.dividend_continuity_years??"N/A"} 年`
+        : `20D ${s.momo20!==null ? pct((s.momo20-1)*100,1) : "N/A"}`;
+      const score = strategy==="REBOUND" ? s.reboundScore : strategy==="DAYTRADE" ? s.dayTradeScore : strategy==="SWING" ? s.swingScore : s.longTermScore;
+      return `<div onclick="openStockDetail('${s.symbol}','${strategy}')" class="cursor-pointer ${cls} p-2.5 rounded-xl border hover:translate-y-[-1px] transition">
+        <div class="flex justify-between items-center gap-2"><div class="min-w-0"><div class="flex items-center gap-1.5"><span class="text-[9px] text-sub">#${idx+1}</span><span class="font-bold text-xs text-main truncate">${escapeHtml(s.name)}</span><span class="text-[9px] text-sub">${escapeHtml(s.symbol)}</span></div><div class="text-[10px] text-sub mt-1">${tag}</div></div><div class="text-right shrink-0"><div class="text-sm font-bold text-main">${fmt(s.price,2)}</div><div class="text-[9px] text-emerald-300">分數 ${fmt(score,0)}</div></div></div>
+      </div>`;
     }).join("");
   }
 
   function renderBacktest() {
-    const b = META.backtests || {};
-    const defs = [
-      ["rebound","均線回踩","rebound","technical"],
-      ["swing","強勢波段","swing","technical"],
-      ["daytrade_proxy","當沖代理","daytrade_proxy","proxy"]
-    ];
-    document.getElementById("backtestGrid").innerHTML = defs.map(([key,title,label,type])=>{
-      const x = b[key] || {};
-      return `
-        <div class="rounded-xl border muted-border p-3">
-          <div class="flex justify-between items-center">
-            <div class="text-xs font-bold text-main">${title}</div>
-            <div class="text-[9px] text-sub">${type === "proxy" ? "日線代理" : "樣本內"}</div>
-          </div>
-          <div class="grid grid-cols-2 gap-2 mt-3">
-            <div><div class="text-[9px] text-sub">訊號數</div><div class="text-sm text-main font-bold">${x.signals ?? 0}</div></div>
-            <div><div class="text-[9px] text-sub">勝率</div><div class="text-sm font-bold ${x.win_rate>=50?'metric-good':'metric-warn'}">${x.win_rate==null?"N/A":pct(x.win_rate,1)}</div></div>
-            <div><div class="text-[9px] text-sub">平均報酬</div><div class="text-sm font-bold ${(x.avg_return??0)>=0?'metric-good':'metric-bad'}">${x.avg_return==null?"N/A":pct(x.avg_return,2)}</div></div>
-            <div><div class="text-[9px] text-sub">最大回撤</div><div class="text-sm font-bold metric-bad">${x.max_drawdown==null?"N/A":pct(x.max_drawdown,2)}</div></div>
-          </div>
-          <div class="text-[9px] text-sub mt-2 leading-relaxed">${escapeHtml(x.note || "依儲存的250日資料計算。")}</div>
-        </div>`;
-    }).join("");
+    const bt=META.backtests||{};
+    const items=[["均線回踩",bt.rebound],["強勢波段",bt.swing],["日線短線代理",bt.daytrade_proxy]];
+    document.getElementById("backtestGrid").innerHTML=items.map(([title,x])=>`<div class="rounded-xl border muted-border p-3"><div class="text-xs font-bold text-main">${title}</div><div class="grid grid-cols-3 gap-2 mt-2"><div><div class="text-[9px] text-sub">訊號</div><div class="text-sm text-main">${x?.signals??0}</div></div><div><div class="text-[9px] text-sub">勝率</div><div class="text-sm text-main">${x?.win_rate==null?"N/A":pct(x.win_rate,1)}</div></div><div><div class="text-[9px] text-sub">平均</div><div class="text-sm ${(x?.avg_return??0)>=0?'metric-good':'metric-bad'}">${x?.avg_return==null?"N/A":pct(x.avg_return,2)}</div></div></div><div class="text-[9px] text-sub mt-2">${escapeHtml(x?.note||"")}</div></div>`).join("");
   }
 
   function renderFactorGrid(stock) {
-    const parts = stock.scoreParts || {};
-    document.getElementById("factorGrid").innerHTML = [
-      ["技術面",parts.technical],
-      ["動能",parts.momentum],
-      ["基本面",parts.fundamental],
-      ["股利",parts.dividend]
-    ].map(([label,val])=>`
-      <div class="panel rounded-lg p-2">
-        <div class="text-[9px] text-sub">${label}</div>
-        <div class="text-base font-bold text-main mt-1">${fmt(val,0)}</div>
-      </div>`).join("");
+    const parts=stock.scoreParts||{};
+    document.getElementById("factorGrid").innerHTML=[["技術面",parts.technical],["動能",parts.momentum],["基本面",parts.fundamental],["股利",parts.dividend]].map(([label,val])=>`<div class="panel rounded-lg p-2"><div class="text-[9px] text-sub">${label}</div><div class="text-base font-bold text-main mt-1">${fmt(val,0)}</div></div>`).join("");
   }
 
   function renderFundamentals(stock) {
-    const items = [
-      ["PE", stock.pe, 1],["PB",stock.pb,2],["EPS",stock.eps,2],
-      ["ROE",stock.roe,1],["營收YoY",stock.rev_yoy,1],
-      ["營益率",stock.operating_margin,1],["自由現金流",stock.fcf,0],["負債率",stock.debt_ratio,1],
-      ["股利",stock.dividend,2],["殖利率",stock.yieldPct,1],["15日法人",stock.net15Total,0],
-      ["量比",stock.volumeRatio,1]
-    ];
-    document.getElementById("fundamentalGrid").innerHTML = items.map(([k,v,d])=>`
-      <div class="rounded-lg border muted-border p-2">
-        <div class="text-[9px] text-sub">${k}</div>
-        <div class="text-xs font-bold text-main mt-1">${v===null||v===undefined?"N/A":`${Number(v).toFixed(d)}${k.includes("率")||k==="ROE"||k==="營益率"||k==="殖利率"?"%":k==="量比"?"x":""}`}</div>
-      </div>`).join("");
+    const items=[["PE",stock.pe,1,""],["PB",stock.pb,2,""],["EPS",stock.eps,2,""],["ROE",stock.roe,1,"%"],["營收YoY",stock.rev_yoy,1,"%"],["營益率",stock.operating_margin,1,"%"],["自由現金流",stock.fcf,0,""],["負債率",stock.debt_ratio,1,"%"],["TTM股利",stock.dividend_ttm,2,""],["TTM殖利率",stock.yieldPct,1,"%"],["連續配息",stock.dividend_continuity_years,0,"年"],["15日法人",stock.net15Total,0,""],["20D Sharpe",stock.sharpe20,2,""],["20D量比",stock.volumeRatio,2,"x"],["20D動能",stock.momo20===null?null:(stock.momo20-1)*100,1,"%"]];
+    document.getElementById("fundamentalGrid").innerHTML=items.map(([k,v,d,suffix])=>`<div class="rounded-lg border muted-border p-2"><div class="text-[9px] text-sub">${k}</div><div class="text-xs font-bold text-main mt-1">${v==null?"N/A":`${Number(v).toFixed(d)}${suffix}`}</div></div>`).join("");
   }
 
-  function buildReasons(stock, strategyType) {
-    const r = [];
-    if (strategyType === "DAYTRADE") {
-      r.push(`日內報酬 <b>${pct((stock.intradayRet??0)*100,2)}</b>，量比 <b>${fmt(stock.volumeRatio,2)}x</b>。`);
-      r.push(`收盤位於當日振幅區間 <b>${pct((stock.rangePosition??0)*100,1)}</b>，並以成交金額排名百分位參與當沖分數。`);
-      r.push(`注意：此處使用日線資料，不能取代真正的5/15分鐘級別大單與委買委賣資料。`);
-    } else if (strategyType === "SWING") {
+  function buildReasons(stock,strategyType) {
+    const r=[];
+    if (strategyType==="DAYTRADE") {
+      r.push(`日線開收報酬 <b>${pct((stock.intradayRet??0)*100,2)}</b>，20日量比 <b>${fmt(stock.volumeRatio,2)}x</b>。`);
+      r.push(`收盤位於當日振幅區間 <b>${pct((stock.rangePosition??0)*100,1)}</b>；此模型不是即時盤中當沖訊號。`);
+    } else if (strategyType==="SWING") {
       r.push(`目前距250日高點約 <b>${pct((1-(stock.nearHighRatio??0))*100,1)}</b>。`);
-      r.push(`20日年化風險調整報酬約 <b>${fmt(stock.sharpe20,2)}</b>，並檢查20/60日均線趨勢。`);
-    } else if (strategyType === "LONG") {
-      r.push(stock.yieldPct !== null ? `真實現金股利殖利率約 <b>${pct(stock.yieldPct,2)}</b>，不再對缺失股利資料做模擬。` : `殖利率資料缺失，<b>不以預設值代替</b>。`);
-      r.push(`ROE <b>${pct(stock.roe,1)}</b>、自由現金流 <b>${fmt(stock.fcf,1)}</b>、負債率 <b>${pct(stock.debt_ratio,1)}</b>。`);
-      r.push(`股利連續性年數：<b>${stock.dividend_continuity_years ?? "N/A"}</b>。`);
+      r.push(`20日年化 Sharpe 約 <b>${fmt(stock.sharpe20,2)}</b>，並檢查20/60日均線趨勢。`);
+    } else if (strategyType==="LONG") {
+      r.push(stock.yieldPct!==null ? `近365日現金股利殖利率約 <b>${pct(stock.yieldPct,2)}</b>。` : `殖利率資料缺失，<b>不以固定值補齊</b>。`);
+      r.push(`長期分數 <b>${fmt(stock.longTermScore,0)}</b>；ROE <b>${pct(stock.roe,1)}</b>、FCF <b>${fmt(stock.fcf,1)}</b>、負債率 <b>${pct(stock.debt_ratio,1)}</b>。`);
+      r.push(`連續配息年度：<b>${stock.dividend_continuity_years??"N/A"}</b>。`);
     } else {
-      r.push(`股價位於20日均線 ${fmt(stock.sma20,2)} 與60日均線 ${fmt(stock.sma60,2)} 上方，並檢查近3日回踩。`);
-      r.push(`20日動能與法人15日買超共同參與回踩評分。`);
-      r.push(`營收年增 ${pct(stock.rev_yoy,1)}；缺資料時不自動塞入虛構成長率。`);
+      r.push(`MA20 ${fmt(stock.sma20,2)}、MA60 ${fmt(stock.sma60,2)}，並檢查近3日回踩與紅K。`);
+      r.push(`20日動能 <b>${stock.momo20===null?"N/A":pct((stock.momo20-1)*100,1)}</b>，法人15日買超共同參與評分。`);
     }
-
-    r.push(`模型總分 <b>${fmt(stock.strategyScore,0)}/100</b>，資料完整度約 <b>${stock.dataQuality}%</b>。`);
+    r.push(`多因子總分 <b>${fmt(stock.strategyScore,0)}/100</b>，資料完整度約 <b>${stock.dataQuality}%</b>。`);
     return r;
   }
 
   function renderStockBacktest(stock) {
-    const items = [
-      ["均線回踩",stock.backtest?.rebound],
-      ["強勢波段",stock.backtest?.swing],
-      ["當沖代理",stock.backtest?.daytrade_proxy]
-    ];
-    document.getElementById("stockBacktest").innerHTML = items.map(([title,x])=>`
-      <div class="rounded-lg border muted-border p-2.5">
-        <div class="text-[10px] font-bold text-main">${title}</div>
-        <div class="grid grid-cols-3 gap-1 mt-2">
-          <div><div class="text-[8px] text-sub">訊號</div><div class="text-xs text-main">${x?.signals ?? 0}</div></div>
-          <div><div class="text-[8px] text-sub">勝率</div><div class="text-xs text-main">${x?.win_rate==null?"N/A":pct(x.win_rate,1)}</div></div>
-          <div><div class="text-[8px] text-sub">平均</div><div class="text-xs ${(x?.avg_return??0)>=0?'metric-good':'metric-bad'}">${x?.avg_return==null?"N/A":pct(x.avg_return,2)}</div></div>
-        </div>
-        <div class="text-[8px] text-sub mt-2">${escapeHtml(x?.note || "")}</div>
-      </div>`).join("");
+    const items=[["均線回踩",stock.backtest?.rebound],["強勢波段",stock.backtest?.swing],["日線短線代理",stock.backtest?.daytrade_proxy]];
+    document.getElementById("stockBacktest").innerHTML=items.map(([title,x])=>`<div class="rounded-lg border muted-border p-2.5"><div class="text-[10px] font-bold text-main">${title}</div><div class="grid grid-cols-3 gap-1 mt-2"><div><div class="text-[8px] text-sub">訊號</div><div class="text-xs text-main">${x?.signals??0}</div></div><div><div class="text-[8px] text-sub">勝率</div><div class="text-xs text-main">${x?.win_rate==null?"N/A":pct(x.win_rate,1)}</div></div><div><div class="text-[8px] text-sub">平均</div><div class="text-xs ${(x?.avg_return??0)>=0?'metric-good':'metric-bad'}">${x?.avg_return==null?"N/A":pct(x.avg_return,2)}</div></div></div><div class="text-[8px] text-sub mt-2">${escapeHtml(x?.note||"")}</div></div>`).join("");
   }
 
-  function openStockDetail(symbol, strategyType) {
-    const stock = COMPUTED_STOCKS.find(s=>s.symbol===String(symbol));
+  async function openStockDetail(symbol,strategyType) {
+    const stock=COMPUTED_STOCKS.find(s=>s.symbol===String(symbol));
     if (!stock) return;
-
-    document.getElementById("modalTitle").textContent = `${stock.symbol} ${stock.name}`;
-    document.getElementById("modalCategory").textContent = stock.category || "一般";
-    document.getElementById("modalSubTitle").textContent = `資料日期 ${stock.updated_at || META.updated_at || "--"} · 股票池 #${stock.hot_rank || "--"}`;
-    document.getElementById("modalYahooLink").href = `https://tw.stock.yahoo.com/quote/${stock.symbol}.TW`;
-
-    const score = clamp(stock.strategyScore ?? 0, 0, 100);
-    document.getElementById("scoreValue").textContent = score.toFixed(0);
-    document.getElementById("scoreLabel").textContent = scoreLabel(score);
-    document.getElementById("scoreQuality").textContent = `資料完整度 ${stock.dataQuality}%`;
-    document.getElementById("scoreCircle").style.setProperty("--score", `${score}%`);
-
-    renderFactorGrid(stock);
-    renderFundamentals(stock);
-    document.getElementById("modalReason").innerHTML = buildReasons(stock, strategyType).map(x=>`<div>• ${x}</div>`).join("");
+    document.getElementById("modalTitle").textContent=`${stock.symbol} ${stock.name}`;
+    document.getElementById("modalCategory").textContent=stock.category||"一般";
+    document.getElementById("modalSubTitle").textContent=`資料日期 ${stock.updated_at||META.updated_at||"--"} · 股票池 #${stock.hot_rank||"--"}`;
+    document.getElementById("modalYahooLink").href=`https://tw.stock.yahoo.com/quote/${stock.symbol}.TW`;
+    const score=clamp(stock.strategyScore??0,0,100);
+    document.getElementById("scoreValue").textContent=score.toFixed(0);
+    document.getElementById("scoreLabel").textContent=scoreLabel(score);
+    document.getElementById("scoreQuality").textContent=`資料完整度 ${stock.dataQuality}%`;
+    document.getElementById("scoreCircle").style.setProperty("--score",`${score}%`);
+    renderFactorGrid(stock); renderFundamentals(stock);
+    document.getElementById("modalReason").innerHTML=buildReasons(stock,strategyType).map(x=>`<div>• ${x}</div>`).join("");
     renderStockBacktest(stock);
-
     document.getElementById("stockDetailModal").classList.remove("hidden");
-    setTimeout(()=>renderModalChart(stock), 30);
+
+    const c=document.getElementById("chartContainer");
+    c.innerHTML='<div class="h-full flex items-center justify-center text-xs text-sub">載入 K 線中…</div>';
+    if (!Array.isArray(stock.kline) || !stock.kline.length) {
+      try {
+        stock.kline = await fetchJson(`${FIREBASE_ROOT}/kline/${encodeURIComponent(stock.symbol)}.json`);
+      } catch (err) {
+        console.warn("Kline fetch failed",err);
+      }
+    }
+    renderModalChart(stock);
   }
 
   function renderModalChart(stock) {
-    const c = document.getElementById("chartContainer");
-    c.innerHTML = "";
-    if (currentChart) {
-      currentChart.remove();
-      currentChart = null;
-    }
-    if (!window.LightweightCharts || !stock.kline?.length) {
-      c.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-sub">暫無 K 線資料</div>`;
-      return;
-    }
-
-    currentChart = LightweightCharts.createChart(c, {
-      width: c.clientWidth,
-      height: 330,
-      layout: { background:{color:"#0a0c10"}, textColor:"#94a3b8" },
-      grid:{ vertLines:{color:"#151922"}, horzLines:{color:"#151922"} },
-      timeScale:{ borderColor:"#272a30", timeVisible:false }
-    });
-
-    const series = currentChart.addCandlestickSeries({
-      upColor:"#ef4444", downColor:"#22c55e",
-      borderUpColor:"#ef4444", borderDownColor:"#22c55e",
-      wickUpColor:"#ef4444", wickDownColor:"#22c55e"
-    });
-    series.setData(stock.kline.map(k=>({
-      time:k.time, open:k.open, high:k.high, low:k.low, close:k.close
-    })));
+    const c=document.getElementById("chartContainer"); c.innerHTML="";
+    if (currentChart) { currentChart.remove(); currentChart=null; }
+    if (!window.LightweightCharts || !Array.isArray(stock.kline) || !stock.kline.length) { c.innerHTML='<div class="h-full flex items-center justify-center text-xs text-sub">暫無 K 線資料</div>'; return; }
+    currentChart=LightweightCharts.createChart(c,{width:c.clientWidth,height:330,layout:{background:{color:"#0a0c10"},textColor:"#94a3b8"},grid:{vertLines:{color:"#151922"},horzLines:{color:"#151922"}},timeScale:{borderColor:"#272a30",timeVisible:false}});
+    const series=currentChart.addCandlestickSeries({upColor:"#ef4444",downColor:"#22c55e",borderUpColor:"#ef4444",borderDownColor:"#22c55e",wickUpColor:"#ef4444",wickDownColor:"#22c55e"});
+    series.setData(stock.kline.map(k=>({time:k.time,open:k.open,high:k.high,low:k.low,close:k.close})));
     currentChart.timeScale().fitContent();
   }
 
   function closeModal() {
     document.getElementById("stockDetailModal").classList.add("hidden");
-    if (currentChart) {
-      currentChart.remove();
-      currentChart = null;
-    }
+    if (currentChart) { currentChart.remove(); currentChart=null; }
+  }
+  function handleSortChange(v) { CURRENT_SORT=v; renderAllSections(); }
+  function setDisplayLimit(v) { CURRENT_LIMIT=v; renderAllSections(); }
+  function escapeHtml(str) { return String(str??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch])); }
+
+  async function fetchJson(url) {
+    const res=await fetch(url,{cache:"no-store"});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
   }
 
-  function handleSortChange(v) {
-    CURRENT_SORT = v;
-    renderAllSections();
+  async function loadSplitSchema() {
+    const [meta,summary,backtests]=await Promise.all([
+      fetchJson(`${FIREBASE_ROOT}/meta.json`),
+      fetchJson(`${FIREBASE_ROOT}/summary.json`),
+      fetchJson(`${FIREBASE_ROOT}/backtests.json`)
+    ]);
+    if (!summary || typeof summary!=="object") throw new Error("新版 Firebase 缺少 summary");
+    DATA_MODE="split";
+    META={...(meta||{}),backtests:backtests||{}};
+    return Object.values(summary);
   }
 
-  function setDisplayLimit(n) {
-    CURRENT_LIMIT = n;
-    renderAllSections();
-  }
-
-  function escapeHtml(str) {
-    return String(str ?? "").replace(/[&<>"']/g, ch => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-    }[ch]));
+  async function loadLegacySchema() {
+    const data=await fetchJson(`${FIREBASE_ORIGIN}/.json`);
+    if (!data || !data.stocks) throw new Error("舊版 Firebase 也缺少 stocks");
+    DATA_MODE="legacy";
+    META={...(data.metadata||{}),updated_at:data.updated_at,backtests:data.backtests||data.metadata?.backtests||{}};
+    return Array.isArray(data.stocks)?data.stocks:Object.values(data.stocks);
   }
 
   async function fetchMarketData() {
-    const status = document.getElementById("dataStatusText");
-    status.textContent = "正在從 Firebase 讀取…";
-
+    const status=document.getElementById("dataStatusText");
+    status.textContent="正在從 Firebase 讀取摘要資料…";
     try {
-      const res = await fetch(FIREBASE_URL, { cache:"no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (!data || !data.stocks) throw new Error("Firebase 缺少 stocks");
-
-      META = {
-        ...(data.metadata || {}),
-        updated_at: data.updated_at,
-        backtests: data.backtests || data.metadata?.backtests || {}
-      };
-
-      const raw = Array.isArray(data.stocks) ? data.stocks : Object.values(data.stocks);
-      COMPUTED_STOCKS = runQuantitativeEngine(raw);
-
-      document.getElementById("metaStocks").textContent = raw.length;
-      document.getElementById("metaDate").textContent = data.updated_at || "--";
-      const avgQuality = COMPUTED_STOCKS.length
-        ? Math.round(COMPUTED_STOCKS.reduce((a,b)=>a+b.dataQuality,0)/COMPUTED_STOCKS.length)
-        : 0;
-      document.getElementById("metaQuality").textContent = `${avgQuality}%`;
-      const signalCount = Object.values(META.backtests||{}).reduce((a,b)=>a+(Number(b.signals)||0),0);
-      document.getElementById("metaSignals").textContent = signalCount.toLocaleString();
-
-      status.textContent = `Firebase 同步完成 · ${raw.length} 檔 · 更新日 ${data.updated_at || "N/A"}`;
+      let raw;
+      try {
+        raw=await loadSplitSchema();
+      } catch (newErr) {
+        console.warn("新版 schema 尚未可用，改讀舊版 root",newErr);
+        status.textContent="新版資料尚未建立，暫時讀取舊版 Firebase…";
+        raw=await loadLegacySchema();
+      }
+      COMPUTED_STOCKS=runQuantitativeEngine(raw);
+      document.getElementById("metaStocks").textContent=raw.length;
+      document.getElementById("metaDate").textContent=META.updated_at||"--";
+      const avgQuality=COMPUTED_STOCKS.length?Math.round(COMPUTED_STOCKS.reduce((a,b)=>a+b.dataQuality,0)/COMPUTED_STOCKS.length):0;
+      document.getElementById("metaQuality").textContent=`${avgQuality}%`;
+      const signalCount=Object.values(META.backtests||{}).reduce((a,b)=>a+(Number(b?.signals)||0),0);
+      document.getElementById("metaSignals").textContent=signalCount.toLocaleString();
+      status.textContent=`Firebase 同步完成 · ${raw.length} 檔 · 更新日 ${META.updated_at||"N/A"} · ${DATA_MODE==="split"?"摘要/K線分離":"舊版相容模式"}`;
       renderAllSections();
     } catch (err) {
       console.error(err);
-      status.textContent = `Firebase 讀取失敗：${err.message}`;
+      status.textContent=`Firebase 讀取失敗：${err.message}`;
     }
   }
 
-  window.addEventListener("click", e => {
-    if (e.target.id === "stockDetailModal") closeModal();
-  });
-
-  window.addEventListener("resize", () => {
-    if (currentChart) {
-      const c = document.getElementById("chartContainer");
-      currentChart.applyOptions({ width:c.clientWidth });
-    }
-  });
-
-  window.onload = () => {
-    setTheme(CURRENT_THEME);
-    fetchMarketData();
-  };
+  window.addEventListener("click",e=>{ if (e.target.id==="stockDetailModal") closeModal(); });
+  window.addEventListener("keydown",e=>{ if (e.key==="Escape") closeModal(); });
+  window.addEventListener("resize",()=>{ if (currentChart) { const c=document.getElementById("chartContainer"); currentChart.applyOptions({width:c.clientWidth}); } });
+  window.onload=()=>{ setTheme(CURRENT_THEME); fetchMarketData(); };
 </script>
 </body>
 </html>
