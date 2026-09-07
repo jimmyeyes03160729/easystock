@@ -1,3 +1,5 @@
+import csv
+import io
 import json
 import math
 import os
@@ -27,13 +29,14 @@ MIN_TECHNICAL_DAYS = int(os.environ.get("MIN_TECHNICAL_DAYS", "60"))
 INSTITUTION_DAYS = int(os.environ.get("INSTITUTION_DAYS", "15"))
 LEGACY_FUNDAMENTAL_MAX_AGE_DAYS = int(os.environ.get("LEGACY_FUNDAMENTAL_MAX_AGE_DAYS", "120"))
 HTTP_TIMEOUT = float(os.environ.get("HTTP_TIMEOUT", "12"))
+HTTP_MAX_RETRIES = max(1, int(os.environ.get("HTTP_MAX_RETRIES", "3")))
 FUGLE_MIN_INTERVAL_SECONDS = float(os.environ.get("FUGLE_MIN_INTERVAL_SECONDS", "1.05"))
 FUGLE_BOOTSTRAP_MAX_PER_RUN = int(os.environ.get("FUGLE_BOOTSTRAP_MAX_PER_RUN", "20"))
 HTTP_WORKERS = max(2, min(8, int(os.environ.get("HTTP_WORKERS", "6"))))
 BACKTEST_HISTORY_BARS = max(KLINE_DAYS, int(os.environ.get("BACKTEST_HISTORY_BARS", "1260")))
 VALIDATION_OOS_DAYS = max(60, int(os.environ.get("VALIDATION_OOS_DAYS", "252")))
 BACKTEST_TOTAL_COST_BPS = max(0.0, float(os.environ.get("BACKTEST_TOTAL_COST_BPS", "70")))
-MODEL_VERSION = "1.1"
+MODEL_VERSION = "1.1.1"
 
 TWSE_BASE = "https://openapi.twse.com.tw/v1"
 TPEX_BASE = "https://www.tpex.org.tw/openapi/v1"
@@ -161,20 +164,101 @@ def name_from_row(row: dict) -> str:
     ).strip()
 
 
-def fetch_json(url: str, *, params: dict | None = None, required: bool = False, label: str = "") -> Any:
-    try:
-        print(f"[HTTP] {label or url}")
-        response = get_http_session().get(url, params=params, timeout=HTTP_TIMEOUT)
-        response.raise_for_status()
-        payload = response.json()
-        if required and payload in (None, [], {}):
-            raise RuntimeError("empty payload")
-        return payload
-    except Exception as exc:
-        print(f"[WARN] {label or url} failed: {exc}")
-        if required:
-            raise
-        return None
+def fetch_json(url: str, *, params: dict | None = None, required: bool = False, label: str = "", retries: int | None = None) -> Any:
+    """Fetch JSON with bounded retries. TWSE/TPEx occasionally return an empty/HTML body with HTTP 200."""
+    attempts = max(1, retries or HTTP_MAX_RETRIES)
+    last_exc: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            suffix = f" ({attempt}/{attempts})" if attempts > 1 else ""
+            print(f"[HTTP] {label or url}{suffix}")
+            response = get_http_session().get(url, params=params, timeout=HTTP_TIMEOUT)
+            response.raise_for_status()
+            if not response.content or not response.text.strip():
+                raise RuntimeError("empty HTTP body")
+            payload = response.json()
+            if required and payload in (None, [], {}):
+                raise RuntimeError("empty JSON payload")
+            return payload
+        except Exception as exc:
+            last_exc = exc
+            content_type = ""
+            preview = ""
+            try:
+                content_type = response.headers.get("content-type", "")[:80]
+                preview = re.sub(r"\s+", " ", response.text[:120]).strip()
+            except Exception:
+                pass
+            detail = f"; content-type={content_type}" if content_type else ""
+            if preview:
+                detail += f"; body={preview!r}"
+            print(f"[WARN] {label or url} attempt {attempt}/{attempts} failed: {exc}{detail}")
+            if attempt < attempts:
+                time.sleep(min(4.0, 0.8 * (2 ** (attempt - 1))))
+
+    if required:
+        raise RuntimeError(f"{label or url} failed after {attempts} attempts") from last_exc
+    return None
+
+
+def fetch_twse_daily_quotes() -> list[dict]:
+    """TWSE daily quote fetch with official CSV fallback.
+
+    Primary: TWSE OpenAPI JSON.
+    Fallback: TWSE open-data CSV endpoint, normalized to the same field names.
+    """
+    label = "TWSE daily quotes"
+    primary = fetch_json(
+        f"{TWSE_BASE}/exchangeReport/STOCK_DAY_ALL",
+        required=False,
+        label=label,
+        retries=HTTP_MAX_RETRIES,
+    )
+    if isinstance(primary, list) and primary:
+        return primary
+
+    fallback_url = "https://www.twse.com.tw/exchangeReport/STOCK_DAY_ALL"
+    print("[HTTP] TWSE daily quotes fallback (official open_data CSV)")
+    last_exc: Exception | None = None
+    for attempt in range(1, HTTP_MAX_RETRIES + 1):
+        try:
+            response = get_http_session().get(
+                fallback_url,
+                params={"response": "open_data"},
+                timeout=HTTP_TIMEOUT,
+                headers={"Accept": "text/csv,text/plain,*/*"},
+            )
+            response.raise_for_status()
+            text = response.content.decode("utf-8-sig", errors="replace").strip()
+            if not text:
+                raise RuntimeError("empty CSV body")
+            reader = csv.DictReader(io.StringIO(text))
+            rows: list[dict] = []
+            for row in reader:
+                if not isinstance(row, dict):
+                    continue
+                rows.append({
+                    "Date": first_value(row, ["日期", "Date"]),
+                    "Code": first_value(row, ["證券代號", "Code"]),
+                    "Name": first_value(row, ["證券名稱", "Name"]),
+                    "TradeVolume": first_value(row, ["成交股數", "TradeVolume"]),
+                    "TradeValue": first_value(row, ["成交金額", "TradeValue"]),
+                    "OpeningPrice": first_value(row, ["開盤價", "OpeningPrice"]),
+                    "HighestPrice": first_value(row, ["最高價", "HighestPrice"]),
+                    "LowestPrice": first_value(row, ["最低價", "LowestPrice"]),
+                    "ClosingPrice": first_value(row, ["收盤價", "ClosingPrice"]),
+                })
+            if rows:
+                print(f"[INFO] TWSE fallback OK: {len(rows)} rows")
+                return rows
+            raise RuntimeError("CSV parsed but contains no rows")
+        except Exception as exc:
+            last_exc = exc
+            print(f"[WARN] TWSE open_data fallback attempt {attempt}/{HTTP_MAX_RETRIES} failed: {exc}")
+            if attempt < HTTP_MAX_RETRIES:
+                time.sleep(min(4.0, 0.8 * (2 ** (attempt - 1))))
+
+    raise RuntimeError("TWSE daily quotes unavailable from both OpenAPI JSON and official CSV fallback") from last_exc
 
 
 def fetch_many(requests_spec: list[dict]) -> dict[str, Any]:
@@ -184,16 +268,21 @@ def fetch_many(requests_spec: list[dict]) -> dict[str, Any]:
         return out
     workers = min(HTTP_WORKERS, len(requests_spec))
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        future_map = {
-            pool.submit(
-                fetch_json,
-                spec["url"],
-                params=spec.get("params"),
-                required=bool(spec.get("required", False)),
-                label=spec.get("label", spec["key"]),
-            ): spec["key"]
-            for spec in requests_spec
-        }
+        future_map = {}
+        for spec in requests_spec:
+            custom_fetcher = spec.get("fetcher")
+            if custom_fetcher is not None:
+                future = pool.submit(custom_fetcher)
+            else:
+                future = pool.submit(
+                    fetch_json,
+                    spec["url"],
+                    params=spec.get("params"),
+                    required=bool(spec.get("required", False)),
+                    label=spec.get("label", spec["key"]),
+                    retries=spec.get("retries"),
+                )
+            future_map[future] = spec["key"]
         for future in as_completed(future_map):
             key = future_map[future]
             out[key] = future.result()
@@ -651,141 +740,34 @@ def _wait_for_fugle_rate_limit() -> None:
 
 
 def fetch_fugle_history(symbol: str, end_day: str) -> list[dict]:
-    """
-    從 Fugle MarketData API 取得股票日 K 歷史資料。
-
-    GitHub Actions 的 FUGLE_API_KEY 由環境變數讀取，
-    並透過 X-API-KEY HTTP Header 傳送給 Fugle。
-    """
     if not FUGLE_API_KEY:
-        print(f"[WARN] Fugle {symbol} skipped: FUGLE_API_KEY is empty")
         return []
-
     end_date = parse_iso_date(end_day) or date.today()
     start_date = end_date - timedelta(days=360)
-
     _wait_for_fugle_rate_limit()
-
-    url = f"{FUGLE_BASE}/historical/candles/{symbol}"
-    params = {
-        "from": start_date.isoformat(),
-        "to": end_date.isoformat(),
-        "timeframe": "D",
-        "adjusted": "false",
-        "fields": "open,high,low,close,volume,turnover",
-        "sort": "asc",
-    }
-    headers = {
-        "X-API-KEY": FUGLE_API_KEY,
-        "Accept": "application/json",
-    }
-
-    try:
-        print(
-            f"[HTTP] Fugle {symbol} history "
-            f"{start_date.isoformat()} -> {end_date.isoformat()}"
-        )
-
-        response = get_http_session().get(
-            url,
-            params=params,
-            headers=headers,
-            timeout=HTTP_TIMEOUT,
-        )
-
-        if response.status_code == 401:
-            print(
-                f"[WARN] Fugle {symbol} history failed: "
-                "401 Unauthorized — 請檢查 GitHub Secret FUGLE_API_KEY"
-            )
-            return []
-
-        if response.status_code == 403:
-            print(
-                f"[WARN] Fugle {symbol} history failed: "
-                "403 Forbidden — API Key 可能沒有 Historical Candles 使用權限"
-            )
-            return []
-
-        if response.status_code == 429:
-            retry_after = response.headers.get("Retry-After")
-            print(
-                f"[WARN] Fugle {symbol} history failed: "
-                "429 Too Many Requests"
-            )
-            if retry_after:
-                print(f"[WARN] Retry-After: {retry_after}")
-            return []
-
-        response.raise_for_status()
-        payload = response.json()
-
-    except requests.Timeout:
-        print(f"[WARN] Fugle {symbol} history failed: timeout")
-        return []
-
-    except requests.ConnectionError as exc:
-        print(
-            f"[WARN] Fugle {symbol} history failed: "
-            f"connection error: {exc}"
-        )
-        return []
-
-    except requests.HTTPError as exc:
-        status_code = exc.response.status_code if exc.response is not None else "unknown"
-        print(
-            f"[WARN] Fugle {symbol} history failed: "
-            f"HTTP {status_code}"
-        )
-        return []
-
-    except ValueError as exc:
-        print(
-            f"[WARN] Fugle {symbol} history failed: "
-            f"invalid JSON: {exc}"
-        )
-        return []
-
-    except Exception as exc:
-        print(f"[WARN] Fugle {symbol} history failed: {exc}")
-        return []
-
-    if not isinstance(payload, dict):
-        print(f"[WARN] Fugle {symbol}: unexpected payload type")
-        return []
-
-    rows = payload.get("data")
-    if not isinstance(rows, list):
-        print(f"[WARN] Fugle {symbol}: no historical data returned")
-        return []
-
+    payload = fetch_json(
+        f"{FUGLE_BASE}/historical/candles/{symbol}",
+        params={
+            "from": start_date.isoformat(),
+            "to": end_date.isoformat(),
+            "timeframe": "D",
+            "adjusted": "false",
+            "fields": "open,high,low,close,volume,turnover",
+            "sort": "asc",
+        },
+        label=f"Fugle {symbol} history",
+    )
+    rows = payload.get("data") if isinstance(payload, dict) else []
     result = []
-
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
-
+    for row in rows or []:
         day = str(row.get("date") or "")[:10]
         o = safe_float(row.get("open"))
         h = safe_float(row.get("high"))
         l = safe_float(row.get("low"))
         c = safe_float(row.get("close"))
         v = safe_int(row.get("volume"))
-        turnover = safe_float(row.get("turnover"))
-
-        if not day or not parse_iso_date(day):
+        if not day or None in (o, h, l, c):
             continue
-
-        if None in (o, h, l, c):
-            continue
-
-        if turnover is not None:
-            amount = turnover
-        elif v:
-            amount = c * v
-        else:
-            amount = None
-
         result.append(
             {
                 "time": day,
@@ -794,18 +776,11 @@ def fetch_fugle_history(symbol: str, end_day: str) -> list[dict]:
                 "low": round(l, 4),
                 "close": round(c, 4),
                 "volume": v,
-                "amount": amount,
+                "amount": safe_float(row.get("turnover")) or ((c * v) if v else None),
             }
         )
+    return normalize_kline(result, KLINE_DAYS)
 
-    result = normalize_kline(result, KLINE_DAYS)
-
-    print(
-        f"[OK] Fugle {symbol}: "
-        f"{len(result)} historical candles"
-    )
-
-    return result
 
 def merge_bars(existing: list[dict] | dict | None, quote: dict, extra_rows: list[dict] | None = None, *, limit: int) -> list[dict]:
     rows: list[dict] = []
@@ -1279,7 +1254,7 @@ def main() -> None:
 
     print("[1/8] 讀取 TWSE / TPEx 當日行情…")
     quote_payloads = fetch_many([
-        {"key": "twse", "url": f"{TWSE_BASE}/exchangeReport/STOCK_DAY_ALL", "required": True, "label": "TWSE daily quotes"},
+        {"key": "twse", "fetcher": fetch_twse_daily_quotes},
         {"key": "tpex", "url": f"{TPEX_BASE}/tpex_mainboard_daily_close_quotes", "required": True, "label": "TPEx daily quotes"},
     ])
     twse_quotes = parse_twse_quotes(quote_payloads.get("twse") or [])
