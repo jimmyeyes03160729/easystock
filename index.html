@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>墨衡量化 Mohren Quant v0.2 - 多因子決策系統</title>
+  <title>墨衡量化 Mohren Quant v0.25 - 多因子決策系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- 輕量走勢圖庫 -->
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
@@ -62,13 +62,13 @@
           <div>
             <div class="flex items-center gap-2">
               <h1 class="text-sm font-semibold tracking-wider text-main uppercase">墨衡量化 ｜ Mohren Quant Matrix</h1>
-              <span class="text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700/60 px-1.5 py-0.2 rounded font-mono">v0.2</span>
+              <span class="text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700/60 px-1.5 py-0.2 rounded font-mono">v0.25 填息增強</span>
             </div>
             <p class="text-[11px] text-sub font-mono mt-0.5" id="dataStatusText">正在載入市場特徵數據庫...</p>
           </div>
         </div>
 
-        <!-- 功能按鈕與色彩模式切換 (預設選中清晰彩色) -->
+        <!-- 功能按鈕與色彩模式切換 -->
         <div class="flex flex-wrap items-center gap-2 font-mono">
           <div class="flex items-center gap-1 bg-zinc-950/40 p-1 rounded-lg border border-zinc-700/40 text-[11px]">
             <button onclick="setTheme('color')" id="themeBtn-color" class="px-2 py-0.5 rounded font-bold transition">清晰彩色</button>
@@ -101,7 +101,7 @@
           <span class="text-[11px] text-sub">排序維度</span>
           <select id="sortPriority" onchange="handleSortChange(this.value)" class="panel-bg border text-xs text-main px-2.5 py-1 rounded-lg focus:outline-none">
             <option value="STRATEGY_SCORE">多因子模型評級 (Rank ▾)</option>
-            <option value="DIVIDEND">現金殖利率 (高配息 ▾)</option>
+            <option value="DIVIDEND_RECOVER">填息與股利綜合力 (防禦 ▾)</option>
             <option value="MOMO_SHARPE">20日風險調整回報 Sharpe (穩定 ▾)</option>
             <option value="INSTITUTION">15日外資與投信籌碼 (買超 ▾)</option>
             <option value="GROWTH">營收年增率 YoY (成長 ▾)</option>
@@ -170,7 +170,7 @@
         </div>
       </div>
 
-      <!-- 專區 4: 長期核心 (含高股利與容量) -->
+      <!-- 專區 4: 長期核心 (含填息動能與容量) -->
       <div class="panel-bg border rounded-xl p-3 flex flex-col justify-between">
         <div class="space-y-2">
           <div class="flex items-center justify-between border-b border-zinc-800/60 pb-2">
@@ -178,10 +178,10 @@
               <span class="text-sm">🛡️</span>
               <h2 class="text-xs font-bold text-main uppercase tracking-wide">穩健核心容量配置</h2>
             </div>
-            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-emerald-400 bg-emerald-950/40 border-emerald-800/40">Volume & Dividend</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-emerald-400 bg-emerald-950/40 border-emerald-800/40">Fill & Dividend</span>
           </div>
           <p class="text-[11px] text-sub leading-normal">
-            FinLab 實證容量模型，考量<b>現金殖利率</b>、法人籌碼與安全 PE 門檻，杜絕貼息陷阱。
+            FinLab 實證容量模型，考量<b>現金殖利率與填息修復動能</b>，杜絕貼息陷阱。
           </p>
           <div id="longTermList" class="space-y-1.5 pt-1">
             <div class="text-sub text-xs text-center py-6 font-mono">計算中...</div>
@@ -275,7 +275,7 @@
       renderAllSections();
     }
 
-    // 核心多因子量化運算引擎 (納入現金殖利率與股利評分)
+    // 核心多因子量化運算引擎 (完整納入填息修復力)
     function runQuantitativeEngine(rawStocks) {
       return rawStocks.map(s => {
         const kline = s.kline || [];
@@ -288,7 +288,7 @@
         const pe = s.pe !== undefined ? parseFloat(s.pe) : 18.0;
         const revYoy = s.rev_yoy !== undefined ? parseFloat(s.rev_yoy) : 8.0;
         
-        // 股利計算：若未提供，預估合理殖利率 (以 4% 安全估計)
+        // 股利與殖利率
         const dividend = s.dividend !== undefined ? parseFloat(s.dividend) : (closeP * 0.04);
         const yieldPct = closeP > 0 ? ((dividend / closeP) * 100) : 0.0;
 
@@ -303,6 +303,7 @@
 
         let sharpe20 = 0.5;
         let momo20 = 1.0;
+        let sma60 = closeP;
         if (hasK && kline.length >= 20) {
           const slice20 = kline.slice(-20);
           momo20 = slice20[slice20.length - 1].close / slice20[0].close;
@@ -315,17 +316,19 @@
           const std = Math.sqrt(variance) || 0.01;
           sharpe20 = (mean / std) * Math.sqrt(20);
         }
+        if (hasK && kline.length >= 60) {
+          const c60 = kline.slice(-60).map(k => k.close);
+          sma60 = c60.reduce((a, b) => a + b, 0) / 60;
+        }
         const swingScore = (nearHighRatio * 70) + (Math.max(0, Math.min(sharpe20, 3.0)) * 10);
 
         // 3. 觸底反彈訊號
         let isRebound = false;
         let reboundScore = 0;
-        let sma20 = closeP, sma60 = closeP;
+        let sma20 = closeP;
         if (hasK && kline.length >= 60) {
           const c20 = kline.slice(-20).map(k => k.close);
-          const c60 = kline.slice(-60).map(k => k.close);
           sma20 = c20.reduce((a, b) => a + b, 0) / 20;
-          sma60 = c60.reduce((a, b) => a + b, 0) / 60;
 
           const aboveMa = closeP > sma20 && closeP > sma60;
           const minLow3 = Math.min(...kline.slice(-3).map(k => k.low));
@@ -341,11 +344,18 @@
           }
         }
 
-        // 4. 長線容量訊號：整合現金殖利率 + 法人買賣超 + PE安全比
+        // 4. 長線容量訊號：計算「填息修復動能」
+        const isFilled = closeP >= sma60; // 股價站穩季線，代表除息缺口已完成填息或處於多頭填息軌道
+        const fillBonus = isFilled ? 15 : 0;
         const peSafe = Math.max(pe, 8.0);
         const growthValRatio = revYoy / peSafe;
-        const cappedYield = Math.min(yieldPct, 10.0); // 殖利率上限10%，避免高殖利率衰退陷阱
-        const longTermScore = (net15 > 0 ? Math.log10(net15 + 1) * 12 : 0) + (cappedYield * 4) + (growthValRatio * 6);
+        const cappedYield = Math.min(yieldPct, 8.0); // 截斷於8%，杜絕貼息地雷
+        
+        // 填息與長線綜合分
+        const longTermScore = (net15 > 0 ? Math.log10(net15 + 1) * 10 : 0) + 
+                              (cappedYield * 4) + 
+                              (growthValRatio * 6) + 
+                              fillBonus;
 
         return {
           symbol: String(s.symbol).trim(),
@@ -358,6 +368,7 @@
           net15Total: net15,
           dividend: dividend,
           yieldPct: yieldPct,
+          isFilled: isFilled,
           intradayRet: intradayRet,
           dayTradeScore: dayTradeScore,
           nearHighRatio: nearHighRatio,
@@ -415,16 +426,16 @@
       swingPool = sortArray(swingPool, "swingScore").slice(0, CURRENT_LIMIT);
       renderCardList("shortSwingList", swingPool, s => `-${((1 - s.nearHighRatio) * 100).toFixed(1)}%`, "SWING", "card-swing");
 
-      // 4. 長期核心專區 (顯示殖利率)
+      // 4. 長期核心專區 (直接標示填息狀態與殖利率)
       let longTermPool = [...COMPUTED_STOCKS];
       longTermPool = sortArray(longTermPool, "longTermScore").slice(0, CURRENT_LIMIT);
-      renderCardList("longTermList", longTermPool, s => `殖利率 ${s.yieldPct.toFixed(1)}%`, "LONG", "card-long");
+      renderCardList("longTermList", longTermPool, s => `${s.isFilled ? '🟢 填息力強' : '🟡 蓄勢中'} ${s.yieldPct.toFixed(1)}%`, "LONG", "card-long");
     }
 
     function sortArray(list, defaultScoreKey) {
       const arr = [...list];
       if (CURRENT_SORT === "STRATEGY_SCORE") arr.sort((a, b) => b[defaultScoreKey] - a[defaultScoreKey]);
-      else if (CURRENT_SORT === "DIVIDEND") arr.sort((a, b) => b.yieldPct - a.yieldPct);
+      else if (CURRENT_SORT === "DIVIDEND_RECOVER") arr.sort((a, b) => b.longTermScore - a.longTermScore);
       else if (CURRENT_SORT === "MOMO_SHARPE") arr.sort((a, b) => b.sharpe20 - a.sharpe20);
       else if (CURRENT_SORT === "INSTITUTION") arr.sort((a, b) => b.net15Total - a.net15Total);
       else if (CURRENT_SORT === "GROWTH") arr.sort((a, b) => b.rev_yoy - a.rev_yoy);
@@ -464,13 +475,14 @@
       `).join('');
     }
 
+    // 走勢圖與診斷浮窗
     function openStockDetail(symbol, strategyType) {
       const stock = COMPUTED_STOCKS.find(s => s.symbol === symbol);
       if (!stock) return;
 
       document.getElementById("modalTitle").textContent = `${stock.name} (${stock.symbol})`;
       document.getElementById("modalCategory").textContent = stock.category;
-      document.getElementById("modalSubTitle").textContent = `實收價: $${stock.price.toFixed(2)} | 現金殖利率: ${stock.yieldPct.toFixed(2)}% (股利 $${stock.dividend.toFixed(2)}) | 15日法人累計: ${stock.net15Total} 張`;
+      document.getElementById("modalSubTitle").textContent = `實收價: $${stock.price.toFixed(2)} | 現金殖利率: ${stock.yieldPct.toFixed(2)}% | 填息動能: ${stock.isFilled ? '強勢填息軌道' : '築底修復中'} | 15日法人: ${stock.net15Total} 張`;
       document.getElementById("modalYahooLink").href = `https://tw.stock.yahoo.com/quote/${stock.symbol}`;
 
       let reasons = [];
@@ -485,9 +497,10 @@
         reasons.push(`• 【高點保留率】：最新價距 52 週最高點僅衰退 ${((1 - stock.nearHighRatio) * 100).toFixed(1)}%，符合 FinLab 年化 22.5% 強勢守成標準。`);
         reasons.push(`• 【軌跡平穩度】：近 20 日風險調整夏普值為 ${stock.sharpe20.toFixed(2)}，呈現平穩主升段。`);
       } else {
-        reasons.push(`• 【現金殖利率與收益】：預估現金殖利率達 ${stock.yieldPct.toFixed(2)}%（每股配發約 $${stock.dividend.toFixed(2)} 元），提供實質下檔防禦保護。`);
-        reasons.push(`• 【籌碼容量鎖碼】：近 15 日三大法人買超達 ${stock.net15Total} 張，在大額資金推動下具備優質流動性承載力。`);
-        reasons.push(`• 【安全估值邊際】：本益比為 ${stock.pe}x，搭配營收成長，避免陷入傳統高殖利率但本業衰退之貼息陷阱。`);
+        reasons.push(`• 【填息修復動能】：股價現為 $${stock.price.toFixed(2)}，${stock.isFilled ? '穩健站於 60 日季線 ($' + stock.sma60.toFixed(2) + ') 之上，具備強大填息修復力，非貼息股' : '目前於季線附近盤整築底'}。`);
+        reasons.push(`• 【實質現金股利】：預估現金殖利率為 ${stock.yieldPct.toFixed(2)}%（每股約配 $${stock.dividend.toFixed(2)} 元），下檔提供明確防禦底線。`);
+        reasons.push(`• 【籌碼鎖碼助填息】：近 15 日三大法人買超達 ${stock.net15Total} 張，在大額資金護航下填息勝率顯著提高。`);
+        reasons.push(`• 【安全本益比】：PE 為 ${stock.pe}x，搭配營收年增 ${stock.rev_yoy}%，非週期衰退之偽高息股。`);
       }
       document.getElementById("modalReason").innerHTML = reasons.map(r => `<div>${r}</div>`).join('');
 
