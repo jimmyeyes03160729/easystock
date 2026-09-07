@@ -2,542 +2,721 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>墨衡量化 Mohren Quant v0.31 - 多因子決策系統</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <title>墨衡量化 Mohren Quant Matrix v0.40</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- 輕量走勢圖庫 -->
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+
   <style>
-    body.theme-color { background-color: #0d1117 !important; color: #c9d1d9; }
-    .theme-color .panel-bg { background-color: #161b22; border-color: #30363d; }
-    .theme-color .card-rebound { background-color: #1c1427; border-color: rgba(168, 85, 247, 0.4); }
-    .theme-color .card-daytrade { background-color: #271418; border-color: rgba(244, 63, 94, 0.4); }
-    .theme-color .card-swing { background-color: #241c10; border-color: rgba(245, 158, 11, 0.4); }
-    .theme-color .card-long { background-color: #10241b; border-color: rgba(16, 185, 129, 0.4); }
-    .theme-color .text-main { color: #ffffff; }
-    .theme-color .text-sub { color: #8b949e; }
-    .theme-color .btn-sub { background-color: #21262d; border-color: #30363d; color: #c9d1d9; }
-
-    body.theme-dark { background-color: #0b0c0e !important; color: #94a3b8; }
-    .theme-dark .panel-bg { background-color: #121418; border-color: rgba(63, 63, 70, 0.4); }
-    .theme-dark .card-bg { background-color: #090a0d; border-color: rgba(39, 39, 42, 0.7); }
-    .theme-dark .text-main { color: #f1f5f9; }
-    .theme-dark .text-sub { color: #64748b; }
-    .theme-dark .btn-sub { background-color: #181b20; border-color: #272a30; color: #cbd5e1; }
-
-    body.theme-light { background-color: #ffffff !important; color: #334155; }
-    .theme-light .panel-bg { background-color: #f8fafc; border-color: #e2e8f0; }
-    .theme-light .card-bg { background-color: #ffffff; border-color: #cbd5e1; }
-    .theme-light .text-main { color: #0f172a; }
-    .theme-light .text-sub { color: #64748b; }
-    .theme-light .btn-sub { background-color: #ffffff; border-color: #cbd5e1; color: #334155; }
-
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-thumb { background: #3f444e; border-radius: 2px; }
+    body { background:#0d1117; color:#c9d1d9; }
+    .panel { background:#161b22; border:1px solid #30363d; }
+    .card-rebound { background:#1c1427; border-color:rgba(168,85,247,.38); }
+    .card-daytrade { background:#271418; border-color:rgba(244,63,94,.38); }
+    .card-swing { background:#241c10; border-color:rgba(245,158,11,.38); }
+    .card-long { background:#10241b; border-color:rgba(16,185,129,.38); }
+    .text-main { color:#f8fafc; }
+    .text-sub { color:#8b949e; }
+    .btn { background:#21262d; border:1px solid #30363d; }
+    .metric-good { color:#34d399; }
+    .metric-warn { color:#fbbf24; }
+    .metric-bad { color:#fb7185; }
+    .muted-border { border-color:rgba(63,63,70,.55); }
+    .score-ring { background:conic-gradient(from 180deg, #34d399 0 var(--score), #30363d var(--score) 100%); }
+    ::-webkit-scrollbar { width:5px; height:5px; }
+    ::-webkit-scrollbar-thumb { background:#3f444e; border-radius:3px; }
+    @media (max-width: 640px) {
+      .modal-wide { max-height:96vh; }
+    }
   </style>
 </head>
-<body class="theme-color font-sans min-h-screen flex flex-col justify-between p-3 sm:p-6 transition-colors duration-200">
 
-  <div class="max-w-7xl mx-auto space-y-4 w-full">
+<body class="min-h-screen font-sans">
+  <div class="max-w-7xl mx-auto p-3 sm:p-6 space-y-4">
 
-    <!-- 頂部控制列 -->
-    <header class="panel-bg border rounded-xl p-3.5 space-y-3">
-      <div class="flex flex-wrap justify-between items-center gap-2">
-        <div class="flex items-center gap-2.5">
-          <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-          <div>
-            <div class="flex items-center gap-2">
-              <h1 class="text-sm font-semibold tracking-wider text-main uppercase">墨衡量化 ｜ Mohren Quant Matrix</h1>
-              <span class="text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700/60 px-1.5 py-0.2 rounded font-mono">v0.31</span>
-            </div>
-            <p class="text-[11px] text-sub font-mono mt-0.5" id="dataStatusText">正在從 Firebase 載入市場數據...</p>
+    <header class="panel rounded-2xl p-4 space-y-3">
+      <div class="flex flex-wrap justify-between items-center gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <h1 class="text-sm font-bold tracking-[0.16em] text-main">墨衡量化 ｜ MOHREN QUANT MATRIX</h1>
+            <span class="text-[10px] rounded border px-1.5 py-0.5 text-sub">v0.40</span>
           </div>
+          <div id="dataStatusText" class="text-[11px] text-sub font-mono mt-1">正在從 Firebase 載入市場資料…</div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2 font-mono">
-          <div class="flex items-center gap-1 bg-zinc-950/40 p-1 rounded-lg border border-zinc-700/40 text-[11px]">
-            <button onclick="setTheme('color')" id="themeBtn-color" class="px-2 py-0.5 rounded font-bold transition">清晰彩色</button>
-            <button onclick="setTheme('dark')" id="themeBtn-dark" class="px-2 py-0.5 rounded text-sub hover:text-main transition">低調黑</button>
-            <button onclick="setTheme('light')" id="themeBtn-light" class="px-2 py-0.5 rounded text-sub hover:text-main transition">閃瞎白</button>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex gap-1 p-1 rounded-lg border muted-border bg-black/10">
+            <button onclick="setTheme('color')" id="theme-color" class="px-2 py-1 text-[11px] rounded">彩色</button>
+            <button onclick="setTheme('dark')" id="theme-dark" class="px-2 py-1 text-[11px] rounded">黑色</button>
+            <button onclick="setTheme('light')" id="theme-light" class="px-2 py-1 text-[11px] rounded">白色</button>
           </div>
-
-          <button onclick="fetchMarketData()" class="btn-sub text-[11px] border px-3 py-1.5 rounded-lg font-bold transition">
-            重新整理與計算
-          </button>
+          <button onclick="fetchMarketData()" class="btn px-3 py-1.5 rounded-lg text-[11px] font-bold">重新整理</button>
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center justify-between gap-2.5 pt-2.5 border-t border-zinc-800/60 text-xs font-mono">
-        <div class="flex items-center gap-2">
-          <span class="text-[11px] text-sub">顯示檔數</span>
-          <div class="flex gap-1 bg-zinc-950/40 p-0.5 rounded-lg border border-zinc-700/40">
-            <button onclick="setDisplayLimit(3)" class="limit-btn px-2 py-0.5 rounded text-sub hover:text-main" data-limit="3">3</button>
-            <button onclick="setDisplayLimit(5)" class="limit-btn px-2 py-0.5 rounded bg-zinc-700/60 text-main font-bold" data-limit="5">5</button>
-            <button onclick="setDisplayLimit(10)" class="limit-btn px-2 py-0.5 rounded text-sub hover:text-main" data-limit="10">10</button>
-            <button onclick="setDisplayLimit(20)" class="limit-btn px-2 py-0.5 rounded text-sub hover:text-main" data-limit="20">20</button>
-          </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t muted-border">
+        <div class="rounded-xl border muted-border p-2.5">
+          <div class="text-[10px] text-sub">熱門股票池</div>
+          <div id="metaStocks" class="text-lg font-bold text-main mt-1">--</div>
         </div>
+        <div class="rounded-xl border muted-border p-2.5">
+          <div class="text-[10px] text-sub">資料日期</div>
+          <div id="metaDate" class="text-sm font-bold text-main mt-2">--</div>
+        </div>
+        <div class="rounded-xl border muted-border p-2.5">
+          <div class="text-[10px] text-sub">模型資料完整度</div>
+          <div id="metaQuality" class="text-lg font-bold text-main mt-1">--</div>
+        </div>
+        <div class="rounded-xl border muted-border p-2.5">
+          <div class="text-[10px] text-sub">回測訊號數</div>
+          <div id="metaSignals" class="text-lg font-bold text-main mt-1">--</div>
+        </div>
+      </div>
 
-        <div class="flex items-center gap-2">
-          <span class="text-[11px] text-sub">排序維度</span>
-          <select id="sortPriority" onchange="handleSortChange(this.value)" class="panel-bg border text-xs text-main px-2.5 py-1 rounded-lg focus:outline-none">
-            <option value="STRATEGY_SCORE">多因子模型評級 (Rank ▾)</option>
-            <option value="DIVIDEND_RECOVER">8%以上高息與填息綜合 (防禦 ▾)</option>
-            <option value="MOMO_SHARPE">20日風險調整回報 Sharpe (穩定 ▾)</option>
-            <option value="INSTITUTION">15日外資與投信籌碼 (買超 ▾)</option>
-            <option value="GROWTH">營收年增率 YoY (成長 ▾)</option>
+      <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+        <div class="text-sub font-mono">
+          股票池定義：<span class="text-main">最新成交金額排名前 500 檔四位數台股</span>
+        </div>
+        <div>
+          <select id="sortPriority" onchange="handleSortChange(this.value)"
+            class="panel rounded-lg px-2.5 py-1.5 text-xs text-main">
+            <option value="STRATEGY_SCORE">多因子模型總分</option>
+            <option value="DAYTRADE">當沖動能</option>
+            <option value="SWING">波段強度</option>
+            <option value="DIVIDEND">高息／長期核心</option>
+            <option value="SHARPE20">20日風險調整報酬</option>
+            <option value="INSTITUTION">15日法人買超</option>
+            <option value="GROWTH">營收年增率</option>
+            <option value="ROE">ROE</option>
           </select>
         </div>
       </div>
     </header>
 
-    <!-- 四大策略決策看盤 -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-
-      <!-- 專區 1: 觸底反彈 -->
-      <div class="panel-bg border rounded-xl p-3 flex flex-col justify-between">
-        <div class="space-y-2">
-          <div class="flex items-center justify-between border-b border-zinc-800/60 pb-2">
-            <div class="flex items-center gap-1.5">
-              <span class="text-sm">🎯</span>
-              <h2 class="text-xs font-bold text-main uppercase tracking-wide">均線回測觸底反彈</h2>
-            </div>
-            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-purple-400 bg-purple-950/40 border-purple-800/40">MA20/60 Rebound</span>
-          </div>
-          <p class="text-[11px] text-sub leading-normal">月季線雙重支撐 + 近3日回測2%內確認 + 今日紅K放量 + 營收基本面.</p>
-          <div id="reboundList" class="space-y-1.5 pt-1">
-            <div class="text-sub text-xs text-center py-6 font-mono">計算中...</div>
-          </div>
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="panel rounded-2xl p-3">
+        <div class="flex items-center justify-between border-b muted-border pb-2">
+          <div class="font-bold text-xs text-main">🎯 均線回踩轉強</div>
+          <span class="text-[9px] text-purple-300">REBOUND</span>
+        </div>
+        <div class="text-[11px] text-sub mt-2 leading-relaxed">
+          MA20/60 之上 + 近3日回踩 + 紅K + 基本面正向。
+        </div>
+        <div id="reboundList" class="space-y-1.5 mt-2">
+          <div class="text-xs text-sub text-center py-8">計算中…</div>
         </div>
       </div>
 
-      <!-- 專區 2: 當沖動能 -->
-      <div class="panel-bg border rounded-xl p-3 flex flex-col justify-between">
-        <div class="space-y-2">
-          <div class="flex items-center justify-between border-b border-zinc-800/60 pb-2">
-            <div class="flex items-center gap-1.5">
-              <span class="text-sm">⚡</span>
-              <h2 class="text-xs font-bold text-main uppercase tracking-wide">盤中推進當沖標的</h2>
-            </div>
-            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-rose-400 bg-rose-950/40 border-rose-800/40">Intraday Power</span>
-          </div>
-          <p class="text-[11px] text-sub leading-normal">鎖定開盤後盤中實質大單推升、量能充沛之強勢當沖標的。</p>
-          <div id="dayTradeList" class="space-y-1.5 pt-1">
-            <div class="text-sub text-xs text-center py-6 font-mono">計算中...</div>
-          </div>
+      <div class="panel rounded-2xl p-3">
+        <div class="flex items-center justify-between border-b muted-border pb-2">
+          <div class="font-bold text-xs text-main">⚡ 盤中推進當沖</div>
+          <span class="text-[9px] text-rose-300">DAYTRADE</span>
+        </div>
+        <div class="text-[11px] text-sub mt-2 leading-relaxed">
+          日內漲幅、量比、成交金額與收盤區間位置綜合評分。
+        </div>
+        <div id="dayTradeList" class="space-y-1.5 mt-2">
+          <div class="text-xs text-sub text-center py-8">計算中…</div>
         </div>
       </div>
 
-      <!-- 專區 3: 短期波段 -->
-      <div class="panel-bg border rounded-xl p-3 flex flex-col justify-between">
-        <div class="space-y-2">
-          <div class="flex items-center justify-between border-b border-zinc-800/60 pb-2">
-            <div class="flex items-center gap-1.5">
-              <span class="text-sm">📈</span>
-              <h2 class="text-xs font-bold text-main uppercase tracking-wide">強勢波段主升領頭</h2>
-            </div>
-            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-amber-400 bg-amber-950/40 border-amber-800/40">52W-High & Sharpe</span>
-          </div>
-          <p class="text-[11px] text-sub leading-normal">緊貼年度高點且軌跡平穩，符合 FinLab 年化 22.5% 模型。</p>
-          <div id="shortSwingList" class="space-y-1.5 pt-1">
-            <div class="text-sub text-xs text-center py-6 font-mono">計算中...</div>
-          </div>
+      <div class="panel rounded-2xl p-3">
+        <div class="flex items-center justify-between border-b muted-border pb-2">
+          <div class="font-bold text-xs text-main">📈 強勢波段主升</div>
+          <span class="text-[9px] text-amber-300">SWING</span>
+        </div>
+        <div class="text-[11px] text-sub mt-2 leading-relaxed">
+          接近 250D 高點 + 20日風險調整報酬 + 趨勢品質。
+        </div>
+        <div id="shortSwingList" class="space-y-1.5 mt-2">
+          <div class="text-xs text-sub text-center py-8">計算中…</div>
         </div>
       </div>
 
-      <!-- 專區 4: 長期核心 (8%以上高息、強勢填息、股價穩定) -->
-      <div class="panel-bg border rounded-xl p-3 flex flex-col justify-between">
-        <div class="space-y-2">
-          <div class="flex items-center justify-between border-b border-zinc-800/60 pb-2">
-            <div class="flex items-center gap-1.5">
-              <span class="text-sm">🛡️</span>
-              <h2 class="text-xs font-bold text-main uppercase tracking-wide">穩健核心容量配置</h2>
-            </div>
-            <span class="text-[9px] px-1.5 py-0.2 rounded border font-mono text-emerald-400 bg-emerald-950/40 border-emerald-800/40">High Yield & Fill</span>
-          </div>
-          <p class="text-[11px] text-sub leading-normal">專注<b>8%以上高殖利率</b>、短期填息修復（站穩季線）且股價平穩者。</p>
-          <div id="longTermList" class="space-y-1.5 pt-1">
-            <div class="text-sub text-xs text-center py-6 font-mono">計算中...</div>
-          </div>
+      <div class="panel rounded-2xl p-3">
+        <div class="flex items-center justify-between border-b muted-border pb-2">
+          <div class="font-bold text-xs text-main">🛡️ 穩健長期核心</div>
+          <span class="text-[9px] text-emerald-300">LONG</span>
+        </div>
+        <div class="text-[11px] text-sub mt-2 leading-relaxed">
+          真實現金股利殖利率 + ROE + FCF + 負債 + 股價穩定度。
+        </div>
+        <div id="longTermList" class="space-y-1.5 mt-2">
+          <div class="text-xs text-sub text-center py-8">計算中…</div>
         </div>
       </div>
+    </section>
 
-    </div>
+    <section class="panel rounded-2xl p-4">
+      <div class="flex items-center justify-between gap-2 border-b muted-border pb-2">
+        <div>
+          <h2 class="text-sm font-bold text-main">📊 模型回測驗證</h2>
+          <p class="text-[10px] text-sub mt-1">
+            以目前儲存的 250 日資料做樣本內檢驗；回測結果不是未來報酬保證。
+          </p>
+        </div>
+        <span class="text-[10px] text-sub font-mono">250D WALK-FORWARD SAFE</span>
+      </div>
+      <div id="backtestGrid" class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+        <div class="text-sub text-xs text-center py-8">讀取中…</div>
+      </div>
+    </section>
 
+    <footer class="py-3 text-center text-[10px] text-sub font-mono leading-relaxed">
+      MOHREN QUANT MATRIX • DATA SOURCE: FINLAB → FIREBASE • RESEARCH ONLY<br/>
+      本系統僅供研究與資訊整理，不構成投資建議。
+    </footer>
   </div>
 
-  <!-- 個股診斷與走勢圖 Modal -->
-  <div id="stockDetailModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3">
-    <div class="panel-bg border rounded-2xl w-full max-w-3xl shadow-2xl p-4 space-y-3.5 max-h-[95vh] flex flex-col font-sans">
-      <div class="flex justify-between items-center border-b border-zinc-800/80 pb-2.5">
+  <div id="stockDetailModal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm p-3 flex items-center justify-center">
+    <div class="panel modal-wide rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
+      <div class="p-4 border-b muted-border flex items-center justify-between gap-2">
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="font-bold text-base text-main" id="modalTitle">--</h3>
-            <span id="modalCategory" class="text-[10px] px-2 py-0.5 rounded bg-zinc-800/50 text-sub font-mono">--</span>
+            <h3 id="modalTitle" class="font-bold text-base text-main">--</h3>
+            <span id="modalCategory" class="text-[10px] px-2 py-0.5 rounded border muted-border text-sub">--</span>
           </div>
-          <p class="text-[11px] text-sub font-mono mt-0.5" id="modalSubTitle">--</p>
+          <div id="modalSubTitle" class="text-[10px] text-sub font-mono mt-1">--</div>
         </div>
         <div class="flex items-center gap-2">
-          <a id="modalYahooLink" href="#" target="_blank" class="btn-sub text-[11px] border px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-mono">
-            Yahoo 報價 ↗
-          </a>
-          <button onclick="closeModal()" class="text-sub hover:text-main text-lg px-2">✕</button>
+          <a id="modalYahooLink" target="_blank" class="btn text-[10px] px-2.5 py-1.5 rounded-lg">Yahoo ↗</a>
+          <button onclick="closeModal()" class="text-sub hover:text-main text-xl px-2">✕</button>
         </div>
       </div>
 
-      <div class="overflow-y-auto space-y-3 flex-1 pr-1">
-        <div class="card-bg p-2 rounded-xl border relative" style="height: 320px;">
-          <div id="chartContainer" class="w-full h-full"></div>
+      <div class="overflow-y-auto p-4 space-y-3">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div class="lg:col-span-2 panel rounded-xl p-2">
+            <div id="chartContainer" style="height:340px;"></div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="panel rounded-xl p-3">
+              <div class="flex items-center gap-3">
+                <div id="scoreCircle" class="w-16 h-16 rounded-full p-1 score-ring">
+                  <div class="w-full h-full rounded-full panel flex items-center justify-center">
+                    <span id="scoreValue" class="text-lg font-bold text-main">--</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="text-[10px] text-sub">多因子模型</div>
+                  <div id="scoreLabel" class="text-sm font-bold text-main mt-1">--</div>
+                  <div id="scoreQuality" class="text-[10px] text-sub mt-1">--</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="factorGrid" class="grid grid-cols-2 gap-2"></div>
+          </div>
         </div>
 
-        <div class="card-bg p-3.5 rounded-xl border space-y-2 text-xs">
-          <h4 class="font-bold text-main flex items-center gap-1.5">
-            <span>📋</span> 量化模型入選理由與特徵分析
-          </h4>
-          <div id="modalReason" class="text-sub space-y-1.5 leading-relaxed font-mono text-[11px]"></div>
+        <div class="panel rounded-xl p-3">
+          <div class="text-xs font-bold text-main mb-2">基本面／估值</div>
+          <div id="fundamentalGrid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2"></div>
+        </div>
+
+        <div class="panel rounded-xl p-3">
+          <div class="text-xs font-bold text-main mb-2">量化模型入選理由</div>
+          <div id="modalReason" class="text-[11px] text-sub leading-relaxed space-y-1.5"></div>
+        </div>
+
+        <div class="panel rounded-xl p-3">
+          <div class="text-xs font-bold text-main mb-2">個股策略回測</div>
+          <div id="stockBacktest" class="grid grid-cols-1 sm:grid-cols-3 gap-2"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <footer class="py-3 text-center text-[11px] text-sub font-mono">
-    MOHREN QUANT MATRIX • SYSTEM RUNNING CLEAN
-  </footer>
+<script>
+  const FIREBASE_URL = "https://money-7c81c-default-rtdb.firebaseio.com/.json";
 
-  <script>
-    let CURRENT_LIMIT = 5;
-    let CURRENT_SORT = "STRATEGY_SCORE";
-    let CURRENT_THEME = localStorage.getItem("MOHREN_THEME") || "color";
-    let COMPUTED_STOCKS = [];
-    let currentChart = null;
+  let CURRENT_LIMIT = 5;
+  let CURRENT_SORT = "STRATEGY_SCORE";
+  let CURRENT_THEME = localStorage.getItem("MOHREN_THEME") || "color";
+  let COMPUTED_STOCKS = [];
+  let META = {};
+  let currentChart = null;
 
-    function setTheme(theme) {
-      CURRENT_THEME = theme;
-      localStorage.setItem("MOHREN_THEME", theme);
-      document.body.className = `theme-${theme} font-sans min-h-screen flex flex-col justify-between p-3 sm:p-6 transition-colors duration-200`;
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+  const n = v => (v === null || v === undefined || Number.isNaN(Number(v)) ? null : Number(v));
+  const fmt = (v, digits=1) => n(v) === null ? "N/A" : Number(v).toFixed(digits);
+  const pct = (v, digits=1) => n(v) === null ? "N/A" : `${Number(v).toFixed(digits)}%`;
 
-      ['color', 'dark', 'light'].forEach(t => {
-        const btn = document.getElementById(`themeBtn-${t}`);
-        if (t === theme) {
-          btn.className = "px-2 py-0.5 rounded font-bold bg-zinc-700/60 text-main transition";
-        } else {
-          btn.className = "px-2 py-0.5 rounded text-sub hover:text-main transition";
-        }
-      });
+  function setTheme(theme) {
+    CURRENT_THEME = theme;
+    localStorage.setItem("MOHREN_THEME", theme);
 
-      renderAllSections();
+    if (theme === "light") {
+      document.body.style.background = "#f8fafc";
+      document.body.style.color = "#334155";
+    } else if (theme === "dark") {
+      document.body.style.background = "#08090b";
+      document.body.style.color = "#94a3b8";
+    } else {
+      document.body.style.background = "#0d1117";
+      document.body.style.color = "#c9d1d9";
     }
 
-    // 核心多因子量化運算引擎（優化殖利率動態對照與 8% 以上高息防禦）
-    function runQuantitativeEngine(rawStocks) {
-      return rawStocks.map(s => {
-        const kline = s.kline || [];
-        const hasK = kline.length > 0;
-        const latestK = hasK ? kline[kline.length - 1] : null;
+    ["color","dark","light"].forEach(t => {
+      const b = document.getElementById(`theme-${t}`);
+      b.className = `px-2 py-1 text-[11px] rounded ${t === theme ? "bg-zinc-700 text-white font-bold" : "text-sub"}`;
+    });
+  }
 
-        const closeP = s.price !== undefined ? parseFloat(s.price) : (latestK ? latestK.close : 100);
-        const openP = latestK ? latestK.open : (closeP * 0.99);
-        const net15 = s.net15Total !== undefined ? parseInt(s.net15Total) : 0;
-        const pe = s.pe !== undefined ? parseFloat(s.pe) : 18.0;
-        const revYoy = s.rev_yoy !== undefined ? parseFloat(s.rev_yoy) : 8.0;
-        
-        // 修正殖利率：若後端未傳入有效股利，依據台股高殖利率產業特性動態賦予真實分佈 (5%~9%)
-        let dividend = s.dividend !== undefined ? parseFloat(s.dividend) : 0;
-        if (!dividend || dividend <= 0 || dividend > closeP * 0.2) {
-          // 依個股代碼或特性賦予合理高息模擬分佈，讓 8% 以上高息標的可正常識別
-          const codeNum = parseInt(s.symbol) || 2000;
-          const mockYieldRate = 0.04 + ((codeNum % 7) * 0.009); // 產出 4% ~ 9.3% 之間的分佈
-          dividend = closeP * mockYieldRate;
-        }
-        const yieldPct = closeP > 0 ? ((dividend / closeP) * 100) : 0.0;
+  function dataQuality(stock) {
+    const fields = ["roe","eps","rev_yoy","fcf","debt_ratio","dividend","volume","sharpe20"];
+    return Math.round(fields.filter(k => n(stock[k]) !== null).length / fields.length * 100);
+  }
 
-        // 1. 當沖訊號
-        const intradayRet = (closeP - openP) / (openP || 1);
-        const dayTradeScore = intradayRet * 100;
+  function scoreLabel(score) {
+    if (score >= 85) return "強勢";
+    if (score >= 75) return "良好";
+    if (score >= 65) return "中性";
+    if (score >= 50) return "偏弱";
+    return "弱勢";
+  }
 
-        // 2. 波段與穩定度
-        let maxHigh = closeP;
-        if (hasK) maxHigh = Math.max(...kline.map(k => k.high));
-        const nearHighRatio = maxHigh > 0 ? (closeP / maxHigh) : 0.85;
+  function runQuantitativeEngine(rawStocks) {
+    return rawStocks.map(s => {
+      const kline = Array.isArray(s.kline) ? s.kline.filter(k => k && k.close != null) : [];
+      const latest = kline[kline.length - 1] || {};
+      const close = n(s.price) ?? n(latest.close);
+      if (close === null || close <= 0) return null;
 
-        let sharpe20 = 0.5;
-        let momo20 = 1.0;
-        let sma60 = closeP;
-        if (hasK && kline.length >= 20) {
-          const slice20 = kline.slice(-20);
-          momo20 = slice20[slice20.length - 1].close / slice20[0].close;
-          const rets = [];
-          for (let i = 1; i < slice20.length; i++) {
-            rets.push((slice20[i].close - slice20[i - 1].close) / slice20[i - 1].close);
-          }
-          const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
-          const variance = rets.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / (rets.length - 1 || 1);
-          const std = Math.sqrt(variance) || 0.01;
-          sharpe20 = (mean / std) * Math.sqrt(20);
-        }
-        if (hasK && kline.length >= 60) {
-          const c60 = kline.slice(-60).map(k => k.close);
-          sma60 = c60.reduce((a, b) => a + b, 0) / 60;
-        }
-        const swingScore = (nearHighRatio * 70) + (Math.max(0, Math.min(sharpe20, 3.0)) * 10);
+      const open = n(s.open) ?? n(latest.open);
+      const high = n(s.high) ?? n(latest.high);
+      const low = n(s.low) ?? n(latest.low);
+      const volume = n(s.volume) ?? n(latest.volume);
+      const amount = n(s.amount) ?? n(latest.amount);
 
-        // 3. 觸底反彈訊號
-        let isRebound = false;
-        let reboundScore = 0;
-        let sma20 = closeP;
-        if (hasK && kline.length >= 60) {
-          const c20 = kline.slice(-20).map(k => k.close);
-          sma20 = c20.reduce((a, b) => a + b, 0) / 20;
+      const net15 = n(s.net15Total);
+      const pe = n(s.pe);
+      const pb = n(s.pb);
+      const rev = n(s.rev_yoy);
+      const roe = n(s.roe);
+      const eps = n(s.eps);
+      const opMargin = n(s.operating_margin);
+      const grossMargin = n(s.gross_margin);
+      const fcf = n(s.fcf);
+      const debt = n(s.debt_ratio);
+      const dividend = n(s.dividend);
+      const yieldPct = n(s.yield_pct);
 
-          const aboveMa = closeP > sma20 && closeP > sma60;
-          const minLow3 = Math.min(...kline.slice(-3).map(k => k.low));
-          const hitMa20 = minLow3 <= (sma20 * 1.02);
-          const hitMa60 = minLow3 <= (sma60 * 1.02);
-          const recentlyHit = hitMa20 || hitMa60;
-          const redCandle = closeP > openP;
-          const fundFilter = revYoy > 0;
-
-          if (aboveMa && recentlyHit && redCandle && fundFilter) {
-            isRebound = true;
-            reboundScore = (momo20 * 50) + (net15 > 0 ? 20 : 0);
-          }
-        }
-
-        // 4. 長線容量評分：強化 8% 以上高息、短期填息與股價穩定度
-        const isFilled = closeP >= sma60; 
-        const fillBonus = isFilled ? 25 : -10; 
-        
-        let yieldScore = yieldPct * 3;
-        if (yieldPct >= 8.0) {
-          yieldScore = isFilled ? (yieldPct * 7) : (yieldPct * 1);
-        }
-
-        const priceStability = Math.max(0, Math.min(sharpe20, 3.0)) * 15; 
-        const fundamentalGuard = revYoy > -5 ? 10 : -25; 
-
-        const longTermScore = (net15 > 0 ? Math.log10(net15 + 1) * 10 : 0) + 
-                              yieldScore + 
-                              priceStability + 
-                              fundamentalGuard + 
-                              fillBonus;
-
-        return {
-          symbol: String(s.symbol).trim(),
-          name: s.name || s.symbol,
-          category: s.category || "一般",
-          price: closeP,
-          openPrice: openP,
-          pe: pe,
-          rev_yoy: revYoy,
-          net15Total: net15,
-          dividend: dividend,
-          yieldPct: yieldPct,
-          isFilled: isFilled,
-          intradayRet: intradayRet,
-          dayTradeScore: dayTradeScore,
-          nearHighRatio: nearHighRatio,
-          sharpe20: sharpe20,
-          swingScore: swingScore,
-          momo20: momo20,
-          isRebound: isRebound,
-          reboundScore: reboundScore,
-          sma20: sma20,
-          sma60: sma60,
-          longTermScore: longTermScore,
-          kline: kline
-        };
-      });
-    }
-
-    // 從 Firebase 載入市場數據，並瞬間渲染當沖專區（絕不卡住）
-    async function fetchMarketData() {
-      const statusText = document.getElementById("dataStatusText");
-      statusText.textContent = "正在從 Firebase 載入市場數據...";
-
-      try {
-        const dbUrl = "https://money-7c81c-default-rtdb.firebaseio.com/.json";
-        const res = await fetch(dbUrl);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.stocks) {
-            const stocksArray = Array.isArray(data.stocks) ? data.stocks : Object.values(data.stocks);
-            COMPUTED_STOCKS = runQuantitativeEngine(stocksArray);
-            statusText.textContent = `Firebase 同步完成：共 ${COMPUTED_STOCKS.length} 檔標的 (更新日: ${data.updated_at || '最新'})`;
-            renderAllSections();
-            return;
-          }
-        }
-      } catch (err) {
-        console.warn("無法從 Firebase 讀取", err);
+      const returns20 = [];
+      for (let i = Math.max(1, kline.length - 20); i < kline.length; i++) {
+        const prev = n(kline[i-1].close);
+        const cur = n(kline[i].close);
+        if (prev && cur) returns20.push((cur-prev)/prev);
       }
 
-      statusText.textContent = "讀取失敗，請確認 Firebase 連線！";
-    }
-
-    function renderAllSections() {
-      // 1. 觸底反彈專區
-      let reboundPool = COMPUTED_STOCKS.filter(s => s.isRebound);
-      if (reboundPool.length === 0) {
-        reboundPool = COMPUTED_STOCKS.filter(s => s.price > s.sma20 && s.price > s.openPrice);
-      }
-      reboundPool = sortArray(reboundPool, "reboundScore").slice(0, CURRENT_LIMIT);
-      renderCardList("reboundList", reboundPool, s => `20日漲幅 ${( (s.momo20 - 1) * 100).toFixed(1)}%`, "REBOUND", "card-rebound");
-
-      // 2. 當沖專區 (採用極速本地量化推進排序，絕不卡 loading)
-      let dayTradePool = [...COMPUTED_STOCKS];
-      dayTradePool.sort((a, b) => b.dayTradeScore - a.dayTradeScore);
-      renderCardList("dayTradeList", dayTradePool.slice(0, CURRENT_LIMIT), s => `${s.intradayRet >= 0 ? '+' : ''}${(s.intradayRet * 100).toFixed(2)}%`, "DAYTRADE", "card-daytrade");
-
-      // 3. 短期波段專區
-      let swingPool = COMPUTED_STOCKS.filter(s => s.nearHighRatio >= 0.85);
-      if (swingPool.length < CURRENT_LIMIT) swingPool = [...COMPUTED_STOCKS];
-      swingPool = sortArray(swingPool, "swingScore").slice(0, CURRENT_LIMIT);
-      renderCardList("shortSwingList", swingPool, s => `-${((1 - s.nearHighRatio) * 100).toFixed(1)}%`, "SWING", "card-swing");
-
-      // 4. 長期核心專區 (8%以上高息、短期填息與股價穩定)
-      let longTermPool = [...COMPUTED_STOCKS];
-      longTermPool = sortArray(longTermPool, "longTermScore").slice(0, CURRENT_LIMIT);
-      renderCardList("longTermList", longTermPool, s => `${s.yieldPct >= 8.0 ? '🔥 8%以上高息' : '🛡️ 穩健'} ${s.yieldPct.toFixed(1)}%`, "LONG", "card-long");
-    }
-
-    function sortArray(list, defaultScoreKey) {
-      const arr = [...list];
-      if (CURRENT_SORT === "STRATEGY_SCORE") arr.sort((a, b) => b[defaultScoreKey] - a[defaultScoreKey]);
-      else if (CURRENT_SORT === "DIVIDEND_RECOVER") arr.sort((a, b) => b.longTermScore - a.longTermScore);
-      else if (CURRENT_SORT === "MOMO_SHARPE") arr.sort((a, b) => b.sharpe20 - a.sharpe20);
-      else if (CURRENT_SORT === "INSTITUTION") arr.sort((a, b) => b.net15Total - a.net15Total);
-      else if (CURRENT_SORT === "GROWTH") arr.sort((a, b) => b.rev_yoy - a.rev_yoy);
-      return arr;
-    }
-
-    function renderCardList(containerId, list, tagValFn, strategyType, colorThemeClass) {
-      const c = document.getElementById(containerId);
-      if (!list || list.length === 0) {
-        c.innerHTML = `<div class="text-sub text-[11px] text-center py-6 font-mono">無符合條件之標的</div>`;
-        return;
+      let sharpe20 = n(s.sharpe20);
+      if (sharpe20 === null && returns20.length >= 10) {
+        const mean = returns20.reduce((a,b)=>a+b,0) / returns20.length;
+        const variance = returns20.reduce((sum,r)=>sum+Math.pow(r-mean,2),0) / Math.max(1,returns20.length-1);
+        const std = Math.sqrt(variance);
+        sharpe20 = std > 0 ? (mean/std) * Math.sqrt(252) : 0;
       }
 
-      const cardClass = CURRENT_THEME === 'color' ? colorThemeClass : 'card-bg';
+      const maxHigh = kline.length ? Math.max(...kline.map(x => n(x.high) ?? n(x.close) ?? 0)) : null;
+      const nearHighRatio = maxHigh ? close/maxHigh : null;
 
-      c.innerHTML = list.map((s, idx) => `
-        <div onclick="openStockDetail('${s.symbol}', '${strategyType}')" class="cursor-pointer ${cardClass} p-2.5 rounded-lg border transition space-y-1 font-mono">
-          <div class="flex justify-between items-center">
-            <div class="flex items-center gap-1.5">
-              <span class="text-[10px] text-sub font-bold">#${idx + 1}</span>
-              <span class="font-bold text-main text-xs font-sans">${s.name}</span>
-              <span class="text-[10px] text-sub">(${s.symbol})</span>
-            </div>
-            <span class="text-[9px] px-1.5 py-0.2 rounded border bg-zinc-950/20 border-zinc-700/30 text-sub">
-              ${tagValFn(s)}
-            </span>
-          </div>
+      const sma = days => {
+        if (kline.length < days) return null;
+        const xs = kline.slice(-days).map(x=>n(x.close)).filter(v=>v!==null);
+        return xs.length === days ? xs.reduce((a,b)=>a+b,0)/days : null;
+      };
+      const sma20 = sma(20);
+      const sma60 = sma(60);
 
-          <div class="flex justify-between items-center text-[11px]">
-            <span class="text-main font-bold">$${s.price.toFixed(2)}</span>
-            <div class="flex items-center gap-2 text-[10px] text-sub">
-              <span>殖利率: <b class="text-main">${s.yieldPct.toFixed(1)}%</b></span>
-              <span>穩定度: <b class="text-main">${s.sharpe20.toFixed(1)}</b></span>
-            </div>
-          </div>
-        </div>
-      `).join('');
-    }
+      const intradayRet = (open && open > 0) ? (close-open)/open : null;
+      const rangePosition = (high != null && low != null && high > low) ? (close-low)/(high-low) : null;
 
-    // 走勢圖與診斷浮窗
-    function openStockDetail(symbol, strategyType) {
-      const stock = COMPUTED_STOCKS.find(s => s.symbol === symbol);
-      if (!stock) return;
+      const avgVol20 = kline.length >= 21
+        ? kline.slice(-21,-1).map(x=>n(x.volume)).filter(v=>v!=null).reduce((a,b)=>a+b,0) /
+          Math.max(1,kline.slice(-21,-1).map(x=>n(x.volume)).filter(v=>v!=null).length)
+        : null;
+      const volumeRatio = avgVol20 && volume ? volume/avgVol20 : null;
 
-      document.getElementById("modalTitle").textContent = `${stock.name} (${stock.symbol})`;
-      document.getElementById("modalCategory").textContent = stock.category;
-      document.getElementById("modalSubTitle").textContent = `實收價: $${stock.price.toFixed(2)} | 現金殖利率: ${stock.yieldPct.toFixed(2)}% | 短期填息動能: ${stock.isFilled ? '已站穩季線(強)' : '未站穩季線(弱)'} | 股價穩定度(Sharpe): ${stock.sharpe20.toFixed(2)}`;
-      document.getElementById("modalYahooLink").href = `https://tw.stock.yahoo.com/quote/${stock.symbol}`;
+      const instRank = net15 === null ? null : clamp((net15 + 200000) / 400000, 0, 1);
+      const intradayRank = intradayRet === null ? 0 : clamp((intradayRet + 0.03) / 0.10, 0, 1);
+      const volumeRank = volumeRatio === null ? 0 : clamp((volumeRatio - 0.5) / 2.5, 0, 1);
+      const rangeRank = rangePosition === null ? 0 : clamp(rangePosition, 0, 1);
+      const amountRank = n(s.amount_rank_pct) ?? 0.5;
+      const dayTradeScore = Math.round(
+        intradayRank*30 + volumeRank*30 + amountRank*20 + rangeRank*20
+      );
 
-      let reasons = [];
-      if (strategyType === "REBOUND") {
-        reasons.push(`• 【均線回測確認】：股價現為 $${stock.price.toFixed(2)}，守於月線 ($${stock.sma20.toFixed(2)}) 與季線 ($${stock.sma60.toFixed(2)}) 之上，近3日低點完成回測踩穩。`);
-        reasons.push(`• 【動能防守】：過去 20 天動能提升 ${( (stock.momo20 - 1) * 100).toFixed(1)}%，屬於強者拉回支撐點火形態。`);
-        reasons.push(`• 【獲利過濾】：月營收年增達 ${stock.rev_yoy}%，具備實質基本面支撐，排除無基之彈。`);
-      } else if (strategyType === "DAYTRADE") {
-        reasons.push(`• 【盤中推進動能】：現價 $${stock.price.toFixed(2)}，開盤 $${stock.openPrice.toFixed(2)}，推進幅度達 ${(stock.intradayRet * 100).toFixed(2)}%。`);
-        reasons.push(`• 【日內買力】：實體紅 K 線推進中，買盤意願積極。`);
-      } else if (strategyType === "SWING") {
-        reasons.push(`• 【高點保留率】：最新價距 52 週最高點僅衰退 ${((1 - stock.nearHighRatio) * 100).toFixed(1)}%，符合 FinLab 年化 22.5% 強勢守成標準。`);
-        reasons.push(`• 【軌跡平穩度】：近 20 日風險調整夏普值為 ${stock.sharpe20.toFixed(2)}，呈現平穩主升段。`);
-      } else {
-        reasons.push(`• 【8%以上高息防禦】：現金殖利率高達 ${stock.yieldPct.toFixed(2)}%（每股配發約 $${stock.dividend.toFixed(2)} 元），提供強大下檔現金保護。`);
-        reasons.push(`• 【短期填息檢驗】：股價現為 $${stock.price.toFixed(2)}，${stock.isFilled ? '已穩健站穩 60 日季線 ($' + stock.sma60.toFixed(2) + ') 之上，短期填息修復動能強勁' : '目前處於季線下方，尚未完成短期填息修復，存在貼息風險'}。`);
-        reasons.push(`• 【股價軌跡穩定度】：近 20 日風險調整夏普值為 ${stock.sharpe20.toFixed(2)}，走勢平穩無劇烈崩跌。`);
-        reasons.push(`• 【基本面護城河】：月營收年增率為 ${stock.rev_yoy}%，有效避開本業衰退的高息陷阱。`);
-      }
-      document.getElementById("modalReason").innerHTML = reasons.map(r => `<div>${r}</div>`).join('');
-
-      document.getElementById("stockDetailModal").classList.remove("hidden");
-      setTimeout(() => renderModalChart(stock), 50);
-    }
-
-    function renderModalChart(stock) {
-      const container = document.getElementById("chartContainer");
-      container.innerHTML = "";
-      if (currentChart) {
-        currentChart.remove();
-        currentChart = null;
+      let isRebound = false;
+      let reboundScore = 0;
+      if (sma20 !== null && sma60 !== null && kline.length >= 3 && open !== null) {
+        const lows = kline.slice(-3).map(x=>n(x.low)).filter(v=>v!==null);
+        const recentMinLow = lows.length ? Math.min(...lows) : null;
+        const hit20 = recentMinLow !== null && recentMinLow <= sma20*1.02;
+        const hit60 = recentMinLow !== null && recentMinLow <= sma60*1.02;
+        const red = close > open;
+        const fundOK = rev === null ? true : rev > 0;
+        isRebound = close > sma20 && close > sma60 && (hit20 || hit60) && red && fundOK;
+        reboundScore = (isRebound ? 50 : 0)
+          + (nearHighRatio !== null ? nearHighRatio*20 : 0)
+          + (volumeRank*15)
+          + (instRank === null ? 0 : instRank*15);
       }
 
-      const isLight = CURRENT_THEME === 'light';
-      currentChart = LightweightCharts.createChart(container, {
-        width: container.clientWidth,
-        height: 300,
-        layout: { 
-          background: { color: isLight ? '#ffffff' : '#090a0d' }, 
-          textColor: isLight ? '#64748b' : '#94a3b8' 
-        },
-        grid: { 
-          vertLines: { color: isLight ? '#f1f5f9' : '#14161b' }, 
-          horzLines: { color: isLight ? '#f1f5f9' : '#14161b' } 
-        },
-        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-        timeScale: { borderColor: isLight ? '#e2e8f0' : '#1f2228', timeVisible: false }
-      });
+      const swingScore = Math.round(
+        clamp(nearHighRatio ?? 0, 0, 1)*55 +
+        clamp(((sharpe20 ?? 0) + 1)/3, 0, 1)*25 +
+        (sma20 && sma60 ? (close>sma20 && close>sma60 ? 20 : 8) : 0)
+      );
 
-      const candleSeries = currentChart.addCandlestickSeries({
-        upColor: '#ef4444',
-        downColor: '#10b981',
-        borderUpColor: '#ef4444',
-        borderDownColor: '#10b981',
-        wickUpColor: '#ef4444',
-        wickDownColor: '#10b981'
-      });
+      const roeScore = roe === null ? 0 : clamp((roe+10)/40,0,1)*100;
+      const growthScore = rev === null ? 0 : clamp((rev+20)/60,0,1)*100;
+      const fcfScore = fcf === null ? 0 : (fcf > 0 ? 80 : 20);
+      const debtScore = debt === null ? 0 : clamp(100 - debt, 0, 100);
+      const valueScore = pe === null ? 0 : (pe > 0 ? clamp(100 - pe*2.2, 0, 100) : 75);
+      const stabilityScore = sharpe20 === null ? 0 : clamp((sharpe20+1)/2.5,0,1)*100;
+      const yieldScore = yieldPct === null ? 0 : clamp(yieldPct/10,0,1)*100;
+      const scoreParts = {
+        technical: Math.round((stabilityScore*0.5) + ((sma20 && sma60 && close>sma20 && close>sma60)?50:10)*0.5),
+        momentum: Math.round((swingScore*0.6) + (dayTradeScore*0.4)),
+        fundamental: Math.round((roeScore*0.28)+(growthScore*0.24)+(fcfScore*0.20)+(debtScore*0.14)+(valueScore*0.14)),
+        dividend: Math.round(yieldScore*0.7 + (n(s.dividend_continuity_years) ?? 0)*6)
+      };
+      const strategyScore = Math.round(
+        scoreParts.technical*0.25 +
+        scoreParts.momentum*0.25 +
+        scoreParts.fundamental*0.35 +
+        scoreParts.dividend*0.15
+      );
 
-      if (stock.kline && stock.kline.length > 0) {
-        candleSeries.setData(stock.kline);
-        currentChart.timeScale().fitContent();
-      } else {
-        container.innerHTML = `<div class="flex items-center justify-center h-full text-sub text-xs font-mono">暫無完整歷史日 K 序列，可點右上角開啟 Yahoo 實時圖表</div>`;
-      }
-    }
+      const longTermEligible = yieldPct !== null && yieldPct >= 8
+        ? (roe === null ? true : roe > 0)
+        : false;
 
-    function closeModal() { document.getElementById("stockDetailModal").classList.add("hidden"); }
-    function setDisplayLimit(n) {
-      CURRENT_LIMIT = n;
-      document.querySelectorAll('.limit-btn').forEach(btn => {
-        if (parseInt(btn.getAttribute('data-limit')) === n) {
-          btn.className = "limit-btn px-2 py-0.5 rounded bg-zinc-700/60 text-main font-bold";
-        } else {
-          btn.className = "limit-btn px-2 py-0.5 rounded text-sub hover:text-main";
-        }
-      });
-      renderAllSections();
-    }
-    function handleSortChange(v) {
-      CURRENT_SORT = v;
-      renderAllSections();
-    }
+      const backtest = s.backtest || {};
 
-    window.onload = () => {
-      setTheme(CURRENT_THEME);
-      fetchMarketData();
+      return {
+        ...s,
+        name: s.name || s.symbol,
+        category: s.category || "一般",
+        price: close,
+        openPrice: open,
+        high, low, volume, amount,
+        net15Total: net15,
+        pe,pb,rev_yoy:rev,roe,eps,operating_margin:opMargin,gross_margin:grossMargin,
+        fcf,debt_ratio:debt,dividend,yieldPct,
+        sharpe20,sma20,sma60,nearHighRatio,
+        intradayRet,volumeRatio,rangePosition,
+        dayTradeScore,reboundScore,isRebound,swingScore,longTermEligible,
+        strategyScore, scoreParts, dataQuality: dataQuality({...s, yield_pct:yieldPct}),
+        backtest
+      };
+    }).filter(Boolean);
+  }
+
+  function sortArray(list, defaultKey) {
+    const arr = [...list];
+    const keyMap = {
+      STRATEGY_SCORE: "strategyScore",
+      DAYTRADE: "dayTradeScore",
+      SWING: "swingScore",
+      DIVIDEND: "longTermScore",
+      SHARPE20: "sharpe20",
+      INSTITUTION: "net15Total",
+      GROWTH: "rev_yoy",
+      ROE: "roe"
     };
-  </script>
+    const key = CURRENT_SORT === "STRATEGY_SCORE" ? "strategyScore" : (keyMap[CURRENT_SORT] || defaultKey);
+    arr.sort((a,b)=>(n(b[key])??-Infinity)-(n(a[key])??-Infinity));
+    return arr;
+  }
+
+  function renderAllSections() {
+    let rebound = COMPUTED_STOCKS.filter(s => s.isRebound).sort((a,b)=>b.reboundScore-a.reboundScore);
+    if (!rebound.length) rebound = [...COMPUTED_STOCKS].sort((a,b)=>b.reboundScore-a.reboundScore);
+    renderCardList("reboundList", rebound.slice(0,CURRENT_LIMIT), "REBOUND");
+
+    const day = [...COMPUTED_STOCKS].sort((a,b)=>b.dayTradeScore-a.dayTradeScore);
+    renderCardList("dayTradeList", day.slice(0,CURRENT_LIMIT), "DAYTRADE");
+
+    const swing = COMPUTED_STOCKS.filter(s=>(s.nearHighRatio??0) >= 0.85).sort((a,b)=>b.swingScore-a.swingScore);
+    renderCardList("shortSwingList", (swing.length? swing : [...COMPUTED_STOCKS].sort((a,b)=>b.swingScore-a.swingScore)).slice(0,CURRENT_LIMIT), "SWING");
+
+    const long = [...COMPUTED_STOCKS].sort((a,b)=>(b.longTermScore??0)-(a.longTermScore??0));
+    renderCardList("longTermList", long.slice(0,CURRENT_LIMIT), "LONG");
+
+    renderBacktest();
+  }
+
+  function renderCardList(containerId, list, strategy) {
+    const c = document.getElementById(containerId);
+    if (!list.length) {
+      c.innerHTML = `<div class="text-[11px] text-sub text-center py-8">無符合條件之標的</div>`;
+      return;
+    }
+
+    c.innerHTML = list.map((s,idx)=>{
+      const tag = strategy === "DAYTRADE"
+        ? `${s.intradayRet >= 0 ? "+" : ""}${pct((s.intradayRet??0)*100,2)} · 量比 ${fmt(s.volumeRatio,1)}x`
+        : strategy === "SWING"
+        ? `距250D高 ${pct((1-(s.nearHighRatio??0))*100,1)}`
+        : strategy === "LONG"
+        ? `${s.yieldPct !== null ? `殖利率 ${pct(s.yieldPct,1)}` : "殖利率 N/A"}`
+        : `20D ${s.momo20 ? pct((s.momo20-1)*100,1) : ""}`;
+
+      const score = strategy === "REBOUND" ? s.reboundScore
+        : strategy === "DAYTRADE" ? s.dayTradeScore
+        : strategy === "SWING" ? s.swingScore
+        : s.strategyScore;
+
+      return `
+        <div onclick="openStockDetail('${s.symbol}','${strategy}')"
+          class="cursor-pointer panel p-2.5 rounded-xl border hover:translate-y-[-1px] transition">
+          <div class="flex justify-between items-center gap-2">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[9px] text-sub">#${idx+1}</span>
+                <span class="font-bold text-xs text-main truncate">${escapeHtml(s.name)}</span>
+                <span class="text-[9px] text-sub">${s.symbol}</span>
+              </div>
+              <div class="text-[10px] text-sub mt-1">${tag}</div>
+            </div>
+            <div class="text-right shrink-0">
+              <div class="text-sm font-bold text-main">${fmt(s.price,2)}</div>
+              <div class="text-[9px] text-emerald-300">模型 ${fmt(score,0)}</div>
+            </div>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  function renderBacktest() {
+    const b = META.backtests || {};
+    const defs = [
+      ["rebound","均線回踩","rebound","technical"],
+      ["swing","強勢波段","swing","technical"],
+      ["daytrade_proxy","當沖代理","daytrade_proxy","proxy"]
+    ];
+    document.getElementById("backtestGrid").innerHTML = defs.map(([key,title,label,type])=>{
+      const x = b[key] || {};
+      return `
+        <div class="rounded-xl border muted-border p-3">
+          <div class="flex justify-between items-center">
+            <div class="text-xs font-bold text-main">${title}</div>
+            <div class="text-[9px] text-sub">${type === "proxy" ? "日線代理" : "樣本內"}</div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 mt-3">
+            <div><div class="text-[9px] text-sub">訊號數</div><div class="text-sm text-main font-bold">${x.signals ?? 0}</div></div>
+            <div><div class="text-[9px] text-sub">勝率</div><div class="text-sm font-bold ${x.win_rate>=50?'metric-good':'metric-warn'}">${x.win_rate==null?"N/A":pct(x.win_rate,1)}</div></div>
+            <div><div class="text-[9px] text-sub">平均報酬</div><div class="text-sm font-bold ${(x.avg_return??0)>=0?'metric-good':'metric-bad'}">${x.avg_return==null?"N/A":pct(x.avg_return,2)}</div></div>
+            <div><div class="text-[9px] text-sub">最大回撤</div><div class="text-sm font-bold metric-bad">${x.max_drawdown==null?"N/A":pct(x.max_drawdown,2)}</div></div>
+          </div>
+          <div class="text-[9px] text-sub mt-2 leading-relaxed">${escapeHtml(x.note || "依儲存的250日資料計算。")}</div>
+        </div>`;
+    }).join("");
+  }
+
+  function renderFactorGrid(stock) {
+    const parts = stock.scoreParts || {};
+    document.getElementById("factorGrid").innerHTML = [
+      ["技術面",parts.technical],
+      ["動能",parts.momentum],
+      ["基本面",parts.fundamental],
+      ["股利",parts.dividend]
+    ].map(([label,val])=>`
+      <div class="panel rounded-lg p-2">
+        <div class="text-[9px] text-sub">${label}</div>
+        <div class="text-base font-bold text-main mt-1">${fmt(val,0)}</div>
+      </div>`).join("");
+  }
+
+  function renderFundamentals(stock) {
+    const items = [
+      ["PE", stock.pe, 1],["PB",stock.pb,2],["EPS",stock.eps,2],
+      ["ROE",stock.roe,1],["營收YoY",stock.rev_yoy,1],
+      ["營益率",stock.operating_margin,1],["自由現金流",stock.fcf,0],["負債率",stock.debt_ratio,1],
+      ["股利",stock.dividend,2],["殖利率",stock.yieldPct,1],["15日法人",stock.net15Total,0],
+      ["量比",stock.volumeRatio,1]
+    ];
+    document.getElementById("fundamentalGrid").innerHTML = items.map(([k,v,d])=>`
+      <div class="rounded-lg border muted-border p-2">
+        <div class="text-[9px] text-sub">${k}</div>
+        <div class="text-xs font-bold text-main mt-1">${v===null||v===undefined?"N/A":`${Number(v).toFixed(d)}${k.includes("率")||k==="ROE"||k==="營益率"||k==="殖利率"?"%":k==="量比"?"x":""}`}</div>
+      </div>`).join("");
+  }
+
+  function buildReasons(stock, strategyType) {
+    const r = [];
+    if (strategyType === "DAYTRADE") {
+      r.push(`日內報酬 <b>${pct((stock.intradayRet??0)*100,2)}</b>，量比 <b>${fmt(stock.volumeRatio,2)}x</b>。`);
+      r.push(`收盤位於當日振幅區間 <b>${pct((stock.rangePosition??0)*100,1)}</b>，並以成交金額排名百分位參與當沖分數。`);
+      r.push(`注意：此處使用日線資料，不能取代真正的5/15分鐘級別大單與委買委賣資料。`);
+    } else if (strategyType === "SWING") {
+      r.push(`目前距250日高點約 <b>${pct((1-(stock.nearHighRatio??0))*100,1)}</b>。`);
+      r.push(`20日年化風險調整報酬約 <b>${fmt(stock.sharpe20,2)}</b>，並檢查20/60日均線趨勢。`);
+    } else if (strategyType === "LONG") {
+      r.push(stock.yieldPct !== null ? `真實現金股利殖利率約 <b>${pct(stock.yieldPct,2)}</b>，不再對缺失股利資料做模擬。` : `殖利率資料缺失，<b>不以預設值代替</b>。`);
+      r.push(`ROE <b>${pct(stock.roe,1)}</b>、自由現金流 <b>${fmt(stock.fcf,1)}</b>、負債率 <b>${pct(stock.debt_ratio,1)}</b>。`);
+      r.push(`股利連續性年數：<b>${stock.dividend_continuity_years ?? "N/A"}</b>。`);
+    } else {
+      r.push(`股價位於20日均線 ${fmt(stock.sma20,2)} 與60日均線 ${fmt(stock.sma60,2)} 上方，並檢查近3日回踩。`);
+      r.push(`20日動能與法人15日買超共同參與回踩評分。`);
+      r.push(`營收年增 ${pct(stock.rev_yoy,1)}；缺資料時不自動塞入虛構成長率。`);
+    }
+
+    r.push(`模型總分 <b>${fmt(stock.strategyScore,0)}/100</b>，資料完整度約 <b>${stock.dataQuality}%</b>。`);
+    return r;
+  }
+
+  function renderStockBacktest(stock) {
+    const items = [
+      ["均線回踩",stock.backtest?.rebound],
+      ["強勢波段",stock.backtest?.swing],
+      ["當沖代理",stock.backtest?.daytrade_proxy]
+    ];
+    document.getElementById("stockBacktest").innerHTML = items.map(([title,x])=>`
+      <div class="rounded-lg border muted-border p-2.5">
+        <div class="text-[10px] font-bold text-main">${title}</div>
+        <div class="grid grid-cols-3 gap-1 mt-2">
+          <div><div class="text-[8px] text-sub">訊號</div><div class="text-xs text-main">${x?.signals ?? 0}</div></div>
+          <div><div class="text-[8px] text-sub">勝率</div><div class="text-xs text-main">${x?.win_rate==null?"N/A":pct(x.win_rate,1)}</div></div>
+          <div><div class="text-[8px] text-sub">平均</div><div class="text-xs ${(x?.avg_return??0)>=0?'metric-good':'metric-bad'}">${x?.avg_return==null?"N/A":pct(x.avg_return,2)}</div></div>
+        </div>
+        <div class="text-[8px] text-sub mt-2">${escapeHtml(x?.note || "")}</div>
+      </div>`).join("");
+  }
+
+  function openStockDetail(symbol, strategyType) {
+    const stock = COMPUTED_STOCKS.find(s=>s.symbol===String(symbol));
+    if (!stock) return;
+
+    document.getElementById("modalTitle").textContent = `${stock.symbol} ${stock.name}`;
+    document.getElementById("modalCategory").textContent = stock.category || "一般";
+    document.getElementById("modalSubTitle").textContent = `資料日期 ${stock.updated_at || META.updated_at || "--"} · 股票池 #${stock.hot_rank || "--"}`;
+    document.getElementById("modalYahooLink").href = `https://tw.stock.yahoo.com/quote/${stock.symbol}.TW`;
+
+    const score = clamp(stock.strategyScore ?? 0, 0, 100);
+    document.getElementById("scoreValue").textContent = score.toFixed(0);
+    document.getElementById("scoreLabel").textContent = scoreLabel(score);
+    document.getElementById("scoreQuality").textContent = `資料完整度 ${stock.dataQuality}%`;
+    document.getElementById("scoreCircle").style.setProperty("--score", `${score}%`);
+
+    renderFactorGrid(stock);
+    renderFundamentals(stock);
+    document.getElementById("modalReason").innerHTML = buildReasons(stock, strategyType).map(x=>`<div>• ${x}</div>`).join("");
+    renderStockBacktest(stock);
+
+    document.getElementById("stockDetailModal").classList.remove("hidden");
+    setTimeout(()=>renderModalChart(stock), 30);
+  }
+
+  function renderModalChart(stock) {
+    const c = document.getElementById("chartContainer");
+    c.innerHTML = "";
+    if (currentChart) {
+      currentChart.remove();
+      currentChart = null;
+    }
+    if (!window.LightweightCharts || !stock.kline?.length) {
+      c.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-sub">暫無 K 線資料</div>`;
+      return;
+    }
+
+    currentChart = LightweightCharts.createChart(c, {
+      width: c.clientWidth,
+      height: 330,
+      layout: { background:{color:"#0a0c10"}, textColor:"#94a3b8" },
+      grid:{ vertLines:{color:"#151922"}, horzLines:{color:"#151922"} },
+      timeScale:{ borderColor:"#272a30", timeVisible:false }
+    });
+
+    const series = currentChart.addCandlestickSeries({
+      upColor:"#ef4444", downColor:"#22c55e",
+      borderUpColor:"#ef4444", borderDownColor:"#22c55e",
+      wickUpColor:"#ef4444", wickDownColor:"#22c55e"
+    });
+    series.setData(stock.kline.map(k=>({
+      time:k.time, open:k.open, high:k.high, low:k.low, close:k.close
+    })));
+    currentChart.timeScale().fitContent();
+  }
+
+  function closeModal() {
+    document.getElementById("stockDetailModal").classList.add("hidden");
+    if (currentChart) {
+      currentChart.remove();
+      currentChart = null;
+    }
+  }
+
+  function handleSortChange(v) {
+    CURRENT_SORT = v;
+    renderAllSections();
+  }
+
+  function setDisplayLimit(n) {
+    CURRENT_LIMIT = n;
+    renderAllSections();
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? "").replace(/[&<>"']/g, ch => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[ch]));
+  }
+
+  async function fetchMarketData() {
+    const status = document.getElementById("dataStatusText");
+    status.textContent = "正在從 Firebase 讀取…";
+
+    try {
+      const res = await fetch(FIREBASE_URL, { cache:"no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data || !data.stocks) throw new Error("Firebase 缺少 stocks");
+
+      META = {
+        ...(data.metadata || {}),
+        updated_at: data.updated_at,
+        backtests: data.backtests || data.metadata?.backtests || {}
+      };
+
+      const raw = Array.isArray(data.stocks) ? data.stocks : Object.values(data.stocks);
+      COMPUTED_STOCKS = runQuantitativeEngine(raw);
+
+      document.getElementById("metaStocks").textContent = raw.length;
+      document.getElementById("metaDate").textContent = data.updated_at || "--";
+      const avgQuality = COMPUTED_STOCKS.length
+        ? Math.round(COMPUTED_STOCKS.reduce((a,b)=>a+b.dataQuality,0)/COMPUTED_STOCKS.length)
+        : 0;
+      document.getElementById("metaQuality").textContent = `${avgQuality}%`;
+      const signalCount = Object.values(META.backtests||{}).reduce((a,b)=>a+(Number(b.signals)||0),0);
+      document.getElementById("metaSignals").textContent = signalCount.toLocaleString();
+
+      status.textContent = `Firebase 同步完成 · ${raw.length} 檔 · 更新日 ${data.updated_at || "N/A"}`;
+      renderAllSections();
+    } catch (err) {
+      console.error(err);
+      status.textContent = `Firebase 讀取失敗：${err.message}`;
+    }
+  }
+
+  window.addEventListener("click", e => {
+    if (e.target.id === "stockDetailModal") closeModal();
+  });
+
+  window.addEventListener("resize", () => {
+    if (currentChart) {
+      const c = document.getElementById("chartContainer");
+      currentChart.applyOptions({ width:c.clientWidth });
+    }
+  });
+
+  window.onload = () => {
+    setTheme(CURRENT_THEME);
+    fetchMarketData();
+  };
+</script>
 </body>
 </html>

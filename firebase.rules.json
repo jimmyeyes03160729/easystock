@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "stocks": {
+      ".read": true,
+      ".write": false
+    },
+    "metadata": {
+      ".read": true,
+      ".write": false
+    },
+    "backtests": {
+      ".read": true,
+      ".write": false
+    },
+    "updated_at": {
+      ".read": true,
+      ".write": false
+    },
+    "universe": {
+      ".read": true,
+      ".write": false
+    },
+    "source": {
+      ".read": true,
+      ".write": false
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
