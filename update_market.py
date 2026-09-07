@@ -75,7 +75,8 @@ except Exception:
 latest_date = close.index[-1].strftime('%Y-%m-%d')
 stocks_list = []
 
-target_symbols = [col for col in close.columns if len(str(col)) == 4 and str(col).isdigit()][:150]
+# 擴增至前 500 檔熱門台股標的
+target_symbols = [col for col in close.columns if len(str(col)) == 4 and str(col).isdigit()][:500]
 
 for sym in target_symbols:
     try:
@@ -149,4 +150,4 @@ output_data = {
 with open("market_data.json", "w", encoding="utf-8") as f:
     json.dump(output_data, f, ensure_ascii=False, indent=2)
 
-print(f"成功產出 {len(stocks_list)} 檔標的至 market_data.json (含股利資訊)！")
+print(f"成功產出 {len(stocks_list)} 檔標的至 market_data.json (涵蓋前 500 檔熱門與股利資訊)！")
