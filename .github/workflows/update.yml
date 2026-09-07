@@ -2,37 +2,76 @@ name: Daily Stock Data Update
 
 on:
   schedule:
-    - cron: '30 7 * * 1-5'
+    # 台灣時間 15:30，週一～週五
+    - cron: "30 7 * * 1-5"
+
+  # 可以從 GitHub Actions 手動執行
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   update-data:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write  # 強制宣告寫入權限，避免權限被拒
+
     steps:
+
+      # ==========================================
+      # 1. 下載 Repository
+      # ==========================================
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # ==========================================
+      # 2. 安裝 Python
+      # ==========================================
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.11"
+          cache: "pip"
 
+      # ==========================================
+      # 3. 確認 Python 版本
+      # ==========================================
+      - name: Check Python
+        run: |
+          python --version
+          python -m pip --version
+
+      # ==========================================
+      # 4. 更新 pip
+      # ==========================================
+      - name: Upgrade pip
+        run: |
+          python -m pip install --upgrade pip
+
+      # ==========================================
+      # 5. 安裝套件
+      # ==========================================
       - name: Install Dependencies
         run: |
-          pip install finlab pandas numpy
+          python -m pip install -r requirements.txt
 
-      - name: Fetch and Compute Market Data
+      # ==========================================
+      # 6. 確認 Firebase Admin 已安裝
+      # ==========================================
+      - name: Verify Dependencies
+        run: |
+          python -c "import firebase_admin; print('firebase-admin:', firebase_admin.__version__)"
+          python -c "import finlab; print('finlab OK')"
+          python -c "import pandas; print('pandas:', pandas.__version__)"
+          python -c "import numpy; print('numpy:', numpy.__version__)"
+
+      # ==========================================
+      # 7. 執行資料更新
+      # ==========================================
+      - name: Update FinLab to Firebase
         env:
           FINLAB_API_TOKEN: ${{ secrets.FINLAB_API_TOKEN }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+
         run: |
           python update_market.py
-
-      - name: Commit and Push Updated Data
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add market_data.json
-          git diff-index --quiet HEAD || git commit -m "Auto-update market_data.json [skip ci]"
-          git push
