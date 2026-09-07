@@ -16,7 +16,7 @@ concurrency:
 jobs:
   update-data:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 8
     env:
       PYTHONUNBUFFERED: "1"
       FIREBASE_ROOT_PATH: "market_data"
@@ -24,6 +24,9 @@ jobs:
       KLINE_DAYS: "250"
       INSTITUTION_DAYS: "15"
       LEGACY_FUNDAMENTAL_MAX_AGE_DAYS: "120"
+      HTTP_TIMEOUT: "12"
+      HTTP_WORKERS: "6"
+      FUGLE_BOOTSTRAP_MAX_PER_RUN: "20"
 
     steps:
       - name: Checkout Repository
