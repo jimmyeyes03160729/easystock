@@ -26,7 +26,7 @@ jobs:
       LEGACY_FUNDAMENTAL_MAX_AGE_DAYS: "120"
       HTTP_TIMEOUT: "12"
       HTTP_WORKERS: "6"
-      FUGLE_BOOTSTRAP_MAX_PER_RUN: "20"
+      FUGLE_BOOTSTRAP_MAX_PER_RUN: "5"
 
     steps:
       - name: Checkout Repository

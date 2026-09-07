@@ -1,0 +1,82 @@
+name: Historical K-line Backfill (Fugle)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: easystock-fugle-history-backfill
+  cancel-in-progress: true
+
+jobs:
+  backfill-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PYTHONUNBUFFERED: "1"
+      FIREBASE_ROOT_PATH: "market_data"
+      BACKFILL_TARGET_BARS: "250"
+      BACKFILL_MIN_EXISTING_BARS: "220"
+      BACKFILL_MAX_SYMBOLS: "500"
+      HTTP_TIMEOUT: "12"
+      FUGLE_MIN_INTERVAL_SECONDS: "1.10"
+      FUGLE_MAX_RETRIES: "4"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Validate Secrets
+        env:
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
+        run: |
+          test -n "$FIREBASE_DATABASE_URL" || (echo "::error::Missing FIREBASE_DATABASE_URL" && exit 1)
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON" || (echo "::error::Missing FIREBASE_SERVICE_ACCOUNT_JSON" && exit 1)
+          test -n "$FUGLE_API_KEY" || (echo "::error::Missing FUGLE_API_KEY" && exit 1)
+          python - <<'PY'
+          import json, os
+          json.loads(os.environ["FIREBASE_SERVICE_ACCOUNT_JSON"])
+          print("Secrets validation OK (values hidden).")
+          PY
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip check
+
+      - name: Verify Syntax
+        run: |
+          python -m py_compile backfill_fugle.py update_market.py
+
+      - name: Backfill 250D K-lines from Fugle
+        env:
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
+        run: python backfill_fugle.py
+
+      - name: Refresh Scores After Backfill
+        env:
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
+          FIREBASE_ROOT_PATH: "market_data"
+          HOT_STOCK_COUNT: "500"
+          KLINE_DAYS: "250"
+          INSTITUTION_DAYS: "15"
+          LEGACY_FUNDAMENTAL_MAX_AGE_DAYS: "120"
+          HTTP_TIMEOUT: "12"
+          HTTP_WORKERS: "6"
+          FUGLE_BOOTSTRAP_MAX_PER_RUN: "0"
+        run: python update_market.py
