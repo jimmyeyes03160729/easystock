@@ -1,43 +1,50 @@
-name: Intraday & Overnight Picks
+name: Overnight Picks - Legacy Fugle
 
 on:
   schedule:
-    # Taiwan time (UTC+8): 09:30, 10:00, 11:00, 12:00, 13:00, 13:20, Mon-Fri
-    - cron: "30 1 * * 1-5"
-    - cron: "0 2 * * 1-5"
-    - cron: "0 3 * * 1-5"
+    # Taiwan time UTC+8
+    # 12:00 / 12:30 / 13:00 / 13:20：只做隔日衝
+    # 正式 DAYTRADE 已移到 Oracle VM + Shioaji
     - cron: "0 4 * * 1-5"
+    - cron: "30 4 * * 1-5"
     - cron: "0 5 * * 1-5"
     - cron: "20 5 * * 1-5"
+
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: easystock-intraday-picks
+  group: easystock-overnight-picks
   cancel-in-progress: true
 
 jobs:
   scan:
     runs-on: ubuntu-latest
     timeout-minutes: 8
+
     env:
       PYTHONUNBUFFERED: "1"
       FIREBASE_ROOT_PATH: "market_data"
       HTTP_TIMEOUT: "12"
       INTRADAY_SCAN_MAX_SYMBOLS: "30"
       INTRADAY_TOP_N: "3"
+
+      # 舊 Fugle 當沖完全關閉
+      INTRADAY_ENABLE_DAYTRADE: "0"
+      INTRADAY_ENABLE_OVERNIGHT: "1"
+
       INTRADAY_MIN_DAYTRADE_SCORE: "76"
       INTRADAY_MIN_OVERNIGHT_SCORE: "74"
       FUGLE_MIN_INTERVAL_SECONDS: "1.10"
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
@@ -48,11 +55,24 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
         run: |
-          test -n "$FIREBASE_DATABASE_URL" || (echo "::error::Missing FIREBASE_DATABASE_URL" && exit 1)
-          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON" || (echo "::error::Missing FIREBASE_SERVICE_ACCOUNT_JSON" && exit 1)
-          test -n "$FUGLE_API_KEY" || (echo "::error::Missing FUGLE_API_KEY" && exit 1)
+          test -n "$FIREBASE_DATABASE_URL" || (
+            echo "::error::Missing FIREBASE_DATABASE_URL"
+            exit 1
+          )
+
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON" || (
+            echo "::error::Missing FIREBASE_SERVICE_ACCOUNT_JSON"
+            exit 1
+          )
+
+          test -n "$FUGLE_API_KEY" || (
+            echo "::error::Missing FUGLE_API_KEY"
+            exit 1
+          )
+
           python - <<'PY'
-          import json, os
+          import json
+          import os
           json.loads(os.environ["FIREBASE_SERVICE_ACCOUNT_JSON"])
           print("Secrets validation OK (values hidden).")
           PY
@@ -67,9 +87,12 @@ jobs:
         run: |
           python -m py_compile scan_intraday.py
 
-      - name: Scan Fugle 5m / 15m Patterns
+      - name: Scan Overnight Fugle Patterns
         env:
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
-        run: python scan_intraday.py
+        run: |
+          echo "Legacy DAYTRADE: disabled"
+          echo "OVERNIGHT: enabled"
+          python scan_intraday.py
