@@ -65,7 +65,44 @@ MIN_DAYTRADE_SCORE = int(
 MIN_OVERNIGHT_SCORE = int(
     os.environ.get("INTRADAY_MIN_OVERNIGHT_SCORE", "74")
 )
+# =========================================================
+# Legacy Fugle scanner switches
+#
+# 新版：
+# Daytrade 由 Oracle VM + Shioaji 負責
+# Fugle workflow 只保留 Overnight
+# =========================================================
 
+ENABLE_DAYTRADE = (
+    os.environ.get(
+        "INTRADAY_ENABLE_DAYTRADE",
+        "0"
+    )
+    .strip()
+    .lower()
+    in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+)
+
+
+ENABLE_OVERNIGHT = (
+    os.environ.get(
+        "INTRADAY_ENABLE_OVERNIGHT",
+        "1"
+    )
+    .strip()
+    .lower()
+    in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+)
 TOP_N = max(
     1,
     int(os.environ.get("INTRADAY_TOP_N", "3"))
