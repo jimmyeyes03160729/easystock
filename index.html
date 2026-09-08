@@ -54,11 +54,42 @@
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t muted-border">
-        <div class="rounded-xl border muted-border p-2.5"><div class="text-[10px] text-sub">熱門股票池</div><div id="metaStocks" class="text-lg font-bold text-main mt-1">--</div></div>
-        <div class="rounded-xl border muted-border p-2.5"><div class="text-[10px] text-sub">資料日期</div><div id="metaDate" class="text-sm font-bold text-main mt-2">--</div></div>
-        <div class="rounded-xl border muted-border p-2.5"><div class="text-[10px] text-sub">模型資料完整度</div><div id="metaQuality" class="text-lg font-bold text-main mt-1">--</div></div>
-        <div class="rounded-xl border muted-border p-2.5"><div class="text-[10px] text-sub">回測訊號數</div><div id="metaSignals" class="text-lg font-bold text-main mt-1">--</div></div>
-      </div>
+
+  <div class="rounded-xl border muted-border p-2.5">
+    <div class="text-[10px] text-sub">熱門股票池</div>
+    <div id="metaStocks" class="text-lg font-bold text-main mt-1">--</div>
+  </div>
+
+  <div class="rounded-xl border muted-border p-2.5">
+    <div class="text-[10px] text-sub">資料日期</div>
+    <div id="metaDate" class="text-sm font-bold text-main mt-2">--</div>
+  </div>
+
+  <div class="rounded-xl border muted-border p-2.5">
+    <div class="text-[10px] text-sub">盤中最後掃描</div>
+    <div id="metaScanTime" class="text-sm font-bold text-rose-300 mt-2">--</div>
+  </div>
+
+  <div class="rounded-xl border muted-border p-2.5">
+    <div class="text-[10px] text-sub">系統刷新</div>
+    <div id="metaRefreshTime" class="text-sm font-bold text-emerald-300 mt-2">--</div>
+  </div>
+
+</div>
+
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+
+  <div class="rounded-xl border muted-border p-2.5">
+    <div class="text-[10px] text-sub">模型資料完整度</div>
+    <div id="metaQuality" class="text-lg font-bold text-main mt-1">--</div>
+  </div>
+
+  <div class="rounded-xl border muted-border p-2.5">
+    <div class="text-[10px] text-sub">回測訊號數</div>
+    <div id="metaSignals" class="text-lg font-bold text-main mt-1">--</div>
+  </div>
+
+</div>
 
       <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
         <div class="text-sub font-mono">股票池：<span class="text-main">TWSE+TPEx 成交金額前 500 檔普通股</span></div>
@@ -503,35 +534,279 @@
     });
   }
 
-  function renderLinePickList(containerId,items,mode) {
-    const c=document.getElementById(containerId);
-    const rows=intradayFiltered(items).slice(0,3);
-    if (!rows.length) {
-      const msg=INTRADAY?.generated_at ? `目前沒有達到${mode==="DAY"?"當沖":"隔日衝"}門檻的線型，今日不硬推。` : "尚無盤中掃描資料；請確認 Intraday & Overnight Picks workflow 已執行。";
-      c.innerHTML=`<div class="text-[11px] text-sub text-center py-8">${msg}</div>`; return;
-    }
-    c.innerHTML=rows.map((x,idx)=>{
-      const score=mode==="DAY"?x.daytrade_score:x.overnight_score;
-      const reasons=mode==="DAY"?(x.daytrade_reasons||[]):(x.overnight_reasons||[]);
-      const risk=(x.vetoes||[])[0] || (x.vwap_distance_pct!=null && x.vwap_distance_pct>2?"距VWAP偏遠":"仍需設定停損並注意盤中突發量價反轉");
-      const hasStock=COMPUTED_STOCKS.some(s=>s.symbol===String(x.symbol));
-      const click=hasStock?`onclick="openStockDetail('${x.symbol}','DAYTRADE')"`:"";
-      return `<div ${click} class="${hasStock?'cursor-pointer':''} rounded-xl border muted-border p-2.5 bg-black/10 hover:translate-y-[-1px] transition">
-        <div class="flex justify-between gap-2"><div><div class="text-[9px] text-sub">#${idx+1} · ${mode==="DAY"?"當沖":"隔日衝"}</div><div class="font-bold text-xs text-main mt-1">${escapeHtml(x.name)} <span class="text-[9px] text-sub">${escapeHtml(x.symbol)}</span></div></div><div class="text-right"><div class="text-sm font-bold text-main">${fmt(x.price,2)}</div><div class="text-[9px] metric-good">線型 ${score}</div></div></div>
-        <div class="flex flex-wrap gap-1 mt-2">${reasons.slice(0,3).map(r=>`<span class="text-[8px] px-1.5 py-0.5 rounded border border-emerald-500/20 text-emerald-300">${escapeHtml(r)}</span>`).join("")}</div>
-        <div class="grid grid-cols-3 gap-1 mt-2 text-[8px]"><div><span class="text-sub">VWAP</span><div class="text-main">${x.vwap==null?"N/A":fmt(x.vwap,2)}</div></div><div><span class="text-sub">量比</span><div class="text-main">${x.volume_ratio==null?"N/A":fmt(x.volume_ratio,2)+"x"}</div></div><div><span class="text-sub">15m趨勢</span><div class="text-main">${fmt(x.fifteen_trend,0)}</div></div></div>
-        <div class="text-[8px] text-amber-300 mt-2">⚠ ${escapeHtml(risk)}</div>
-      </div>`;
-    }).join("");
+  function renderLinePickList(containerId, items, mode) {
+
+  const c = document.getElementById(containerId);
+
+  const rows = intradayFiltered(items).slice(0, 3);
+
+  if (!rows.length) {
+
+    const msg = INTRADAY?.generated_at
+      ? `目前沒有達到${mode === "DAY" ? "當沖" : "隔日衝"}門檻的線型，今日不硬推。`
+      : "尚無盤中掃描資料；請確認 Intraday & Overnight Picks workflow 已執行。";
+
+    c.innerHTML = `
+      <div class="text-[11px] text-sub text-center py-8">
+        ${msg}
+      </div>
+    `;
+
+    return;
   }
 
-  function renderIntradayPicks() {
-    const stamp=INTRADAY?.generated_at ? String(INTRADAY.generated_at).replace("T"," ").slice(5,16) : "等待盤中掃描";
-    const s1=document.getElementById("intradayStamp"), s2=document.getElementById("overnightStamp");
-    if (s1) s1.textContent=stamp; if (s2) s2.textContent=INTRADAY?.session==="close"?"收盤版":"盤中預估";
-    renderLinePickList("intradayPickList",INTRADAY?.daytrade||[],"DAY");
-    renderLinePickList("overnightPickList",INTRADAY?.overnight||[],"OVERNIGHT");
+  c.innerHTML = rows.map((x, idx) => {
+
+    const score =
+      mode === "DAY"
+        ? x.daytrade_score
+        : x.overnight_score;
+
+    const reasons =
+      mode === "DAY"
+        ? (x.daytrade_reasons || [])
+        : (x.overnight_reasons || []);
+
+    const risk =
+      (x.vetoes || [])[0]
+      ||
+      (
+        x.vwap_distance_pct != null
+        && x.vwap_distance_pct > 2
+      )
+        ? "距VWAP偏遠"
+        : "仍需設定停損並注意盤中突發量價反轉";
+
+    const hasStock =
+      COMPUTED_STOCKS.some(
+        s => s.symbol === String(x.symbol)
+      );
+
+    const click =
+      hasStock
+        ? `onclick="openStockDetail('${x.symbol}','DAYTRADE')"`
+        : "";
+
+    const firstSeen =
+      formatTaiwanDateTime(
+        x.first_seen_at
+      );
+
+    const lastSeen =
+      formatTaiwanDateTime(
+        x.last_seen_at
+        || INTRADAY?.last_scan_at
+        || INTRADAY?.generated_at
+      );
+
+    const duration =
+      formatDuration(
+        x.duration_minutes
+      );
+
+    return `
+      <div
+        ${click}
+        class="${hasStock ? 'cursor-pointer' : ''}
+        rounded-xl border muted-border
+        p-2.5 bg-black/10
+        hover:translate-y-[-1px]
+        transition"
+      >
+
+        <div class="flex justify-between gap-2">
+
+          <div>
+
+            <div class="text-[9px] text-sub">
+              #${idx + 1}
+              · ${mode === "DAY" ? "當沖" : "隔日衝"}
+            </div>
+
+            <div class="font-bold text-xs text-main mt-1">
+              ${escapeHtml(x.name)}
+              <span class="text-[9px] text-sub">
+                ${escapeHtml(x.symbol)}
+              </span>
+            </div>
+
+          </div>
+
+          <div class="text-right">
+
+            <div class="text-sm font-bold text-main">
+              ${fmt(x.price, 2)}
+            </div>
+
+            <div class="text-[9px] metric-good">
+              線型 ${score}
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="flex flex-wrap gap-1 mt-2">
+
+          ${reasons
+            .slice(0, 3)
+            .map(
+              r => `
+                <span
+                  class="text-[8px]
+                  px-1.5 py-0.5
+                  rounded border
+                  border-emerald-500/20
+                  text-emerald-300"
+                >
+                  ${escapeHtml(r)}
+                </span>
+              `
+            )
+            .join("")
+          }
+
+        </div>
+
+        <div class="grid grid-cols-3 gap-1 mt-2 text-[8px]">
+
+          <div>
+            <span class="text-sub">VWAP</span>
+            <div class="text-main">
+              ${x.vwap == null ? "N/A" : fmt(x.vwap, 2)}
+            </div>
+          </div>
+
+          <div>
+            <span class="text-sub">量比</span>
+            <div class="text-main">
+              ${
+                x.volume_ratio == null
+                  ? "N/A"
+                  : fmt(x.volume_ratio, 2) + "x"
+              }
+            </div>
+          </div>
+
+          <div>
+            <span class="text-sub">15m趨勢</span>
+            <div class="text-main">
+              ${fmt(x.fifteen_trend, 0)}
+            </div>
+          </div>
+
+        </div>
+
+        <div class="mt-2 pt-2 border-t muted-border">
+
+          <div class="grid grid-cols-2 gap-1">
+
+            <div>
+              <div class="text-[8px] text-sub">
+                首次出現
+              </div>
+
+              <div class="text-[9px] text-emerald-300 font-mono">
+                ${firstSeen}
+              </div>
+            </div>
+
+            <div>
+              <div class="text-[8px] text-sub">
+                最後掃描
+              </div>
+
+              <div class="text-[9px] text-rose-300 font-mono">
+                ${lastSeen}
+              </div>
+            </div>
+
+          </div>
+
+          <div class="mt-1 text-[8px] text-cyan-300">
+            ⏱ 持續 ${duration}
+          </div>
+
+        </div>
+
+        <div class="text-[8px] text-amber-300 mt-2">
+          ⚠ ${escapeHtml(risk)}
+        </div>
+
+      </div>
+    `;
+
+  }).join("");
+}
+
+  function formatTaiwanDateTime(value) {
+
+  if (!value) {
+    return "--";
   }
+
+  try {
+
+    const d = new Date(value);
+
+    if (Number.isNaN(d.getTime())) {
+      return String(value)
+        .replace("T", " ")
+        .slice(5, 16);
+    }
+
+    return d.toLocaleString(
+      "zh-TW",
+      {
+        timeZone: "Asia/Taipei",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }
+    );
+
+  } catch (e) {
+
+    return String(value)
+      .replace("T", " ")
+      .slice(5, 16);
+
+  }
+}
+
+
+function formatDuration(minutes) {
+
+  if (
+    minutes === null
+    || minutes === undefined
+    || Number.isNaN(Number(minutes))
+  ) {
+
+    return "--";
+  }
+
+  const m = Math.max(
+    0,
+    Number(minutes)
+  );
+
+  const hours = Math.floor(
+    m / 60
+  );
+
+  const mins = m % 60;
+
+  if (hours > 0) {
+
+    return `${hours}小時 ${mins}分鐘`;
+
+  }
+
+  return `${mins}分鐘`;
+}
 
   async function openStockDetail(symbol,strategyType) {
     const stock=COMPUTED_STOCKS.find(s=>s.symbol===String(symbol));
@@ -666,7 +941,34 @@
   }
 
   async function fetchMarketData() {
-    const status=document.getElementById("dataStatusText");
+    const status =
+    document.getElementById(
+      "dataStatusText"
+    );
+
+  // 瀏覽器真正開始刷新 Firebase 的時間
+  const refreshStartedAt =
+    new Date();
+
+  const refreshEl =
+    document.getElementById(
+      "metaRefreshTime"
+    );
+
+  if (refreshEl) {
+
+    refreshEl.textContent =
+      refreshStartedAt.toLocaleTimeString(
+        "zh-TW",
+        {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        }
+      );
+
+  }
     status.textContent="正在從 Firebase 讀取摘要資料…";
     try {
       let raw;
@@ -680,6 +982,23 @@
       COMPUTED_STOCKS=runQuantitativeEngine(raw);
       document.getElementById("metaStocks").textContent=raw.length;
       document.getElementById("metaDate").textContent=META.updated_at||"--";
+      const scanAt =
+  INTRADAY?.last_scan_at
+  || INTRADAY?.generated_at;
+
+const scanEl =
+  document.getElementById(
+    "metaScanTime"
+  );
+
+if (scanEl) {
+
+  scanEl.textContent =
+    scanAt
+      ? formatTaiwanDateTime(scanAt)
+      : "--";
+
+}
       const avgQuality=COMPUTED_STOCKS.length?Math.round(COMPUTED_STOCKS.reduce((a,b)=>a+b.dataQuality,0)/COMPUTED_STOCKS.length):0;
       document.getElementById("metaQuality").textContent=`${avgQuality}%`;
       const signalCount=Object.values(META.backtests||{}).reduce((a,b)=>a+(Number(b?.signals)||0),0);
