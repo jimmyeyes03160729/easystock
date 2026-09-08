@@ -1,17 +1,27 @@
 #!/usr/bin/env python3
-"""Fugle intraday pattern scanner for Mohren Quant Matrix v1.1.
+"""
+Easystock / Mohren Quant Matrix
+Legacy Fugle Overnight Scanner
 
-Reads the current hot-stock universe from Firebase, screens liquid candidates,
-fetches Fugle 5-minute candles, derives 15-minute candles locally, and writes
-cross-confirmed day-trade / next-day picks to /market_data/intraday_picks.
+新版架構：
 
-Time tracking:
-- first_seen_at: first time the symbol became eligible today
-- last_seen_at: latest scan time
-- generated_at: current scan completion time
-- scan_date: Taiwan trading date
+1. 當沖 DAYTRADE
+   Oracle VM + Sinotrade Shioaji
+   Firebase:
+       /market_data/intraday_live
 
-No API key is ever written to Firebase or logs.
+2. 隔日衝 OVERNIGHT
+   GitHub Actions + Fugle
+   Firebase:
+       /market_data/intraday_picks
+
+這支程式不再負責正式當沖。
+
+安全原則：
+- 不輸出 API key
+- 不寫入 LINE token
+- 不覆蓋 intraday_live
+- daytrade 固定為 []
 """
 
 from __future__ import annotations
@@ -21,58 +31,163 @@ import math
 import os
 import statistics
 import time
-from datetime import datetime, timezone, timedelta
+
+from datetime import (
+    datetime,
+    timedelta,
+    timezone,
+)
+
 from typing import Any
 
 import firebase_admin
-from firebase_admin import credentials, db
+
+from firebase_admin import (
+    credentials,
+    db,
+)
+
 import requests
 
 
-FIREBASE_DATABASE_URL = os.environ.get(
-    "FIREBASE_DATABASE_URL", ""
-).strip().rstrip("/")
+# =========================================================
+# 基本設定
+# =========================================================
 
-FIREBASE_SERVICE_ACCOUNT_JSON = os.environ.get(
-    "FIREBASE_SERVICE_ACCOUNT_JSON", ""
-).strip()
+MODEL_VERSION = "2.0-overnight-only"
+
+TPE = timezone(
+    timedelta(hours=8)
+)
+
+
+# =========================================================
+# Firebase
+# =========================================================
+
+FIREBASE_DATABASE_URL = (
+    os.environ.get(
+        "FIREBASE_DATABASE_URL",
+        ""
+    )
+    .strip()
+    .rstrip("/")
+)
+
+
+FIREBASE_SERVICE_ACCOUNT_JSON = (
+    os.environ.get(
+        "FIREBASE_SERVICE_ACCOUNT_JSON",
+        ""
+    )
+    .strip()
+)
+
+
+FIREBASE_SERVICE_ACCOUNT_FILE = (
+    os.environ.get(
+        "FIREBASE_SERVICE_ACCOUNT_FILE",
+        ""
+    )
+    .strip()
+)
+
 
 FIREBASE_ROOT_PATH = (
-    os.environ.get("FIREBASE_ROOT_PATH", "market_data").strip("/")
+    os.environ.get(
+        "FIREBASE_ROOT_PATH",
+        "market_data"
+    )
+    .strip("/")
     or "market_data"
 )
 
-FUGLE_API_KEY = os.environ.get("FUGLE_API_KEY", "").strip()
 
-FUGLE_BASE = "https://api.fugle.tw/marketdata/v1.0/stock"
+# =========================================================
+# Fugle
+# =========================================================
 
-HTTP_TIMEOUT = float(os.environ.get("HTTP_TIMEOUT", "12"))
-
-SCAN_MAX_SYMBOLS = max(
-    5,
-    int(os.environ.get("INTRADAY_SCAN_MAX_SYMBOLS", "30"))
+FUGLE_API_KEY = (
+    os.environ.get(
+        "FUGLE_API_KEY",
+        ""
+    )
+    .strip()
 )
+
+
+FUGLE_BASE = (
+    "https://api.fugle.tw/"
+    "marketdata/v1.0/stock"
+)
+
+
+HTTP_TIMEOUT = float(
+    os.environ.get(
+        "HTTP_TIMEOUT",
+        "12"
+    )
+)
+
 
 MIN_INTERVAL = max(
     0.0,
-    float(os.environ.get("FUGLE_MIN_INTERVAL_SECONDS", "1.10"))
+    float(
+        os.environ.get(
+            "FUGLE_MIN_INTERVAL_SECONDS",
+            "1.10"
+        )
+    )
 )
+
+
+# =========================================================
+# Scanner
+# =========================================================
+
+SCAN_MAX_SYMBOLS = max(
+    5,
+    int(
+        os.environ.get(
+            "INTRADAY_SCAN_MAX_SYMBOLS",
+            "30"
+        )
+    )
+)
+
+
+TOP_N = max(
+    1,
+    int(
+        os.environ.get(
+            "INTRADAY_TOP_N",
+            "3"
+        )
+    )
+)
+
 
 MIN_DAYTRADE_SCORE = int(
-    os.environ.get("INTRADAY_MIN_DAYTRADE_SCORE", "76")
+    os.environ.get(
+        "INTRADAY_MIN_DAYTRADE_SCORE",
+        "76"
+    )
 )
+
 
 MIN_OVERNIGHT_SCORE = int(
-    os.environ.get("INTRADAY_MIN_OVERNIGHT_SCORE", "74")
+    os.environ.get(
+        "INTRADAY_MIN_OVERNIGHT_SCORE",
+        "74"
+    )
 )
+
+
 # =========================================================
-# Legacy Fugle scanner switches
-#
-# 新版：
-# Daytrade 由 Oracle VM + Shioaji 負責
-# Fugle workflow 只保留 Overnight
+# 模組開關
 # =========================================================
 
+# 正式架構預設永遠關閉舊 Fugle 當沖
 ENABLE_DAYTRADE = (
     os.environ.get(
         "INTRADAY_ENABLE_DAYTRADE",
@@ -103,308 +218,613 @@ ENABLE_OVERNIGHT = (
         "on",
     }
 )
-TOP_N = max(
-    1,
-    int(os.environ.get("INTRADAY_TOP_N", "3"))
-)
 
-MODEL_VERSION = "1.1"
 
-TPE = timezone(timedelta(hours=8))
+# =========================================================
+# HTTP Session
+# =========================================================
 
 _last_call = 0.0
 
+
 session = requests.Session()
+
 session.headers.update({
-    "User-Agent": "MohrenQuant/1.1",
-    "Accept": "application/json"
+    "User-Agent":
+        "MohrenQuant/2.0",
+
+    "Accept":
+        "application/json",
 })
 
 
-def num(v: Any) -> float | None:
+# =========================================================
+# Helpers
+# =========================================================
+
+def num(
+    value: Any
+) -> float | None:
+
     try:
-        if v is None or v == "":
+
+        if (
+            value is None
+            or value == ""
+        ):
             return None
 
-        x = float(v)
+        result = float(
+            value
+        )
 
-        return x if math.isfinite(x) else None
+        if not math.isfinite(
+            result
+        ):
+            return None
 
-    except (TypeError, ValueError):
+        return result
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
         return None
 
 
 def clamp(
-    v: float,
-    lo: float = 0.0,
-    hi: float = 1.0
+    value: float,
+    low: float = 0.0,
+    high: float = 1.0,
 ) -> float:
 
-    return max(lo, min(hi, v))
+    return max(
+        low,
+        min(
+            high,
+            value
+        )
+    )
+
+
+def sma(
+    values: list[float],
+    period: int,
+) -> float | None:
+
+    if len(values) < period:
+        return None
+
+    return (
+        sum(
+            values[-period:]
+        )
+        /
+        period
+    )
 
 
 def pct_rank_from_hot_rank(
     rank: Any,
-    universe: int = 500
+    universe: int = 500,
 ) -> float:
 
-    r = num(rank)
+    value = num(
+        rank
+    )
 
-    if r is None:
+    if value is None:
         return 0.5
 
     return clamp(
-        1.0 - (r - 1) / max(1, universe - 1)
+        1.0
+        -
+        (
+            value - 1
+        )
+        /
+        max(
+            1,
+            universe - 1
+        )
     )
 
+
+# =========================================================
+# Fugle Rate Limit
+# =========================================================
 
 def wait_rate_limit() -> None:
 
     global _last_call
 
-    elapsed = time.monotonic() - _last_call
+    elapsed = (
+        time.monotonic()
+        -
+        _last_call
+    )
 
     if elapsed < MIN_INTERVAL:
-        time.sleep(MIN_INTERVAL - elapsed)
 
-    _last_call = time.monotonic()
+        time.sleep(
+            MIN_INTERVAL
+            -
+            elapsed
+        )
+
+    _last_call = (
+        time.monotonic()
+    )
 
 
-def fugle_5m(symbol: str) -> list[dict]:
+# =========================================================
+# Fugle 5M
+# =========================================================
+
+def fugle_5m(
+    symbol: str
+) -> list[dict]:
 
     wait_rate_limit()
 
-    url = f"{FUGLE_BASE}/intraday/candles/{symbol}"
+    url = (
+        f"{FUGLE_BASE}/"
+        f"intraday/candles/"
+        f"{symbol}"
+    )
 
-    resp = session.get(
+
+    response = session.get(
         url,
+
         params={
             "timeframe": "5",
-            "sort": "asc"
+            "sort": "asc",
         },
+
         headers={
-            "X-API-KEY": FUGLE_API_KEY
+            "X-API-KEY":
+                FUGLE_API_KEY,
         },
+
         timeout=HTTP_TIMEOUT,
     )
 
-    if resp.status_code == 404:
+
+    if response.status_code == 404:
         return []
 
-    if resp.status_code == 429:
+
+    # API rate limit retry
+    if response.status_code == 429:
+
+        sleep_seconds = max(
+            3.0,
+            MIN_INTERVAL * 3
+        )
+
+        print(
+            f"[rate-limit] "
+            f"{symbol} "
+            f"sleep={sleep_seconds:.1f}s"
+        )
 
         time.sleep(
-            max(
-                3.0,
-                MIN_INTERVAL * 3
-            )
+            sleep_seconds
         )
 
         wait_rate_limit()
 
-        resp = session.get(
+        response = session.get(
             url,
+
             params={
                 "timeframe": "5",
-                "sort": "asc"
+                "sort": "asc",
             },
+
             headers={
-                "X-API-KEY": FUGLE_API_KEY
+                "X-API-KEY":
+                    FUGLE_API_KEY,
             },
+
             timeout=HTTP_TIMEOUT,
         )
 
-    resp.raise_for_status()
 
-    payload = resp.json() or {}
+    response.raise_for_status()
 
-    rows = payload.get("data") or []
 
-    clean = []
+    payload = (
+        response.json()
+        or {}
+    )
+
+
+    rows = (
+        payload.get("data")
+        or []
+    )
+
+
+    clean: list[dict] = []
+
 
     for row in rows:
 
-        o, h, l, c, v = map(
-            num,
-            [
-                row.get("open"),
-                row.get("high"),
-                row.get("low"),
-                row.get("close"),
-                row.get("volume"),
-            ]
+        o = num(
+            row.get("open")
         )
 
-        if None in (o, h, l, c) or v is None:
+        h = num(
+            row.get("high")
+        )
+
+        l = num(
+            row.get("low")
+        )
+
+        c = num(
+            row.get("close")
+        )
+
+        v = num(
+            row.get("volume")
+        )
+
+
+        if (
+            o is None
+            or h is None
+            or l is None
+            or c is None
+            or v is None
+        ):
+
             continue
 
+
         clean.append({
-            "date": row.get("date"),
-            "open": o,
-            "high": h,
-            "low": l,
-            "close": c,
-            "volume": max(0.0, v),
-            "average": num(row.get("average")),
+
+            "date":
+                row.get("date"),
+
+            "open":
+                o,
+
+            "high":
+                h,
+
+            "low":
+                l,
+
+            "close":
+                c,
+
+            "volume":
+                max(
+                    0.0,
+                    v
+                ),
+
+            "average":
+                num(
+                    row.get(
+                        "average"
+                    )
+                ),
+
         })
+
 
     return clean
 
 
-def aggregate_15m(rows: list[dict]) -> list[dict]:
+# =========================================================
+# 5M -> 15M
+# =========================================================
 
-    out = []
+def aggregate_15m(
+    rows: list[dict]
+) -> list[dict]:
 
-    for i in range(0, len(rows), 3):
+    output: list[dict] = []
 
-        chunk = rows[i:i + 3]
+
+    for index in range(
+        0,
+        len(rows),
+        3
+    ):
+
+        chunk = rows[
+            index:index + 3
+        ]
+
 
         if len(chunk) < 3:
             continue
 
-        vol = sum(
-            x["volume"]
-            for x in chunk
-        )
 
-        out.append({
-            "date": chunk[-1]["date"],
-            "open": chunk[0]["open"],
-            "high": max(
-                x["high"]
-                for x in chunk
-            ),
-            "low": min(
-                x["low"]
-                for x in chunk
-            ),
-            "close": chunk[-1]["close"],
-            "volume": vol,
+        output.append({
+
+            "date":
+                chunk[-1]["date"],
+
+            "open":
+                chunk[0]["open"],
+
+            "high":
+                max(
+                    bar["high"]
+                    for bar
+                    in chunk
+                ),
+
+            "low":
+                min(
+                    bar["low"]
+                    for bar
+                    in chunk
+                ),
+
+            "close":
+                chunk[-1]["close"],
+
+            "volume":
+                sum(
+                    bar["volume"]
+                    for bar
+                    in chunk
+                ),
+
         })
 
-    return out
+
+    return output
 
 
-def sma(
-    values: list[float],
-    n: int
-) -> float | None:
+# =========================================================
+# K-Bar Helpers
+# =========================================================
 
-    if len(values) < n:
-        return None
+def bar_position(
+    bar: dict
+) -> float:
 
-    return sum(values[-n:]) / n
-
-
-def bar_position(bar: dict) -> float:
-
-    span = bar["high"] - bar["low"]
+    span = (
+        bar["high"]
+        -
+        bar["low"]
+    )
 
     if span <= 0:
         return 0.5
 
     return clamp(
-        (bar["close"] - bar["low"]) / span
+        (
+            bar["close"]
+            -
+            bar["low"]
+        )
+        /
+        span
     )
 
 
-def upper_wick_ratio(bar: dict) -> float:
+def upper_wick_ratio(
+    bar: dict
+) -> float:
 
-    span = bar["high"] - bar["low"]
+    span = (
+        bar["high"]
+        -
+        bar["low"]
+    )
 
     if span <= 0:
         return 0.0
 
+    body_top = max(
+        bar["open"],
+        bar["close"]
+    )
+
     return clamp(
         (
             bar["high"]
-            - max(bar["open"], bar["close"])
-        ) / span
+            -
+            body_top
+        )
+        /
+        span
     )
 
 
+# =========================================================
+# Trend
+# =========================================================
+
 def trend_score(
     rows: list[dict]
-) -> tuple[float, list[str]]:
+) -> tuple[
+    float,
+    list[str],
+]:
 
     if len(rows) < 2:
-        return 0.0, []
+        return (
+            0.0,
+            []
+        )
+
 
     closes = [
-        x["close"]
-        for x in rows
+        row["close"]
+        for row
+        in rows
     ]
 
-    short = sma(closes, 3)
-    slow = sma(closes, 6)
 
-    last = closes[-1]
+    short_ma = sma(
+        closes,
+        3
+    )
+
+    slow_ma = sma(
+        closes,
+        6
+    )
+
+
+    last_close = (
+        closes[-1]
+    )
+
 
     recent = rows[
-        -min(4, len(rows)):
+        -min(
+            4,
+            len(rows)
+        ):
     ]
+
 
     comparisons = max(
         1,
         len(recent) - 1
     )
 
-    higher_lows = sum(
-        recent[i]["low"]
-        >= recent[i - 1]["low"]
-        for i in range(1, len(recent))
-    )
 
-    higher_highs = sum(
-        recent[i]["high"]
-        >= recent[i - 1]["high"]
-        for i in range(1, len(recent))
-    )
+    higher_lows = 0
+    higher_highs = 0
+
+
+    for i in range(
+        1,
+        len(recent)
+    ):
+
+        if (
+            recent[i]["low"]
+            >=
+            recent[
+                i - 1
+            ]["low"]
+        ):
+
+            higher_lows += 1
+
+
+        if (
+            recent[i]["high"]
+            >=
+            recent[
+                i - 1
+            ]["high"]
+        ):
+
+            higher_highs += 1
+
 
     score = 0.0
 
-    reasons = []
+    reasons: list[str] = []
+
 
     if (
-        short is not None
-        and slow is not None
-        and last > short > slow
+        short_ma is not None
+        and slow_ma is not None
+        and
+        last_close
+        >
+        short_ma
+        >
+        slow_ma
     ):
 
         score += 0.55
 
-        reasons.append("短均線多頭")
+        reasons.append(
+            "短均線多頭"
+        )
+
 
     elif (
-        short is not None
-        and last > short
+        short_ma is not None
+        and
+        last_close
+        >
+        short_ma
     ):
 
         score += 0.35
 
-    elif last > closes[0]:
+
+    elif (
+        closes
+        and
+        last_close
+        >
+        closes[0]
+    ):
 
         score += 0.25
 
-    score += (
-        0.225
-        * (higher_lows / comparisons)
-    )
 
     score += (
         0.225
-        * (higher_highs / comparisons)
+        *
+        (
+            higher_lows
+            /
+            comparisons
+        )
     )
+
+
+    score += (
+        0.225
+        *
+        (
+            higher_highs
+            /
+            comparisons
+        )
+    )
+
 
     if (
-        higher_lows >= max(1, comparisons - 1)
-        and higher_highs >= max(1, comparisons - 1)
+        higher_lows
+        >=
+        max(
+            1,
+            comparisons - 1
+        )
+        and
+        higher_highs
+        >=
+        max(
+            1,
+            comparisons - 1
+        )
     ):
 
-        reasons.append("高低點墊高")
+        reasons.append(
+            "高低點墊高"
+        )
 
-    return clamp(score), reasons
 
+    return (
+        clamp(score),
+        reasons
+    )
+
+
+# =========================================================
+# VWAP
+# =========================================================
 
 def vwap_proxy(
     rows: list[dict]
@@ -413,270 +833,352 @@ def vwap_proxy(
     if not rows:
         return None
 
-    last_avg = num(
-        rows[-1].get("average")
+
+    # Fugle 有 average 時優先使用
+    last_average = num(
+        rows[-1].get(
+            "average"
+        )
     )
 
-    if last_avg and last_avg > 0:
-        return last_avg
 
-    vol = sum(
-        x["volume"]
-        for x in rows
+    if (
+        last_average is not None
+        and last_average > 0
+    ):
+
+        return last_average
+
+
+    total_volume = sum(
+        row["volume"]
+        for row
+        in rows
     )
 
-    if vol <= 0:
+
+    if total_volume <= 0:
         return None
 
-    return sum(
-        (
-            (
-                x["high"]
-                + x["low"]
-                + x["close"]
-            ) / 3
-        ) * x["volume"]
-        for x in rows
-    ) / vol
 
+    total_value = 0.0
+
+
+    for row in rows:
+
+        typical_price = (
+            row["high"]
+            +
+            row["low"]
+            +
+            row["close"]
+        ) / 3
+
+
+        total_value += (
+            typical_price
+            *
+            row["volume"]
+        )
+
+
+    return (
+        total_value
+        /
+        total_volume
+    )
+
+
+# =========================================================
+# Volume
+# =========================================================
 
 def volume_score(
     rows: list[dict]
-) -> tuple[float, float | None]:
+) -> tuple[
+    float,
+    float | None,
+]:
 
     if len(rows) < 10:
-        return 0.4, None
+
+        return (
+            0.4,
+            None
+        )
+
 
     recent = [
-        x["volume"]
-        for x in rows[-3:]
+        row["volume"]
+        for row
+        in rows[-3:]
     ]
+
 
     base = [
-        x["volume"]
-        for x in rows[-12:-3]
-        if x["volume"] > 0
+        row["volume"]
+        for row
+        in rows[-12:-3]
+        if row["volume"] > 0
     ]
 
-    if not base:
-        return 0.4, None
 
-    ratio = (
-        sum(recent) / len(recent)
-    ) / (
-        sum(base) / len(base)
+    if not base:
+
+        return (
+            0.4,
+            None
+        )
+
+
+    recent_avg = (
+        sum(recent)
+        /
+        len(recent)
     )
 
+
+    base_avg = (
+        sum(base)
+        /
+        len(base)
+    )
+
+
+    if base_avg <= 0:
+
+        return (
+            0.4,
+            None
+        )
+
+
+    ratio = (
+        recent_avg
+        /
+        base_avg
+    )
+
+
+    score = clamp(
+        (
+            ratio - 0.7
+        )
+        /
+        1.8
+    )
+
+
     return (
-        clamp(
-            (ratio - 0.7) / 1.8
-        ),
+        score,
         ratio
     )
 
 
-def pattern_features(
-    rows5: list[dict],
-    rows15: list[dict],
-    stock: dict,
-    market_level: str
-) -> dict:
+# =========================================================
+# Historical Edge
+# =========================================================
 
-    last = rows5[-1]
+def historical_edge_score(
+    stock: dict
+) -> float:
 
-    close = last["close"]
-
-    day_high = max(
-        x["high"]
-        for x in rows5
-    )
-
-    day_low = min(
-        x["low"]
-        for x in rows5
-    )
-
-    day_span = max(
-        1e-9,
-        day_high - day_low
-    )
-
-    day_pos = clamp(
-        (close - day_low)
-        / day_span
-    )
-
-    vwap = vwap_proxy(rows5)
-
-    dist_vwap = (
-        None
-        if not vwap
-        else close / vwap - 1
-    )
-
-    five_trend, five_reasons = trend_score(
-        rows5
-    )
-
-    fifteen_trend, fifteen_reasons = trend_score(
-        rows15
-    )
-
-    vol_score, vol_ratio = volume_score(
-        rows5
-    )
-
-    opening = rows5[:6]
-
-    opening_high = max(
-        (
-            x["high"]
-            for x in opening
-        ),
-        default=None
-    )
-
-    orb = bool(
-        opening_high is not None
-        and len(rows5) >= 7
-        and close > opening_high * 1.001
-    )
-
-    pre = (
-        rows5[-7:-1]
-        if len(rows5) >= 7
-        else []
-    )
-
-    compression_breakout = False
-
-    if pre:
-
-        pre_high = max(
-            x["high"]
-            for x in pre
+    backtest = (
+        stock.get(
+            "backtest"
         )
-
-        pre_low = min(
-            x["low"]
-            for x in pre
-        )
-
-        pre_mid = statistics.mean(
-            x["close"]
-            for x in pre
-        )
-
-        compression = (
-            pre_mid > 0
-            and (
-                pre_high - pre_low
-            ) / pre_mid <= 0.018
-        )
-
-        compression_breakout = bool(
-            compression
-            and close > pre_high
-            and (vol_ratio or 0) >= 1.15
-        )
-
-    daily_up = bool(
-        num(stock.get("sma20"))
-        and num(stock.get("sma60"))
-        and close > num(stock["sma20"])
-        and close > num(stock["sma60"])
-    )
-
-    amount_pct = num(
-        stock.get("amount_rank_pct")
-    )
-
-    liquidity = clamp(
-        amount_pct
-        if amount_pct is not None
-        else pct_rank_from_hot_rank(
-            stock.get("hot_rank")
-        )
-    )
-
-    bt = (
-        stock.get("backtest")
         or {}
-    ).get("daytrade_proxy") or {}
-
-    pf = num(
-        bt.get("profit_factor")
     )
 
-    avg_ret = num(
-        bt.get("avg_return")
+
+    proxy = (
+        backtest.get(
+            "daytrade_proxy"
+        )
+        or {}
     )
+
+
+    profit_factor = num(
+        proxy.get(
+            "profit_factor"
+        )
+    )
+
+
+    avg_return = num(
+        proxy.get(
+            "avg_return"
+        )
+    )
+
 
     samples = (
-        num(bt.get("signals"))
+        num(
+            proxy.get(
+                "signals"
+            )
+        )
         or 0
     )
 
-    hist_edge = 0.45
+
+    edge = 0.45
+
 
     if samples >= 20:
 
-        hist_edge = clamp(
-            0.35
-            + clamp(
-                ((pf or 1) - 0.8) / 0.8
-            ) * 0.35
-            + clamp(
-                ((avg_ret or 0) + 0.005)
-                / 0.02
-            ) * 0.30
-        )
-
-    pattern_score = clamp(
-        five_trend * 0.55
-        + fifteen_trend * 0.30
-        + (
-            0.15
-            if orb or compression_breakout
-            else 0
-        )
-    )
-
-    vwap_score = 0.2
-
-    if vwap:
-
-        if close >= vwap:
-
-            vwap_score = (
-                0.85
-                if (dist_vwap or 0) <= 0.02
-                else 0.60
+        pf_score = clamp(
+            (
+                (
+                    profit_factor
+                    or 1.0
+                )
+                -
+                0.8
             )
+            /
+            0.8
+        )
 
-        else:
 
-            vwap_score = 0.10
+        return_score = clamp(
+            (
+                (
+                    avg_return
+                    or 0.0
+                )
+                +
+                0.005
+            )
+            /
+            0.02
+        )
 
-    market_score = {
-        "GREEN": 1.0,
-        "YELLOW": 0.60,
-        "RED": 0.15,
-    }.get(
-        market_level,
-        0.5
+
+        edge = clamp(
+            0.35
+            +
+            pf_score * 0.35
+            +
+            return_score * 0.30
+        )
+
+
+    return edge
+
+
+# =========================================================
+# Overnight Feature Engine
+# =========================================================
+
+def overnight_features(
+    rows5: list[dict],
+    rows15: list[dict],
+    stock: dict,
+    market_level_name: str,
+) -> dict:
+
+    if not rows5:
+
+        raise ValueError(
+            "rows5 is empty"
+        )
+
+
+    last = rows5[-1]
+
+    close = float(
+        last["close"]
     )
 
-    daytrade_score = round(
-        100 * (
-            pattern_score * 0.30
-            + vol_score * 0.20
-            + vwap_score * 0.15
-            + market_score * 0.10
-            + liquidity * 0.10
-            + hist_edge * 0.15
+
+    # =====================================================
+    # Day position
+    # =====================================================
+
+    day_high = max(
+        row["high"]
+        for row
+        in rows5
+    )
+
+
+    day_low = min(
+        row["low"]
+        for row
+        in rows5
+    )
+
+
+    day_span = max(
+        1e-9,
+        day_high
+        -
+        day_low
+    )
+
+
+    day_position = clamp(
+        (
+            close
+            -
+            day_low
+        )
+        /
+        day_span
+    )
+
+
+    # =====================================================
+    # VWAP
+    # =====================================================
+
+    vwap = vwap_proxy(
+        rows5
+    )
+
+
+    vwap_distance = (
+        None
+        if not vwap
+        else
+        close / vwap - 1
+    )
+
+
+    # =====================================================
+    # Trends
+    # =====================================================
+
+    five_trend, _ = (
+        trend_score(
+            rows5
         )
     )
+
+
+    fifteen_trend, _ = (
+        trend_score(
+            rows15
+        )
+    )
+
+
+    # =====================================================
+    # Volume
+    # =====================================================
+
+    vol_score, vol_ratio = (
+        volume_score(
+            rows5
+        )
+    )
+
+
+    # =====================================================
+    # Last 30 minutes
+    # =====================================================
 
     tail = (
         rows5[-6:]
@@ -684,325 +1186,703 @@ def pattern_features(
         else rows5
     )
 
-    tail_ret = (
-        (
+
+    if (
+        tail
+        and
+        tail[0]["open"]
+    ):
+
+        tail_return = (
             tail[-1]["close"]
-            / tail[0]["open"]
-            - 1
+            /
+            tail[0]["open"]
+            -
+            1
         )
-        if tail
-        and tail[0]["open"]
-        else 0
-    )
+
+    else:
+
+        tail_return = 0.0
+
 
     tail_strength = clamp(
-        (tail_ret + 0.005)
-        / 0.03
+        (
+            tail_return
+            +
+            0.005
+        )
+        /
+        0.03
     )
+
+
+    # =====================================================
+    # Close near high
+    # =====================================================
 
     close_high_score = clamp(
-        (day_pos - 0.45)
-        / 0.55
+        (
+            day_position
+            -
+            0.45
+        )
+        /
+        0.55
     )
+
+
+    # =====================================================
+    # Liquidity
+    # =====================================================
+
+    amount_rank_pct = num(
+        stock.get(
+            "amount_rank_pct"
+        )
+    )
+
+
+    liquidity = clamp(
+        amount_rank_pct
+        if amount_rank_pct is not None
+        else
+        pct_rank_from_hot_rank(
+            stock.get(
+                "hot_rank"
+            )
+        )
+    )
+
+
+    # =====================================================
+    # Institution
+    # =====================================================
 
     inst = num(
-        stock.get("net15Total")
-    )
-
-    inst_score = (
-        0.5
-        if inst is None
-        else clamp(
-            (inst + 2_000_000)
-            / 4_000_000
+        stock.get(
+            "net15Total"
         )
     )
 
-    daily_score = (
-        1.0
-        if daily_up
-        else 0.35
+
+    if inst is None:
+
+        inst_score = 0.5
+
+    else:
+
+        inst_score = clamp(
+            (
+                inst
+                +
+                2_000_000
+            )
+            /
+            4_000_000
+        )
+
+
+    # =====================================================
+    # Daily Trend
+    # =====================================================
+
+    sma20 = num(
+        stock.get(
+            "sma20"
+        )
     )
+
+
+    sma60 = num(
+        stock.get(
+            "sma60"
+        )
+    )
+
+
+    daily_uptrend = bool(
+        sma20 is not None
+        and
+        sma60 is not None
+        and
+        close > sma20
+        and
+        close > sma60
+    )
+
+
+    # =====================================================
+    # Historical edge
+    # =====================================================
+
+    hist_edge = (
+        historical_edge_score(
+            stock
+        )
+    )
+
+
+    # =====================================================
+    # Overnight score
+    # =====================================================
 
     overnight_score = round(
-        100 * (
-            fifteen_trend * 0.25
-            + tail_strength * 0.20
-            + close_high_score * 0.15
-            + vol_score * 0.15
-            + liquidity * 0.10
-            + inst_score * 0.10
-            + hist_edge * 0.05
+        100
+        *
+        (
+            fifteen_trend
+            * 0.25
+
+            +
+            tail_strength
+            * 0.20
+
+            +
+            close_high_score
+            * 0.15
+
+            +
+            vol_score
+            * 0.15
+
+            +
+            liquidity
+            * 0.10
+
+            +
+            inst_score
+            * 0.10
+
+            +
+            hist_edge
+            * 0.05
         )
     )
 
-    vetoes = []
 
-    if vwap and close < vwap * 0.998:
-        vetoes.append("跌破VWAP")
+    # =====================================================
+    # Vetoes
+    # =====================================================
 
-    if (
-        dist_vwap is not None
-        and dist_vwap > 0.03
-    ):
-        vetoes.append("距VWAP過遠")
+    vetoes: list[str] = []
+
 
     if (
-        upper_wick_ratio(last) >= 0.55
-        and bar_position(last) < 0.65
+        vwap
+        and
+        close
+        <
+        vwap * 0.998
     ):
-        vetoes.append("末根爆上影")
 
-    if (
-        len(rows5) >= 7
-        and close <= min(
-            x["low"]
-            for x in rows5[-6:-1]
-        )
-    ):
-        vetoes.append("5分K破短低")
-
-    if market_level == "RED":
-        vetoes.append("市場紅燈")
-
-    day_reasons = []
-
-    if five_trend >= 0.65:
-        day_reasons.append("5分K多頭")
-
-    if fifteen_trend >= 0.60:
-        day_reasons.append("15分K同向")
-
-    if vwap and close >= vwap:
-        day_reasons.append("站上VWAP")
-
-    if (vol_ratio or 0) >= 1.30:
-        day_reasons.append(
-            f"量能放大 {vol_ratio:.1f}x"
+        vetoes.append(
+            "跌破VWAP"
         )
 
-    if orb:
-        day_reasons.append("突破早盤區間")
 
-    elif compression_breakout:
-        day_reasons.append("壓縮後放量突破")
+    if (
+        vwap_distance is not None
+        and
+        vwap_distance > 0.03
+    ):
 
-    if daily_up:
-        day_reasons.append("日K多頭")
+        vetoes.append(
+            "距VWAP過遠"
+        )
 
-    overnight_reasons = []
 
-    if tail_ret >= 0.006:
-        overnight_reasons.append(
+    if (
+        upper_wick_ratio(
+            last
+        )
+        >= 0.55
+        and
+        bar_position(
+            last
+        )
+        < 0.65
+    ):
+
+        vetoes.append(
+            "末根爆上影"
+        )
+
+
+    if (
+        market_level_name
+        == "RED"
+    ):
+
+        vetoes.append(
+            "市場紅燈"
+        )
+
+
+    # =====================================================
+    # Reasons
+    # =====================================================
+
+    reasons: list[str] = []
+
+
+    if tail_return >= 0.006:
+
+        reasons.append(
             "尾盤30分鐘續強"
         )
 
+
     if fifteen_trend >= 0.60:
-        overnight_reasons.append(
+
+        reasons.append(
             "15分K維持多頭"
         )
 
-    if day_pos >= 0.78:
-        overnight_reasons.append(
+
+    if day_position >= 0.78:
+
+        reasons.append(
             "收盤靠近日高"
         )
 
-    if (vol_ratio or 0) >= 1.20:
-        overnight_reasons.append(
+
+    if (
+        vol_ratio
+        or 0
+    ) >= 1.20:
+
+        reasons.append(
             "量價配合"
         )
 
-    if inst is not None and inst > 0:
-        overnight_reasons.append(
+
+    if (
+        inst is not None
+        and inst > 0
+    ):
+
+        reasons.append(
             "15日法人偏多"
         )
 
-    if daily_up:
-        overnight_reasons.append(
+
+    if daily_uptrend:
+
+        reasons.append(
             "日K趨勢偏多"
         )
 
+
     return {
-        "daytrade_score": daytrade_score,
-        "overnight_score": overnight_score,
-        "price": round(close, 4),
-        "vwap": round(vwap, 4)
-        if vwap else None,
-        "vwap_distance_pct": round(
-            (dist_vwap or 0) * 100,
-            3
-        )
-        if dist_vwap is not None
-        else None,
-        "volume_ratio": round(
-            vol_ratio,
-            3
-        )
-        if vol_ratio is not None
-        else None,
-        "day_position": round(
-            day_pos,
-            4
-        ),
-        "tail_30m_return_pct": round(
-            tail_ret * 100,
-            3
-        ),
-        "five_trend": round(
-            five_trend * 100,
-            1
-        ),
-        "fifteen_trend": round(
-            fifteen_trend * 100,
-            1
-        ),
-        "opening_range_breakout": orb,
-        "compression_breakout": compression_breakout,
-        "daily_uptrend": daily_up,
-        "historical_edge": round(
-            hist_edge * 100,
-            1
-        ),
-        "vetoes": vetoes,
-        "daytrade_reasons": day_reasons[:4],
-        "overnight_reasons": overnight_reasons[:4],
+
+        "overnight_score":
+            overnight_score,
+
+        # 舊欄位保留相容性，
+        # 但不再作為正式當沖
+        "daytrade_score":
+            None,
+
+        "price":
+            round(
+                close,
+                4
+            ),
+
+        "vwap":
+            (
+                round(
+                    vwap,
+                    4
+                )
+                if vwap
+                else None
+            ),
+
+        "vwap_distance_pct":
+            (
+                round(
+                    vwap_distance
+                    * 100,
+                    3
+                )
+                if (
+                    vwap_distance
+                    is not None
+                )
+                else None
+            ),
+
+        "volume_ratio":
+            (
+                round(
+                    vol_ratio,
+                    3
+                )
+                if (
+                    vol_ratio
+                    is not None
+                )
+                else None
+            ),
+
+        "day_position":
+            round(
+                day_position,
+                4
+            ),
+
+        "tail_30m_return_pct":
+            round(
+                tail_return
+                * 100,
+                3
+            ),
+
+        "five_trend":
+            round(
+                five_trend
+                * 100,
+                1
+            ),
+
+        "fifteen_trend":
+            round(
+                fifteen_trend
+                * 100,
+                1
+            ),
+
+        "daily_uptrend":
+            daily_uptrend,
+
+        "historical_edge":
+            round(
+                hist_edge
+                * 100,
+                1
+            ),
+
+        "vetoes":
+            vetoes,
+
+        "daytrade_reasons":
+            [],
+
+        "overnight_reasons":
+            reasons[:4],
+
     }
 
+
+# =========================================================
+# Market Level
+# =========================================================
 
 def market_level(
     stocks: list[dict]
-) -> tuple[str, dict]:
+) -> tuple[
+    str,
+    dict,
+]:
 
-    valid = [
-        s
-        for s in stocks
-        if num(s.get("price"))
-        and num(s.get("sma20"))
-        and num(s.get("sma60"))
-    ]
+    valid = []
+
+
+    for stock in stocks:
+
+        price = num(
+            stock.get(
+                "price"
+            )
+        )
+
+        ma20 = num(
+            stock.get(
+                "sma20"
+            )
+        )
+
+        ma60 = num(
+            stock.get(
+                "sma60"
+            )
+        )
+
+
+        if (
+            price is not None
+            and
+            ma20 is not None
+            and
+            ma60 is not None
+        ):
+
+            valid.append(
+                stock
+            )
+
 
     if not valid:
-        return "YELLOW", {
-            "breadth": None,
-            "avg_momo20_pct": None
-        }
+
+        return (
+            "YELLOW",
+            {
+                "breadth":
+                    None,
+
+                "avg_momo20_pct":
+                    None,
+            }
+        )
+
+
+    strong = 0
+
+
+    for stock in valid:
+
+        price = num(
+            stock.get(
+                "price"
+            )
+        )
+
+        ma20 = num(
+            stock.get(
+                "sma20"
+            )
+        )
+
+        ma60 = num(
+            stock.get(
+                "sma60"
+            )
+        )
+
+
+        if (
+            price is not None
+            and
+            ma20 is not None
+            and
+            ma60 is not None
+            and
+            price > ma20
+            and
+            price > ma60
+        ):
+
+            strong += 1
+
 
     breadth = (
-        sum(
-            num(s["price"]) > num(s["sma20"])
-            and num(s["price"]) > num(s["sma60"])
-            for s in valid
-        )
-        / len(valid)
+        strong
+        /
+        len(valid)
     )
 
-    momos = [
-        (
-            num(s.get("momo20")) - 1
+
+    momentums: list[float] = []
+
+
+    for stock in stocks:
+
+        momo = num(
+            stock.get(
+                "momo20"
+            )
         )
-        for s in stocks
-        if num(s.get("momo20")) is not None
-    ]
+
+
+        if momo is not None:
+
+            momentums.append(
+                momo - 1
+            )
+
 
     avg_momo = (
-        sum(momos) / len(momos)
-        if momos
-        else 0
-    )
-
-    level = (
-        "GREEN"
-        if breadth >= 0.60
-        and avg_momo >= 0
-        else "YELLOW"
-        if breadth >= 0.42
-        or avg_momo >= 0
-        else "RED"
-    )
-
-    return level, {
-        "breadth": round(
-            breadth,
-            4
-        ),
-        "avg_momo20_pct": round(
-            avg_momo * 100,
-            3
+        sum(
+            momentums
         )
-    }
+        /
+        len(
+            momentums
+        )
+        if momentums
+        else 0.0
+    )
 
+
+    if (
+        breadth >= 0.60
+        and
+        avg_momo >= 0
+    ):
+
+        level = "GREEN"
+
+
+    elif (
+        breadth >= 0.42
+        or
+        avg_momo >= 0
+    ):
+
+        level = "YELLOW"
+
+
+    else:
+
+        level = "RED"
+
+
+    return (
+        level,
+        {
+            "breadth":
+                round(
+                    breadth,
+                    4
+                ),
+
+            "avg_momo20_pct":
+                round(
+                    avg_momo
+                    * 100,
+                    3
+                ),
+        }
+    )
+
+
+# =========================================================
+# Firebase Initialize
+# =========================================================
 
 def init_firebase() -> db.Reference:
 
-    if (
-        not FIREBASE_DATABASE_URL
-        or not FIREBASE_SERVICE_ACCOUNT_JSON
-    ):
+    if not FIREBASE_DATABASE_URL:
+
         raise RuntimeError(
-            "Missing Firebase secrets"
+            "Missing FIREBASE_DATABASE_URL"
         )
 
-    payload = json.loads(
-        FIREBASE_SERVICE_ACCOUNT_JSON
-    )
+
+    credential = None
+
+
+    # GitHub Actions 使用 JSON secret
+    if FIREBASE_SERVICE_ACCOUNT_JSON:
+
+        try:
+
+            service_account = json.loads(
+                FIREBASE_SERVICE_ACCOUNT_JSON
+            )
+
+        except json.JSONDecodeError as exc:
+
+            raise RuntimeError(
+                "Invalid "
+                "FIREBASE_SERVICE_ACCOUNT_JSON"
+            ) from exc
+
+
+        credential = (
+            credentials.Certificate(
+                service_account
+            )
+        )
+
+
+    # Oracle VM / local 可用 file
+    elif FIREBASE_SERVICE_ACCOUNT_FILE:
+
+        if not os.path.exists(
+            FIREBASE_SERVICE_ACCOUNT_FILE
+        ):
+
+            raise RuntimeError(
+                "Firebase service account "
+                "file not found"
+            )
+
+
+        credential = (
+            credentials.Certificate(
+                FIREBASE_SERVICE_ACCOUNT_FILE
+            )
+        )
+
+
+    else:
+
+        raise RuntimeError(
+            "Missing Firebase credentials"
+        )
+
 
     if not firebase_admin._apps:
 
         firebase_admin.initialize_app(
-            credentials.Certificate(payload),
+            credential,
             {
                 "databaseURL":
                     FIREBASE_DATABASE_URL
             }
         )
 
+
     return db.reference(
         f"/{FIREBASE_ROOT_PATH}"
     )
 
 
-# ---------------------------------------------------------
-# 首次出現時間管理
-# ---------------------------------------------------------
+# =========================================================
+# First Seen State
+# =========================================================
 
 def load_seen_state(
     root: db.Reference,
-    scan_date: str
+    scan_date: str,
 ) -> dict:
-
-    """
-    讀取今天的首次出現紀錄。
-
-    Firebase:
-    market_data/
-        intraday_seen/
-            2026-09-08/
-                2330/
-                    first_seen_at
-                    first_seen_type
-                    symbol
-                    name
-    """
 
     try:
 
         data = (
             root
-            .child("intraday_seen")
-            .child(scan_date)
+            .child(
+                "intraday_seen"
+            )
+            .child(
+                scan_date
+            )
             .get()
         )
 
-        if not isinstance(data, dict):
+
+        if not isinstance(
+            data,
+            dict
+        ):
+
             return {}
+
 
         return data
 
-    except Exception as e:
+
+    except Exception as exc:
 
         print(
-            f"[warn] unable to load "
-            f"intraday_seen: {type(e).__name__}: {e}"
+            "[warn] "
+            "unable to load "
+            "intraday_seen: "
+            f"{type(exc).__name__}: "
+            f"{exc}"
         )
 
         return {}
@@ -1011,121 +1891,198 @@ def load_seen_state(
 def save_seen_state(
     root: db.Reference,
     scan_date: str,
-    seen_state: dict
+    state: dict,
 ) -> None:
-
-    """
-    保存今天的首次出現資料。
-    """
 
     try:
 
         (
             root
-            .child("intraday_seen")
-            .child(scan_date)
-            .set(seen_state)
+            .child(
+                "intraday_seen"
+            )
+            .child(
+                scan_date
+            )
+            .set(
+                state
+            )
         )
 
-    except Exception as e:
+
+    except Exception as exc:
 
         print(
-            f"[warn] unable to save "
-            f"intraday_seen: {type(e).__name__}: {e}"
+            "[warn] "
+            "unable to save "
+            "intraday_seen: "
+            f"{type(exc).__name__}: "
+            f"{exc}"
         )
 
 
 def ensure_first_seen(
-    seen_state: dict,
+    state: dict,
     item: dict,
     now: datetime,
-    pick_type: str
+    pick_type: str,
 ) -> dict:
 
     symbol = str(
-        item.get("symbol") or ""
+        item.get(
+            "symbol"
+        )
+        or ""
     ).strip()
+
 
     if not symbol:
         return item
+
 
     now_iso = now.isoformat(
         timespec="seconds"
     )
 
-    existing = seen_state.get(
-        symbol
+
+    key = (
+        f"{pick_type}_"
+        f"{symbol}"
     )
 
+
+    existing = (
+        state.get(
+            key
+        )
+    )
+
+
     if (
-        isinstance(existing, dict)
-        and existing.get("first_seen_at")
+        isinstance(
+            existing,
+            dict
+        )
+        and
+        existing.get(
+            "first_seen_at"
+        )
     ):
 
-        first_seen_at = existing[
-            "first_seen_at"
-        ]
+        first_seen_at = (
+            existing[
+                "first_seen_at"
+            ]
+        )
+
 
     else:
 
-        first_seen_at = now_iso
+        first_seen_at = (
+            now_iso
+        )
 
-        seen_state[symbol] = {
-            "symbol": symbol,
-            "name": item.get("name") or symbol,
-            "first_seen_at": first_seen_at,
-            "first_seen_type": pick_type,
-            "first_seen_date": now.date().isoformat(),
+
+        state[key] = {
+
+            "symbol":
+                symbol,
+
+            "name":
+                item.get(
+                    "name"
+                )
+                or symbol,
+
+            "first_seen_at":
+                first_seen_at,
+
+            "first_seen_type":
+                pick_type,
+
+            "first_seen_date":
+                now.date().isoformat(),
+
         }
 
+
         print(
-            f"[first-seen] "
+            "[first-seen] "
             f"{symbol} "
             f"{item.get('name') or ''} "
             f"{pick_type} "
             f"{first_seen_at}"
         )
 
-    item["first_seen_at"] = first_seen_at
-    item["last_seen_at"] = now_iso
-    item["first_seen_date"] = now.date().isoformat()
+
+    item[
+        "first_seen_at"
+    ] = first_seen_at
+
+
+    item[
+        "last_seen_at"
+    ] = now_iso
+
+
+    item[
+        "first_seen_date"
+    ] = (
+        now.date()
+        .isoformat()
+    )
+
 
     return item
 
 
 def calculate_duration_minutes(
     first_seen_at: str | None,
-    last_seen_at: str | None
+    last_seen_at: str | None,
 ) -> int | None:
 
     if not first_seen_at:
         return None
 
+
     try:
 
-        first = datetime.fromisoformat(
-            first_seen_at
+        first = (
+            datetime.fromisoformat(
+                first_seen_at
+            )
         )
+
 
         last = (
             datetime.fromisoformat(
                 last_seen_at
             )
             if last_seen_at
-            else datetime.now(TPE)
+            else
+            datetime.now(
+                TPE
+            )
         )
+
 
         return max(
             0,
             int(
                 (
-                    last - first
-                ).total_seconds()
-                // 60
+                    last
+                    -
+                    first
+                )
+                .total_seconds()
+                //
+                60
             )
         )
 
+
     except Exception:
+
         return None
 
 
@@ -1133,414 +2090,862 @@ def add_time_metadata(
     item: dict
 ) -> dict:
 
-    duration = calculate_duration_minutes(
-        item.get("first_seen_at"),
-        item.get("last_seen_at")
+    item[
+        "duration_minutes"
+    ] = (
+        calculate_duration_minutes(
+
+            item.get(
+                "first_seen_at"
+            ),
+
+            item.get(
+                "last_seen_at"
+            ),
+
+        )
     )
 
-    item["duration_minutes"] = duration
 
     return item
 
 
+# =========================================================
+# Eligibility
+# =========================================================
+
+def eligible_overnight(
+    item: dict
+) -> bool:
+
+    vetoes = (
+        item.get(
+            "vetoes"
+        )
+        or []
+    )
+
+
+    hard_veto = any(
+
+        veto in {
+            "跌破VWAP",
+            "末根爆上影",
+            "市場紅燈",
+        }
+
+        for veto
+        in vetoes
+    )
+
+
+    return bool(
+
+        (
+            item.get(
+                "overnight_score"
+            )
+            or 0
+        )
+        >=
+        MIN_OVERNIGHT_SCORE
+
+        and
+
+        not hard_veto
+
+        and
+
+        len(
+            item.get(
+                "overnight_reasons"
+            )
+            or []
+        )
+        >= 2
+    )
+
+
+# =========================================================
+# Candidate Selection
+# =========================================================
+
+def select_candidates(
+    stocks: list[dict]
+) -> list[dict]:
+
+    ordered = sorted(
+
+        stocks,
+
+        key=lambda stock: (
+
+            num(
+                stock.get(
+                    "amount_rank_pct"
+                )
+            )
+
+            if num(
+                stock.get(
+                    "amount_rank_pct"
+                )
+            )
+            is not None
+
+            else
+
+            pct_rank_from_hot_rank(
+                stock.get(
+                    "hot_rank"
+                )
+            )
+
+        ),
+
+        reverse=True,
+    )
+
+
+    candidates: list[dict] = []
+
+
+    for stock in ordered:
+
+        price = num(
+            stock.get(
+                "price"
+            )
+        )
+
+
+        if (
+            price is None
+            or price <= 0
+        ):
+
+            continue
+
+
+        amount_rank_pct = num(
+            stock.get(
+                "amount_rank_pct"
+            )
+        )
+
+
+        # 流動性太低
+        if (
+            amount_rank_pct
+            is not None
+            and
+            amount_rank_pct < 0.35
+        ):
+
+            continue
+
+
+        daily_return = (
+            num(
+                stock.get(
+                    "intraday_ret"
+                )
+            )
+            or 0.0
+        )
+
+
+        stock_vol_ratio = (
+            num(
+                stock.get(
+                    "volume_ratio"
+                )
+            )
+            or 1.0
+        )
+
+
+        near_high = num(
+            stock.get(
+                "near_high_ratio"
+            )
+        )
+
+
+        # 跌幅過大且沒有量
+        if (
+            daily_return < -0.035
+            and
+            stock_vol_ratio < 1.20
+        ):
+
+            continue
+
+
+        # 明顯不在高檔
+        if (
+            near_high is not None
+            and
+            near_high < 0.55
+        ):
+
+            continue
+
+
+        candidates.append(
+            stock
+        )
+
+
+        if (
+            len(candidates)
+            >=
+            SCAN_MAX_SYMBOLS
+        ):
+
+            break
+
+
+    return candidates
+
+
+# =========================================================
+# Main
+# =========================================================
+
 def main() -> None:
 
+    # =====================================================
+    # Config check
+    # =====================================================
+
+    if not ENABLE_OVERNIGHT:
+
+        print(
+            "[done] "
+            "overnight scanner disabled"
+        )
+
+        return
+
+
     if not FUGLE_API_KEY:
+
         raise RuntimeError(
             "Missing FUGLE_API_KEY"
         )
 
+
     root = init_firebase()
+
+
+    # =====================================================
+    # Read summary
+    # =====================================================
 
     summary_raw = (
         root
-        .child("summary")
+        .child(
+            "summary"
+        )
         .get()
         or {}
     )
 
-    if isinstance(summary_raw, list):
+
+    if isinstance(
+        summary_raw,
+        list
+    ):
 
         stocks = [
-            x
-            for x in summary_raw
-            if isinstance(x, dict)
+            item
+            for item
+            in summary_raw
+            if isinstance(
+                item,
+                dict
+            )
         ]
+
+
+    elif isinstance(
+        summary_raw,
+        dict
+    ):
+
+        stocks = [
+            item
+            for item
+            in summary_raw.values()
+            if isinstance(
+                item,
+                dict
+            )
+        ]
+
 
     else:
 
-        stocks = [
-            x
-            for x in summary_raw.values()
-            if isinstance(x, dict)
-        ]
+        stocks = []
+
 
     if not stocks:
+
         raise RuntimeError(
             "Firebase summary is empty"
         )
 
-    stocks.sort(
-        key=lambda s: (
-            num(
-                s.get("amount_rank_pct")
-            )
-            or pct_rank_from_hot_rank(
-                s.get("hot_rank")
-            )
-        ),
-        reverse=True
+
+    # =====================================================
+    # Market Level
+    # =====================================================
+
+    level, market_metrics = (
+        market_level(
+            stocks
+        )
     )
 
-    candidates = []
 
-    for s in stocks:
+    # =====================================================
+    # Candidate Pool
+    # =====================================================
 
-        p = num(
-            s.get("price")
-        )
-
-        if not p or p <= 0:
-            continue
-
-        if (
-            num(s.get("amount_rank_pct"))
-            or 0
-        ) < 0.35:
-            continue
-
-        daily_ret = (
-            num(s.get("intraday_ret"))
-            or 0
-        )
-
-        vol_ratio = (
-            num(s.get("volume_ratio"))
-            or 1
-        )
-
-        near_high = (
-            num(s.get("near_high_ratio"))
-            or 0
-        )
-
-        if (
-            daily_ret < -0.035
-            and vol_ratio < 1.2
-        ):
-            continue
-
-        if (
-            near_high
-            and near_high < 0.55
-        ):
-            continue
-
-        candidates.append(s)
-
-        if len(candidates) >= SCAN_MAX_SYMBOLS:
-            break
-
-    level, market_metrics = market_level(
+    candidates = select_candidates(
         stocks
     )
 
+
     print(
-        f"[scan] market={level} "
-        f"candidates={len(candidates)} "
-        f"max={SCAN_MAX_SYMBOLS}"
+        "[scan] "
+        f"market={level} "
+        f"candidates="
+        f"{len(candidates)} "
+        f"max="
+        f"{SCAN_MAX_SYMBOLS} "
+        "mode=OVERNIGHT_ONLY"
     )
 
-    scanned = []
 
-    for idx, stock in enumerate(
+    # =====================================================
+    # Scan
+    # =====================================================
+
+    scanned: list[dict] = []
+
+
+    for index, stock in enumerate(
         candidates,
-        1
+        start=1
     ):
 
-        sym = str(
-            stock.get("symbol") or ""
+        symbol = str(
+            stock.get(
+                "symbol"
+            )
+            or ""
         ).strip()
 
-        if not sym:
+
+        if not symbol:
             continue
+
 
         try:
 
-            rows5 = fugle_5m(sym)
+            rows5 = fugle_5m(
+                symbol
+            )
+
 
             if len(rows5) < 6:
 
                 print(
-                    f"[skip] {sym}: "
-                    f"only {len(rows5)} 5m bars"
+                    f"[skip] "
+                    f"{symbol}: "
+                    f"only "
+                    f"{len(rows5)} "
+                    f"5m bars"
                 )
 
                 continue
+
 
             rows15 = aggregate_15m(
                 rows5
             )
 
-            f = pattern_features(
-                rows5,
-                rows15,
-                stock,
-                level
+
+            if len(rows15) < 2:
+
+                print(
+                    f"[skip] "
+                    f"{symbol}: "
+                    "not enough 15m bars"
+                )
+
+                continue
+
+
+            features = overnight_features(
+                rows5=rows5,
+                rows15=rows15,
+                stock=stock,
+                market_level_name=level,
             )
 
-            scanned.append({
-                "symbol": sym,
-                "name": stock.get("name") or sym,
-                "exchange": stock.get("exchange"),
-                "hot_rank": stock.get("hot_rank"),
-                **f,
-            })
+
+            result = {
+
+                "symbol":
+                    symbol,
+
+                "name":
+                    stock.get(
+                        "name"
+                    )
+                    or symbol,
+
+                "exchange":
+                    stock.get(
+                        "exchange"
+                    ),
+
+                "hot_rank":
+                    stock.get(
+                        "hot_rank"
+                    ),
+
+                "amount_rank_pct":
+                    stock.get(
+                        "amount_rank_pct"
+                    ),
+
+                **features,
+
+            }
+
+
+            scanned.append(
+                result
+            )
+
 
             print(
-                f"[{idx}/{len(candidates)}] "
-                f"{sym} "
-                f"day={f['daytrade_score']} "
-                f"overnight={f['overnight_score']} "
+                f"[{index}/"
+                f"{len(candidates)}] "
+                f"{symbol} "
+                f"overnight="
+                f"{features['overnight_score']} "
+                f"15m="
+                f"{features['fifteen_trend']} "
+                f"vol="
+                f"{features['volume_ratio']} "
                 f"veto="
-                f"{','.join(f['vetoes']) or '-'}"
+                f"{','.join(features['vetoes']) or '-'}"
             )
 
-        except requests.HTTPError as e:
 
-            code = getattr(
-                e.response,
+        except requests.HTTPError as exc:
+
+            status_code = getattr(
+                exc.response,
                 "status_code",
                 "?"
             )
 
-            print(
-                f"[warn] {sym}: "
-                f"Fugle HTTP {code}"
-            )
-
-        except Exception as e:
 
             print(
-                f"[warn] {sym}: "
-                f"{type(e).__name__}: {e}"
+                f"[warn] "
+                f"{symbol}: "
+                f"Fugle HTTP "
+                f"{status_code}"
             )
 
-    def eligible_day(
-        x: dict
-    ) -> bool:
 
-        return (
-            x["daytrade_score"]
-            >= MIN_DAYTRADE_SCORE
-            and not x["vetoes"]
-            and len(
-                x["daytrade_reasons"]
-            ) >= 2
+        except Exception as exc:
+
+            print(
+                f"[warn] "
+                f"{symbol}: "
+                f"{type(exc).__name__}: "
+                f"{exc}"
+            )
+
+
+    # =====================================================
+    # Picks
+    # =====================================================
+
+    overnight: list[dict] = []
+
+
+    if ENABLE_OVERNIGHT:
+
+        overnight = sorted(
+
+            (
+                item
+                for item
+                in scanned
+                if eligible_overnight(
+                    item
+                )
+            ),
+
+            key=lambda item: (
+
+                item.get(
+                    "overnight_score"
+                )
+                or 0,
+
+                item.get(
+                    "fifteen_trend"
+                )
+                or 0,
+
+                item.get(
+                    "day_position"
+                )
+                or 0,
+
+            ),
+
+            reverse=True,
+
+        )[:TOP_N]
+
+
+    # =====================================================
+    # Legacy DAYTRADE
+    #
+    # 正式停用。
+    # 即使環境變數誤設，也不由這支程式產生。
+    # =====================================================
+
+    daytrade: list[dict] = []
+
+
+    if ENABLE_DAYTRADE:
+
+        print(
+            "[warn] "
+            "INTRADAY_ENABLE_DAYTRADE=1 "
+            "was supplied, but legacy "
+            "daytrade output remains disabled. "
+            "Use /intraday_live from Shioaji."
         )
 
-    def eligible_overnight(
-        x: dict
-    ) -> bool:
 
-        hard_veto = any(
-            v in {
-                "跌破VWAP",
-                "末根爆上影",
-                "市場紅燈"
-            }
-            for v in x["vetoes"]
-        )
+    # =====================================================
+    # Time Metadata
+    # =====================================================
 
-        return (
-            x["overnight_score"]
-            >= MIN_OVERNIGHT_SCORE
-            and not hard_veto
-            and len(
-                x["overnight_reasons"]
-            ) >= 2
-        )
-
-    day = sorted(
-        (
-            x
-            for x in scanned
-            if eligible_day(x)
-        ),
-        key=lambda x: (
-            x["daytrade_score"],
-            x["five_trend"],
-            x["volume_ratio"] or 0
-        ),
-        reverse=True
-    )[:TOP_N]
-
-    overnight = sorted(
-        (
-            x
-            for x in scanned
-            if eligible_overnight(x)
-        ),
-        key=lambda x: (
-            x["overnight_score"],
-            x["fifteen_trend"],
-            x["day_position"]
-        ),
-        reverse=True
-    )[:TOP_N]
-
-    now = datetime.now(TPE)
-
-    scan_date = now.date().isoformat()
-
-    generated_at = now.isoformat(
-        timespec="seconds"
+    now = datetime.now(
+        TPE
     )
 
-    # -----------------------------------------------------
-    # 讀取今天的首次出現紀錄
-    # -----------------------------------------------------
 
-    seen_state = load_seen_state(
-        root,
-        scan_date
+    scan_date = (
+        now.date()
+        .isoformat()
     )
 
-    # -----------------------------------------------------
-    # 當沖首次出現
-    # -----------------------------------------------------
 
-    for item in day:
-
-        ensure_first_seen(
-            seen_state,
-            item,
-            now,
-            "DAYTRADE"
+    generated_at = (
+        now.isoformat(
+            timespec="seconds"
         )
+    )
 
-        add_time_metadata(item)
 
-    # -----------------------------------------------------
-    # 隔日衝首次出現
-    # -----------------------------------------------------
+    seen_state = (
+        load_seen_state(
+            root,
+            scan_date
+        )
+    )
+
 
     for item in overnight:
 
         ensure_first_seen(
-            seen_state,
-            item,
-            now,
-            "OVERNIGHT"
+            state=seen_state,
+            item=item,
+            now=now,
+            pick_type="OVERNIGHT",
         )
 
-        add_time_metadata(item)
+        add_time_metadata(
+            item
+        )
 
-    # -----------------------------------------------------
-    # 保存首次出現資料
-    # -----------------------------------------------------
 
     save_seen_state(
-        root,
-        scan_date,
-        seen_state
+        root=root,
+        scan_date=scan_date,
+        state=seen_state,
     )
 
-    # -----------------------------------------------------
-    # Firebase 主資料
-    # -----------------------------------------------------
+
+    # =====================================================
+    # Session
+    # =====================================================
+
+    if (
+        now.hour > 13
+        or
+        (
+            now.hour == 13
+            and
+            now.minute >= 30
+        )
+    ):
+
+        session_name = "close"
+
+    else:
+
+        session_name = "intraday"
+
+
+    # =====================================================
+    # Firebase Payload
+    # =====================================================
 
     payload = {
-        "version": MODEL_VERSION,
 
-        # 本次掃描完成時間
-        "generated_at": generated_at,
+        "version":
+            MODEL_VERSION,
 
-        # 額外明確命名
-        "last_scan_at": generated_at,
+        "generated_at":
+            generated_at,
 
-        # 掃描日期
-        "scan_date": scan_date,
+        "last_scan_at":
+            generated_at,
 
-        "date": scan_date,
+        "scan_date":
+            scan_date,
 
-        "session": (
-            "close"
-            if (
-                now.hour > 13
-                or (
-                    now.hour == 13
-                    and now.minute >= 30
-                )
-            )
-            else "intraday"
-        ),
+        "date":
+            scan_date,
 
-        "market_level": level,
+        "session":
+            session_name,
 
-        "market_metrics": market_metrics,
+        "source":
+            "legacy_fugle_overnight",
 
-        "scanned_symbols": len(scanned),
+        # ---------------------------------------------
+        # 模組狀態
+        # ---------------------------------------------
 
-        "candidate_symbols": len(candidates),
+        "legacy_daytrade_enabled":
+            False,
 
-        "daytrade": day,
+        "legacy_overnight_enabled":
+            True,
 
-        "overnight": overnight,
+        "daytrade_source":
+            "disabled_use_intraday_live",
+
+        "overnight_source":
+            "fugle",
+
+        # ---------------------------------------------
+        # Market
+        # ---------------------------------------------
+
+        "market_level":
+            level,
+
+        "market_metrics":
+            market_metrics,
+
+        # ---------------------------------------------
+        # Counts
+        # ---------------------------------------------
+
+        "scanned_symbols":
+            len(scanned),
+
+        "candidate_symbols":
+            len(candidates),
+
+        # ---------------------------------------------
+        # Picks
+        # ---------------------------------------------
+
+        # 永遠空陣列。
+        # 網頁正式當沖改讀 intraday_live。
+        "daytrade":
+            daytrade,
+
+        "overnight":
+            overnight,
+
+        # ---------------------------------------------
+        # Threshold
+        # ---------------------------------------------
 
         "thresholds": {
+
             "daytrade":
                 MIN_DAYTRADE_SCORE,
+
             "overnight":
                 MIN_OVERNIGHT_SCORE,
+
         },
+
+        # ---------------------------------------------
+        # New Daytrade schedule
+        # ---------------------------------------------
+
+        "daytrade_schedule": {
+
+            "source":
+                "shioaji_live",
+
+            "entry_start":
+                "09:30",
+
+            "entry_cutoff":
+                "12:30",
+
+            "force_exit":
+                "12:55",
+
+            "daytrade_end":
+                "13:00",
+
+        },
+
+        # ---------------------------------------------
+        # Time tracking
+        # ---------------------------------------------
 
         "time_tracking": {
-            "enabled": True,
-            "timezone": "Asia/Taipei",
-            "description": (
-                "first_seen_at = "
-                "第一次符合條件時間；"
-                "last_scan_at = "
-                "最後一次掃描完成時間"
-            ),
+
+            "enabled":
+                True,
+
+            "timezone":
+                "Asia/Taipei",
+
+            "description":
+                (
+                    "overnight first_seen_at = "
+                    "當日第一次符合隔日衝條件時間；"
+                    "last_scan_at = "
+                    "最後掃描完成時間"
+                ),
+
         },
 
-        "method": (
-            "Fugle 5m -> local 15m "
-            "cross-confirmation: trend + VWAP "
-            "+ volume + breakout + daily trend "
-            "+ liquidity + historical proxy; "
-            "veto fake/extended setups"
-        ),
+        # ---------------------------------------------
+        # Method
+        # ---------------------------------------------
+
+        "method":
+            (
+                "Legacy Fugle overnight only: "
+                "5m -> local 15m; "
+                "tail strength + 15m trend + "
+                "close near day high + volume + "
+                "liquidity + institution + "
+                "historical proxy. "
+                "Live daytrade moved to "
+                "Oracle VM + Sinotrade Shioaji."
+            ),
+
+        # ---------------------------------------------
+        # Notes
+        # ---------------------------------------------
 
         "notes": [
-            "當沖以5分K為主、15分K與日K確認；跌破VWAP、末根長上影、5分K破短低或市場紅燈會否決。",
-            "隔日衝重視尾盤30分鐘、15分K趨勢、收盤靠近日高、量能與法人；避免尾盤轉弱或距VWAP過遠。",
-            "歷史edge目前只以既有日線隔日代理回測作小權重確認，不等同真正分K歷史回測。",
-            "首次出現時間只在當日第一次符合條件時建立，後續掃描不會覆蓋。",
+
+            (
+                "舊 Fugle 當沖已停用；"
+                "正式當沖由 Oracle VM + "
+                "Shioaji intraday_live 提供。"
+            ),
+
+            (
+                "正式當沖時間："
+                "09:30 開始、"
+                "12:30 停止新進場、"
+                "12:55 強制出場、"
+                "13:00 完全結束。"
+            ),
+
+            (
+                "隔日衝仍使用 Fugle "
+                "5分K / 15分K 尾盤模型。"
+            ),
+
+            (
+                "隔日衝重視尾盤30分鐘、"
+                "15分K趨勢、收盤靠近日高、"
+                "量能、流動性與法人。"
+            ),
+
+            (
+                "歷史 edge 僅作小權重確認，"
+                "不等同真實成交績效。"
+            ),
+
         ],
+
     }
 
-    # -----------------------------------------------------
-    # 寫入 Firebase
-    # -----------------------------------------------------
+
+    # =====================================================
+    # Write Firebase
+    #
+    # 只寫 intraday_picks，
+    # 絕對不碰 intraday_live。
+    # =====================================================
 
     (
         root
-        .child("intraday_picks")
-        .set(payload)
+        .child(
+            "intraday_picks"
+        )
+        .set(
+            payload
+        )
     )
+
+
+    # =====================================================
+    # Log
+    # =====================================================
 
     print(
         "[done] "
-        f"daytrade={len(day)} "
-        f"overnight={len(overnight)} "
-        f"generated_at={generated_at} "
-        f"wrote "
-        f"/{FIREBASE_ROOT_PATH}/intraday_picks"
+        "legacy_daytrade=DISABLED "
+        f"overnight="
+        f"{len(overnight)} "
+        f"generated_at="
+        f"{generated_at} "
+        f"wrote=/{FIREBASE_ROOT_PATH}/"
+        "intraday_picks"
     )
 
+
+    print(
+        "[safe] "
+        "Shioaji /intraday_live "
+        "was NOT modified."
+    )
+
+
+# =========================================================
+# Entry
+# =========================================================
 
 if __name__ == "__main__":
     main()
