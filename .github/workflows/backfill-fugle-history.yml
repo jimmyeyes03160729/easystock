@@ -21,8 +21,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: easystock-fugle-research-history
-  cancel-in-progress: true
+  group: easystock-market-data-update
+  cancel-in-progress: false
 
 jobs:
   backfill-history:

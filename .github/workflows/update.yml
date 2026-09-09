@@ -2,21 +2,22 @@ name: Daily Stock Data Update
 
 on:
   schedule:
-    # UTC 07:30 = 台灣時間 15:30，週一～週五
-    - cron: "30 7 * * 1-5"
+    # UTC schedules: Taiwan 16:15 primary / 20:15 catch-up. These are triggers, not finish times.
+    - cron: "15 8 * * 1-5"
+    - cron: "15 12 * * 1-5"
   workflow_dispatch:
+
+concurrency:
+  group: easystock-market-data-update
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
-concurrency:
-  group: easystock-daily-update
-  cancel-in-progress: true
-
 jobs:
   update-data:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     env:
       PYTHONUNBUFFERED: "1"
       FIREBASE_ROOT_PATH: "market_data"
@@ -90,6 +91,8 @@ jobs:
           python -c "import numpy; print('numpy:', numpy.__version__)"
           python -m py_compile update_market.py
           python tests/test_parsers.py
+          python tests/test_selection.py
+          node tests/test_frontend.cjs
 
       - name: Update TWSE TPEx Data to Firebase
         env:
