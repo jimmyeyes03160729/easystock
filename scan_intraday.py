@@ -54,7 +54,7 @@ import requests
 # 基本設定
 # =========================================================
 
-MODEL_VERSION = "2.0-overnight-only"
+MODEL_VERSION = "2.1-overnight-only"
 
 TPE = timezone(
     timedelta(hours=8)
@@ -525,63 +525,49 @@ def fugle_5m(
 # 5M -> 15M
 # =========================================================
 
-def aggregate_15m(
-    rows: list[dict]
-) -> list[dict]:
-
-    output: list[dict] = []
-
-
-    for index in range(
-        0,
-        len(rows),
-        3
-    ):
-
-        chunk = rows[
-            index:index + 3
-        ]
+def candle_time(value):
+    try:
+        t = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        return t.replace(tzinfo=TPE) if t.tzinfo is None else t.astimezone(TPE)
+    except (TypeError, ValueError):
+        return None
 
 
-        if len(chunk) < 3:
+def completed_today_bars(rows, now):
+    """Fugle intraday candle date is the bar start; ignore partial/future/old bars."""
+    by_time = {}
+    for row in rows:
+        t = candle_time(row.get('date'))
+        if not t or t.date() != now.date() or t + timedelta(minutes=5) > now:
             continue
+        if not (9 * 60 <= t.hour * 60 + t.minute < 13 * 60 + 30) or t.minute % 5:
+            continue
+        prices = [num(row.get(k)) for k in ('open','high','low','close')]
+        if any(v is None or v <= 0 for v in prices): continue
+        if prices[1] < max(prices[0],prices[3]) or prices[2] > min(prices[0],prices[3]): continue
+        by_time[t] = row
+    result = [by_time[t] for t in sorted(by_time)]
+    if not result: return []
+    last = candle_time(result[-1]['date']) + timedelta(minutes=5)
+    reference = min(now, now.replace(hour=13,minute=30,second=0,microsecond=0))
+    if (reference - last).total_seconds() > 10 * 60: return []
+    return result
 
 
-        output.append({
-
-            "date":
-                chunk[-1]["date"],
-
-            "open":
-                chunk[0]["open"],
-
-            "high":
-                max(
-                    bar["high"]
-                    for bar
-                    in chunk
-                ),
-
-            "low":
-                min(
-                    bar["low"]
-                    for bar
-                    in chunk
-                ),
-
-            "close":
-                chunk[-1]["close"],
-
-            "volume":
-                sum(
-                    bar["volume"]
-                    for bar
-                    in chunk
-                ),
-
-        })
-
-
+def aggregate_15m(rows):
+    groups = {}
+    for row in rows:
+        t = candle_time(row.get('date'))
+        if t:
+            bucket = t.replace(minute=t.minute//15*15, second=0, microsecond=0)
+            groups.setdefault(bucket, {})[t.minute % 15] = row
+    output = []
+    for bucket, bars in sorted(groups.items()):
+        if set(bars) != {0,5,10}: continue
+        chunk = [bars[k] for k in (0,5,10)]
+        output.append({'date':bucket.isoformat(), 'open':chunk[0]['open'], 'close':chunk[-1]['close'],
+                       'high':max(x['high'] for x in chunk), 'low':min(x['low'] for x in chunk),
+                       'volume':sum(x['volume'] for x in chunk)})
     return output
 
 
@@ -1031,8 +1017,7 @@ def historical_edge_score(
         pf_score = clamp(
             (
                 (
-                    profit_factor
-                    or 1.0
+                    (profit_factor if profit_factor is not None else 1.0)
                 )
                 -
                 0.8
@@ -1045,8 +1030,7 @@ def historical_edge_score(
         return_score = clamp(
             (
                 (
-                    avg_return
-                    or 0.0
+                    (avg_return / 100 if avg_return is not None else 0.0)
                 )
                 +
                 0.005
@@ -1259,28 +1243,8 @@ def overnight_features(
     # Institution
     # =====================================================
 
-    inst = num(
-        stock.get(
-            "net15Total"
-        )
-    )
-
-
-    if inst is None:
-
-        inst_score = 0.5
-
-    else:
-
-        inst_score = clamp(
-            (
-                inst
-                +
-                2_000_000
-            )
-            /
-            4_000_000
-        )
+    inst = num(stock.get('institution_flow_ratio'))
+    inst_score = 0.5 if inst is None else clamp((inst + .1) / .2)
 
 
     # =====================================================
@@ -1354,10 +1318,7 @@ def overnight_features(
             inst_score
             * 0.10
 
-            +
-            hist_edge
-            * 0.05
-        )
+        ) / 0.95
     )
 
 
@@ -1429,7 +1390,7 @@ def overnight_features(
     if tail_return >= 0.006:
 
         reasons.append(
-            "尾盤30分鐘續強"
+            "最近30分鐘續強"
         )
 
 
@@ -1463,7 +1424,7 @@ def overnight_features(
     ):
 
         reasons.append(
-            "15日法人偏多"
+            "法人買超占同期成交量為正"
         )
 
 
@@ -2130,6 +2091,7 @@ def eligible_overnight(
 
         veto in {
             "跌破VWAP",
+            "距VWAP過遠",
             "末根爆上影",
             "市場紅燈",
         }
@@ -2336,6 +2298,12 @@ def main() -> None:
         )
 
 
+    started = datetime.now(TPE)
+    minute = started.hour * 60 + started.minute
+    if started.weekday() >= 5 or not 13*60 <= minute <= 13*60+50:
+        print('[skip] Overnight runs only 13:00–13:50 Taiwan weekdays; outside time does not overwrite picks.')
+        return
+
     root = init_firebase()
 
 
@@ -2343,15 +2311,17 @@ def main() -> None:
     # Read summary
     # =====================================================
 
-    summary_raw = (
-        root
-        .child(
-            "summary"
-        )
-        .get()
-        or {}
-    )
-
+    active = root.child('active_release').get()
+    snapshot = root.child('releases').child(active) if active else root
+    summary_raw = snapshot.child('summary').get() or {}
+    summary_meta = snapshot.child('meta').get() or {}
+    asof = summary_meta.get('updated_at')
+    try:
+        age = (started.date() - datetime.fromisoformat(asof).date()).days
+    except (TypeError, ValueError):
+        raise RuntimeError('Missing daily source date')
+    if age < 0 or age > 7:
+        raise RuntimeError('Daily source too old; overnight scan aborted')
 
     if isinstance(
         summary_raw,
@@ -2433,6 +2403,7 @@ def main() -> None:
     # =====================================================
 
     scanned: list[dict] = []
+    research_bars = {}
 
 
     for index, stock in enumerate(
@@ -2454,9 +2425,13 @@ def main() -> None:
 
         try:
 
-            rows5 = fugle_5m(
-                symbol
-            )
+            rows5 = completed_today_bars(fugle_5m(symbol), datetime.now(TPE))
+            if rows5:
+                research_bars[symbol] = rows5
+            if len(rows5) >= 6:
+                tail_times = [candle_time(x['date']) for x in rows5[-6:]]
+                if any((b-a).total_seconds()!=300 for a,b in zip(tail_times,tail_times[1:])):
+                    continue
 
 
             if len(rows5) < 6:
@@ -2522,6 +2497,8 @@ def main() -> None:
                         "amount_rank_pct"
                     ),
 
+                'bar_asof': (candle_time(rows5[-1]['date']) + timedelta(minutes=5)).isoformat(),
+                'daily_source_date': asof,
                 **features,
 
             }
@@ -2615,7 +2592,7 @@ def main() -> None:
 
             reverse=True,
 
-        )[:TOP_N]
+        )
 
 
     # =====================================================
@@ -2660,6 +2637,13 @@ def main() -> None:
         )
     )
 
+
+    if not scanned:
+        raise RuntimeError('No fresh completed bars; retain previous scan and let UI expiry block it')
+    # A long API queue must never turn an old observation into a fresh trade candidate.
+    if now.hour * 60 + now.minute > 13*60+50:
+        raise RuntimeError('Scan finished too late; no publication')
+    overnight = [x for x in overnight if (min(now, now.replace(hour=13,minute=30,second=0,microsecond=0)) - candle_time(x['bar_asof'])).total_seconds() <= 10*60]
 
     seen_state = (
         load_seen_state(
@@ -2783,8 +2767,11 @@ def main() -> None:
         "daytrade":
             daytrade,
 
-        "overnight":
-            overnight,
+        "overnight": overnight[:TOP_N],
+        "overnight_candidates": overnight,
+        "daily_source_date": asof,
+        "scan_started_at": started.isoformat(),
+        "validation_status": "unvalidated_overnight_rules",
 
         # ---------------------------------------------
         # Threshold
@@ -2856,7 +2843,7 @@ def main() -> None:
                 "tail strength + 15m trend + "
                 "close near day high + volume + "
                 "liquidity + institution + "
-                "historical proxy. "
+                "no daytrade proxy performance weight. "
                 "Live daytrade moved to "
                 "Oracle VM + Sinotrade Shioaji."
             ),
@@ -2893,8 +2880,8 @@ def main() -> None:
             ),
 
             (
-                "歷史 edge 僅作小權重確認，"
-                "不等同真實成交績效。"
+                "已移除日線當沖代理績效加分；"
+                "隔夜策略尚待專用回測驗證。"
             ),
 
         ],
@@ -2908,6 +2895,13 @@ def main() -> None:
     # 只寫 intraday_picks，
     # 絕對不碰 intraday_live。
     # =====================================================
+
+    root.child('overnight_history').child(scan_date).child(now.strftime('%H%M%S')).set({
+        'generated_at': generated_at, 'scan_started_at': started.isoformat(),
+        'daily_source_date': asof, 'rule_version': MODEL_VERSION,
+        'candidates': overnight, 'bars5': research_bars,
+        'note': '觀察快照；尚非實際成交或策略回測績效'
+    })
 
     (
         root

@@ -163,7 +163,7 @@
       <div class="rounded-xl border muted-border p-2.5">
 
         <div class="text-[10px] text-sub">
-          盤中最後掃描
+          隔日衝最後掃描
         </div>
 
         <div id="metaScanTime"
@@ -177,7 +177,7 @@
       <div class="rounded-xl border muted-border p-2.5">
 
         <div class="text-[10px] text-sub">
-          系統刷新
+          網頁讀取
         </div>
 
         <div id="metaRefreshTime"
@@ -377,7 +377,7 @@
       class="panel rounded-2xl p-4">
 
       <div class="text-[10px] text-sub">
-        今日市場燈號
+        股票池市場狀態
       </div>
 
       <div class="flex items-center gap-3 mt-2">
@@ -427,8 +427,7 @@
           </h2>
 
           <p class="text-[10px] text-sub mt-1">
-            綜合策略強度、多因子、法人、Sharpe、資料品質與歷史驗證；
-            短打推薦另由分K線型交叉判斷。
+            只從通過資格的策略中選出，單一產業最多一檔；排序分不是勝率。
           </p>
 
         </div>
@@ -621,8 +620,7 @@
       </div>
 
       <div class="text-[10px] text-sub mt-2">
-        尾盤30分鐘 × 15分K趨勢 × 收盤靠高 × 量價 × 法人；
-        尾盤轉弱、長上影或跌破VWAP會降級。
+        13:00後依最近30分鐘、15分K及量價篩選；跌破VWAP、過度追價或資料過期直接排除。收盤版僅供研究。
       </div>
 
       <div
@@ -663,8 +661,7 @@
       </div>
 
       <div class="text-[10px] text-sub mt-2">
-        合併「均線回踩」與「強勢波段」，
-        系統自動判斷較適合的型態。
+        區分「多頭回踩」與「強勢波段」；使用後端共同規則，未達門檻不列入。
       </div>
 
       <div
@@ -696,8 +693,7 @@
       </div>
 
       <div class="text-[10px] text-sub mt-2">
-        基本面、殖利率、估值與穩定度優先；
-        適合分批觀察而非追價。
+        收益型長期觀察：必要財務資料須齊全、有效；金融業需專用模型，資料不足不推薦。
       </div>
 
       <div
@@ -852,7 +848,7 @@
               <div>
 
                 <div class="text-[10px] text-sub">
-                  多因子模型
+                  策略排序分（不是勝率）
                 </div>
 
                 <div
@@ -915,7 +911,7 @@
       <div class="panel rounded-xl p-3">
 
         <div class="text-xs font-bold text-main mb-2">
-          個股策略回測
+          日線技術訊號研究（不等同首選TOP3、長期或隔日衝績效）
         </div>
 
         <div
@@ -979,6 +975,7 @@
 
   let currentChart = null;
   let currentSeries = null;
+  let CURRENT_MODAL_STRATEGY = null;
 
 
   /* ========================================================
@@ -1000,7 +997,7 @@
     (
       v === null ||
       v === undefined ||
-      Number.isNaN(Number(v))
+      (typeof v === "boolean" || String(v).trim() === "" || !Number.isFinite(Number(v)))
     )
       ? null
       : Number(v);
@@ -1750,7 +1747,7 @@
                       0,
                       100
                     )
-                  : 70
+                  : 0
               );
 
 
@@ -1886,12 +1883,7 @@
           );
 
 
-        const longTermEligible =
-          yieldPct !== null &&
-          yieldPct >= LONG_MIN_YIELD &&
-          (roe === null || roe > 0) &&
-          (fcf === null || fcf >= 0) &&
-          (debt === null || debt < 70);
+        const longTermEligible = s.selection?.strategies?.LONG?.eligible === true;
 
 
         return {
@@ -1976,7 +1968,7 @@
 
           longTermEligible,
 
-          strategyScore,
+          strategyScore: Math.max(0, ...Object.values(s.selection?.strategies || {}).filter(d => d.eligible).map(d => n(d.score) || 0)),
 
           scoreParts,
 
@@ -2002,382 +1994,33 @@
      MODEL / STRATEGY
      ======================================================== */
 
-  function modelStatsFor(strategy) {
-
-    const bt =
-      META.backtests || {};
-
-    if (strategy === "REBOUND") {
-      return bt.rebound || {};
-    }
-
-    if (strategy === "SWING") {
-      return bt.swing || {};
-    }
-
-    if (strategy === "DAYTRADE") {
-      return bt.daytrade_proxy || {};
-    }
-
-    return {};
-
+  const RULE_VERSION = '2.0.0';
+  function taiwanDay(value = new Date()) {
+    const d = new Date(value);
+    if (!Number.isFinite(d.getTime())) return '';
+    return new Intl.DateTimeFormat('sv-SE', {timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
   }
-
-
-  function modelTrustScore(strategy) {
-
-    if (strategy === "LONG") {
-      return 70;
-    }
-
-    const x =
-      modelStatsFor(strategy);
-
-    const avg =
-      n(x.avg_return);
-
-    const pf =
-      n(x.profit_factor);
-
-    const signals =
-      n(x.signals);
-
-    const win =
-      n(x.win_rate);
-
-    if (avg === null) {
-      return 45;
-    }
-
-    let score = 50;
-
-    score +=
-      clamp(
-        avg / 5,
-        -1,
-        1
-      ) * 20;
-
-    if (pf !== null) {
-
-      score +=
-        clamp(
-          (pf - 1) / 1.5,
-          -1,
-          1
-        ) * 15;
-
-    }
-
-    if (signals !== null) {
-
-      score +=
-        clamp(
-          signals / 1000,
-          0,
-          1
-        ) * 10;
-
-    }
-
-    if (win !== null) {
-
-      score +=
-        clamp(
-          (win - 50) / 20,
-          -1,
-          1
-        ) * 5;
-
-    }
-
-    return Math.round(
-      clamp(
-        score,
-        0,
-        100
-      )
-    );
-
+  function validSelection(stock) {
+    const asof = stock.selection?.as_of;
+    const age = (Date.parse(taiwanDay() + 'T00:00:00+08:00') - Date.parse(asof + 'T00:00:00+08:00')) / 86400000;
+    return META.rule_version === RULE_VERSION && stock.selection?.version === RULE_VERSION && asof === META.updated_at && stock.updated_at === asof && age >= 0 && age <= 7;
   }
-
-
-  function confidenceFor(
-    stock,
-    strategy
-  ) {
-
-    const primary =
-      strategy === "REBOUND"
-        ? stock.reboundScore
-        : strategy === "SWING"
-          ? stock.swingScore
-          : strategy === "DAYTRADE"
-            ? stock.dayTradeScore
-            : stock.longTermScore;
-
-
-    const inst =
-      n(stock.net15Total) === null
-
-        ? 50
-
-        : clamp(
-            (
-              Number(
-                stock.net15Total
-              )
-              + 2_000_000
-            ) / 4_000_000,
-            0,
-            1
-          ) * 100;
-
-
-    const sharp =
-      n(stock.sharpe20) === null
-
-        ? 50
-
-        : clamp(
-            (
-              Number(
-                stock.sharpe20
-              )
-              + 1
-            ) / 3,
-            0,
-            1
-          ) * 100;
-
-
-    return Math.round(
-      clamp(
-        weightedAvailable(
-          [
-            [primary, .45],
-            [stock.strategyScore, .20],
-            [inst, .10],
-            [sharp, .10],
-            [stock.dataQuality, .10],
-            [
-              modelTrustScore(strategy),
-              .05
-            ]
-          ],
-          50
-        ),
-        0,
-        100
-      )
-    );
-
+  function qualified(stock, strategy) {
+    return validSelection(stock) && stock.selection.strategies?.[strategy]?.eligible === true
+      && n(stock.selection.strategies[strategy].score) !== null && stock.selection.strategies[strategy].score >= 70;
   }
-
+  function confidenceFor(stock, strategy) {
+    return qualified(stock, strategy) ? stock.selection.strategies[strategy].score : 0;
+  }
 
   function bestStrategyFor(stock) {
-
-    const candidates = [];
-
-    if (stock.isRebound) {
-
-      candidates.push(
-        [
-          "REBOUND",
-          confidenceFor(
-            stock,
-            "REBOUND"
-          )
-        ]
-      );
-
-    }
-
-    if (
-      (stock.nearHighRatio ?? 0)
-      >= .85
-    ) {
-
-      candidates.push(
-        [
-          "SWING",
-          confidenceFor(
-            stock,
-            "SWING"
-          )
-        ]
-      );
-
-    }
-
-    if (stock.longTermEligible) {
-
-      candidates.push(
-        [
-          "LONG",
-          confidenceFor(
-            stock,
-            "LONG"
-          )
-        ]
-      );
-
-    }
-
-    if (!candidates.length) {
-
-      candidates.push(
-        [
-          "SWING",
-          confidenceFor(
-            stock,
-            "SWING"
-          )
-        ]
-      );
-
-    }
-
-    return candidates.sort(
-      (a, b) =>
-        b[1] - a[1]
-    )[0];
-
+    return ['REBOUND','SWING','LONG'].filter(key => qualified(stock,key))
+      .map(key => [key,confidenceFor(stock,key)]).sort((a,b)=>b[1]-a[1])[0] || null;
   }
 
-
-  function pickReasons(
-    stock,
-    strategy
-  ) {
-
-    const out = [];
-
-    if (strategy === "REBOUND") {
-
-      out.push(
-        "均線回踩後轉強"
-      );
-
-      if (
-        (stock.net15Total ?? 0)
-        > 0
-      ) {
-        out.push(
-          "法人15日偏多"
-        );
-      }
-
-      if (
-        (stock.sharpe20 ?? 0)
-        > .5
-      ) {
-        out.push(
-          "風險調整報酬佳"
-        );
-      }
-
-    }
-
-    else if (
-      strategy === "SWING"
-    ) {
-
-      out.push(
-        "接近波段高點"
-      );
-
-      if (
-        (stock.sharpe20 ?? 0)
-        > .5
-      ) {
-        out.push(
-          "20日 Sharpe 佳"
-        );
-      }
-
-      if (
-        (stock.strategyScore ?? 0)
-        >= 70
-      ) {
-        out.push(
-          "多因子分數佳"
-        );
-      }
-
-    }
-
-    else if (
-      strategy === "LONG"
-    ) {
-
-      if (
-        (stock.roe ?? 0)
-        > 10
-      ) {
-        out.push(
-          "ROE 良好"
-        );
-      }
-
-      if (
-        (stock.rev_yoy ?? 0)
-        > 0
-      ) {
-        out.push(
-          "營收正成長"
-        );
-      }
-
-      if (
-        (stock.yieldPct ?? 0)
-        >= 4
-      ) {
-        out.push(
-          "殖利率達門檻"
-        );
-      }
-
-    }
-
-    else {
-
-      out.push(
-        "短線動能較強"
-      );
-
-      if (
-        (stock.volumeRatio ?? 0)
-        >= 1.5
-      ) {
-        out.push(
-          "成交量放大"
-        );
-      }
-
-      if (
-        (stock.net15Total ?? 0)
-        > 0
-      ) {
-        out.push(
-          "法人偏多"
-        );
-      }
-
-    }
-
-    if (!out.length) {
-
-      out.push(
-        "綜合條件相對優先"
-      );
-
-    }
-
-    return out.slice(0, 3);
-
+  function pickReasons(stock, strategy) {
+    return stock.selection?.strategies?.[strategy]?.reasons || ['尚未取得新版資格判定'];
   }
-
 
   function riskReason(
     stock,
@@ -2477,7 +2120,7 @@
           0,
 
         advice:
-          "目前沒有符合價格條件的股票。"
+          "沒有有效的市場資料，等待更新；不以缺值判定市場。"
 
       };
 
@@ -2528,6 +2171,9 @@
         : 0;
 
 
+    if (valid.length < 30 || valid.length / pool.length < .6 || mom.length < 30) {
+      return {level:'UNKNOWN',label:'資料不足',ratio,avgMom,advice:'有效樣本不足，不判定市場方向、不產生今日首選。'};
+    }
     if (
       ratio >= .60 &&
       avgMom >= 0
@@ -2571,7 +2217,7 @@
         avgMom,
 
         advice:
-          "市場訊號分歧，優先看高信心標的並降低追價。"
+          "市場訊號分歧，優先看高排序分標的並降低追價。"
 
       };
 
@@ -2657,7 +2303,7 @@
     const pool =
       priceFilteredStocks();
 
-    renderMarketSignal(pool);
+    renderMarketSignal(COMPUTED_STOCKS.filter(validSelection));
 
   renderPremarketBrief();
 
@@ -2673,7 +2319,7 @@
 
         const options = [];
 
-        if (s.isRebound) {
+        if (qualified(s, 'REBOUND')) {
 
           options.push(
             [
@@ -2689,8 +2335,7 @@
 
 
         if (
-          (s.nearHighRatio ?? 0)
-          >= .85
+          qualified(s, 'SWING')
         ) {
 
           options.push(
@@ -2765,7 +2410,7 @@
       pool
         .filter(
           s =>
-            s.longTermEligible
+            qualified(s, 'LONG')
         )
         .map(
           s => ({
@@ -2778,24 +2423,6 @@
               )
           })
         );
-
-
-    if (!long.length) {
-
-      long =
-        pool.map(
-          s => ({
-            stock: s,
-            strategy: "LONG",
-            confidence:
-              confidenceFor(
-                s,
-                "LONG"
-              )
-          })
-        );
-
-    }
 
 
     long.sort(
@@ -2834,7 +2461,7 @@
   function renderMarketSignal(pool) {
 
     const m =
-      evaluateMarket(pool);
+      evaluateMarket(COMPUTED_STOCKS.filter(validSelection));
 
 
     const dot =
@@ -2927,7 +2554,7 @@
   function renderTopPicks(pool) {
 
     const market =
-      evaluateMarket(pool);
+      evaluateMarket(COMPUTED_STOCKS.filter(validSelection));
 
     const c =
       document.getElementById(
@@ -2936,7 +2563,7 @@
 
 
     if (
-      market.level === "RED"
+      ["RED", "UNKNOWN"].includes(market.level)
     ) {
 
       c.innerHTML =
@@ -2964,11 +2591,9 @@
         .map(
           s => {
 
-            const [
-              strategy,
-              confidence
-            ] =
-              bestStrategyFor(s);
+            const best = bestStrategyFor(s);
+            if (!best) return null;
+            const [strategy, confidence] = best;
 
             return {
               stock: s,
@@ -2978,6 +2603,7 @@
 
           }
         )
+        .filter(Boolean)
         .sort(
           (a, b) =>
             b.confidence
@@ -2994,6 +2620,7 @@
 
 
     const picks = [];
+    const sectors = new Set();
 
     const seen =
       new Set();
@@ -3011,6 +2638,9 @@
         continue;
       }
 
+      const sector = x.stock.category;
+      if (!sector || ['一般','上市','上櫃'].includes(sector) || sectors.has(sector)) continue;
+      sectors.add(sector);
       picks.push(x);
 
       seen.add(
@@ -3031,7 +2661,7 @@
       c.innerHTML =
         `
         <div class="md:col-span-3 text-xs text-sub py-8 text-center">
-          目前沒有符合條件的首選標的。
+          目前沒有通過新版資格、資料與產業分散條件的首選；最多三檔，不強迫滿額。
         </div>
         `;
 
@@ -3093,7 +2723,7 @@
                     </div>
 
                     <div class="text-[10px] metric-good">
-                      信心 ${x.confidence}
+                      排序分 ${x.confidence}
                     </div>
 
                   </div>
@@ -3150,7 +2780,7 @@
       c.innerHTML =
         `
         <div class="text-[11px] text-sub text-center py-8">
-          無符合條件之標的
+          無合格標的，或必要資料不足；不以其他股票補名單
         </div>
         `;
 
@@ -3196,7 +2826,7 @@
                     <div class="text-[9px] text-sub mt-1">
                       ${strategyName(x.strategy)}
                       ·
-                      多因子 ${fmt(s.strategyScore, 0)}
+                      資料完整度 ${fmt(s.dataQuality, 0)}%
                       ·
                       Sharpe ${fmt(s.sharpe20, 2)}
                     </div>
@@ -3210,7 +2840,7 @@
                     </div>
 
                     <div class="text-[9px] metric-good">
-                      信心 ${x.confidence}
+                      排序分 ${x.confidence}
                     </div>
 
                   </div>
@@ -3229,8 +2859,9 @@
 
   function renderPremarketBrief() {
 
-    const brief =
-      PREMARKET_BRIEF || {};
+    const rawBrief = PREMARKET_BRIEF || {};
+    const briefCurrent = taiwanDay(rawBrief.generated_at) === taiwanDay();
+    const brief = briefCurrent ? rawBrief : {};
 
     const level =
       String(
@@ -3282,8 +2913,8 @@
     if (generatedEl) {
       generatedEl.textContent =
         brief.generated_at
-          ? `AI 更新 ${formatTaiwanDateTime(brief.generated_at)}`
-          : "每日開盤前更新";
+          ? `${new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Taipei',hour:'2-digit',hour12:false}).format(new Date(brief.generated_at)) >= '09' ? '盤中更新（非盤前）' : '盤前更新'} ${formatTaiwanDateTime(brief.generated_at)}`
+          : (rawBrief.generated_at ? "盤前通報非今日資料，等待更新" : "等待今日盤前通報");
     }
 
 
@@ -3583,9 +3214,22 @@
       );
 
 
-    const rows =
-      intradayFiltered(items)
-        .slice(0, 3);
+    const stamp = INTRADAY?.generated_at;
+    const scanToday = INTRADAY?.scan_date === taiwanDay();
+    const fresh = Number.isFinite(Date.parse(stamp)) && Date.now() - Date.parse(stamp) >= -60000
+      && (INTRADAY?.session === 'close' || Date.now() - Date.parse(stamp) <= 20*60000);
+    const candidates = (items || []).filter(x => {
+      if (!x.bar_asof) return false;
+      const t = Date.parse(x.bar_asof);
+      const now = new Date();
+      const close = Date.parse(taiwanDay(now)+'T13:30:00+08:00');
+      return Number.isFinite(t) && t <= Date.now() && Math.min(Date.now(),close)-t <= 20*60000;
+    });
+    const rows = scanToday && fresh ? intradayFiltered(candidates).slice(0, 3) : [];
+    if (!scanToday || !fresh) {
+      c.innerHTML = '<div class="text-xs text-sub py-8">隔日衝資料尚未更新或已過期；不沿用舊日推薦。</div>';
+      return;
+    }
 
 
     if (!rows.length) {
@@ -4466,15 +4110,13 @@
       );
 
     if (s2) {
-      s2.textContent =
-        INTRADAY?.session === "close"
-          ? "收盤版"
-          : "尾盤預估";
+      s2.textContent = `${INTRADAY?.session === 'close' ? '收盤研究版・非進場訊號' : '尾盤候選'} · ${INTRADAY?.last_scan_at ? formatTaiwanDateTime(INTRADAY.last_scan_at) : '等待掃描'} · ${INTRADAY?.scanned_symbols || 0}/${INTRADAY?.candidate_symbols || 0} 檔`;
     }
 
     renderLinePickList(
       "overnightPickList",
-      INTRADAY?.overnight
+      INTRADAY?.overnight_candidates
+      || INTRADAY?.overnight
       ||
       [],
       "OVERNIGHT"
@@ -4491,6 +4133,7 @@
     symbol,
     strategyType
   ) {
+    CURRENT_MODAL_STRATEGY = strategyType;
 
     const stock =
       COMPUTED_STOCKS.find(
@@ -4545,7 +4188,7 @@
 
     const score =
       clamp(
-        stock.strategyScore ?? 0,
+        confidenceFor(stock, strategyType),
         0,
         100
       );
@@ -4566,9 +4209,7 @@
     document.getElementById(
       "scoreQuality"
     ).textContent =
-      `資料完整度 ${
-        stock.dataQuality
-      }%`;
+      `資料完整度 ${stock.dataQuality}% · ${stock.selection?.strategies?.[strategyType]?.holding_period || "研究資料"}`;
 
 
     document.getElementById(
@@ -4645,66 +4286,22 @@
     }
 
 
+    if (Array.isArray(stock.kline) && stock.kline.length && stock.kline.at(-1).time !== stock.updated_at) {
+      c.innerHTML = '<div class="text-xs text-sub p-6">K線與摘要日期不同，等待資料同步後再開啟。</div>';
+      return;
+    }
     renderModalChart(stock);
 
   }
 
 
   function renderFactorGrid(stock) {
-
-    const c =
-      document.getElementById(
-        "factorGrid"
-      );
-
-
-    const rows = [
-
-      [
-        "技術",
-        stock.scoreParts?.technical
-      ],
-
-      [
-        "動能",
-        stock.scoreParts?.momentum
-      ],
-
-      [
-        "基本面",
-        stock.scoreParts?.fundamental
-      ],
-
-      [
-        "股利",
-        stock.scoreParts?.dividend
-      ]
-
-    ];
-
-
-    c.innerHTML =
-      rows
-        .map(
-          ([label, value]) =>
-            `
-            <div class="panel rounded-lg p-2">
-
-              <div class="text-[9px] text-sub">
-                ${label}
-              </div>
-
-              <div class="text-sm font-bold text-main mt-1">
-                ${fmt(value, 0)}
-              </div>
-
-            </div>
-            `
-        )
-        .join("");
-
+    const rows = [['REBOUND','多頭回踩'],['SWING','強勢波段'],['LONG','收益型長期']];
+    document.getElementById('factorGrid').innerHTML = rows.map(([key,label]) => {
+      const d = stock.selection?.strategies?.[key];
+      return `<div class="panel rounded-lg p-2"><div class="text-xs text-sub">${label}</div><div class="text-sm text-main font-bold">${qualified(stock,key) ? fmt(d.score,0)+' 分' : '未通過'}</div></div>`;
+    }).join('');
   }
-
 
   function renderFundamentals(stock) {
 
@@ -4872,8 +4469,7 @@
       );
 
 
-    const bt =
-      stock.backtest || {};
+    const bt = stock.backtest?.[CURRENT_MODAL_STRATEGY?.toLowerCase()] || {};
 
 
     const stats = [
@@ -5440,142 +5036,28 @@
      ======================================================== */
 
   async function loadSplitSchema() {
-
-    const summary =
-      await fetchJson(
-        `${FIREBASE_ROOT}/summary.json`
-      );
-
-    if (
-      !summary
-      ||
-      typeof summary !== "object"
-      ||
-      Array.isArray(
-        summary
-      )
-    ) {
-      throw new Error(
-        "新版 Firebase 缺少 summary"
-      );
+    const id = await fetchJson(`${FIREBASE_ROOT}/active_release.json`).catch(()=>null);
+    const versioned = typeof id === 'string' && /^[0-9A-Za-z_-]+$/.test(id);
+    const base = versioned ? `${FIREBASE_ROOT}/releases/${id}` : FIREBASE_ROOT;
+    const [summary, meta, backtests, overnight, live, brief] = await Promise.all([
+      fetchJson(`${base}/summary.json`), fetchJson(`${base}/meta.json`), fetchJson(`${base}/backtests.json`),
+      fetchJson(`${FIREBASE_ROOT}/intraday_picks.json`).catch(()=>null),
+      fetchJson(`${FIREBASE_ROOT}/intraday_live.json`).catch(()=>null),
+      fetchJson(`${FIREBASE_ROOT}/premarket_brief.json`).catch(()=>null)
+    ]);
+    if (!summary || !meta) throw new Error('日線資料尚未完整');
+    const rows = Object.values(summary).filter(Boolean);
+    if (versioned && meta.release_id !== id) throw new Error('資料版本尚未完成');
+    if (meta.rule_version === RULE_VERSION && rows.some(row => row.release_id !== meta.release_id)) throw new Error('日線資料正在更新，稍後重新讀取');
+    if (!versioned) {
+      const after = await fetchJson(`${FIREBASE_ROOT}/meta.json`);
+      if (after?.release_id !== meta.release_id) throw new Error('日線版本已切換，稍後重新讀取');
     }
-
-
-    const [
-      meta,
-      backtests,
-      intraday,
-      intradayLive,
-      premarketBrief
-    ] =
-      await Promise.all([
-
-        fetchJson(
-          `${FIREBASE_ROOT}/meta.json`
-        )
-        .catch(
-          err => {
-            console.warn(
-              "meta 讀取失敗",
-              err
-            );
-            return {};
-          }
-        ),
-
-        fetchJson(
-          `${FIREBASE_ROOT}/backtests.json`
-        )
-        .catch(
-          err => {
-            console.warn(
-              "backtests 讀取失敗",
-              err
-            );
-            return {};
-          }
-        ),
-
-        fetchJson(
-          `${FIREBASE_ROOT}/intraday_picks.json`
-        )
-        .catch(
-          err => {
-            console.warn(
-              "intraday_picks 讀取失敗",
-              err
-            );
-            return {};
-          }
-        ),
-
-        fetchJson(
-          `${FIREBASE_ROOT}/intraday_live.json`
-        )
-        .catch(
-          err => {
-            console.warn(
-              "intraday_live 讀取失敗",
-              err
-            );
-            return {};
-          }
-        ),
-
-        fetchJson(
-          `${FIREBASE_ROOT}/premarket_brief.json`
-        )
-        .catch(
-          err => {
-            console.warn(
-              "premarket_brief 尚未建立",
-              err
-            );
-            return {};
-          }
-        )
-
-      ]);
-
-
-    DATA_MODE =
-      "split";
-
-    META = {
-      ...(meta || {}),
-      backtests:
-        backtests
-        ||
-        {}
-    };
-
-    INTRADAY =
-      intraday
-      ||
-      {};
-
-    INTRADAY_LIVE =
-      intradayLive
-      ||
-      {};
-
-    PREMARKET_BRIEF =
-      premarketBrief
-      ||
-      {};
-
-    return Object.values(
-      summary
-    ).filter(
-      Boolean
-    );
+    META = {...meta, backtests:backtests || {}};
+    INTRADAY = overnight || {}; INTRADAY_LIVE = live || {}; PREMARKET_BRIEF = brief || {};
+    DATA_MODE = 'split';
+    return rows;
   }
-
-
-
-  /* ========================================================
-     LEGACY SCHEMA
-     ======================================================== */
 
   async function loadLegacySchema() {
 
@@ -5639,10 +5121,6 @@
   function updateSystemStatus() {
 
     const scanAt =
-      INTRADAY_LIVE?.last_update_at
-      ||
-      INTRADAY_LIVE?.generated_at
-      ||
       INTRADAY?.last_scan_at
       ||
       INTRADAY?.generated_at;
@@ -5780,7 +5258,7 @@
 
 
         status.textContent =
-          "新版資料尚未建立，暫時讀取舊版 Firebase…";
+          "新版資料尚未建立：可查看舊資料，選股等待後端重新執行。";
 
 
         raw =
@@ -5864,24 +5342,9 @@
         INTRADAY?.generated_at;
 
 
-      status.textContent =
-        `Firebase 同步完成 · ${
-          raw.length
-        } 檔 · 盤中最後掃描 ${
-          scanAt
-            ? formatTaiwanDateTime(
-                scanAt
-              )
-            : "N/A"
-        } · ${
-          META.source
-          ||
-          "資料來源未標示"
-        } · ${
-          DATA_MODE === "split"
-            ? "摘要/K線分離"
-            : "舊版相容模式"
-        }`;
+      status.textContent = META.rule_version === RULE_VERSION
+        ? `日線資料日 ${META.updated_at} · 後端完成 ${formatTaiwanDateTime(META.published_at || META.generated_at_utc)} · ${raw.length}檔 · 日線收盤資料，不是即時報價`
+        : '等待新版後端資料：請執行 Daily Stock Data Update；舊版評分不產生推薦。';
 
 
       renderAllSections();
@@ -6025,6 +5488,24 @@
   }
 
 
+  let slowRefreshBusy = false;
+  async function refreshDailyAndOvernight() {
+    if (slowRefreshBusy) return;
+    slowRefreshBusy = true;
+    try {
+      const [meta, overnight] = await Promise.all([
+        fetchJson(`${FIREBASE_ROOT}/meta.json`),
+        fetchJson(`${FIREBASE_ROOT}/intraday_picks.json`)
+      ]);
+      INTRADAY = overnight || {};
+      if (meta?.release_id && meta.release_id !== META.release_id) await fetchMarketData();
+      else { renderAllSections(); updateSystemStatus(); }
+    } catch (err) {
+      console.warn('日線／隔日衝更新失敗',err);
+      renderAllSections(); // Re-evaluate expiry even when offline.
+    } finally { slowRefreshBusy = false; }
+  }
+
   window.onload = () => {
 
     setTheme(
@@ -6035,6 +5516,7 @@
     restoreBudget();
 
     fetchMarketData();
+    setInterval(refreshDailyAndOvernight, 60000);
 
     // Shioaji / AI 即時節點：
     // 每 5 秒只抓 live 節點。

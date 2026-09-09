@@ -14,6 +14,7 @@ import firebase_admin
 import numpy as np
 import requests
 from firebase_admin import credentials, db
+from strategy_rules import RULE_VERSION, technical_decision, stock_decisions
 
 # ============================================================
 # Configuration
@@ -36,7 +37,7 @@ HTTP_WORKERS = max(2, min(8, int(os.environ.get("HTTP_WORKERS", "6"))))
 BACKTEST_HISTORY_BARS = max(KLINE_DAYS, int(os.environ.get("BACKTEST_HISTORY_BARS", "1260")))
 VALIDATION_OOS_DAYS = max(60, int(os.environ.get("VALIDATION_OOS_DAYS", "252")))
 BACKTEST_TOTAL_COST_BPS = max(0.0, float(os.environ.get("BACKTEST_TOTAL_COST_BPS", "70")))
-MODEL_VERSION = "1.1.1"
+MODEL_VERSION = "2.0.0"
 
 TWSE_BASE = "https://openapi.twse.com.tw/v1"
 TPEX_BASE = "https://www.tpex.org.tw/openapi/v1"
@@ -878,16 +879,13 @@ def historical_features(kline: list[dict], i: int) -> dict:
 
 
 def strategy_signal_and_score(strategy: str, f: dict) -> tuple[bool, float]:
+    if strategy in {"swing", "rebound"}:
+        decision = technical_decision(strategy, f)
+        return decision["eligible"], decision["score"]
     close, open_v = f["close"], f["open"]
     ma20, ma60 = f["ma20"], f["ma60"]
     near_high, sharpe = f["near_high"], f["sharpe"]
     vol_ratio, intraday_ret, range_position = f["vol_ratio"], f["intraday_ret"], f["range_position"]
-
-    if strategy == "swing":
-        trend = ma20 is not None and ma60 is not None and close > ma20 and close > ma60
-        signal = bool(near_high is not None and near_high >= 0.90 and sharpe is not None and sharpe >= 0.50 and trend)
-        score = clamp01(near_high) * 50 + clamp01(((sharpe or 0) + 1) / 3) * 30 + (20 if trend else 5)
-        return signal, round(score, 2)
 
     if strategy == "daytrade_proxy":
         signal = bool((intraday_ret or 0) > 0.01 and (vol_ratio or 0) > 1.2 and (range_position or 0) > 0.65)
@@ -900,21 +898,7 @@ def strategy_signal_and_score(strategy: str, f: dict) -> tuple[bool, float]:
         ])
         return signal, round(score, 2)
 
-    # rebound: historical revenue/institution cross-section is intentionally not
-    # backfilled, therefore validation uses only point-in-time price/volume inputs.
-    hit20 = ma20 is not None and f["recent_min_low"] <= ma20 * 1.02
-    hit60 = ma60 is not None and f["recent_min_low"] <= ma60 * 1.02
-    trend = ma20 is not None and ma60 is not None and close > ma20 and close > ma60
-    red = close > open_v
-    signal = bool(trend and (hit20 or hit60) and red)
-    momo_score = clamp01((((f.get("momo20") or 1.0) - 0.90) / 0.25)) * 100
-    score = weighted_number([
-        (100.0 if signal else 0.0, 50),
-        (clamp01(near_high) * 100 if near_high is not None else None, 20),
-        (clamp01((vol_ratio or 0) / 3) * 100 if vol_ratio is not None else None, 15),
-        (momo_score if f.get("momo20") is not None else None, 15),
-    ])
-    return signal, round(score, 2)
+    return False, 0.0
 
 
 def build_benchmark_context(histories: dict[str, list[dict]]) -> dict:
@@ -1004,8 +988,10 @@ def _base_trade_stats(records: list[dict], horizon: int) -> dict:
         "avg_loss": round(avg_loss * 100, 4) if avg_loss is not None else None,
         "payoff_ratio": round(avg_win / abs(avg_loss), 4) if avg_win is not None and avg_loss is not None and avg_loss < 0 else None,
         "profit_factor": round(gross_profit / gross_loss, 4) if gross_loss > 0 else None,
-        "max_drawdown": round(max_dd * 100, 4),
-        "sharpe": round(sharpe, 4) if sharpe is not None else None,
+        "max_drawdown": None,
+        "drawdown_note": "未建立逐日資金配置，不將重疊交易依序複利當成投組回撤",
+        "sharpe": None,
+        "trade_return_dispersion_ratio": round(sharpe, 4) if sharpe is not None else None,
         "avg_benchmark_return": round(float(np.mean(bench)) * 100, 4) if bench else None,
         "avg_excess_return": round(float(np.mean(excess)) * 100, 4) if excess else None,
     }
@@ -1089,6 +1075,8 @@ def summarize_strategy_records(records_by_horizon: dict[int, list[dict]], strate
     primary = PRIMARY_HORIZON[strategy]
     primary_records = records_by_horizon.get(primary, [])
     result = enrich_primary_stats(primary_records, primary)
+    result["rule_version"] = RULE_VERSION
+    result["validation_scope"] = "technical_signal_only_not_live_top3_or_long_or_overnight"
     result["primary_horizon"] = primary
     result["cost_bps"] = BACKTEST_TOTAL_COST_BPS
     result["horizons"] = {
@@ -1172,11 +1160,11 @@ def previous_metric(previous_summary: dict, key: str, latest_day: str) -> Any:
     value = previous_summary.get(key)
     if value is None:
         return None
-    prev_day = parse_iso_date(previous_summary.get("updated_at"))
+    prev_day = parse_iso_date(((previous_summary.get("field_meta") or {}).get(key) or {}).get("as_of"))
     now_day = parse_iso_date(latest_day)
     if not prev_day or not now_day:
         return None
-    if (now_day - prev_day).days > LEGACY_FUNDAMENTAL_MAX_AGE_DAYS:
+    if not 0 <= (now_day - prev_day).days <= LEGACY_FUNDAMENTAL_MAX_AGE_DAYS:
         return None
     return value
 
@@ -1247,7 +1235,7 @@ def firebase_replace_mapping_chunked(ref, mapping: dict, previous_mapping: dict 
 def main() -> None:
     validate_environment()
     market_ref = init_firebase()
-    previous = market_ref.get() or {}
+    previous = {key: market_ref.child(key).get() or {} for key in ("summary", "kline", "history", "meta")}
     previous_summary_map = previous.get("summary") or {}
     previous_kline_map = previous.get("kline") or {}
     previous_history_map = previous.get("history") or {}
@@ -1265,8 +1253,8 @@ def main() -> None:
 
     quote_dates = sorted({q["date"] for q in quotes.values() if q.get("date")})
     latest_day = quote_dates[-1]
-    if len(quote_dates) > 1:
-        print(f"[WARN] TWSE/TPEx snapshot 日期不一致：{quote_dates}；個股保留各自來源日期，meta 使用最新日期 {latest_day}")
+    if len(quote_dates) != 1 or not twse_quotes or not tpex_quotes:
+        raise RuntimeError(f"拒絕發布不完整或跨日期行情：{quote_dates}")
 
     print("[2/8] 讀取估值、公司基本資料與月營收…")
     base_payloads = fetch_many([
@@ -1433,6 +1421,24 @@ def main() -> None:
             "fundamental_quarter": fund.get("fundamental_quarter"),
             **technical,
         }
+        summary['field_meta'] = {}
+        for field in ['roe','eps','gross_margin','operating_margin','debt_ratio','fcf',
+                      'pe','pb','yield_pct','dividend_continuity_years','dividend_ttm','rev_yoy']:
+            if summary.get(field) is None:
+                continue
+            if field in fallback_fields:
+                info = (prev_summary.get('field_meta') or {}).get(field)
+                if info: summary['field_meta'][field] = info
+            else:
+                # as_of is observation date, NOT a fabricated financial publication date.
+                summary['field_meta'][field] = {'as_of': quote['date'], 'source': summary['fundamental_source'] if field in fund else 'official-api',
+                                               'period': rev.get('revenue_period') if field == 'rev_yoy' else fund.get('fundamental_quarter'),
+                                               'date_kind': 'observed_at', 'published_at': None}
+        vol_by_day = {x['time']: float(x.get('volume') or 0) for x in history}
+        matched = [x for x in inst_history if vol_by_day.get(x['time'], 0) > 0]
+        summary['institution_observations'] = len(matched)
+        summary['institution_flow_ratio'] = (sum(x['net_shares'] for x in matched) / sum(vol_by_day[x['time']] for x in matched)) if len(matched) >= 10 else None
+        summary['selection'] = stock_decisions(summary, latest_day)
         summaries[sym] = summary
         klines[sym] = kline
         histories[sym] = history
@@ -1465,7 +1471,7 @@ def main() -> None:
     if not summaries:
         raise RuntimeError("沒有成功建立任何股票資料，停止覆寫 Firebase。")
 
-    quality_fields = ["pe", "pb", "rev_yoy", "roe", "eps", "debt_ratio", "dividend_ttm", "net15Total", "sharpe20"]
+    quality_fields = ["pe", "pb", "rev_yoy", "roe", "eps", "fcf", "debt_ratio", "dividend_ttm", "net15Total", "sharpe20"]
     quality_total = sum(sum(1 for key in quality_fields if stock.get(key) is not None) for stock in summaries.values())
     data_quality_pct = round(quality_total / max(1, len(summaries) * len(quality_fields)) * 100, 2)
     now_utc = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -1521,7 +1527,21 @@ def main() -> None:
 
     # RTDB rejects oversized single PUT requests. Keep the schema unchanged,
     # but write large stock branches in small PATCH batches.
-    market_ref.child("meta").set(output["meta"])
+    from uuid import uuid4
+    release_id = latest_day + '_' + datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S') + '_' + uuid4().hex[:6]
+    for row in summaries.values(): row['release_id'] = release_id
+    output['meta']['release_id'] = release_id
+    output['meta']['rule_version'] = RULE_VERSION
+    output['meta']['published_at'] = now_utc
+    # Immutable release first, atomic pointer last. Legacy root remains compatible.
+    release = market_ref.child('releases').child(release_id)
+    firebase_replace_mapping_chunked(release.child('summary'), summaries, max_items=100, label='release-summary')
+    release.child('backtests').set(global_backtests)
+    release.child('meta').set(output['meta'])
+    market_ref.child('active_release').set(release_id)
+    market_ref.child('selection_history').child(latest_day).set({
+        'release_id': release_id, 'as_of': latest_day, 'rule_version': RULE_VERSION,
+        'stocks': {symbol: {k: row.get(k) for k in ('symbol','category','price','amount','updated_at','selection','field_meta','roe','fcf','yield_pct','sma20','sma60','sharpe20','near_high_ratio','volume_ratio','institution_flow_ratio')} for symbol,row in summaries.items()}})
     market_ref.child("backtests").set(output["backtests"])
     firebase_replace_mapping_chunked(
         market_ref.child("summary"), output["summary"], previous_summary_map,
@@ -1532,9 +1552,15 @@ def main() -> None:
         max_payload_bytes=6_000_000, max_items=40, label="kline",
     )
     firebase_replace_mapping_chunked(
-        market_ref.child("history"), output["history"], previous_history_map,
+        market_ref.child("history"), output["history"], {},
         max_payload_bytes=6_000_000, max_items=12, label="history",
     )
+    market_ref.child("meta").set(output["meta"])
+    release_keys = market_ref.child('releases').get(shallow=True) or {}
+    ordered_releases = sorted(release_keys, reverse=True)
+    # Preserve active and most recent dates; history of decisions is stored separately.
+    for old_id in ordered_releases[3:]:
+        if old_id != release_id: market_ref.child('releases').child(old_id).delete()
     print(
         f"完成：{len(summaries)} 檔，資料日 {latest_day}，品質 {data_quality_pct}%，"
         f"Fugle 補歷史 {fugle_bootstrap_count} 檔，舊基本面 fallback {legacy_fallback_count} 檔。"
