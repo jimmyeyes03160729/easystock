@@ -2,170 +2,137 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="墨衡量化 Mohren Quant Matrix - 台股量化觀察儀表板" />
-  <title>墨衡量化 Mohren Quant Matrix v1.4</title>
+  <title>墨衡量化 Mohren Quant Matrix</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 
+  <script>
+    // Apply the saved palette before first paint; unavailable storage is harmless.
+    try { document.documentElement.dataset.theme = localStorage.getItem('MOHREN_THEME') === 'light' ? 'light' : 'dark'; }
+    catch (_) { document.documentElement.dataset.theme = 'dark'; }
+  </script>
   <style>
-    :root {
-      --bg:#0d1117;
-      --panel:#161b22;
-      --border:#30363d;
-      --main:#f8fafc;
-      --sub:#8b949e;
-    }
-
-    body {
-      background:var(--bg);
-      color:#c9d1d9;
-    }
-
-    .panel {
-      background:var(--panel);
-      border:1px solid var(--border);
-    }
-
-    .text-main {
-      color:var(--main);
-    }
-
-    .text-sub {
-      color:var(--sub);
-    }
-
-    .btn {
-      background:#21262d;
-      border:1px solid var(--border);
-    }
-
-    .muted-border {
-      border-color:rgba(63,63,70,.55);
-    }
-
-    .metric-good {
-      color:#34d399;
-    }
-
-    .metric-warn {
-      color:#fbbf24;
-    }
-
-    .metric-bad {
-      color:#fb7185;
-    }
-
-    .score-ring {
-      background:
-        conic-gradient(
-          from 180deg,
-          #34d399 0 var(--score),
-          #30363d var(--score) 100%
-        );
-    }
-
-    ::-webkit-scrollbar {
-      width:5px;
-      height:5px;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background:#3f444e;
-      border-radius:3px;
-    }
-
-    @media (max-width:640px) {
-      .modal-wide {
-        max-height:96vh;
-      }
-    }
+    :root { color-scheme:dark; --bg:#0b0b0b; --panel:#151515; --surface:#1e1e1e; --hover:#292929; --border:#3d3d3d; --main:#f5f5f5; --sub:#b0b0b0; --inverse:#111111; --up:#ff7b86; --down:#62d69a; }
+    :root[data-theme="light"] { color-scheme:light; --bg:#f3f3f1; --panel:#ffffff; --surface:#f5f5f3; --hover:#eaeae7; --border:#ccccca; --main:#171717; --sub:#595959; --inverse:#ffffff; --up:#b91c32; --down:#137342; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; scroll-padding-top:90px; }
+    body { margin:0; background:var(--bg); color:var(--main); font-family:Inter,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; line-height:1.65; -webkit-font-smoothing:antialiased; }
+    .panel { background:var(--panel); border:1px solid var(--border); }
+    .surface { background:var(--surface); }
+    .text-main,.metric-good,.metric-warn,.metric-bad { color:var(--main); }
+    .text-sub { color:var(--sub); }
+    .market-up { color:var(--up); }
+    .market-down { color:var(--down); }
+    .market-flat { color:var(--sub); }
+    .muted-border { border-color:var(--border); }
+    .btn { background:var(--surface); border:1px solid var(--border); color:var(--main); transition:background .15s,border-color .15s; }
+    button,a,input,select { -webkit-tap-highlight-color:transparent; }
+    button,select { min-height:38px; cursor:pointer; }
+    button:hover,.btn:hover { background:var(--hover); }
+    :focus-visible { outline:2px solid var(--main)!important; outline-offset:4px; }
+    input { color:var(--main); min-height:30px; }
+    input::placeholder { color:var(--sub); opacity:1; }
+    select,option { background:var(--panel); color:var(--main); }
+    .workspace { width:min(1440px,100%); margin:0 auto; padding:0 36px 32px; }
+    .topbar { min-height:84px; display:flex; align-items:center; justify-content:space-between; gap:20px; border-bottom:1px solid var(--border); }
+    .brand { display:flex; align-items:center; gap:13px; text-decoration:none; color:var(--main); }
+    .brand-mark { display:grid; place-items:center; width:40px; height:40px; background:var(--main); color:var(--inverse); font-size:23px; font-weight:900; }
+    .brand strong { display:block; font-size:17px; letter-spacing:.12em; }
+    .brand small { display:block; color:var(--sub); font-size:9px; letter-spacing:.2em; }
+    .topbar-right { display:flex; gap:16px; align-items:center; }
+    .market-tag { font-size:11px; letter-spacing:.12em; color:var(--sub); }
+    .theme-switch { display:flex; padding:4px; gap:3px; background:var(--surface); border:1px solid var(--border); border-radius:8px; }
+    .theme-switch button { min-height:32px; padding:4px 13px; border-radius:4px; font-size:12px; color:var(--sub); }
+    .theme-switch button[aria-pressed="true"] { background:var(--main); color:var(--inverse); font-weight:700; }
+    .intro { display:flex; justify-content:space-between; gap:24px; align-items:flex-end; padding:34px 0 25px; }
+    .eyebrow { color:var(--sub); font-size:10px; letter-spacing:.22em; font-weight:600; }
+    .intro h1 { margin:6px 0 9px; font-size:clamp(28px,3.1vw,42px); line-height:1.25; font-weight:800; letter-spacing:-.035em; }
+    .intro p { color:var(--sub); font-size:13px; }
+    .intro-status { text-align:right; max-width:370px; }
+    .intro-status .btn { margin-bottom:10px; padding:8px 16px; border-radius:6px; font-size:12px; }
+    .section-nav { display:flex; gap:28px; border-bottom:1px solid var(--border); margin-bottom:24px; overflow-x:auto; }
+    .section-nav a { color:var(--sub); white-space:nowrap; padding:14px 0; font-size:13px; text-decoration:none; }
+    .section-nav a:first-child { color:var(--main); border-bottom:2px solid var(--main); font-weight:700; }
+    .section-nav a:hover { color:var(--main); }
+    .system-header { border-radius:10px; overflow:hidden; margin-bottom:20px; }
+    .system-stats { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); }
+    .system-stats > div { border:0; border-right:1px solid var(--border); border-radius:0; padding:16px; }
+    .system-stats > div:last-child { border-right:0; }
+    .system-stats [id] { font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; }
+    .filter-panel { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px; padding:18px 0 22px; }
+    .filter-panel > div:first-child { font-size:12px; }
+    .filter-title { font-size:13px; font-weight:700; margin-bottom:3px; }
+    .filter-panel > div:last-child { gap:7px; justify-content:flex-start; }
+    .filter-panel input { width:76px; }
+    .filter-panel button { padding:6px 11px; font-size:12px; }
+    .filter-panel button[aria-pressed="true"] { background:var(--main); color:var(--inverse); border-color:var(--main); }
+    .section-heading { display:flex; align-items:center; justify-content:space-between; gap:15px; margin:7px 0 14px; }
+    .section-heading h2 { font-size:18px; font-weight:750; letter-spacing:-.02em; }
+    .section-heading span { color:var(--sub); font-size:11px; }
+    .overview-grid { display:grid; grid-template-columns:minmax(220px,1fr) minmax(0,3fr); gap:18px; margin-bottom:26px; }
+    .workspace section.panel,.overview-grid > .panel,.strategy-grid > .panel { border-radius:10px; padding:22px; }
+    .overview-grid h2,#premarketBriefSection h2 { font-size:17px; }
+    #marketSignalCard { border-top:3px solid var(--main); display:flex; flex-direction:column; justify-content:space-between; }
+    #marketSignalText { font-size:27px; letter-spacing:-.04em; }
+    #marketSignalDot { background:var(--main); flex-shrink:0; }
+    #marketSignalAdvice { border:0; border-top:1px solid var(--border); border-radius:0; padding:14px 0 0; line-height:1.8; }
+    #topPickList { gap:12px; margin-top:20px; }
+    #topPickList > [onclick] { padding:17px; border-radius:7px; min-height:190px; }
+    #topPickList > [onclick]:first-child { border-top:3px solid var(--main); }
+    #topPickList .text-base { font-size:24px; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+    #topPickList .text-sm { font-size:17px; }
+    [onclick*="openStockDetail"] { transition:background .15s,border-color .15s; }
+    [onclick*="openStockDetail"]:hover { border-color:var(--main); background:var(--hover); }
+    #premarketBriefSection { margin-bottom:26px; }
+    #premarketBriefSection > .grid > div { background:var(--surface); border-radius:6px; padding:16px; }
+    #premarketMarkets > div { background:transparent!important; border:0; border-left:2px solid var(--border); border-radius:0!important; }
+    #premarketMarkets .font-bold { font-size:19px; font-variant-numeric:tabular-nums; }
+    .strategy-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-bottom:18px; }
+    .strategy-grid > .panel > div:first-child .font-bold { font-size:16px; }
+    .strategy-grid [onclick*="openStockDetail"] { padding:16px; margin-top:10px; border-radius:7px; }
+    .workspace [class~="text-[8px]"],.workspace [class~="text-[9px]"],.modal-wide [class~="text-[8px]"],.modal-wide [class~="text-[9px]"] { font-size:11px; }
+    [class~="text-[10px]"],[class~="text-[11px]"] { font-size:12px; }
+    .disclaimer { margin-top:28px; padding:22px 0!important; background:transparent; border:0; border-top:1px solid var(--border); border-radius:0!important; line-height:1.9; }
+    .footer-line { display:flex; justify-content:space-between; gap:12px; font-size:10px; letter-spacing:.15em; color:var(--sub); padding-top:14px; }
+    .modal-wide { box-shadow:0 24px 100px #0006; }
+    .score-ring { background:conic-gradient(from 180deg,var(--main) 0 var(--score),var(--border) var(--score) 100%); }
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    @media(max-width:1100px) { .system-stats { grid-template-columns:repeat(4,minmax(0,1fr)); } .system-stats > div:nth-child(-n+4) { border-bottom:1px solid var(--border); } .system-stats > div:nth-child(4n) { border-right:0; } .overview-grid { grid-template-columns:1fr; } #marketSignalCard { gap:12px; } }
+    @media(max-width:640px) { .workspace { padding:0 16px 24px; } .topbar { min-height:76px; gap:8px; } .brand strong { font-size:14px; } .brand small { font-size:7px; } .market-tag { display:none; } .theme-switch button { padding:4px 9px; } .intro { display:block; padding:26px 0 12px; } .intro-status { text-align:left; max-width:none; margin-top:18px; } .intro-status .btn { float:right; margin-left:12px; } .section-nav { gap:24px; } .system-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .system-stats > div { padding:12px; border-bottom:1px solid var(--border); } .system-stats > div:nth-child(2n) { border-right:0; } .system-stats > div:nth-last-child(-n+2) { border-bottom:0; } .strategy-grid { grid-template-columns:1fr; } .workspace section.panel,.overview-grid > .panel,.strategy-grid > .panel { padding:17px; } .section-heading { align-items:flex-start; } .section-heading span { text-align:right; } .modal-wide { max-height:96dvh; } .footer-line { flex-wrap:wrap; } }
+    @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } * { transition:none!important; } }
   </style>
 </head>
 
 <body class="min-h-screen font-sans">
 
-<div class="max-w-7xl mx-auto p-3 sm:p-6 space-y-4">
+<main class="workspace" id="dashboard">
 
   <!-- =====================================================
        HEADER
        ===================================================== -->
 
-  <header class="panel rounded-2xl p-4 space-y-3">
-
-    <div class="flex flex-wrap justify-between items-center gap-3">
-
-      <div>
-
-        <div class="flex items-center gap-2">
-
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-
-          <h1 class="text-sm font-bold tracking-[0.16em] text-main">
-            墨衡量化 ｜ MOHREN QUANT MATRIX
-          </h1>
-
-          <span class="text-[10px] rounded border px-1.5 py-0.5 text-sub">
-            v1.3
-          </span>
-
-        </div>
-
-        <div class="text-[11px] text-emerald-300 mt-1">
-          無腦選股：先給答案，再看理由；研究資料收在第二層。
-        </div>
-
-        <div id="dataStatusText"
-             class="text-[10px] text-sub font-mono mt-1">
-          正在從 Firebase 載入市場資料…
-        </div>
-
-      </div>
-
-      <div class="flex flex-wrap items-center gap-2">
-
-        <div class="flex gap-1 p-1 rounded-lg border muted-border bg-black/10">
-
-          <button
-            onclick="setTheme('color')"
-            id="theme-color"
-            class="px-2 py-1 text-[11px] rounded">
-            彩色
-          </button>
-
-          <button
-            onclick="setTheme('dark')"
-            id="theme-dark"
-            class="px-2 py-1 text-[11px] rounded">
-            黑色
-          </button>
-
-          <button
-            onclick="setTheme('light')"
-            id="theme-light"
-            class="px-2 py-1 text-[11px] rounded">
-            白色
-          </button>
-
-        </div>
-
-        <button
-          onclick="fetchMarketData()"
-          class="btn px-3 py-1.5 rounded-lg text-[11px] font-bold">
-          重新整理
-        </button>
-
-      </div>
-
-    </div>
-
-
+  <div class="topbar">
+    <a class="brand" href="#dashboard" aria-label="墨衡量化首頁"><span class="brand-mark" aria-hidden="true">墨</span><span><strong>墨衡量化</strong><small>MOHREN QUANT MATRIX</small></span></a>
+    <div class="topbar-right"><span class="market-tag">TWSE / TPEx</span><div class="theme-switch" role="group" aria-label="介面主題">
+      <button type="button" onclick="setTheme('dark')" id="theme-dark" aria-pressed="true">黑色</button>
+      <button type="button" onclick="setTheme('light')" id="theme-light" aria-pressed="false">白色</button>
+    </div></div>
+  </div>
+  <div class="intro">
+    <div><div class="eyebrow">TAIWAN EQUITY / MARKET WORKSPACE</div><h1>看清市場，聚焦下一步。</h1><p>從市場方向到個股策略，讓每一次觀察都有依據。</p></div>
+    <div class="intro-status"><button type="button" onclick="fetchMarketData()" class="btn">↻ 更新市場資料</button><div id="dataStatusText" class="text-sub text-[11px] font-mono" role="status">正在從 Firebase 載入市場資料…</div></div>
+  </div>
+  <nav class="section-nav" aria-label="首頁區域"><a href="#market-overview">市場總覽</a><a href="#premarketBriefSection">盤前通報</a><a href="#intraday-strategies">當沖・隔日衝</a><a href="#position-strategies">波段・長期</a></nav>
+  <header class="system-header panel" aria-label="資料狀態">
     <!-- =====================================================
          SYSTEM STATUS
          ===================================================== -->
 
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t muted-border">
+    <div class="system-stats">
 
       <div class="rounded-xl border muted-border p-2.5">
         <div class="text-[10px] text-sub">
@@ -200,7 +167,7 @@
         </div>
 
         <div id="metaScanTime"
-             class="text-sm font-bold text-rose-300 mt-2">
+             class="text-sm font-bold text-main mt-2">
           --
         </div>
 
@@ -214,16 +181,13 @@
         </div>
 
         <div id="metaRefreshTime"
-             class="text-sm font-bold text-emerald-300 mt-2">
+             class="text-sm font-bold text-main mt-2">
           --
         </div>
 
       </div>
 
-    </div>
 
-
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
 
       <div class="rounded-xl border muted-border p-2.5">
 
@@ -274,7 +238,7 @@
         </div>
 
         <div id="metaTracking"
-             class="text-sm font-bold text-emerald-300 mt-2">
+             class="text-sm font-bold text-main mt-2">
           啟用
         </div>
 
@@ -287,11 +251,12 @@
          FILTERS
          ===================================================== -->
 
-    <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+  </header>
+    <div class="filter-panel" role="region" aria-label="股票篩選">
 
       <div class="text-sub font-mono">
 
-        股票池：
+        <div class="filter-title">篩選觀察標的</div>股票池：
         <span class="text-main">
           TWSE+TPEx 成交金額前 500 檔普通股
         </span>
@@ -302,25 +267,25 @@
       <div class="flex flex-wrap gap-1.5 items-center justify-end">
 
         <button
-          onclick="setQuickPrice(null)"
+          data-price="" aria-pressed="true" onclick="setQuickPrice(null)"
           class="btn px-2 py-1 rounded-lg text-[10px]">
           不限
         </button>
 
         <button
-          onclick="setQuickPrice(50)"
+          data-price="50" aria-pressed="false" onclick="setQuickPrice(50)"
           class="btn px-2 py-1 rounded-lg text-[10px]">
           50以下
         </button>
 
         <button
-          onclick="setQuickPrice(100)"
+          data-price="100" aria-pressed="false" onclick="setQuickPrice(100)"
           class="btn px-2 py-1 rounded-lg text-[10px]">
           100以下
         </button>
 
         <button
-          onclick="setQuickPrice(200)"
+          data-price="200" aria-pressed="false" onclick="setQuickPrice(200)"
           class="btn px-2 py-1 rounded-lg text-[10px]">
           200以下
         </button>
@@ -333,7 +298,7 @@
           </span>
 
           <input
-            id="priceMin"
+            aria-label="最低股價" id="priceMin"
             type="number"
             min="0"
             step="1"
@@ -347,7 +312,7 @@
           </span>
 
           <input
-            id="priceMax"
+            aria-label="最高股價" id="priceMax"
             type="number"
             min="0"
             step="1"
@@ -368,7 +333,7 @@
           </span>
 
           <input
-            id="budgetInput"
+            aria-label="單張預算" id="budgetInput"
             type="number"
             min="0"
             step="10000"
@@ -380,7 +345,7 @@
         </div>
 
 
-        <select
+        <select aria-label="顯示標的數量"
           onchange="setDisplayLimit(Number(this.value))"
           class="panel rounded-lg px-2 py-1.5 text-xs text-main">
 
@@ -398,18 +363,18 @@
 
     </div>
 
-  </header>
 
 
   <!-- =====================================================
        MARKET + TOP PICKS
        ===================================================== -->
 
-  <section class="grid grid-cols-1 lg:grid-cols-4 gap-3">
+  <div class="section-heading" id="market-overview"><h2>市場總覽 <span>/ OVERVIEW</span></h2><span><b class="market-up">＋ 漲</b>　<b class="market-down">− 跌</b>　持平 —</span></div>
+  <section class="overview-grid" aria-label="市場總覽">
 
     <div
       id="marketSignalCard"
-      class="panel rounded-2xl p-4 lg:col-span-1">
+      class="panel rounded-2xl p-4">
 
       <div class="text-[10px] text-sub">
         今日市場燈號
@@ -419,7 +384,7 @@
 
         <span
           id="marketSignalDot"
-          class="w-4 h-4 rounded-full bg-zinc-500">
+          class="w-4 h-4 rounded-full surface">
         </span>
 
         <div>
@@ -451,14 +416,14 @@
     </div>
 
 
-    <div class="panel rounded-2xl p-4 lg:col-span-3">
+    <div class="panel rounded-2xl p-4">
 
       <div class="flex items-center justify-between gap-2">
 
         <div>
 
           <h2 class="text-sm font-bold text-main">
-            🏆 今日首選 TOP 3
+            今日首選 <span class="text-sub">/ TOP 3</span>
           </h2>
 
           <p class="text-[10px] text-sub mt-1">
@@ -506,7 +471,7 @@
       <div>
         <div class="flex items-center gap-2">
           <h2 class="text-sm font-bold text-main">
-            🤖 AI 開盤前市場通報
+            AI 開盤前市場通報
           </h2>
 
           <span
@@ -552,7 +517,7 @@
 
       <div class="rounded-xl border muted-border p-2.5">
         <div class="text-[9px] text-sub">當沖模式</div>
-        <div class="text-[10px] font-bold text-amber-300 mt-1 leading-relaxed">
+        <div class="text-[10px] font-bold text-main mt-1 leading-relaxed">
           09:30 開始<br>
           12:30 停新倉<br>
           12:55 全出
@@ -565,7 +530,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-3">
 
       <div class="lg:col-span-2 rounded-xl border muted-border p-3">
-        <div class="text-[10px] font-bold text-cyan-300">🧠 AI 判讀</div>
+        <div class="text-[10px] font-bold text-main">AI 判讀</div>
 
         <div
           id="premarketSummary"
@@ -575,7 +540,7 @@
       </div>
 
       <div class="rounded-xl border muted-border p-3">
-        <div class="text-[10px] font-bold text-emerald-300">🎯 今日重點</div>
+        <div class="text-[10px] font-bold text-main">今日重點</div>
 
         <div
           id="premarketFocus"
@@ -598,7 +563,8 @@
        INTRADAY
        ===================================================== -->
 
-  <section class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+  <div class="section-heading" id="intraday-strategies"><h2>即時交易觀察 <span>/ INTRADAY</span></h2><span>盤中機會與尾盤布局</span></div>
+  <section class="strategy-grid">
 
     <div class="panel rounded-2xl p-3">
 
@@ -606,12 +572,12 @@
         class="flex items-center justify-between border-b muted-border pb-2">
 
         <div class="font-bold text-xs text-main">
-          ⚡ Shioaji 即時當沖
+          即時當沖
         </div>
 
         <span
           id="intradayStamp"
-          class="text-[9px] text-rose-300">
+          class="text-[9px] text-main">
           等待盤中掃描
         </span>
 
@@ -643,12 +609,12 @@
         class="flex items-center justify-between border-b muted-border pb-2">
 
         <div class="font-bold text-xs text-main">
-          🌙 隔日衝 TOP 3
+          隔日衝 TOP 3
         </div>
 
         <span
           id="overnightStamp"
-          class="text-[9px] text-violet-300">
+          class="text-[9px] text-main">
           尾盤優先
         </span>
 
@@ -678,7 +644,8 @@
        SWING + LONG
        ===================================================== -->
 
-  <section class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+  <div class="section-heading" id="position-strategies"><h2>持倉策略 <span>/ POSITION</span></h2><span>依持有週期，找到適合的標的</span></div>
+  <section class="strategy-grid">
 
     <div class="panel rounded-2xl p-3">
 
@@ -686,10 +653,10 @@
         class="flex items-center justify-between border-b muted-border pb-2">
 
         <div class="font-bold text-xs text-main">
-          🚀 短波段候選
+          短波段候選
         </div>
 
-        <span class="text-[9px] text-amber-300">
+        <span class="text-[9px] text-main">
           5–20D
         </span>
 
@@ -719,10 +686,10 @@
         class="flex items-center justify-between border-b muted-border pb-2">
 
         <div class="font-bold text-xs text-main">
-          🛡️ 長期核心
+          長期核心
         </div>
 
-        <span class="text-[9px] text-emerald-300">
+        <span class="text-[9px] text-main">
           3–12M
         </span>
 
@@ -753,7 +720,7 @@
        ===================================================== -->
 
   <section
-    class="panel rounded-2xl p-4 text-[10px] text-sub leading-relaxed">
+    class="disclaimer text-[10px] text-sub leading-relaxed">
 
     本頁為量化資料整理與研究工具，不構成投資建議。
     首頁「今日首選」是規則式排序，不代表保證獲利；
@@ -774,7 +741,8 @@
 
   </section>
 
-</div>
+<footer class="footer-line"><span>墨衡量化 / MOHREN QUANT MATRIX</span><span>台股量化研究工作台</span></footer>
+</main>
 
 
 <!-- =========================================================
@@ -782,7 +750,7 @@
      ========================================================= -->
 
 <div
-  id="stockDetailModal"
+  role="dialog" aria-modal="true" aria-labelledby="modalTitle" id="stockDetailModal"
   class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm p-3 flex items-center justify-center">
 
   <div
@@ -831,7 +799,7 @@
         </a>
 
         <button
-          onclick="closeModal()"
+          aria-label="關閉股票詳情" onclick="closeModal()"
           class="text-sub hover:text-main text-xl px-2">
 
           ✕
@@ -992,7 +960,7 @@
   let BUDGET_MAX = null;
 
   let CURRENT_THEME =
-    localStorage.getItem("MOHREN_THEME") || "color";
+    document.documentElement.dataset.theme || "dark";
 
   let COMPUTED_STOCKS = [];
 
@@ -1010,6 +978,7 @@
   let DATA_MODE = "split";
 
   let currentChart = null;
+  let currentSeries = null;
 
 
   /* ========================================================
@@ -1239,162 +1208,37 @@
      THEME
      ======================================================== */
 
-  function setTheme(theme) {
-
-    CURRENT_THEME = theme;
-
-    localStorage.setItem(
-      "MOHREN_THEME",
-      theme
-    );
-
-    if (theme === "light") {
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--bg",
-          "#f8fafc"
-        );
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--panel",
-          "#ffffff"
-        );
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--border",
-          "#cbd5e1"
-        );
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--main",
-          "#0f172a"
-        );
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--sub",
-          "#64748b"
-        );
-
-      document.body.style.color =
-        "#334155";
-
-    } else if (theme === "dark") {
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--bg",
-          "#08090b"
-        );
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--panel",
-          "#111318"
-        );
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--border",
-          "#272a30"
-        );
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--main",
-          "#f8fafc"
-        );
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--sub",
-          "#8b949e"
-        );
-
-      document.body.style.color =
-        "#94a3b8";
-
-    } else {
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--bg",
-          "#0d1117"
-        );
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--panel",
-          "#161b22"
-        );
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--border",
-          "#30363d"
-        );
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--main",
-          "#f8fafc"
-        );
-
-      document.documentElement
-        .style
-        .setProperty(
-          "--sub",
-          "#8b949e"
-        );
-
-      document.body.style.color =
-        "#c9d1d9";
-
-    }
-
-
-    [
-      "color",
-      "dark",
-      "light"
-    ].forEach(t => {
-
-      const b =
-        document.getElementById(
-          `theme-${t}`
-        );
-
-      if (!b) return;
-
-      b.className =
-        `px-2 py-1 text-[11px] rounded ${
-          t === theme
-            ? "bg-zinc-700 text-white font-bold"
-            : "text-sub"
-        }`;
-
-    });
-
+  function chartPalette() {
+    const css = getComputedStyle(document.documentElement);
+    const color = name => css.getPropertyValue(name).trim();
+    return {
+      layout: { background: { color: color('--panel') }, textColor: color('--sub') },
+      grid: { vertLines: { color: color('--surface') }, horzLines: { color: color('--surface') } },
+      timeScale: { borderColor: color('--border') },
+      rightPriceScale: { borderColor: color('--border') }
+    };
   }
 
+  function candlePalette() {
+    const css = getComputedStyle(document.documentElement);
+    const up = css.getPropertyValue('--up').trim();
+    const down = css.getPropertyValue('--down').trim();
+    return { upColor: up, downColor: down, borderUpColor: up, borderDownColor: down, wickUpColor: up, wickDownColor: down };
+  }
+
+  function marketClass(value) {
+    const v = n(value);
+    return v === null || v === 0 ? 'market-flat' : v > 0 ? 'market-up' : 'market-down';
+  }
+
+  function setTheme(theme) {
+    CURRENT_THEME = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = CURRENT_THEME;
+    try { localStorage.setItem('MOHREN_THEME', CURRENT_THEME); } catch (_) {}
+    ['dark', 'light'].forEach(t => document.getElementById(`theme-${t}`).setAttribute('aria-pressed', String(t === CURRENT_THEME)));
+    if (currentChart) currentChart.applyOptions(chartPalette());
+    if (currentSeries) currentSeries.applyOptions(candlePalette());
+  }
 
   /* ========================================================
      DATA QUALITY
@@ -2804,6 +2648,11 @@
      ======================================================== */
 
   function renderAllSections() {
+    document.querySelectorAll('[data-price]').forEach(button => {
+      const value = button.dataset.price === '' ? null : Number(button.dataset.price);
+      button.setAttribute('aria-pressed', String((PRICE_MIN === null || PRICE_MIN === 0) && PRICE_MAX === value));
+    });
+
 
     const pool =
       priceFilteredStocks();
@@ -2997,10 +2846,10 @@
     dot.className =
       `w-4 h-4 rounded-full ${
         m.level === "GREEN"
-          ? "bg-emerald-400"
+          ? "surface"
           : m.level === "RED"
-            ? "bg-rose-400"
-            : "bg-amber-400"
+            ? "surface"
+            : "surface"
       }`;
 
 
@@ -3092,9 +2941,9 @@
 
       c.innerHTML =
         `
-        <div class="md:col-span-3 rounded-xl border border-rose-500/30 bg-rose-950/20 p-5 text-center">
+        <div class="md:col-span-3 rounded-xl border muted-border surface p-5 text-center">
 
-          <div class="text-lg font-bold text-rose-300">
+          <div class="text-lg font-bold text-main">
             今日建議觀望
           </div>
 
@@ -3214,8 +3063,8 @@
 
             return `
               <div
-                onclick="openStockDetail('${s.symbol}','${x.strategy}')"
-                class="cursor-pointer rounded-xl border muted-border p-3 bg-black/10 hover:translate-y-[-1px] transition">
+                role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="openStockDetail('${s.symbol}','${x.strategy}')"
+                class="cursor-pointer rounded-xl border muted-border p-3 surface hover:translate-y-[-1px] transition">
 
                 <div class="flex justify-between gap-2">
 
@@ -3257,7 +3106,7 @@
                     .map(
                       r =>
                         `
-                        <div class="text-emerald-300">
+                        <div class="text-main">
                           ✓ ${escapeHtml(r)}
                         </div>
                         `
@@ -3265,7 +3114,7 @@
                     .join("")
                   }
 
-                  <div class="text-amber-300">
+                  <div class="text-main">
                     ⚠ ${escapeHtml(risk)}
                   </div>
 
@@ -3321,8 +3170,8 @@
 
             return `
               <div
-                onclick="openStockDetail('${s.symbol}','${x.strategy}')"
-                class="cursor-pointer rounded-xl border muted-border p-2.5 bg-black/10 hover:translate-y-[-1px] transition">
+                role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="openStockDetail('${s.symbol}','${x.strategy}')"
+                class="cursor-pointer rounded-xl border muted-border p-2.5 surface hover:translate-y-[-1px] transition">
 
                 <div class="flex justify-between gap-2">
 
@@ -3391,15 +3240,15 @@
     const levelMap = {
       GREEN: {
         label: "🟢 GREEN",
-        cls: "text-emerald-300 border-emerald-500/40"
+        cls: "text-main muted-border"
       },
       YELLOW: {
         label: "🟡 YELLOW",
-        cls: "text-amber-300 border-amber-500/40"
+        cls: "text-main muted-border"
       },
       RED: {
         label: "🔴 RED",
-        cls: "text-rose-300 border-rose-500/40"
+        cls: "text-main muted-border"
       }
     };
 
@@ -3458,10 +3307,10 @@
         risk === null
           ? "text-xl font-bold text-main mt-1"
           : risk >= 70
-            ? "text-xl font-bold text-rose-300 mt-1"
+            ? "text-xl font-bold text-main mt-1"
             : risk >= 40
-              ? "text-xl font-bold text-amber-300 mt-1"
-              : "text-xl font-bold text-emerald-300 mt-1";
+              ? "text-xl font-bold text-main mt-1"
+              : "text-xl font-bold text-main mt-1";
     }
 
 
@@ -3617,12 +3466,7 @@
                         : ""
                     }${fmt(change, 2)}%`;
 
-                  cls =
-                    change > 0
-                      ? "text-emerald-300"
-                      : change < 0
-                        ? "text-rose-300"
-                        : "text-main";
+                  cls = marketClass(change);
 
                 } else if (
                   price !== null
@@ -3651,12 +3495,7 @@
                         : ""
                     }${fmt(numeric, 2)}%`;
 
-                  cls =
-                    numeric > 0
-                      ? "text-emerald-300"
-                      : numeric < 0
-                        ? "text-rose-300"
-                        : "text-main";
+                  cls = marketClass(numeric);
                 }
               }
             }
@@ -3830,7 +3669,7 @@
 
             const click =
               hasStock
-                ? `onclick="openStockDetail('${x.symbol}','DAYTRADE')"`
+                ? `role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="openStockDetail('${x.symbol}','DAYTRADE')"`
                 : "";
 
 
@@ -3886,7 +3725,7 @@
                   hasStock
                     ? "cursor-pointer"
                     : ""
-                } rounded-xl border muted-border p-2.5 bg-black/10 hover:translate-y-[-1px] transition">
+                } rounded-xl border muted-border p-2.5 surface hover:translate-y-[-1px] transition">
 
                 <div class="flex justify-between gap-2">
 
@@ -3938,7 +3777,7 @@
                       r =>
                         `
                         <span
-                          class="text-[8px] px-1.5 py-0.5 rounded border border-emerald-500/20 text-emerald-300">
+                          class="text-[8px] px-1.5 py-0.5 rounded border muted-border text-main">
 
                           ${escapeHtml(r)}
 
@@ -4023,7 +3862,7 @@
                         首次出現
                       </div>
 
-                      <div class="text-[9px] text-emerald-300 font-mono">
+                      <div class="text-[9px] text-main font-mono">
                         ${
                           x.first_seen_at
                             ? firstSeen
@@ -4040,7 +3879,7 @@
                         最後掃描
                       </div>
 
-                      <div class="text-[9px] text-rose-300 font-mono">
+                      <div class="text-[9px] text-main font-mono">
                         ${lastSeen}
                       </div>
 
@@ -4049,7 +3888,7 @@
                   </div>
 
 
-                  <div class="text-[8px] text-cyan-300 mt-1">
+                  <div class="text-[8px] text-main mt-1">
 
                     ⏱ 持續
                     ${durationText}
@@ -4059,7 +3898,7 @@
                 </div>
 
 
-                <div class="text-[8px] text-amber-300 mt-2">
+                <div class="text-[8px] text-main mt-2">
 
                   ⚠
                   ${escapeHtml(risk)}
@@ -4341,14 +4180,7 @@
               );
           }
 
-          const pnlClass =
-            pnl === null
-              ? "text-sub"
-              : pnl > 0
-                ? "text-emerald-300"
-                : pnl < 0
-                  ? "text-rose-300"
-                  : "text-sub";
+          const pnlClass = marketClass(pnl);
 
           const pnlText =
             pnl === null
@@ -4361,8 +4193,8 @@
 
           const statusClass =
             isOpen
-              ? "text-emerald-300 border-emerald-500/40"
-              : "text-slate-300 border-slate-500/40";
+              ? "text-main muted-border"
+              : "text-main muted-border";
 
           const reasons =
             Array.isArray(
@@ -4372,7 +4204,7 @@
               : [];
 
           return `
-            <div class="rounded-xl border muted-border p-3 bg-black/10">
+            <div class="rounded-xl border muted-border p-3 surface">
 
               <div class="flex items-start justify-between gap-2">
 
@@ -4453,7 +4285,7 @@
                     }
                   </div>
 
-                  <div class="text-emerald-300 mt-0.5">
+                  <div class="text-main mt-0.5">
                     ${
                       x.entry_time
                         ? formatTaiwanDateTime(
@@ -4505,7 +4337,7 @@
                     }
                   </div>
 
-                  <div class="text-rose-300 mt-0.5">
+                  <div class="text-main mt-0.5">
                     ${
                       isOpen
                         ? (
@@ -4535,7 +4367,7 @@
                 &&
                 x.entry_score != null
                   ? `
-                    <div class="text-[9px] text-cyan-300 mt-2">
+                    <div class="text-[9px] text-main mt-2">
                       量化進場分數：
                       ${escapeHtml(
                         x.entry_score
@@ -4551,7 +4383,7 @@
                 &&
                 x.trailing_stop != null
                   ? `
-                    <div class="text-[9px] text-amber-300 mt-1">
+                    <div class="text-[9px] text-main mt-1">
                       移動停利：
                       ${fmt(
                         x.trailing_stop,
@@ -4575,7 +4407,7 @@
                         )
                         .map(
                           reason => `
-                            <span class="text-[8px] rounded border muted-border px-1.5 py-0.5 text-emerald-300">
+                            <span class="text-[8px] rounded border muted-border px-1.5 py-0.5 text-main">
                               ✓ ${escapeHtml(reason)}
                             </span>
                           `
@@ -4597,14 +4429,14 @@
 
                       <div>
                         最高浮盈
-                        <span class="text-emerald-300">
+                        <span class="${marketClass(x.mfe_pct)}">
                           ${Number(x.mfe_pct).toFixed(2)}%
                         </span>
                       </div>
 
                       <div>
                         最大浮虧
-                        <span class="text-rose-300">
+                        <span class="${marketClass(x.mae_pct)}">
                           ${Number(x.mae_pct).toFixed(2)}%
                         </span>
                       </div>
@@ -5084,7 +4916,7 @@
                 ${label}
               </div>
 
-              <div class="text-sm font-bold text-main mt-1">
+              <div class="text-sm font-bold ${label === '平均報酬' ? marketClass(bt.avg_return) : 'text-main'} mt-1">
                 ${value}
               </div>
 
@@ -5114,6 +4946,7 @@
       currentChart.remove();
 
       currentChart = null;
+      currentSeries = null;
 
     }
 
@@ -5146,58 +4979,15 @@
           height:
             330,
 
-          layout: {
-            background: {
-              color: "#0a0c10"
-            },
-            textColor:
-              "#94a3b8"
-          },
-
-          grid: {
-            vertLines: {
-              color: "#151922"
-            },
-            horzLines: {
-              color: "#151922"
-            }
-          },
-
-          timeScale: {
-            borderColor:
-              "#272a30",
-            timeVisible:
-              false
-          }
+          ...chartPalette(),
+          timeScale: { ...chartPalette().timeScale, timeVisible: false }
 
         }
       );
 
 
-    const series =
-      currentChart
-        .addCandlestickSeries(
-          {
-            upColor:
-              "#ef4444",
-
-            downColor:
-              "#22c55e",
-
-            borderUpColor:
-              "#ef4444",
-
-            borderDownColor:
-              "#22c55e",
-
-            wickUpColor:
-              "#ef4444",
-
-            wickDownColor:
-              "#22c55e"
-          }
-        );
-
+    const series = currentChart.addCandlestickSeries(candlePalette());
+    currentSeries = series;
 
     const data =
       stock.kline
@@ -5247,6 +5037,7 @@
       currentChart.remove();
 
       currentChart = null;
+      currentSeries = null;
 
     }
 
