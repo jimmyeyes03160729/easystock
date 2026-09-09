@@ -21,6 +21,7 @@ except ModuleNotFoundError:
 from datetime import date
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 MODULE_PATH = Path(__file__).resolve().parents[1] / "update_market.py"
 spec = importlib.util.spec_from_file_location("update_market", MODULE_PATH)
 m = importlib.util.module_from_spec(spec)
