@@ -1,0 +1,2 @@
+# Separate research virtual environment only. Version used for offline verification.
+scikit-learn==1.8.0
