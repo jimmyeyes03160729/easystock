@@ -3657,6 +3657,28 @@
       ...closedRows
     ];
 
+    const today =
+      new Date()
+        .toLocaleDateString(
+          "en-CA",
+          {
+            timeZone:"Asia/Taipei"
+          }
+        );
+
+    rows =
+      rows.filter(
+        x =>
+          String(
+            x.entry_time
+            ||
+            x.exit_time
+            ||
+            ""
+          ).startsWith(today)
+      );
+
+
 
     rows =
       rows.filter(
