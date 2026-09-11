@@ -107,6 +107,7 @@
   
 :root{--shift-ink:#f4f4f4}body{background:var(--bg)}.brand-mark{font-size:16px;line-height:1.05;width:48px;height:48px;border-radius:0;transform:rotate(-4deg);border:2px solid var(--main);display:flex;flex-direction:column;justify-content:center}.brand strong{font-size:23px;letter-spacing:-.04em}.brand small{letter-spacing:.16em}.intro{padding-top:30px}.intro h1{font-weight:950;letter-spacing:-.055em;font-size:clamp(28px,4vw,44px)}.intro p{font-size:14px}.section-nav{border-top:2px solid var(--main);border-bottom:1px solid var(--border);overflow-x:auto;white-space:nowrap;padding:14px 0;gap:24px}.panel{box-shadow:none!important}.section-heading h2{font-weight:900}.section-heading span{letter-spacing:.04em}.topbar{border-bottom-style:dashed}.share-btn{font-size:12px!important;padding:6px 10px!important;margin-left:8px;white-space:nowrap}.learning-panel{margin:22px 0;padding:24px!important;border:2px solid var(--main)!important;border-radius:0!important}.learning-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:22px}.learning-head h2{font-size:25px;font-weight:900;margin-top:4px}.phase-badge{padding:8px 12px;border:1px solid var(--main);font-size:13px;font-weight:700}.learning-numbers{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px dashed var(--border);border-bottom:1px dashed var(--border)}.learning-numbers>div{padding:20px 14px;border-right:1px dashed var(--border)}.learning-numbers>div:last-child{border:0}.learning-numbers span,.learning-numbers small{display:block;color:var(--sub);font-size:12px}.learning-numbers strong{display:block;font-size:34px;line-height:1.5;font-variant-numeric:tabular-nums;letter-spacing:-.04em}.learning-bottom{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding-top:20px;font-size:14px}.learning-bottom p{font-size:12px;color:var(--sub);margin:6px 0}.learning-panel progress{width:100%;height:7px;accent-color:var(--main)}.learning-panel details{border-top:1px dashed var(--border);margin-top:20px;padding-top:14px;font-size:12px;color:var(--sub)}.learning-panel summary{cursor:pointer;color:var(--main)}#moduleShareDialog{width:min(680px,calc(100vw - 32px));max-height:90dvh;padding:22px;color:var(--main);background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:auto}#moduleShareDialog::backdrop{background:#000a}#moduleShareDialog img{width:100%;height:auto;margin:16px 0}#moduleShareDialog button{padding:9px 14px}#moduleShareDialog button:disabled{opacity:.5}@media(max-width:640px){.brand strong{font-size:19px}.learning-numbers{grid-template-columns:1fr 1fr}.learning-numbers>div:nth-child(2){border-right:0}.learning-numbers>div:nth-child(-n+2){border-bottom:1px dashed var(--border)}.learning-bottom{grid-template-columns:1fr}.learning-head{align-items:flex-start;flex-direction:column}.learning-panel{padding:17px!important}.share-btn{margin:6px 0 0}.learning-numbers strong{font-size:30px}}
 
+.recommendation-section{margin-bottom:30px}.ranked-heading{padding-top:18px;border-top:1px solid var(--border)}.section-number{font-size:13px!important;letter-spacing:.12em!important;margin-right:10px}.rebound-module{padding:24px;margin-bottom:36px}.rebound-module-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.rebound-module h2{font-size:23px;font-weight:850}.rebound-module p{font-size:12px;line-height:1.8;margin:8px 0}.rebound-rule-note{display:inline-block;border:1px solid var(--border);padding:6px 10px;font-size:11px;margin-top:15px}.rebound-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}.rebound-card{border:1px solid var(--border);padding:18px;border-radius:8px;min-width:0}.rebound-card-head{display:flex;justify-content:space-between;gap:10px;font-size:11px}.rebound-rank{font-weight:800}.rebound-card h3{font-size:18px;margin:14px 0 8px;font-weight:750}.rebound-price{font-size:26px}.rebound-levels{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;padding:14px 0;border-top:1px dashed var(--border);border-bottom:1px dashed var(--border);margin:14px 0}.rebound-levels dt{color:var(--sub)}.rebound-levels dd{text-align:right;font-variant-numeric:tabular-nums}.rebound-warning,.rebound-pass{padding:8px;border:1px solid var(--border)}.rebound-card details,.rebound-method{font-size:12px;line-height:1.8;margin:14px 0}.rebound-card summary,.rebound-method summary{cursor:pointer}.rebound-method{border-top:1px solid var(--border);padding-top:14px}#reboundWatchSection{margin-top:26px}#reboundWatchSection>h3{font-weight:800}.market-context{margin-bottom:24px}.recommendation-section .panel{padding:22px}#intradayPickList,#overnightPickList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}#intradayPickList>div:only-child,#overnightPickList>div:only-child{grid-column:1/-1}@media(max-width:800px){.rebound-grid,#intradayPickList,#overnightPickList{grid-template-columns:1fr}.rebound-module-head{flex-direction:column}.rebound-module{padding:17px}}
 </style>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 fill=%27%23111%27/%3E%3Ctext x=%2716%27 y=%2724%27 text-anchor=%27middle%27 fill=%27white%27 font-size=%2724%27%3E牛%3C/text%3E%3C/svg%3E">
 </head>
@@ -130,7 +131,7 @@
     <div><div class="eyebrow">打卡看盤 · 台股觀察室</div><h1>上班很累，看盤要清楚。</h1><p>有訊號再看，沒訊號就等。今天的機會、風險和學習進度，一眼看完。</p></div>
     <div class="intro-status"><button type="button" onclick="fetchMarketData()" class="btn">↻ 更新市場資料</button><div id="dataStatusText" class="text-sub text-[11px] font-mono" role="status">正在從 Firebase 載入市場資料…</div></div>
   </div>
-  <nav class="section-nav" aria-label="首頁區域"><a href="#market-overview">市場總覽</a><a href="#premarketBriefSection">盤前通報</a><a href="#intraday-strategies">當沖・隔日衝</a><a href="#learningSection">AI 進修打卡</a><a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener">我的後台 ↗</a></nav>
+  <nav class="section-nav" aria-label="首頁區域"><a href="#intraday-strategies">01 當沖</a><a href="#overnight-strategies">02 隔日衝</a><a href="#daily-strategies">03 每日推薦</a><a href="#bottom-rebound">04 底部反彈</a><a href="#learningSection">AI 進修打卡</a><a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener">我的後台 ↗</a></nav>
   <header class="system-header panel" aria-label="資料狀態">
     <!-- =====================================================
          SYSTEM STATUS
@@ -373,10 +374,114 @@
        MARKET + TOP PICKS
        ===================================================== -->
 
-  <div class="section-heading" id="market-overview"><h2>市場總覽 <span>/ OVERVIEW</span></h2><span><b class="market-up">＋ 漲</b>　<b class="market-down">− 跌</b>　持平 —</span></div>
-  <section class="overview-grid" aria-label="市場總覽">
+<div class="section-heading ranked-heading" id="intraday-strategies"><h2><span class="section-number">01</span> 當沖</h2><span>盤中即時訊號</span></div><section class="recommendation-section"><div id="daytradeModule" class="panel rounded-2xl p-3">
 
-    <div
+      <div
+        class="flex items-center justify-between border-b muted-border pb-2">
+
+        <div class="font-bold text-xs text-main">
+          即時當沖 <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('daytradeModule','即時當沖')">分享圖片 ↗</button>
+        </div>
+
+        <span
+          id="intradayStamp"
+          class="text-[9px] text-main">
+          等待盤中掃描
+        </span>
+
+      </div>
+
+      <div class="text-[10px] text-sub mt-2">
+        永豐 Shioaji 即時行情 × 5分K × 15分K × VWAP × 量能 × AI市場燈號；
+        09:30 開始、12:30 停止新進場、12:55 強制出場、13:00 完全關閉。
+      </div>
+
+      <div
+        id="intradayPickList"
+        class="space-y-1.5 mt-2">
+
+        <div class="text-xs text-sub text-center py-8">
+          等待 Shioaji 即時當沖資料…
+        </div>
+
+      </div>
+
+    </div></section><div class="section-heading ranked-heading" id="overnight-strategies"><h2><span class="section-number">02</span> 隔日衝 TOP 3</h2><span>尾盤觀察・隔日策略</span></div><section class="recommendation-section"><div id="overnightModule" class="panel rounded-2xl p-3">
+
+      <div
+        class="flex items-center justify-between border-b muted-border pb-2">
+
+        <div class="font-bold text-xs text-main">
+          隔日衝 TOP 3 <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('overnightModule','隔日衝 TOP 3')">分享圖片 ↗</button>
+        </div>
+
+        <span
+          id="overnightStamp"
+          class="text-[9px] text-main">
+          尾盤優先
+        </span>
+
+      </div>
+
+      <div class="text-[10px] text-sub mt-2">
+        13:00後依最近30分鐘、15分K及量價篩選；跌破VWAP、過度追價或資料過期直接排除。收盤版僅供研究。
+      </div>
+
+      <p id="overnightHealth" class="text-sub text-xs mt-3" role="status">正在確認隔日衝資料來源…</p>
+      <div
+        id="overnightPickList"
+        class="space-y-1.5 mt-2">
+
+        <div class="text-xs text-sub text-center py-8">
+          等待線型交叉掃描…
+        </div>
+
+      </div>
+
+    </div></section><div class="section-heading ranked-heading" id="daily-strategies"><h2><span class="section-number">03</span> 每日推薦 TOP 3</h2><span>日線策略・非當沖訊號</span></div><section class="recommendation-section"><div id="topPicksModule" class="panel rounded-2xl p-4">
+
+      <div class="flex items-center justify-between gap-2">
+
+        <div>
+
+          <h2 class="text-sm font-bold text-main">
+            每日推薦 TOP 3 <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('topPicksModule','每日推薦 TOP 3')">分享圖片 ↗</button> <span class="text-sub">/ 盤前觀察，非當沖進場</span>
+          </h2>
+
+          <p class="text-[10px] text-sub mt-1">
+            只從通過資格的策略中選出，單一產業最多一檔；排序分不是勝率。
+          </p>
+
+        </div>
+
+        <span
+          id="activeFilterLabel"
+          class="text-[9px] text-sub font-mono">
+          全部價格
+        </span>
+
+      </div>
+
+
+      <div
+        id="topPickList"
+        class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
+
+        <div class="text-xs text-sub py-8">
+          計算中…
+        </div>
+
+      </div>
+
+    </div></section><div class="section-heading ranked-heading" id="bottom-rebound"><h2><span class="section-number">04</span> 底部反彈 TOP 3</h2><span>接近支撐・等待止跌</span></div><section id="reboundModule" class="panel rebound-module" aria-labelledby="reboundTitle">
+<div class="rebound-module-head"><div><h2 id="reboundTitle">有支撐，也要等站穩。</h2><p class="text-sub">多次回測支撐與壓力，確認止跌後再檢查基本面。可能持有數日，不是當沖訊號。</p></div><button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('reboundModule','底部反彈 TOP 3')">分享圖片 ↗</button></div>
+<div class="rebound-rule-note">規則試行 · 尚無驗證勝率 · 資料不足不列入推薦</div>
+<p id="reboundStatus" role="status" aria-live="polite">等待日線資料…</p>
+<p id="reboundProgress" class="text-sub"></p>
+<div id="reboundPicks" class="rebound-grid"></div>
+<div id="reboundWatchSection" hidden><h3>型態符合，基本面待確認</h3><p class="text-sub">以下是技術觀察名單，尚未列入推薦 TOP 3。</p><div id="reboundWatch" class="rebound-grid"></div></div>
+<details class="rebound-method"><summary>篩選方式與本次檢查結果</summary><p>使用最近 120～252 根日 K，辨識間隔至少 10 個交易日的支撐與壓力觸及；接近支撐後，等待收盤站上前一日高點，價格空間與失效距離至少 2 倍。價格空間尚未扣除交易成本，跳空可能使實際損失超過失效價。</p><p>基本面採試行門檻：單月營收年增不低於 −10%、EPS 與營業利益率為正、負債比低於 65%、自由現金流為正。必須有來源與有效期間，金融業暫不適用；單月數據不等於長期營運正常。</p><p id="reboundDiagnostics">等待檢查結果。</p><button id="reboundRetry" class="btn" type="button">重新檢查</button></details>
+</section><div class="section-heading ranked-heading" id="market-overview"><h2><span class="section-number"></span> 市場總覽</h2><span>股票池市場狀態</span></div><section class="market-context"><div
       id="marketSignalCard"
       class="panel rounded-2xl p-4">
 
@@ -417,55 +522,7 @@
 
       </div>
 
-    </div>
-
-
-    <div id="topPicksModule" class="panel rounded-2xl p-4">
-
-      <div class="flex items-center justify-between gap-2">
-
-        <div>
-
-          <h2 class="text-sm font-bold text-main">
-            今日首選 <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('topPicksModule','今日首選')">分享圖片 ↗</button> <span class="text-sub">/ 盤前觀察，非當沖進場</span>
-          </h2>
-
-          <p class="text-[10px] text-sub mt-1">
-            只從通過資格的策略中選出，單一產業最多一檔；排序分不是勝率。
-          </p>
-
-        </div>
-
-        <span
-          id="activeFilterLabel"
-          class="text-[9px] text-sub font-mono">
-          全部價格
-        </span>
-
-      </div>
-
-
-      <div
-        id="topPickList"
-        class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
-
-        <div class="text-xs text-sub py-8">
-          計算中…
-        </div>
-
-      </div>
-
-    </div>
-
-  </section>
-
-
-
-  <!-- =====================================================
-       AI PREMARKET BRIEF
-       ===================================================== -->
-
-  <section
+    </div></section><section
     id="premarketBriefSection"
     class="panel rounded-2xl p-4">
 
@@ -561,93 +618,6 @@
     </div>
 
   </section>
-
-  <!-- =====================================================
-       INTRADAY
-       ===================================================== -->
-
-  <div class="section-heading" id="intraday-strategies"><h2>當沖打卡區 <span>/ DAY SHIFT</span></h2><span>訊號不是打卡任務，沒有就不硬湊</span></div>
-  <section class="strategy-grid">
-
-    <div id="daytradeModule" class="panel rounded-2xl p-3">
-
-      <div
-        class="flex items-center justify-between border-b muted-border pb-2">
-
-        <div class="font-bold text-xs text-main">
-          即時當沖 <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('daytradeModule','即時當沖')">分享圖片 ↗</button>
-        </div>
-
-        <span
-          id="intradayStamp"
-          class="text-[9px] text-main">
-          等待盤中掃描
-        </span>
-
-      </div>
-
-      <div class="text-[10px] text-sub mt-2">
-        永豐 Shioaji 即時行情 × 5分K × 15分K × VWAP × 量能 × AI市場燈號；
-        09:30 開始、12:30 停止新進場、12:55 強制出場、13:00 完全關閉。
-      </div>
-
-      <div
-        id="intradayPickList"
-        class="space-y-1.5 mt-2">
-
-        <div class="text-xs text-sub text-center py-8">
-          等待 Shioaji 即時當沖資料…
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <!-- OVERNIGHT -->
-
-    <div id="overnightModule" class="panel rounded-2xl p-3">
-
-      <div
-        class="flex items-center justify-between border-b muted-border pb-2">
-
-        <div class="font-bold text-xs text-main">
-          隔日衝 TOP 3 <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('overnightModule','隔日衝 TOP 3')">分享圖片 ↗</button>
-        </div>
-
-        <span
-          id="overnightStamp"
-          class="text-[9px] text-main">
-          尾盤優先
-        </span>
-
-      </div>
-
-      <div class="text-[10px] text-sub mt-2">
-        13:00後依最近30分鐘、15分K及量價篩選；跌破VWAP、過度追價或資料過期直接排除。收盤版僅供研究。
-      </div>
-
-      <p id="overnightHealth" class="text-sub text-xs mt-3" role="status">正在確認隔日衝資料來源…</p>
-      <div
-        id="overnightPickList"
-        class="space-y-1.5 mt-2">
-
-        <div class="text-xs text-sub text-center py-8">
-          等待線型交叉掃描…
-        </div>
-
-      </div>
-
-    </div>
-
-  </section>
-
-
-  <!-- =====================================================
-       SWING + LONG
-       ===================================================== -->
-
-
 <section class="panel learning-panel" id="learningSection" aria-labelledby="learningTitle">
   <div class="learning-head"><div><div class="eyebrow">收盤進修 / LEARNING LOG</div><h2 id="learningTitle">牛馬 AI 進修打卡</h2></div><span id="learningPhase" class="phase-badge" role="status">等待學習資料</span></div>
   <div class="learning-numbers">
@@ -668,7 +638,7 @@
     class="disclaimer text-[10px] text-sub leading-relaxed">
 
     本頁為量化資料整理與研究工具，不構成投資建議。
-    首頁「今日首選」是規則式排序，不代表保證獲利；
+    首頁「每日推薦」是規則式排序，不代表保證獲利；
     遇到紅燈市場可直接選擇觀望。
 
     資料核心為 TWSE / TPEx 官方公開資料；
@@ -877,6 +847,7 @@
 </div>
 
 
+<script src="assets/rebound-engine.js"></script>
 <script>
 
   /* ========================================================
@@ -2257,6 +2228,7 @@
   renderPremarketBrief();
 
     renderTopPicks(pool);
+    if (window.RangeReboundUI) window.RangeReboundUI.refresh(pool, META);
 
 
     renderIntradayPicks();
@@ -4051,6 +4023,7 @@
 
 
     renderStockBacktest(stock);
+    if(strategyType === "RANGE_REBOUND" && window.RangeReboundUI) window.RangeReboundUI.detail(stock);
 
 
     document.getElementById(
@@ -4423,6 +4396,7 @@
 
 
     series.setData(data);
+    if(CURRENT_MODAL_STRATEGY === "RANGE_REBOUND" && window.RangeReboundUI) window.RangeReboundUI.chart(stock,series);
 
 
     currentChart
@@ -5349,5 +5323,6 @@
 <script src="assets/vendor/html2canvas.min.js"></script>
 <script src="assets/module-share.js"></script>
 <script src="assets/learning-status.js"></script>
+<script src="assets/rebound-ui.js"></script>
 </body>
 </html>
