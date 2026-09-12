@@ -141,3 +141,51 @@
   }
   refresh();setInterval(refresh,60000);setInterval(()=>{if(last&&!busy)render(last);},30000);
 })();
+
+/* Independent daily Gemini + OpenAI review. Only sanitized public summaries. */
+(() => {
+  const host=document.getElementById('learningSection');if(!host)return;
+  const style=document.createElement('style');
+  style.textContent=`#dualReview{margin-top:26px;border-top:2px solid var(--main);padding-top:24px}#dualReview h3{font-size:23px;margin:0 0 8px}#dualReview h4{font-size:16px;margin:0 0 10px}#dualReview .dual-head{display:flex;gap:16px;justify-content:space-between;align-items:flex-start}#dualReview p{font-size:13px;line-height:1.85;color:var(--sub);overflow-wrap:anywhere}#dualReview .dual-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:18px}#dualReview .dual-card{border:1px solid var(--border);padding:18px;min-width:0}#dualReview .dual-card>p:first-of-type{color:var(--main)}#dualReview .dual-meta{font-size:12px}#dualReview ul{padding-left:18px;font-size:13px;line-height:1.9;overflow-wrap:anywhere}#dualReview .dual-compare{margin-top:18px;padding:18px;border:1px dashed var(--border)}#dualReview .dual-compare>div{margin-bottom:18px}#dualReview .dual-compare>div:last-child{margin-bottom:0}#dualReview .dual-facts{font-variant-numeric:tabular-nums;padding:10px 0;border-bottom:1px dashed var(--border)}@media(max-width:900px){#dualReview .dual-grid{grid-template-columns:1fr}#dualReview .dual-head{flex-direction:column}}`;
+  document.head.appendChild(style);
+  const section=document.createElement('section');section.id='dualReview';section.setAttribute('aria-labelledby','dualTitle');
+  section.innerHTML=`<header class="dual-head"><div><div class="eyebrow">收盤雙重復盤 / SECOND OPINION</div><h3 id="dualTitle">Gemini × OpenAI 雙重復盤</h3><p id="dualDate">等待收盤復盤摘要</p></div><span class="phase-badge" id="dualPhase" role="status">尚未收到資料</span></header>
+  <p class="dual-facts" id="dualFacts">只分析同一份收盤統計，兩邊先獨立回答，再交叉比對。</p>
+  <div class="dual-grid"><article class="dual-card"><h4>Gemini 復盤</h4><p id="dualGeminiSummary">等待分析</p><p class="dual-meta" id="dualGeminiMeta">—</p><details><summary>查看待驗證研究方向</summary><ul id="dualGeminiIdeas"></ul></details></article><article class="dual-card"><h4>OpenAI 復盤</h4><p id="dualOpenaiSummary">等待分析</p><p class="dual-meta" id="dualOpenaiMeta">—</p><details><summary>查看待驗證研究方向</summary><ul id="dualOpenaiIdeas"></ul></details></article></div>
+  <div class="dual-compare"><div><h4>共同研究方向</h4><ul id="dualAgreement"><li>等待雙方完成</li></ul></div><div><h4>意見分歧</h4><ul id="dualDisagreement"><li>等待交叉比對</li></ul></div><div><h4>證據不足</h4><ul id="dualInsufficient"><li>等待分析</li></ul></div><details><summary>指定數值判斷核對</summary><ul id="dualChecks"></ul><p>只核對指定題目與原始匯總數字是否相符，不代表所有文字、因果或策略效果已獲證實。</p></details></div>
+  <p id="dualNotice">AI 共識只供研究；不會自動修改當沖規則或套用模型。</p><p id="dualError" role="status"></p>`;
+  host.appendChild(section);
+  const get=id=>document.getElementById(id),put=(id,v)=>{const n=get(id);if(n)n.textContent=v;};
+  const fmt=n=>typeof n==='number'&&Number.isFinite(n)?n.toLocaleString('zh-TW'):'—';
+  const date=v=>typeof v==='string'&&Number.isFinite(Date.parse(v))?new Date(v).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'未提供';
+  const statuses={ok:'分析完成',failed:'API 呼叫失敗',rejected:'回覆未通過檢查',missing_config:'缺少金鑰或模型設定',daily_limit:'已達今日嘗試上限',monthly_limit:'已達本月呼叫上限'};
+  const stances={test:'待回測',hold:'暫不優先',insufficient:'證據不足'};
+  const titles={data_quality:'資料品質',gain_filter:'進場漲幅條件',volume_confirmation:'量能確認',vwap_filter:'VWAP 條件'};
+  function list(id,rows,empty){const n=get(id);if(!n)return;n.replaceChildren();for(const line of rows.length?rows:[empty]){const li=document.createElement('li');li.textContent=line;n.appendChild(li);}}
+  function render(s){
+    put('dualPhase',({complete:'雙方完成 · 已比對',partial:'部分完成',waiting_report:'等待當日報告',no_samples:'當日沒有觀察樣本'})[s.status]||'狀態待確認');
+    put('dualDate',`資料日期：${s.date||'未提供'} · 摘要更新：${date(s.updated_at)}`);
+    const f=s.facts||{};
+    put('dualFacts',`觀察樣本 ${fmt(f.sample_count)} · 有效標記 ${fmt(f.labeled_count)} · 行情收集 ${fmt(f.downloaded)} / ${fmt(f.requested)}。數值由程式讀取報告，不由 AI 推估。`);
+    for(const [key,part] of [['gemini','Gemini'],['openai','Openai']]){
+      const p=s.providers?.[key]||{},review=p.status==='ok'?p.review:null;
+      put('dual'+part+'Summary',review?.summary||statuses[p.status]||'等待分析');
+      put('dual'+part+'Meta',`${p.model||'模型待確認'} · ${statuses[p.status]||'尚未執行'} · ${p.source==='cache'?'沿用同資料快取':p.source==='api'?'本次 API 呼叫':'未呼叫'}${p.http_status?' · HTTP '+p.http_status:''}${p.error_type?' · '+p.error_type:''}`);
+      list('dual'+part+'Ideas',(review?.hypotheses||[]).map(x=>`${titles[x.id]||x.id}：${stances[x.stance]||'待確認'}。${x.reason||''}`),'尚無研究方向');
+    }
+    const c=s.comparison||{},paired=c.status==='compared';
+    list('dualAgreement',paired?(c.agreements||[]).map(x=>`${x.title}：雙方${stances[x.stance]||'待確認'}`):[],paired?'沒有共同研究方向':'尚未完成雙方比對');
+    list('dualDisagreement',paired?(c.disagreements||[]).map(x=>`${x.title}：Gemini ${stances[x.gemini]}／OpenAI ${stances[x.openai]}`):[],paired?'本次指定研究方向沒有相反選擇':'等待雙方完成');
+    list('dualInsufficient',paired?(c.insufficient||[]).map(x=>`${x.title}：至少一方認為資料不足`):[],paired?'指定題目未標示資料不足；仍不代表策略已驗證':'單方結果不能當成雙重確認');
+    list('dualChecks',paired?(c.verified_observations||[]).map(x=>`${x.title} → ${({yes:'是',no:'否',insufficient:'資料不足'})[x.verdict]||'待確認'}`):[], '尚未完成雙方數值核對');
+    put('dualError','');
+  }
+  let busy=false;
+  async function refresh(){
+    if(busy)return;busy=true;const a=new AbortController(),timer=setTimeout(()=>a.abort(),12000);
+    try{const r=await fetch(`${FIREBASE_ROOT}/dual_review_status.json`,{cache:'no-store',signal:a.signal});if(!r.ok)throw new Error(r.status===401||r.status===403?'雙重復盤摘要讀取未授權。':'雙重復盤摘要暫時無法讀取。');const s=await r.json();if(!s||s.schema_version!==1)throw new Error('等待 VM 發布第一份雙重復盤。');render(s);}
+    catch(e){put('dualPhase','連線待確認');put('dualError',e.name==='AbortError'?'讀取逾時；現有內容是先前收到的結果。':e.message);}
+    finally{clearTimeout(timer);busy=false;}
+  }
+  refresh();setInterval(refresh,60000);
+})();
