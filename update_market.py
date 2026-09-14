@@ -202,7 +202,7 @@ def fetch_json(url: str, *, params: dict | None = None, required: bool = False, 
     return None
 
 
-def fetch_twse_daily_quotes() -> list[dict]:
+def fetch_twse_daily_quotes(expected_day: str | None = None) -> list[dict]:
     """TWSE daily quote fetch with official CSV fallback.
 
     Primary: TWSE OpenAPI JSON.
@@ -215,8 +215,23 @@ def fetch_twse_daily_quotes() -> list[dict]:
         label=label,
         retries=HTTP_MAX_RETRIES,
     )
+    def matches_expected_day(rows: list[dict]) -> bool:
+        parsed = parse_twse_quotes(rows)
+        dates = {q["date"] for q in parsed.values()}
+        return bool(parsed) and (
+            dates == {expected_day} if expected_day else len(dates) == 1
+        )
+
     if isinstance(primary, list) and primary:
-        return primary
+        if matches_expected_day(primary):
+            return primary
+        dates = sorted({
+            q["date"] for q in parse_twse_quotes(primary).values()
+        })
+        print(
+            f"[WARN] TWSE OpenAPI 日期不符：{dates}，"
+            f"預期 {expected_day}，改試 CSV 備援"
+        )
 
     fallback_url = "https://www.twse.com.tw/exchangeReport/STOCK_DAY_ALL"
     print("[HTTP] TWSE daily quotes fallback (official open_data CSV)")
@@ -249,10 +264,17 @@ def fetch_twse_daily_quotes() -> list[dict]:
                     "LowestPrice": first_value(row, ["最低價", "LowestPrice"]),
                     "ClosingPrice": first_value(row, ["收盤價", "ClosingPrice"]),
                 })
-            if rows:
-                print(f"[INFO] TWSE fallback OK: {len(rows)} rows")
-                return rows
-            raise RuntimeError("CSV parsed but contains no rows")
+            if not rows:
+                raise RuntimeError("CSV parsed but contains no rows")
+            if not matches_expected_day(rows):
+                dates = sorted({
+                    q["date"] for q in parse_twse_quotes(rows).values()
+                })
+                raise RuntimeError(
+                    f"TWSE CSV 日期不符：{dates}，預期 {expected_day}"
+                )
+            print(f"[INFO] TWSE fallback OK: {len(rows)} rows")
+            return rows
         except Exception as exc:
             last_exc = exc
             print(f"[WARN] TWSE open_data fallback attempt {attempt}/{HTTP_MAX_RETRIES} failed: {exc}")
@@ -1247,6 +1269,24 @@ def main() -> None:
     ])
     twse_quotes = parse_twse_quotes(quote_payloads.get("twse") or [])
     tpex_quotes = parse_tpex_quotes(quote_payloads.get("tpex") or [])
+
+    tpex_dates = {
+        q["date"] for q in tpex_quotes.values() if q.get("date")
+    }
+    twse_dates = {
+        q["date"] for q in twse_quotes.values() if q.get("date")
+    }
+
+    if len(tpex_dates) == 1 and twse_dates != tpex_dates:
+        expected_day = next(iter(tpex_dates))
+        print(
+            f"[WARN] TWSE 日期 {sorted(twse_dates)} "
+            f"與 TPEx {expected_day} 不符，重新抓取並檢查備援"
+        )
+        twse_quotes = parse_twse_quotes(
+            fetch_twse_daily_quotes(expected_day=expected_day)
+        )
+
     quotes = {**twse_quotes, **tpex_quotes}
     if not quotes:
         raise RuntimeError("TWSE / TPEx 均沒有可用行情資料")
