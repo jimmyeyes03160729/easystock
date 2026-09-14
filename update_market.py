@@ -1251,10 +1251,23 @@ def main() -> None:
     if not quotes:
         raise RuntimeError("TWSE / TPEx 均沒有可用行情資料")
 
+       for name, rows in (("TWSE", twse_quotes), ("TPEx", tpex_quotes)):
+        dates = sorted({q["date"] for q in rows.values() if q.get("date")})
+        missing = sum(not q.get("date") for q in rows.values())
+        print(f"[行情日期] {name}：{dates}，股票數 {len(rows)}，缺日期 {missing}")
+
     quote_dates = sorted({q["date"] for q in quotes.values() if q.get("date")})
-    latest_day = quote_dates[-1]
-    if len(quote_dates) != 1 or not twse_quotes or not tpex_quotes:
-        raise RuntimeError(f"拒絕發布不完整或跨日期行情：{quote_dates}")
+    missing_dates = sum(not q.get("date") for q in quotes.values())
+    if (
+        len(quote_dates) != 1
+        or not twse_quotes
+        or not tpex_quotes
+        or missing_dates
+    ):
+        raise RuntimeError(
+            f"拒絕發布不完整或跨日期行情：{quote_dates}，缺日期 {missing_dates}"
+        )
+    latest_day = quote_dates[0]
 
     print("[2/8] 讀取估值、公司基本資料與月營收…")
     base_payloads = fetch_many([
