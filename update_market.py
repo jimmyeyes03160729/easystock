@@ -1251,7 +1251,7 @@ def main() -> None:
     if not quotes:
         raise RuntimeError("TWSE / TPEx 均沒有可用行情資料")
 
-       for name, rows in (("TWSE", twse_quotes), ("TPEx", tpex_quotes)):
+    for name, rows in (("TWSE", twse_quotes), ("TPEx", tpex_quotes)):
         dates = sorted({q["date"] for q in rows.values() if q.get("date")})
         missing = sum(not q.get("date") for q in rows.values())
         print(f"[行情日期] {name}：{dates}，股票數 {len(rows)}，缺日期 {missing}")
