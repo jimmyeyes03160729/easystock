@@ -165,7 +165,7 @@ def name_from_row(row: dict) -> str:
     ).strip()
 
 
-def fetch_json(url: str, *, params: dict | None = None, required: bool = False, label: str = "", retries: int | None = None) -> Any:
+def fetch_json(url: str, *, params: dict | None = None, headers: dict | None = None, required: bool = False, label: str = "", retries: int | None = None) -> Any:
     """Fetch JSON with bounded retries. TWSE/TPEx occasionally return an empty/HTML body with HTTP 200."""
     attempts = max(1, retries or HTTP_MAX_RETRIES)
     last_exc: Exception | None = None
@@ -173,7 +173,7 @@ def fetch_json(url: str, *, params: dict | None = None, required: bool = False, 
         try:
             suffix = f" ({attempt}/{attempts})" if attempts > 1 else ""
             print(f"[HTTP] {label or url}{suffix}")
-            response = get_http_session().get(url, params=params, timeout=HTTP_TIMEOUT)
+            response = get_http_session().get(url, params=params, headers=headers, timeout=HTTP_TIMEOUT)
             response.raise_for_status()
             if not response.content or not response.text.strip():
                 raise RuntimeError("empty HTTP body")
@@ -301,6 +301,7 @@ def fetch_many(requests_spec: list[dict]) -> dict[str, Any]:
                     fetch_json,
                     spec["url"],
                     params=spec.get("params"),
+                    headers=spec.get("headers"),
                     required=bool(spec.get("required", False)),
                     label=spec.get("label", spec["key"]),
                     retries=spec.get("retries"),
@@ -778,6 +779,7 @@ def fetch_fugle_history(symbol: str, end_day: str) -> list[dict]:
             "fields": "open,high,low,close,volume,turnover",
             "sort": "asc",
         },
+        headers={"X-API-KEY": FUGLE_API_KEY},
         label=f"Fugle {symbol} history",
     )
     rows = payload.get("data") if isinstance(payload, dict) else []
