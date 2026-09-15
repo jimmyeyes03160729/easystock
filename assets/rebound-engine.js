@@ -6,28 +6,36 @@ const median=a=>{const b=[...a].sort((x,y)=>x-y);return b.length?b[Math.floor(b.
 const dayNumber=x=>/^\d{4}-\d{2}-\d{2}$/.test(String(x))?Date.parse(x+'T00:00:00Z')/86400000:NaN;
 function financial(s,asof){
  const missing=[],failed=[],checks=[];
- const rules=[['rev_yoy','單月營收年增',v=>v>=-10],['eps','每股盈餘',v=>v>0],['operating_margin','營業利益率',v=>v>0],['debt_ratio','負債比',v=>v>=0&&v<65],['fcf','自由現金流',v=>v>0]];
- if(/金融|銀行|保險|證券/.test(String(s.category||'')))return {status:'unsupported',missing:[],failed:['金融業需另訂財務門檻'],checks};
+ // FCF is deliberately not mandatory here. update_market currently cannot obtain a
+ // stable official consolidated FCF field, so requiring it would block every stock.
+ const rules=[['rev_yoy','單月營收年增',v=>v>=-10],['eps','每股盈餘',v=>v>0],['operating_margin','營業利益率',v=>v>0],['debt_ratio','負債比',v=>v>=0&&v<65]];
+ if(/金融|銀行|保險|證券/.test(String(s.category||'')))return {status:'unsupported',missing:[],failed:['金融業需另訂財務門檻'],checks,optional:[]};
  for(const [key,label,pass] of rules){
   const meta=s.field_meta?.[key],value=num(s[key]),age=dayNumber(asof)-dayNumber(meta?.as_of);
   if(value===null||!meta||!['official-api','official-filings'].includes(meta.source)||!(age>=0&&age<=45)||(s.legacy_fallback_fields||[]).includes(key))missing.push(label);
   else if(!pass(value))failed.push(label+'未達初篩');
   else checks.push({key,label,value,observed_at:meta.as_of,period:meta.period??null});
  }
+ // FCF is supporting information only until the publisher supplies a stable,
+ // period-identifiable official field. A trustworthy negative value is shown but
+ // does not silently turn missing data into a pass/fail gate.
+ const optional=[];
+ const fcfMeta=s.field_meta?.fcf,fcfValue=num(s.fcf),fcfAge=dayNumber(asof)-dayNumber(fcfMeta?.as_of);
+ const fcfUsable=fcfValue!==null&&fcfMeta&&['official-api','official-filings'].includes(fcfMeta.source)&&fcfAge>=0&&fcfAge<=200&&!(s.legacy_fallback_fields||[]).includes('fcf');
+ optional.push({key:'fcf',label:'自由現金流',status:fcfUsable?(fcfValue>0?'positive':'negative'):'unavailable',value:fcfUsable?fcfValue:null,observed_at:fcfUsable?fcfMeta.as_of:null,period:fcfUsable?(fcfMeta.period??null):null});
  // Observation dates are not filing dates; require an identifiable period too.
  const rev=String(s.revenue_period||'').replace(/[^0-9]/g,'');
  let yr,mo;if(rev.length===5){yr=Number(rev.slice(0,3))+1911;mo=Number(rev.slice(3));}else if(rev.length===6){yr=Number(rev.slice(0,4));mo=Number(rev.slice(4));}
  const a=new Date(asof+'T00:00:00Z'),gap=yr&&mo>=1&&mo<=12?(a.getUTCFullYear()-yr)*12+a.getUTCMonth()+1-mo:NaN;
  if(!(gap>=1&&gap<=2))missing.push('近期營收月份');
- for(const key of ['eps','operating_margin','debt_ratio','fcf']){
+ for(const key of ['eps','operating_margin','debt_ratio']){
   const period=String(s.field_meta?.[key]?.period||'');
-  // Legacy payload with only quarter number cannot prove the fiscal year.
   const m=period.match(/^(\d{4})[- ]?Q([1-4])$/i);
   if(!m){missing.push('財報年度與季度');break;}
   const end=Date.UTC(+m[1],+m[2]*3,0)/86400000,age=dayNumber(asof)-end;
   if(!(age>=0&&age<=200)){missing.push('有效財報期間');break;}
  }
- return {status:failed.length?'failed':missing.length?'incomplete':'passed',missing:[...new Set(missing)],failed,checks};
+ return {status:failed.length?'failed':missing.length?'incomplete':'passed',missing:[...new Set(missing)],failed,checks,optional};
 }
 function clusters(points,tol){
  const groups=[];
@@ -49,7 +57,6 @@ function technical(rows,asof,price){
  const atr=bars.slice(-20).reduce((sum,b)=>sum+b.high-b.low,0)/20;
  const tol=Math.min(.04,Math.max(.02,atr/price));
  const lows=[],highs=[];
- // Pivots only become known after three following completed daily bars.
  for(let i=3;i<bars.length-3;i++){
   const neighbours=bars.slice(i-3,i+4).filter((_,j)=>j!==3);
   if(neighbours.every(b=>bars[i].low<=b.low)&&neighbours.some(b=>bars[i].low<b.low))lows.push({i,v:bars[i].low});
@@ -68,7 +75,7 @@ function technical(rows,asof,price){
   const invalid=floor-Math.max(atr*.5,price*.01),target=resistance.price*(1-tol);
   const rr=(target-price)/(price-invalid);if(rr<2||target<=price)continue;
   const score=Math.min(95,Math.round(55+Math.min(support.touches,4)*4+Math.min(resistance.touches,4)*3+Math.min(rr,5)*2));
-  return {eligible:true,score,dailyChangePct:(last.close/prev.close-1)*100,support:[floor,ceiling],resistance:[resistance.price*(1-tol),resistance.price*(1+tol)],invalid,target,rr,touches:support.touches,pressureTouches:resistance.touches,reasons:['多次回測支撐','近期回測未破低','收盤突破前一日高點'],rule_version:'range-rebound-0.1',validated:false};
+  return {eligible:true,score,dailyChangePct:(last.close/prev.close-1)*100,support:[floor,ceiling],resistance:[resistance.price*(1-tol),resistance.price*(1+tol)],invalid,target,rr,touches:support.touches,pressureTouches:resistance.touches,reasons:['多次回測支撐','近期回測未破低','收盤突破前一日高點'],rule_version:'range-rebound-0.2',validated:false};
  }
  return fail('尚未同時符合區間底部與止跌條件');
 }
