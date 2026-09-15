@@ -171,6 +171,7 @@ class WebhookTests(unittest.TestCase):
                 self.assertFalse(module.ADMIN_STORE.linked())
                 signature=base64.b64encode(hmac.new(b'TEST_ONLY_SECRET',payload,hashlib.sha256).digest()).decode()
                 self.assertEqual(client.post('/callback',data=payload,headers={'X-Line-Signature':signature}).status_code,200)
-                self.assertTrue(module.ADMIN_STORE.linked());fake_line.reply_messages.assert_called_once()
+                self.assertFalse(module.ADMIN_STORE.linked());fake_line.reply_messages.assert_not_called()
+                groups.register_group.assert_not_called()
 
 if __name__=='__main__':unittest.main()

@@ -46,7 +46,6 @@ from stock_command_service import (
 app = Flask(__name__)
 
 from easystock_admin.web import register_admin
-from easystock_admin.line import handle_admin_command
 ADMIN_STORE = register_admin(app)
 
 
@@ -507,8 +506,13 @@ def callback():
     for event in payload.get("events", []):
 
         source = event.get("source") or {}
+        # No private commands, binding exceptions, or legacy-room handling.
+        if source.get('type') != 'group':
+            continue
         from easystock_admin.conversations import observe, allowed
         observe(ADMIN_STORE, source)
+        if not allowed(ADMIN_STORE, source):
+            continue
 
         if source.get("type") == "group":
             group_id = source.get("groupId")
@@ -527,27 +531,6 @@ def callback():
             message.get("text")
             or ""
         ).strip()
-
-        # Signature was verified above. Bind/update commands only accept a private user source.
-        try:
-            admin_reply = handle_admin_command(
-                text, source,
-                str(event.get("webhookEventId") or message.get("id") or ""),
-                store=ADMIN_STORE,
-            )
-            if admin_reply is not None:
-                reply_token = event.get("replyToken")
-                if reply_token:
-                    line_reply(reply_token, [{"type": "text", "text": admin_reply[:5000]}])
-                continue
-        except Exception as exc:
-            if text == "當沖設定" or text.startswith(("當沖設定 ", "綁定管理員 ")):
-                print("[ADMIN COMMAND ERROR]", type(exc).__name__)
-                continue
-            raise
-
-        if not allowed(ADMIN_STORE, source):
-            continue
 
         # 模擬當沖遊戲指令先處理。
         game_reply = handle_game_command(
