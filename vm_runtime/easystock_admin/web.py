@@ -135,7 +135,21 @@ def register_admin(app,store=None,verifier=None):
         return jsonify(store.update(data['values'],data['version']))
 
     @bp.post('/admin/line-bind')
-    def bind():authenticated(True);body();return jsonify(code=store.bind_code(),expires_in=300)
+    def bind():
+        authenticated(True);body()
+        raise Denied('個人 LINE 管理已停用，請使用 Google 登入後台。')
+
+    @bp.get('/admin/notification-groups')
+    def get_notification_groups():
+        authenticated()
+        from .notifications import state
+        return jsonify(state(store))
+
+    @bp.put('/admin/notification-groups/<platform>/<key>')
+    def put_notification_group(platform, key):
+        authenticated(True)
+        from .notifications import update
+        return jsonify(update(store, platform, key, body()))
 
     @bp.get('/admin/line-policy')
     def get_line_policy():

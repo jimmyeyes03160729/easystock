@@ -725,7 +725,13 @@ def _load_line_module() -> Any:
 LINE_MODULE = _load_line_module()
 
 
-def push_line_text(text: str, entry_check=None) -> bool:
+def push_line_text(text: str, entry_check=None, event=None) -> bool:
+    # Compatibility name retained; fan out only entry/exit events to both channels.
+    from trade_notifications import send_trade, event_identity
+    return send_trade(text, _push_line_only, entry_check=entry_check, event_key=event_identity(event, text))
+
+
+def _push_line_only(text: str, entry_check=None) -> bool:
     from line_policy import push_allowed
     groups = get_active_groups()
     registered_groups = bool(groups)
@@ -4094,6 +4100,7 @@ class IntradayLiveEngine:
                 self.market_level,
             ),
             entry_check=lambda: self.fresh_entry_quote(symbol) is not None,
+            event=event,
         )
 
         print(
@@ -4177,7 +4184,8 @@ class IntradayLiveEngine:
         push_line_text(
             format_exit_message(
                 event
-            )
+            ),
+            event=event,
         )
 
         print(
