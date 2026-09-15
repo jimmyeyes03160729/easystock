@@ -1,0 +1,43 @@
+{
+  "captured_on": "2026-09-15",
+  "source_directory": "/home/ubuntu/easystock",
+  "notes": [
+    "Only explicitly selected source and public assets; no env, credentials, session databases, journals, or logs.",
+    "Original source hashes below; the repository admin owner is configurable through ADMIN_OWNER_EMAIL instead of a personal address.",
+    "Snapshot is not deployed by Pages or the daily updater."
+  ],
+  "files": {
+    "intraday_live.py": "e0dd506651e38f74cbd59a0c37bce5a3bc6dd6128e637a15728aac7544382c1d",
+    "position_manager.py": "b8023c8820f396fbb217dace11fc898a472516cae9035217fe2e58c75b570e46",
+    "strategy_engine.py": "2b4b93d64ee7073eb8dd1989709771253e54b179656fbae240b75b6f83dd3542",
+    "firebase_store.py": "73242fe707f87d3f560935e13a07c1fed55b69dadfef312481e4f669cb6f9e3b",
+    "line_group_manager.py": "6cb6297653a48151541cdfc00fbf7c89d2e7d411c47de17ca989793393219a8d",
+    "line_bot.py": "a78ab3183dfa7aeba3ff5f0afbd544e4ab40190c7ffaa9f257be15d92f54e972",
+    "line_stock_bot.py": "ab7d13f7a1f92da6012012023d3dbdb10744f8165d6b04d3a3ced45a23d78598",
+    "stock_command_service.py": "bb6141c16e3d0c4b0e6ecc35eb4e99146d321359a571c86890a7a068b2132e7b",
+    "line_card_renderer.py": "b45336adb10f54b859d830df49247c8075a743ed9076fde7709e489aba6e7cdb",
+    "paper_trade_game.py": "5dac19bebc43a687ef1a1a75f202b72cbdb6c82f6d717f3ab5984c0e2b194676",
+    "public_feed.py": "f6c9e0ee34206cbb66987868fe07eeb23696525efd45cceb5a0294bbc93f55fa",
+    "learning_eod.py": "7e8e94f81abd22d16b0aa725011350941965d5223c90122d2cdace7bd67e2f80",
+    "learning_status.py": "d4c3df1fc2ce492c9ac0996c0d73c2a30d863658e82f1169832f7b22464e51c9",
+    "daytrade_summary_push.py": "d460f978478a64ad317b2a626e41bfcf287acf44ad825f933b43d649d119e062",
+    "line_hub_service.py": "119e7514f3131cebfd05cc38218ff423b28b9aad7a920e74afa6e6f5dfe1cfc8",
+    "premarket_ai.py": "3691b5ee88f5c0446d80a038827c9f3e96b155afc30960e415d6d614c3ae7dd0",
+    "strategy_rules.py": "bdefb426ef20625084ba921f819e13208e93dd76683b0396b50e7ce94da84620",
+    "daytrade_learning/daily_state.py": "1f7e817640fca7a8e633a52f7d0256b0b817b569fd3858667fa579a5160ef6e5",
+    "daytrade_learning/research.py": "c686af97bcde4081e44245c1843d007edeccf88c909e0af731683057555c0b22",
+    "daytrade_learning/test_integration.py": "a7adbed4e56effa074956559ee495ea3b89bac46fac3a6f566e10d6ac47870ab",
+    "daytrade_learning/core.py": "2cd91fc174848fc934b37689050e5a274d55818a8c23f761921bb2005d74acdc",
+    "daytrade_learning/test_eod_fix.py": "85a1c0b8a8b856d64f15e03ec0eb56001c47c823690682006da958effd67b96d",
+    "daytrade_learning/eod_support.py": "ffbcdcadf23caeb2b92c4196a089379bf89361e6d11ce7b7473223ae34f12ac6",
+    "daytrade_learning/runtime.py": "f7c7c894d2b5291797be9820a271587d09e8136b8c2cac1f002526c753d12985",
+    "easystock_admin/web.py": "c7170dc8c065ece3da94855cb8d4fb78a9149bd4608622d97aac21dfbf9e8131",
+    "easystock_admin/store.py": "8ebf2d0c327983b8cff87d111b22b1fc69fcad51844e405b2f73ce050e550378",
+    "easystock_admin/test_admin.py": "3e8d5aa72204efd67f752b8e8426d1013f27ea0c30e91c9d6ae1fa7ff787d3a1",
+    "easystock_admin/line.py": "bec7742860662e97bb8cfc3b449bafda88f023aa3247508098491b4d758a93d5",
+    "daytrade_learning/settings.json": "fc463942fd87aaf868c954b1cdd604638364c8745a942aec089037ebff99e56e",
+    "easystock_admin/static/index.html": "a87371dd52c6014ac8be78aa8949382fd5905fa8b17627e3953d8ac7b97f2722",
+    "easystock_admin/static/admin.js": "cfe6a32bf982e91f79dd721fcd47a84558688add830cbae0d400ead2e680a1fe",
+    "easystock_admin/static/admin.css": "0ece8cf3c180f093ae84515beaebcee79ae9c7b98c5ec5b8fa66d95fc2d701f2"
+  }
+}

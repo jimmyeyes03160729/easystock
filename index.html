@@ -887,6 +887,20 @@
 
   // Oracle VM + Shioaji 正式當沖
   let INTRADAY_LIVE = {};
+  let LIVE_FETCH_ERROR = '';
+  let liveRefreshBusy = false;
+
+  function liveDataState(now = Date.now()) {
+    const at = INTRADAY_LIVE.last_update_at || INTRADAY_LIVE.generated_at;
+    const elapsed = now - Date.parse(at);
+    if (LIVE_FETCH_ERROR) return {label:'連線失敗', message:'即時資料讀取失敗；保留最後成功快照，價格與部位狀態待確認。', current:false};
+    if (!at) return {label:'等待資料', message:'尚未收到有效當沖快照，無法確認目前部位。', current:false};
+    if (!Number.isFinite(elapsed) || elapsed < -60000 || taiwanDay(at) !== taiwanDay(new Date(now)))
+      return {label:'資料日期異常或過期', message:'目前不是今日有效快照，等待當沖服務更新。', current:false};
+    if (INTRADAY_LIVE.session === 'closed') return {label:'當沖已結束', message:'今日收盤快照；不是即時報價。', current:true};
+    if (elapsed > 60000) return {label:'更新逾時', message:'超過 60 秒未更新；下方為最後快照，不代表仍在即時監控。', current:false};
+    return {label:'即時監控', message:'', current:true};
+  }
 
   // AI 開盤前通報
   let PREMARKET_BRIEF = {};
@@ -2555,8 +2569,7 @@
       document.getElementById(
         containerId
       );
-
-
+    if (!c) return;
     if (!items.length) {
 
       c.innerHTML =
@@ -2994,6 +3007,7 @@
       document.getElementById(
         containerId
       );
+    if (!c) return;
 
 
     const stamp = INTRADAY?.generated_at;
@@ -3340,6 +3354,16 @@
       return;
     }
 
+    const health = liveDataState();
+    let healthEl = document.getElementById('intradayHealth');
+    if (!healthEl) {
+      healthEl = document.createElement('p');
+      healthEl.id = 'intradayHealth';
+      healthEl.setAttribute('role', 'status');
+      healthEl.className = 'text-xs text-sub mb-3';
+      container.before(healthEl);
+    }
+    healthEl.textContent = health.message;
     const lastUpdate =
       INTRADAY_LIVE?.last_update_at
       ||
@@ -3362,10 +3386,10 @@
       stamp.textContent =
         lastUpdate
           ? `${
-              sessionLabels[session]
+              (!health.current ? health.label : sessionLabels[session])
               || session
             } · ${formatTaiwanDateTime(lastUpdate)}`
-          : "等待 Shioaji";
+          : health.label;
     }
 
 
@@ -3500,7 +3524,9 @@
 
       let message;
 
-      if (
+      if (!health.current) {
+        message = health.message;
+      } else if (
         session === "closed"
       ) {
 
@@ -4055,7 +4081,7 @@
 
         stock.kline =
           await fetchJson(
-            `${FIREBASE_ROOT}/kline/${encodeURIComponent(stock.symbol)}.json`
+            stockKlineUrl(stock)
           );
 
       } catch (err) {
@@ -4791,28 +4817,20 @@
      ======================================================== */
 
   async function fetchJson(url) {
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 12000);
+    try {
+      const res = await fetch(url, {cache:'no-store', signal:abort.signal});
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } finally { clearTimeout(timer); }
+  }
 
-    const res =
-      await fetch(
-        url,
-        {
-          cache:
-            "no-store"
-        }
-      );
-
-
-    if (!res.ok) {
-
-      throw new Error(
-        `HTTP ${res.status}`
-      );
-
-    }
-
-
-    return await res.json();
-
+  function stockKlineUrl(stock) {
+    const id = stock.kline_release_id;
+    const base = typeof id === 'string' && /^[0-9A-Za-z_-]+$/.test(id)
+      ? `${FIREBASE_ROOT}/releases/${id}` : FIREBASE_ROOT;
+    return `${base}/kline/${encodeURIComponent(stock.symbol)}.json`;
   }
 
 
@@ -4824,11 +4842,9 @@
     const id = await fetchJson(`${FIREBASE_ROOT}/active_release.json`).catch(()=>null);
     const versioned = typeof id === 'string' && /^[0-9A-Za-z_-]+$/.test(id);
     const base = versioned ? `${FIREBASE_ROOT}/releases/${id}` : FIREBASE_ROOT;
-    const [summary, meta, backtests, overnight, live, brief] = await Promise.all([
+    const [summary, meta, backtests, overnight] = await Promise.all([
       fetchJson(`${base}/summary.json`), fetchJson(`${base}/meta.json`), fetchJson(`${base}/backtests.json`),
-      fetchJson(`${FIREBASE_ROOT}/intraday_picks.json`).catch(()=>null),
-      fetchJson(`${FIREBASE_ROOT}/intraday_live.json`).catch(()=>null),
-      fetchJson(`${FIREBASE_ROOT}/premarket_brief.json`).catch(()=>null)
+      fetchJson(`${FIREBASE_ROOT}/intraday_picks.json`).catch(()=>INTRADAY)
     ]);
     if (!summary || !meta) throw new Error('日線資料尚未完整');
     const rows = Object.values(summary).filter(Boolean);
@@ -4839,9 +4855,9 @@
       if (after?.release_id !== meta.release_id) throw new Error('日線版本已切換，稍後重新讀取');
     }
     META = {...meta, backtests:backtests || {}};
-    INTRADAY = overnight || {}; INTRADAY_LIVE = live || {}; PREMARKET_BRIEF = brief || {};
+    INTRADAY = overnight || {};
     DATA_MODE = 'split';
-    return rows;
+    return rows.map(row => ({...row, kline_release_id:versioned && meta.kline_schema_version === 1 ? id : null}));
   }
 
   async function loadLegacySchema() {
@@ -4971,11 +4987,7 @@
 
     if (trackingEl) {
 
-      trackingEl.textContent =
-        INTRADAY_LIVE?.source
-          === "sinotrade_shioaji"
-            ? "Shioaji Live"
-            : "等待連線";
+      trackingEl.textContent = liveDataState().label;
 
     }
 
@@ -5216,60 +5228,28 @@
      START
      ======================================================== */
 
-    async function refreshLiveData() {
-
+  async function refreshLiveData() {
+    if (liveRefreshBusy) return;
+    liveRefreshBusy = true;
     try {
-
-      const [
-        live,
-        brief
-      ] =
-        await Promise.all([
-
-          fetchJson(
-            `${FIREBASE_ROOT}/intraday_live.json`
-          )
-          .catch(
-            () => ({})
-          ),
-
-          fetchJson(
-            `${FIREBASE_ROOT}/premarket_brief.json`
-          )
-          .catch(
-            () => ({})
-          )
-
-        ]);
-
-
-      INTRADAY_LIVE =
-        live
-        ||
-        {};
-
-      if (
-        brief
-        &&
-        Object.keys(
-          brief
-        ).length
-      ) {
-        PREMARKET_BRIEF =
-          brief;
+      const [live, brief] = await Promise.allSettled([
+        fetchJson(`${FIREBASE_ROOT}/intraday_live.json`),
+        fetchJson(`${FIREBASE_ROOT}/premarket_brief.json`)
+      ]);
+      if (live.status === 'fulfilled' && live.value && typeof live.value === 'object'
+          && !Array.isArray(live.value) && (live.value.last_update_at || live.value.generated_at)) {
+        INTRADAY_LIVE = live.value;
+        LIVE_FETCH_ERROR = '';
+      } else {
+        LIVE_FETCH_ERROR = 'unavailable';
       }
-
+      if (brief.status === 'fulfilled' && brief.value && typeof brief.value === 'object') {
+        PREMARKET_BRIEF = brief.value;
+      }
       renderLiveIntraday();
       renderPremarketBrief();
       updateSystemStatus();
-
-    } catch (err) {
-
-      console.warn(
-        "Live refresh failed",
-        err
-      );
-    }
+    } finally { liveRefreshBusy = false; }
   }
 
 
@@ -5278,12 +5258,13 @@
     if (slowRefreshBusy) return;
     slowRefreshBusy = true;
     try {
-      const [meta, overnight] = await Promise.all([
-        fetchJson(`${FIREBASE_ROOT}/meta.json`),
-        fetchJson(`${FIREBASE_ROOT}/intraday_picks.json`)
+      const [active, overnight] = await Promise.all([
+        fetchJson(`${FIREBASE_ROOT}/active_release.json`),
+        fetchJson(`${FIREBASE_ROOT}/intraday_picks.json`).catch(() => INTRADAY)
       ]);
       INTRADAY = overnight || {};
-      if (meta?.release_id && meta.release_id !== META.release_id) await fetchMarketData();
+      const id = typeof active === 'string' ? active : (await fetchJson(`${FIREBASE_ROOT}/meta.json`))?.release_id;
+      if (id && id !== META.release_id) await fetchMarketData();
       else { renderAllSections(); updateSystemStatus(); }
     } catch (err) {
       console.warn('日線／隔日衝更新失敗',err);
@@ -5301,6 +5282,7 @@
     restoreBudget();
 
     fetchMarketData();
+    refreshLiveData();
     setInterval(refreshDailyAndOvernight, 60000);
 
     // Shioaji / AI 即時節點：
@@ -5324,5 +5306,6 @@
 <script src="assets/module-share.js"></script>
 <script src="assets/learning-status.js"></script>
 <script src="assets/rebound-ui.js"></script>
+<script src="assets/dashboard-layout.js"></script>
 </body>
 </html>

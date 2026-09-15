@@ -1,0 +1,10 @@
+{
+  "name": "easystock-dashboard-tests",
+  "private": true,
+  "scripts": {
+    "test": "node tests/test_frontend.cjs && node test-state.cjs && node test-ui.cjs && node tests/test_dashboard.cjs && node tests/test_rules.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}

@@ -43,3 +43,9 @@ Thumbs.db
 
 .vscode/
 .idea/
+
+node_modules/
+.review-venv/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

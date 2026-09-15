@@ -6,7 +6,7 @@ const nodes=new Map();
 const el=id=>{if(!nodes.has(id))nodes.set(id,{innerHTML:'',textContent:'',value:'',dataset:{},setAttribute(k,v){this[k]=v},classList:{add(){},remove(){}},replaceChildren(){this.innerHTML='';this.textContent=''},append(n){this.textContent+=n.textContent||''},style:{setProperty(){}}});return nodes.get(id)};
 const doc={documentElement:{dataset:{theme:'dark'}},getElementById:el,createElement:()=>({textContent:'',className:''}),querySelectorAll:()=>[]};
 const palette={dark:{'--panel':'#151515','--surface':'#1e1e1e','--sub':'#b0b0b0','--border':'#3d3d3d','--up':'#ff7b86','--down':'#62d69a'},light:{'--panel':'#ffffff','--surface':'#f5f5f3','--sub':'#595959','--border':'#ccccca','--up':'#b91c32','--down':'#137342'}};
-const ctx=vm.createContext({document:doc,window:{addEventListener(){}},console,Date,Intl,localStorage:{getItem(){return null},setItem(){},removeItem(){}},getComputedStyle:()=>({getPropertyValue:key=>palette[doc.documentElement.dataset.theme][key]}),setInterval(){}});
+const ctx=vm.createContext({document:doc,window:{addEventListener(){}},console,Date,Intl,AbortController,setTimeout,clearTimeout,localStorage:{getItem(){return null},setItem(){},removeItem(){}},getComputedStyle:()=>({getPropertyValue:key=>palette[doc.documentElement.dataset.theme][key]}),setInterval(){}});
 // External script tags contain no inline source. Select the application by its
 // required function rather than its position among share/learning/rebound assets.
 const mainScripts=scripts.filter(script=>/function\s+taiwanDay\s*\(/.test(script));

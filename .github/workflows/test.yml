@@ -1,0 +1,31 @@
+name: Offline Regression Tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+      - run: python -m pip install -r requirements.txt -r daytrade_learning/requirements.txt python-dotenv Flask
+      - run: python tests/test_parsers.py
+      - run: python tests/test_selection.py
+      - run: python daytrade_learning/test_core.py
+      - run: python tests/test_premarket_entry.py
+      - run: python vm_runtime/daytrade_learning/test_integration.py
+      - run: python vm_runtime/daytrade_learning/test_eod_fix.py
+      - run: python vm_runtime/easystock_admin/test_admin.py
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm test

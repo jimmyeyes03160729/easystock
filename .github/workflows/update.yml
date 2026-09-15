@@ -92,7 +92,17 @@ jobs:
           python -m py_compile update_market.py
           python tests/test_parsers.py
           python tests/test_selection.py
-          node tests/test_frontend.cjs
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+      - name: Verify Dashboard Modules and Public Rules
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm test
 
       - name: Update TWSE TPEx Data to Firebase
         env:
