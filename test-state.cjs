@@ -1,20 +1,20 @@
-// Dependency-free DOM contract tests; these are not browser layout screenshots.
-const fs=require('fs'),vm=require('vm'),assert=require('assert');
-const source=fs.readFileSync(__dirname+'/assets/learning-status.js','utf8');
+// Real DOM behavior, with only networking stubbed. No production reads or writes.
+const assert=require('assert');
+const {createDOM,settle}=require('./tests/dom.cjs');
 async function setup(history,failHistory=false){
- const nodes=new Map(),styles=[];
- const make=()=>({textContent:'',value:0});
- const root=make();nodes.set('learningSection',root);
- Object.defineProperty(root,'innerHTML',{set(html){this.html=html;for(const m of html.matchAll(/id="([^"]+)"/g)){assert(!nodes.has(m[1]),'duplicate id '+m[1]);nodes.set(m[1],make());}}});
+ const {dom,w,run}=createDOM();
  const daily={schema_version:1,updated_at:new Date().toISOString(),phase:'idle',today:{date:new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(new Date()),learned_stocks:2,labeled_count:7},totals:{learning_days:1,training_days:1,training_samples:488},model_application:{status:'not_applied'}};
- const timers=[];
- const context={document:{getElementById:id=>nodes.get(id)||null,createElement:make,head:{appendChild:n=>styles.push(n.textContent)}},FIREBASE_ROOT:'https://local.invalid',Intl,Date,Number,Math,AbortController,Error,
-  setTimeout:()=>1,clearTimeout:()=>{},setInterval:fn=>timers.push(fn),fetch:async url=>{
+ w.fetch=async url=>{
    if(url.includes('history_training')&&failHistory)return {ok:false,status:403};
    return {ok:true,json:async()=>url.includes('history_training')?history:daily};
-  }};
- vm.runInNewContext(source,context);
- for(let i=0;i<10;i++)await Promise.resolve();
+  };
+ run('assets/learning-status.js');
+ await settle();
+ const entries=[...w.document.querySelectorAll('[id]')].map(n=>[n.id,n]);
+ assert.equal(new Set(entries.map(([id])=>id)).size,entries.length,'duplicate IDs');
+ const nodes=new Map(entries),styles=[...w.document.querySelectorAll('style')].map(n=>n.textContent);
+ const root={html:w.document.getElementById('learningSection').innerHTML};
+ dom.window.close();
  return {nodes,styles,root};
 }
 (async()=>{

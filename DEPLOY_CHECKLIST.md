@@ -1,5 +1,7 @@
 # v1.1 部署檢查
 
+> 歷史版本文件。現行部署請先讀 `docs/RELIABILITY_UPDATE.md`；不要照此清單覆蓋 VM 或 Firebase 規則。
+
 1. 覆蓋 `index.html`、`update_market.py`，新增 `scan_intraday.py`。
 2. 新增 `.github/workflows/intraday-picks.yml`。
 3. 確認 GitHub Actions Secrets：

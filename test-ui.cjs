@@ -1,22 +1,17 @@
-const fs=require('fs'),vm=require('vm'),assert=require('assert');
-const source=fs.readFileSync(__dirname+'/assets/learning-status.js','utf8');
+const assert=require('assert');
+const {createDOM,settle}=require('./tests/dom.cjs');
 async function render(dual,networkFail=false){
- const nodes=new Map();
- function node(){
-  const n={textContent:'',value:0,children:[],setAttribute(){},replaceChildren(){this.children=[]},appendChild(c){this.children.push(c)}};
-  Object.defineProperty(n,'id',{set(v){assert(!nodes.has(v));nodes.set(v,n)}});
-  Object.defineProperty(n,'innerHTML',{set(v){n.html=v;for(const m of v.matchAll(/id="([^"]+)"/g)){assert(!nodes.has(m[1]),m[1]);nodes.set(m[1],node())}}});
-  return n;
- }
- const root=node();nodes.set('learningSection',root);
+ const {dom,w,run}=createDOM();
  const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(new Date());
- const context={document:{getElementById:id=>nodes.get(id)||null,createElement:node,head:{appendChild(){}}},Intl,Date,Number,Math,Error,AbortController,
-  FIREBASE_ROOT:'https://local.invalid',setTimeout(){return 1},clearTimeout(){},setInterval(){},fetch:async url=>{
+ w.fetch=async url=>{
    if(url.includes('dual_review'))return networkFail?{ok:false,status:403}:{ok:true,json:async()=>dual};
    if(url.includes('history_training'))return {ok:true,json:async()=>({schema_version:1,updated_at:new Date().toISOString(),run:{state:'completed',labeled_samples:1000},training:{}})};
    return {ok:true,json:async()=>({schema_version:1,updated_at:new Date().toISOString(),today:{date:today},totals:{learning_days:1},phase:'idle'})};
-  }};
- vm.runInNewContext(source,context);for(let i=0;i<12;i++)await Promise.resolve();
+  };
+ run('assets/learning-status.js');await settle();
+ const entries=[...w.document.querySelectorAll('[id]')].map(n=>[n.id,n]);
+ assert.equal(new Set(entries.map(([id])=>id)).size,entries.length,'duplicate IDs');
+ const nodes=new Map(entries);dom.window.close();
  return nodes;
 }
 (async()=>{

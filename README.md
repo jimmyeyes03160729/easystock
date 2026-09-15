@@ -1,5 +1,19 @@
 # EasyStock｜墨衡量化
 
+## 目前程式與部署邊界（2026-09-15 核對）
+
+本 repo 現在分成三部分：根目錄為日線更新與公開 Dashboard；`vm_runtime/` 保存從 Oracle VM 核對取得的當沖、LINE、管理後台及已接線研究程式；根目錄 `daytrade_learning/` 保留較早的獨立研究原型。
+下文原有架構圖中的 VM 模組請對應 `vm_runtime/`，不要把兩個 `daytrade_learning` 目錄混用。根目錄 `premarket_ai.py` 是轉接入口，會執行 `vm_runtime` 的實際版本；不可單獨拿這個轉接檔覆蓋 VM。
+
+- [目前架構、資料契約與驗證](docs/ARCHITECTURE.md)
+- [本次修正、部署狀態與回復方式](docs/RELIABILITY_UPDATE.md)
+- [VM 程式來源與相依套件](vm_runtime/README.md)
+
+即時當沖讀取失敗會保留最後快照並標示連線異常，超過 60 秒未更新則標示逾時；已結束的當日收盤快照另作標記。
+新版日線批次會同時包含摘要、回測與 K 線，完成後才切換 `active_release`。管理員 Google 登入與公開看板是不同權限邊界，詳見架構文件。
+
+---
+
 > 台股即時監控、秒級瞬間爆量雷達、當沖訊號追蹤、AI 早報、Firebase Web Dashboard 與 LINE Bot 的整合式量化研究系統。  
 > **By JimmyWei**
 

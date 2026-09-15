@@ -1,0 +1,20 @@
+diff --git a/update_market.py b/update_market.py
+index 6179f62..8ca7f45 100644
+--- a/update_market.py
++++ b/update_market.py
+@@ -1588,9 +1588,15 @@ def main() -> None:
+     output['meta']['release_id'] = release_id
+     output['meta']['rule_version'] = RULE_VERSION
+     output['meta']['published_at'] = now_utc
++    output['meta']['kline_schema_version'] = 1
+     # Immutable release first, atomic pointer last. Legacy root remains compatible.
+     release = market_ref.child('releases').child(release_id)
+     firebase_replace_mapping_chunked(release.child('summary'), summaries, max_items=100, label='release-summary')
++    # Charts and range-rebound decisions must use the same immutable batch.
++    firebase_replace_mapping_chunked(
++        release.child('kline'), klines, max_payload_bytes=6_000_000,
++        max_items=40, label='release-kline',
++    )
+     release.child('backtests').set(global_backtests)
+     release.child('meta').set(output['meta'])
+     market_ref.child('active_release').set(release_id)

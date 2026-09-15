@@ -24,9 +24,9 @@ function card(r,index,watch){
  const button=node('button','查看日 K ↗','btn');button.type='button';button.addEventListener('click',()=>{s.rangeRebound=r;openStockDetail(String(s.symbol),'RANGE_REBOUND');});e.append(button);
  return e;
 }
-async function fetchBars(symbol){
+async function fetchBars(stock){
  const ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),10000);
- try {const r=await fetch(`${FIREBASE_ROOT}/kline/${encodeURIComponent(symbol)}.json`,{cache:'no-store',signal:ctrl.signal});if(!r.ok)throw new Error('kline');return await r.json();}
+ try {const r=await fetch(stockKlineUrl(stock),{cache:'no-store',signal:ctrl.signal});if(!r.ok)throw new Error('kline');return await r.json();}
  finally{clearTimeout(timeout);}
 }
 async function refresh(pool,meta){
@@ -55,7 +55,7 @@ async function refresh(pool,meta){
    const r=jobs[next++],cacheKey=`${meta.release_id||asof}:${r.stock.symbol}`;
    try{
     let t=cache.get(cacheKey);
-    if(!t){const b=Array.isArray(r.stock.kline)&&r.stock.kline.length?r.stock.kline:await fetchBars(r.stock.symbol);if(mine!==generation)return;t=RangeRebound.technical(b,asof,r.stock.price);cache.set(cacheKey,t);}
+    if(!t){const b=Array.isArray(r.stock.kline)&&r.stock.kline.length?r.stock.kline:await fetchBars(r.stock);if(mine!==generation)return;t=RangeRebound.technical(b,asof,r.stock.price);cache.set(cacheKey,t);}
     r.technical=t;if(t.eligible)rows.push(r);else tally.technical++;
    }catch(e){tally.missing++;}
    done++;if(mine===generation)update();

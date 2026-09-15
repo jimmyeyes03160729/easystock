@@ -160,9 +160,30 @@ def test_publication_without_external_writes():
     assert all(x['release_id']==active for x in rel['summary'].values())
     assert data['intraday_live']=={'keep':'unchanged'}
     assert operations.index(('active_release',)) > operations.index(('releases',active,'meta'))
+    assert operations.index(('active_release',)) > operations.index(('releases',active,'kline'))
+    assert rel['meta']['kline_schema_version'] == 1
+    assert rel['kline'] == data['kline']
     assert data['meta']['rule_version']==rules.RULE_VERSION
     assert data['selection_history']['2026-09-09']['stocks']
     print('PASS atomic publication dry-run; no external writes')
+
+    # Inject a failed immutable chart write: the old publication must stay active.
+    data.clear(); data.update({'active_release':'previous','releases':{'previous':{'meta':{'release_id':'previous'}}}})
+    operations.clear()
+    original = m.firebase_replace_mapping_chunked
+    def fail_kline(ref, mapping, *args, **kwargs):
+        if ref.path[0] == 'releases' and ref.path[-1] == 'kline':
+            raise RuntimeError('simulated chart upload failure')
+        return original(ref, mapping, *args, **kwargs)
+    with patch.object(m,'validate_environment'),patch.object(m,'init_firebase',return_value=Ref()),patch.object(m,'fetch_many',return_value={}),patch.object(m,'parse_twse_quotes',return_value={'1111':q}),patch.object(m,'parse_tpex_quotes',return_value={'2222':q2}),patch.object(m,'FUGLE_API_KEY',''),patch.object(m,'firebase_replace_mapping_chunked',side_effect=fail_kline):
+        try:
+            m.main()
+        except RuntimeError as exc:
+            assert str(exc) == 'simulated chart upload failure'
+        else:
+            raise AssertionError('Expected failed chart publication')
+    assert data['active_release'] == 'previous'
+    assert ('active_release',) not in operations
 
 
 if __name__=='__main__':

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="dark">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EasyStock｜當沖管理</title>
+<link rel="stylesheet" href="/admin/assets/admin.css">
+<script defer src="https://accounts.google.com/gsi/client"></script>
+<script defer src="/admin/assets/admin.js"></script>
+</head>
+<body>
+<header><a class="brand" href="https://jimmyeyes03160729.github.io/easystock/">E<span>EasyStock</span></a><button id="theme" type="button">切換明暗</button></header>
+<main>
+<section id="login" class="login panel">
+<p class="eyebrow">管理員登入</p><h1>當沖設定</h1><p class="muted">使用已授權的 Google 帳號登入。</p>
+<div id="googleButton"></div><p id="loginStatus" role="status">正在確認登入狀態…</p><button id="retryLogin" type="button" hidden>重新載入登入</button>
+</section>
+<section id="workspace" hidden>
+<div class="title"><div><p class="eyebrow">當沖管理</p><h1>把推薦範圍設好。</h1><p class="muted">新推薦與 LINE 發送前，會套用最新限制。</p></div><button id="logout" type="button">登出</button></div>
+<div class="identity"><span id="identity"></span><span id="version"></span></div>
+<div class="grid">
+<section class="panel settings"><h2>推薦條件</h2>
+<form id="settingsForm">
+<label for="maxGain">推薦當下漲幅上限</label><div class="number"><input id="maxGain" name="max_gain_pct" type="number" min="0" max="100" step="0.01" required><span>%</span></div><p class="hint">相對昨收，超過此漲幅就不推薦；等於上限仍可通過。</p>
+<div class="priceGrid"><div><label for="minPrice">最低股價</label><div class="number"><input id="minPrice" name="min_price" type="number" min="0.01" max="1000000" step="0.01" required><span>元</span></div></div><div><label for="maxPrice">最高股價</label><div class="number"><input id="maxPrice" name="max_price" type="number" min="0.01" max="1000000" step="0.01" required><span>元</span></div></div></div>
+<p class="hint">停損與停利繼續由系統判斷；既有訊號繼續追蹤。</p>
+<div class="actions"><button class="primary" id="save" type="submit">儲存設定</button><button id="reload" type="button">重新載入</button></div><p id="saveStatus" role="status" aria-live="polite"></p>
+</form></section>
+<section class="panel line"><h2>用 LINE 修改</h2><p id="lineStatus" class="muted">尚未綁定</p><p>綁定你的 LINE，之後私訊機器人就能調整這三項條件。</p>
+<div class="actions"><button id="bind" class="primary" type="button">產生綁定碼</button><button id="unlink" type="button" hidden>解除綁定</button></div>
+<div id="bindBox" hidden><p>五分鐘內，把以下指令私訊給你的機器人：</p><code id="bindCode"></code><button id="copy" type="button">複製指令</button><button id="checkBind" type="button">確認綁定狀態</button></div>
+<div class="examples"><p class="eyebrow">綁定後可使用</p><code>當沖設定</code><code>當沖設定 最高股價 100</code><code>當沖設定 最低股價 20</code><code>當沖設定 漲幅上限 5</code><p class="hint">數字不加「元」或「%」。指令只接受已綁定帳號的私訊。</p></div><p id="lineMessage" role="status"></p>
+</section></div>
+</section>
+</main><footer>EasyStock · 當沖管理</footer>
+</body></html>
