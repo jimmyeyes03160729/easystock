@@ -54,6 +54,8 @@ class Store:
             CREATE TABLE IF NOT EXISTS rate_limits(key TEXT PRIMARY KEY,start REAL NOT NULL,n INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,at REAL NOT NULL,actor TEXT NOT NULL,action TEXT NOT NULL,body TEXT NOT NULL);
             ''')
+            from .conversations import initialize
+            initialize(db)
             if not db.execute('SELECT 1 FROM settings WHERE id=1').fetchone():
                 db.execute('INSERT OR IGNORE INTO settings VALUES(1,?,1,?)',(json.dumps(validate(initial) if initial is not None else defaults()),time.time()))
         self.path.chmod(0o600)

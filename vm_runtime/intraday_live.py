@@ -726,8 +726,12 @@ LINE_MODULE = _load_line_module()
 
 
 def push_line_text(text: str, entry_check=None) -> bool:
-
+    from line_policy import push_allowed
     groups = get_active_groups()
+    registered_groups = bool(groups)
+    groups = [gid for gid in groups if push_allowed(gid, 'trade')]
+    if registered_groups and not groups:
+        return False
 
     if groups:
         ok = False
@@ -779,7 +783,10 @@ def push_line_text(text: str, entry_check=None) -> bool:
         print("[LINE] ENTRY skipped: latest quote no longer passes limits")
         return False
 
-    module = LINE_MODULE
+    if not push_allowed(LINE_TARGET_ID, 'trade'):
+        return False
+    # Legacy generic adapters have no event category; use the guarded HTTP path.
+    module = None
 
     if module is not None:
         # 盡量相容不同版本 line_bot.py

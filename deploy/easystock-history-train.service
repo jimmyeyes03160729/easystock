@@ -1,0 +1,18 @@
+[Unit]
+Description=EasyStock offline historical training (never promote models)
+After=easystock-history-download.service
+[Service]
+Type=exec
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/easystock-history-pilot-r1
+ExecStart=/home/ubuntu/easystock-learning-venv/bin/python /home/ubuntu/easystock/history/train_history.py
+Restart=on-failure
+RestartSec=1800
+RuntimeMaxSec=6h
+TimeoutStopSec=45
+KillMode=control-group
+UMask=0077
+Nice=15
+MemoryMax=1500M
+NoNewPrivileges=true

@@ -30,5 +30,7 @@ async function setup(history,failHistory=false){
  assert(text('historyResult').includes('正報價表現率 —'));assert(!text('historyResult').includes('NaN'));
  r=await setup(history,true);assert(text('historyError').includes('未授權'));assert.equal(text('learnDays'),'1');
  r=await setup(null);assert(text('historyError').includes('等待 VM'));
+ r=await setup({...history,archive:{...history.archive,available_start:'2020-03-02',planned_start:'2026-03-23',stop_reason:'downloading'}});
+ assert(text('historyDownload').includes('22:10'));assert(text('historyDownload').includes('2010～2020'));
  console.log('PASS: independent daily/history values, two-column markup, mobile CSS, no duplicate IDs, stale summary, null results, permission/missing states.');
 })().catch(e=>{console.error(e);process.exit(1)});

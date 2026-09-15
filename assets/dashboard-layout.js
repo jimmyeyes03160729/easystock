@@ -20,6 +20,13 @@
     const dailyAnchor=document.createElement('span');dailyAnchor.id='daily-strategies';daily.prepend(dailyAnchor);
     const reboundAnchor=document.createElement('span');reboundAnchor.id='bottom-rebound';rebound.prepend(reboundAnchor);
     const title=get('reboundTitle');if(title)title.textContent='底部反彈 TOP 3';
+    const watch=get('reboundWatchSection');
+    if(watch){
+      const details=document.createElement('details'),summary=document.createElement('summary');
+      summary.textContent='展開技術觀察名單（非推薦）';details.append(summary);
+      while(watch.firstChild)details.append(watch.firstChild);
+      watch.append(details);
+    }
     const navDaily=document.querySelector('.section-nav a[href="#daily-strategies"]');
     if(navDaily)navDaily.textContent='02 每日推薦 / 底部反彈';
     document.querySelectorAll('.section-nav a[href="#bottom-rebound"]').forEach(n=>n.remove());
@@ -77,6 +84,14 @@
   #recommendationPair #topPickList,#recommendationPair .rebound-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
   #recommendationPair .share-btn{font-size:11px;white-space:nowrap}
   #recommendationPair .rebound-module-head{flex-wrap:wrap;gap:8px}
+  #recommendationPair .rebound-card{padding:12px 14px}
+  #recommendationPair .rebound-card h3{margin:7px 0 4px;font-size:16px}
+  #recommendationPair .rebound-price{font-size:21px}
+  #recommendationPair .rebound-card p{margin:5px 0;line-height:1.5}
+  #recommendationPair .rebound-card details{margin:7px 0}
+  #recommendationPair .rebound-warning,#recommendationPair .rebound-pass{padding:5px 7px}
+  #recommendationPair #reboundWatchSection{margin-top:12px;font-size:12px}
+  #recommendationPair #reboundWatchSection>details>h3{display:none}
   #daily-strategies,#bottom-rebound{display:block;scroll-margin-top:90px}
   #learningSection{padding:18px 22px}
   #learningSection .learning-head{margin-bottom:12px}

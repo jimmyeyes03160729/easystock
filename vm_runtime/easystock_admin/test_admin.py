@@ -101,6 +101,14 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.client.put('/admin/settings',base_url=ORIGIN,json={'values':INITIAL,'version':1},headers={'Origin':ORIGIN}).status_code,403)
     def test_wrong_origin_cannot_start_login(self):
         self.assertEqual(self.post('challenge',{},origin='https://evil.example').status_code,403)
+    def test_line_policy_requires_login_csrf_and_origin(self):
+        from easystock_admin.conversations import DEFAULTS
+        path='/admin/line-policy';data={'values':DEFAULTS,'version':1}
+        self.assertEqual(self.client.get(path,base_url=ORIGIN).status_code,403)
+        csrf=self.login().json['csrf']
+        self.assertEqual(self.client.put(path,base_url=ORIGIN,json=data,headers={'Origin':ORIGIN}).status_code,403)
+        self.assertEqual(self.client.put(path,base_url=ORIGIN,json=data,headers={'Origin':'https://evil.example','X-CSRF-Token':csrf}).status_code,403)
+        self.assertEqual(self.client.put(path,base_url=ORIGIN,json=data,headers={'Origin':ORIGIN,'X-CSRF-Token':csrf}).status_code,200)
     def test_login_cookie_and_csrf(self):
         response=self.login();self.assertEqual(response.status_code,200)
         cookie=response.headers.getlist('Set-Cookie')[0]

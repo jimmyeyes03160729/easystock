@@ -1,0 +1,22 @@
+[Unit]
+Description=EasyStock resumable Shioaji history (no orders)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+[Service]
+Type=exec
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/easystock/history
+ExecStart=/home/ubuntu/easystock/.venv/bin/python daily_history.py
+Restart=on-failure
+RestartSec=900
+TimeoutStopSec=45
+RuntimeMaxSec=8h
+KillMode=control-group
+UMask=0077
+Nice=10
+MemoryMax=1500M
+NoNewPrivileges=true
+[Install]
+WantedBy=multi-user.target

@@ -32,7 +32,8 @@ def main():
         import requests
         from line_bot import access_token
         from line_group_manager import get_active_groups
-        groups=get_active_groups()
+        from line_policy import push_allowed
+        groups=[gid for gid in get_active_groups() if push_allowed(gid,'other')]
         if not groups:print('No active LINE groups');return
         token=access_token()
         if not token:raise RuntimeError('LINE token missing')

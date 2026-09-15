@@ -1,0 +1,10 @@
+[Unit]
+Description=EasyStock offline history training at 22:10 Taipei
+[Timer]
+OnCalendar=*-*-* 22:10:00 Asia/Taipei
+OnBootSec=8min
+Persistent=true
+AccuracySec=1min
+Unit=easystock-history-train.service
+[Install]
+WantedBy=timers.target

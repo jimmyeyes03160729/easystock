@@ -7,10 +7,11 @@ GROUP_PATH = "line_groups"
 def register_group(group_id: str):
     if not group_id:
         return
-    FirebaseStore().root.child(GROUP_PATH).child(group_id).set({
-        "active": True,
-        "updated_at": datetime.now(TPE).isoformat(timespec="seconds"),
-    })
+    def touch(current):
+        value = dict(current) if isinstance(current, dict) else {"active": True}
+        value["updated_at"] = datetime.now(TPE).isoformat(timespec="seconds")
+        return value
+    FirebaseStore().root.child(GROUP_PATH).child(group_id).transaction(touch)
 
 def get_active_groups():
     data = FirebaseStore().root.child(GROUP_PATH).get() or {}

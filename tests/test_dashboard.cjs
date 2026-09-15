@@ -55,6 +55,8 @@ run(main);w.onload=null;
   assert.equal(run('renderLinePickList'),renderer);
   assert(!w.document.getElementById('overnightModule'));
   assert(w.document.getElementById('recommendationPair').contains(w.document.getElementById('reboundModule')));
+  const watchDetails=w.document.querySelector('#reboundWatchSection>details');
+  assert(watchDetails&&!watchDetails.open,'technical watchlist collapsed by default');
   run('renderIntradayPicks()');
   const ids=[...w.document.querySelectorAll('[id]')].map(n=>n.id);
   assert.equal(ids.length,new Set(ids).size,'duplicate IDs after layout');
