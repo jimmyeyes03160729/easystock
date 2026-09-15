@@ -6,10 +6,11 @@ function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefi
 function card(r,index,watch){
  const s=r.stock,t=r.technical,f=r.financial,e=node('article',undefined,'rebound-card');
  const header=node('div',undefined,'rebound-card-head');header.append(node('span',watch?'技術觀察':`TOP ${index+1}`,'rebound-rank'),node('span',`排序 ${t.score} 分 · 非勝率`,'text-sub'));e.append(header);
- e.append(node('h3',`${s.symbol} ${s.name||''}`));
+ const quote=node('div',undefined,'rebound-quote');
+ quote.append(node('h3',`${s.symbol} ${s.name||''}`));
  const price=node('strong',money(s.price)+' 元','rebound-price');
  price.classList.add(t.dailyChangePct>0?'market-up':t.dailyChangePct<0?'market-down':'text-main');
- e.append(price);
+ quote.append(price);e.append(quote);
  const details=node('details'),summary=node('summary','支撐、風險與檢查數據');details.append(summary);
  details.append(node('p',t.reasons.join(' · '),'text-sub'));
  const grid=node('dl',undefined,'rebound-levels');
