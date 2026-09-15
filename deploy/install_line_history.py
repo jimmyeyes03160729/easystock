@@ -46,6 +46,8 @@ def main():
     with sqlite3.connect(dbpath) as source,sqlite3.connect(backup/'state.sqlite') as dest:source.backup(dest)
     reviewed=Path('/home/ubuntu/easystock-history-status-r1/reviewed_engine.json')
     shutil.copy2(reviewed,backup/'reviewed_engine.json')
+    daily_reviewed=LIVE/'learning_status_engine_hashes.json'
+    shutil.copy2(daily_reviewed,backup/'learning_status_engine_hashes.json')
     command('sudo','systemctl','stop','easystock-line-stock-bot.service')
     try:
         from dotenv import dotenv_values
@@ -59,6 +61,8 @@ def main():
             tmp=dest.with_name(dest.name+'.install-tmp');shutil.copyfile(SOURCE/path,tmp);tmp.chmod(0o600);tmp.replace(dest)
         known=json.loads(reviewed.read_text());known.append(sha(LIVE/'intraday_live.py'))
         reviewed.write_text(json.dumps(sorted(set(known))));reviewed.chmod(0o600)
+        known_daily=json.loads(daily_reviewed.read_text());known_daily.append(sha(LIVE/'intraday_live.py'))
+        daily_reviewed.write_text(json.dumps(sorted(set(known_daily))));daily_reviewed.chmod(0o600)
         sys.path.insert(0,str(LIVE))
         from dotenv import load_dotenv
         load_dotenv(LIVE/'.env');load_dotenv(env,override=True)
@@ -84,6 +88,7 @@ def main():
     except BaseException:
         for path in FILES:shutil.copy2(backup/path,LIVE/path)
         shutil.copy2(backup/'admin.env',env);shutil.copy2(backup/'reviewed_engine.json',reviewed)
+        shutil.copy2(backup/'learning_status_engine_hashes.json',daily_reviewed)
         command('sudo','systemctl','start','easystock-line-stock-bot.service')
         raise
     for name in ['easystock-history-download.service','easystock-history-download.timer',
