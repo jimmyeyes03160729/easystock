@@ -49,10 +49,10 @@ function applyConversations(data){
     title.textContent=row.platform==='line'?'LINE':'Telegram';name.textContent=row.label;
     const replies=checkbox('群組查詢回覆',row.replies),push=checkbox('進出場通知',row.push);
     push.input.dataset.platform=row.platform;push.input.dataset.control='push';replies.input.dataset.control='replies';
-    form.append(title,name,push.wrap);if(row.platform==='line')form.append(replies.wrap);
-    if(row.platform==='telegram'&&!row.configured){push.input.disabled=true;const note=document.createElement('p');note.textContent='尚未設定 Bot 憑證與群組。';form.append(note);save.disabled=true;}
+    form.append(title,name,push.wrap,replies.wrap);
+    if(row.platform==='telegram'&&!row.configured){push.input.disabled=true;replies.input.disabled=true;const note=document.createElement('p');note.textContent='尚未設定 Bot 憑證與群組。';form.append(note);save.disabled=true;}
     save.type='submit';save.textContent='儲存 '+title.textContent;form.append(save);form.style.padding='0 0 24px';
-    form.onsubmit=async event=>{event.preventDefault();save.disabled=true;try{const body={push:push.input.checked,version:row.version};if(row.platform==='line')body.replies=replies.input.checked;applyConversations(await api('notification-groups/'+row.platform+'/'+encodeURIComponent(row.id),{method:'PUT',body}));message('conversationStatus','已儲存，下一次事件立即生效。');}catch(e){message('conversationStatus',e.message,true);}finally{save.disabled=false;}};
+    form.onsubmit=async event=>{event.preventDefault();save.disabled=true;try{const body={push:push.input.checked,replies:replies.input.checked,version:row.version};applyConversations(await api('notification-groups/'+row.platform+'/'+encodeURIComponent(row.id),{method:'PUT',body}));message('conversationStatus','已儲存，下一次事件立即生效。');}catch(e){message('conversationStatus',e.message,true);}finally{save.disabled=false;}};
     el('conversationList').append(form);
   }
   if(!data.groups.some(r=>r.platform==='line'&&r.kind==='group')){const note=document.createElement('p');note.textContent='尚無已核准的 LINE 群組。';el('conversationList').append(note);}

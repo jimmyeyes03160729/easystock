@@ -29,6 +29,7 @@ jobs:
       - run: python vm_runtime/easystock_admin/test_admin.py
       - run: python vm_runtime/easystock_admin/test_conversations.py
       - run: python vm_runtime/easystock_admin/test_notifications.py
+      - run: python vm_runtime/easystock_admin/test_telegram_queries.py
       - run: python vm_runtime/history/test_daily_history.py
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm test

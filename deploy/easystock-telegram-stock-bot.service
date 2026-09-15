@@ -1,0 +1,21 @@
+[Unit]
+Description=EasyStock Telegram group stock queries
+After=network-online.target easystock-line-stock-bot.service
+Wants=network-online.target easystock-line-stock-bot.service
+StartLimitIntervalSec=0
+[Service]
+Type=exec
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+EnvironmentFile=/home/ubuntu/easystock/.env
+EnvironmentFile=/home/ubuntu/easystock-admin.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/ubuntu/easystock/.venv/bin/python telegram_stock_bot.py
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+[Install]
+WantedBy=multi-user.target

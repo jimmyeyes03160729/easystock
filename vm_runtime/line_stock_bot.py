@@ -420,6 +420,10 @@ def handle_command_with_cache(cmd) -> list[dict]:
 # ============================================================
 
 
+from telegram_queries import register_bridge
+register_bridge(app, ADMIN_STORE, parse_command, handle_command_with_cache)
+
+
 @app.get("/healthz")
 def healthz():
     try:
