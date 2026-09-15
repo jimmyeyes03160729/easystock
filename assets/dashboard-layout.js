@@ -79,7 +79,7 @@
   const style=document.createElement('style');style.id='simpleHomeStyle';
   style.textContent=`
   #recommendationPair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start;margin:22px 0 30px}
-  #recommendationPair>.panel{min-width:0;padding:20px;margin:0;height:100%}
+  #recommendationPair>.panel{min-width:0;padding:20px;margin:0;height:auto;align-self:start}
   #recommendationPair h2{font-size:18px;line-height:1.6}
   #recommendationPair #topPickList,#recommendationPair .rebound-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
   #recommendationPair .share-btn{font-size:11px;white-space:nowrap}
@@ -87,6 +87,10 @@
   #recommendationPair .rebound-card{padding:12px 14px}
   #recommendationPair .rebound-card h3{margin:7px 0 4px;font-size:16px}
   #recommendationPair .rebound-price{font-size:21px}
+  #recommendationPair .rebound-quote{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:6px 0}
+  #recommendationPair .rebound-quote h3{min-width:0;overflow-wrap:anywhere;margin:0}
+  #recommendationPair .rebound-quote .rebound-price{white-space:nowrap;flex-shrink:0}
+  #recommendationPair .rebound-card>.btn{padding:4px 8px;font-size:11px;min-height:0}
   #recommendationPair .rebound-card p{margin:5px 0;line-height:1.5}
   #recommendationPair .rebound-card details{margin:7px 0}
   #recommendationPair .rebound-warning,#recommendationPair .rebound-pass{padding:5px 7px}
