@@ -1515,8 +1515,12 @@ def format_line_message(brief: dict) -> str:
 
 
 def push_line_text(text: str) -> bool:
-
+    from line_policy import push_allowed
     groups = get_active_groups()
+    registered_groups = bool(groups)
+    groups = [gid for gid in groups if push_allowed(gid, 'other')]
+    if registered_groups and not groups:
+        return False
 
     if groups:
         ok = False
@@ -1555,6 +1559,8 @@ def push_line_text(text: str) -> bool:
 
         return ok
 
+    if not push_allowed(LINE_TARGET_ID, 'other'):
+        return False
     # 先相容既有 line_bot.py
     try:
         import inspect

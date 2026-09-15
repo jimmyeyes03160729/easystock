@@ -30,8 +30,10 @@ def reply_messages(reply_token,messages):
     ok=r.status_code<300; _write_log('reply',ok,f'HTTP {r.status_code}')
     if not ok: raise RuntimeError(f'LINE reply HTTP {r.status_code}: {r.text[:500]}')
     return True
-def push_messages(messages,target=None):
+def push_messages(messages,target=None,category='other'):
     target=str(target or default_target()).strip()
+    from line_policy import push_allowed
+    if not push_allowed(target,category):return False
     if not target: raise RuntimeError('LINE_TARGET_ID / LINE_USER_ID / LINE_GROUP_ID 未設定')
     if not messages:return False
     r=requests.post(LINE_PUSH_URL,headers=_headers(),json={'to':target,'messages':messages[:5]},timeout=20)

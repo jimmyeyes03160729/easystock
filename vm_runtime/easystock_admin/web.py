@@ -137,6 +137,43 @@ def register_admin(app,store=None,verifier=None):
     @bp.post('/admin/line-bind')
     def bind():authenticated(True);body();return jsonify(code=store.bind_code(),expires_in=300)
 
+    @bp.get('/admin/line-policy')
+    def get_line_policy():
+        authenticated()
+        from .conversations import state
+        return jsonify(state(store))
+
+    @bp.get('/admin/line-usage')
+    def get_line_usage():
+        authenticated()
+        with store.tx() as db:store._limit(db,'line-usage',6)
+        from line_bot import access_token
+        import requests
+        token=access_token()
+        if not token:return jsonify(error='LINE 憑證未設定。'),503
+        try:
+            headers={'Authorization':'Bearer '+token}
+            quota=requests.get('https://api.line.me/v2/bot/message/quota',headers=headers,timeout=10)
+            used=requests.get('https://api.line.me/v2/bot/message/quota/consumption',headers=headers,timeout=10)
+            quota.raise_for_status();used.raise_for_status()
+            q=quota.json();u=used.json()['totalUsage']
+            limit=q.get('value') if q.get('type')=='limited' else None
+            return jsonify(used=u,limit=limit,remaining=max(0,limit-u) if limit is not None else None)
+        except (requests.RequestException,ValueError,KeyError,TypeError):
+            return jsonify(error='LINE 用量暫時無法取得，請稍後重試。'),503
+
+    @bp.put('/admin/line-policy')
+    def put_line_policy():
+        authenticated(True)
+        from .conversations import update
+        return jsonify(update(store,body()))
+
+    @bp.put('/admin/line-conversations/<key>')
+    def put_line_conversation(key):
+        authenticated(True)
+        from .conversations import update_conversation
+        return jsonify(update_conversation(store,key,body()))
+
     @bp.post('/admin/line-unlink')
     def unlink():authenticated(True);body();store.unlink();return jsonify(ok=True)
 

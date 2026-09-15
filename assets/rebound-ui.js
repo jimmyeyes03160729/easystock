@@ -9,12 +9,13 @@ function card(r,index,watch){
  e.append(node('h3',`${s.symbol} ${s.name||''}`));
  const price=node('strong',money(s.price)+' 元','rebound-price');
  price.classList.add(t.dailyChangePct>0?'market-up':t.dailyChangePct<0?'market-down':'text-main');
- e.append(price,node('p',t.reasons.join(' · '),'text-sub'));
+ e.append(price);
+ const details=node('details'),summary=node('summary','支撐、風險與檢查數據');details.append(summary);
+ details.append(node('p',t.reasons.join(' · '),'text-sub'));
  const grid=node('dl',undefined,'rebound-levels');
  for(const [label,value] of [['支撐帶',t.support.map(money).join('～')],['壓力帶',t.resistance.map(money).join('～')],['策略失效價',money(t.invalid)],['觀察目標',money(t.target)]]){grid.append(node('dt',label),node('dd',value));}
- e.append(grid,node('p',`價格空間／失效距離 ${t.rr.toFixed(1)} 倍（未扣成本）`,'text-sub'));
+ details.append(grid,node('p',`價格空間／失效距離 ${t.rr.toFixed(1)} 倍（未扣成本）`,'text-sub'));
  e.append(node('p',watch?'基本面待補：'+f.missing.join('、'):'營收、獲利與負債初篩通過；FCF 為輔助資訊',watch?'rebound-warning':'rebound-pass'));
- const details=node('details'),summary=node('summary','檢查數據與期間');details.append(summary);
  for(const c of f.checks)details.append(node('p',`${c.label}：${c.value} · ${c.period||'期間待確認'} · 取得 ${c.observed_at}`));
  const fcf=(f.optional||[]).find(x=>x.key==='fcf');
  if(fcf?.status==='positive')details.append(node('p',`自由現金流：${fcf.value}（輔助正向，不作必要門檻）`));

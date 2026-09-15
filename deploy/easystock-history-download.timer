@@ -1,0 +1,10 @@
+[Unit]
+Description=EasyStock history every day at 14:00 Taipei and resume after reboot
+[Timer]
+OnCalendar=*-*-* 14:00:00 Asia/Taipei
+OnBootSec=3min
+Persistent=true
+AccuracySec=1min
+Unit=easystock-history-download.service
+[Install]
+WantedBy=timers.target

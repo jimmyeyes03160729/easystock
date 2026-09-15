@@ -119,8 +119,9 @@
     put('historyModel',s.model_application?.status==='not_applied'?'當沖同步：尚未套用歷史模型':'當沖同步：尚待確認');
     const trainingText=t.status==='experimental_candidate'?'實驗模型已產生 · 等待後續驗證':t.status==='blocked'?`未產生模型 · ${reasonNames[t.reason_code]||reasonNames.other}`:r.state==='training'?'正在訓練與測試':r.state==='replaying'?'先建立特徵與標記，完成後再訓練':'尚未取得本次訓練結果';
     put('historyTraining',trainingText);
-    const stop={quota_exhausted:'額度用完，下載暫停',quota_reserve:'保留額度，下載暫停',pair_limit:'分批處理',run_budget:'本批流量上限',pair_failed_inspect_before_retry:'有失敗紀錄',pair_limit_or_plan_complete:'本批結束'}[a.stop_reason]||'下載狀態見 VM';
+    const stop={quota_exhausted:'額度用完，下次排程續抓',quota_reserve:'保留額度，下次排程續抓',pair_limit:'分批處理',run_budget:'本批流量上限',pair_failed_inspect_before_retry:'有失敗紀錄',pair_limit_or_plan_complete:'本批結束',downloading:'自動下載中',outside_window:'等待明日 14:00',disk_reserve:'磁碟空間不足，需處理',user_stopped:'手動暫停',transient_error:'連線異常，15 分鐘後續跑',available_range_scanned_with_gaps:'可取得期間已掃描，缺口仍需確認',credentials_missing:'登入設定缺失',error:'下載異常，將自動重試'}[a.stop_reason]||'下載狀態見 VM';
     put('historyDownload',`歷史下載：${fmt(a.archived_stock_days)} / ${fmt(a.target_stock_days)} 股票日 · 失敗 ${fmt(a.failed_stock_days)} · ${stop}`);
+    if(a.available_start)put('historyDownload',get('historyDownload').textContent+`。每天 14:00 續抓、22:10 離線訓練；目標筆數隨日期擴展。目前規劃至 ${a.planned_start||'待更新'}，永豐最早 ${a.available_start}；2010～2020 缺口不能由此 API 補齊。`);
     const m=t.model_selected,b=t.all_windows;
     put('historyResult',m?`模型篩選 ${fmt(m.samples)} 筆 · 正報價表現率 ${pct(m.positive_markout_rate)} · 平均 ${mean(m.mean_net_markout_pct)}`:'尚無本次模型測試結果');
     put('historyBaseline',b?`全部測試窗口 ${fmt(b.samples)} 筆 · 平均 ${mean(b.mean_net_markout_pct)}；非實際成交勝率`:'固定持有約 15 分鐘，扣除 0.6 個百分點假設成本；非實際成交勝率');

@@ -507,6 +507,8 @@ def callback():
     for event in payload.get("events", []):
 
         source = event.get("source") or {}
+        from easystock_admin.conversations import observe, allowed
+        observe(ADMIN_STORE, source)
 
         if source.get("type") == "group":
             group_id = source.get("groupId")
@@ -543,6 +545,9 @@ def callback():
                 print("[ADMIN COMMAND ERROR]", type(exc).__name__)
                 continue
             raise
+
+        if not allowed(ADMIN_STORE, source):
+            continue
 
         # 模擬當沖遊戲指令先處理。
         game_reply = handle_game_command(

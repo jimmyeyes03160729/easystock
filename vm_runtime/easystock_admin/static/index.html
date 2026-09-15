@@ -30,6 +30,12 @@
 <div id="bindBox" hidden><p>五分鐘內，把以下指令私訊給你的機器人：</p><code id="bindCode"></code><button id="copy" type="button">複製指令</button><button id="checkBind" type="button">確認綁定狀態</button></div>
 <div class="examples"><p class="eyebrow">綁定後可使用</p><code>當沖設定</code><code>當沖設定 最高股價 100</code><code>當沖設定 最低股價 20</code><code>當沖設定 漲幅上限 5</code><p class="hint">數字不加「元」或「%」。指令只接受已綁定帳號的私訊。</p></div><p id="lineMessage" role="status"></p>
 </section></div>
+<section class="panel" id="conversationPanel"><h2>LINE 對話與推播</h2>
+<button type="button" id="checkUsage">查詢本月 LINE 用量</button><p id="lineUsage" role="status">群組推播按接收人數計費，例如 7 人群組推播一次計 7 則；不是一個群組算一則。</p>
+<p class="hint">指令回覆使用 Reply API，不扣月訊息額度；主動推播會計費。關閉指令回覆不影響進出場推播。管理員設定指令保留供復原。</p>
+<form id="linePolicyForm"><div id="lineSwitches"></div><div class="actions"><button type="submit" id="saveLine" class="primary">儲存 LINE 開關</button><button type="button" id="reloadLine">重新載入</button></div></form>
+<p class="hint">以下僅顯示已接觸機器人的群組／個人，不保存訊息內容。可自行命名方便辨認；新對話會在收到訊息後出現，預設不推播。推播開關與回覆開關各自獨立。</p>
+<div id="conversationList"></div><p id="conversationStatus" role="status" aria-live="polite"></p></section>
 </section>
 </main><footer>EasyStock · 當沖管理</footer>
 </body></html>
