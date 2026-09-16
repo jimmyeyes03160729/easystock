@@ -1,0 +1,34 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { JSDOM } from 'jsdom';
+import * as core from '../core.js';
+
+test('popup preserves IDs, safe rendering, groups, controls and message wiring', async () => {
+  const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../popup.js', import.meta.url), 'utf8');
+  const dom = new JSDOM(html, { url: 'https://example.test', runScripts: 'outside-only' });
+  const w = dom.window, messages = [];
+  const state = { ...core.defaultState(), vip: false, vm: true, quotes: {}, bounce: [], used: 0, marketOpen: false, paymentURL: '' };
+  state.stocks.push({ symbol: '8299', market: 'TWO', name: '<img src=x onerror=alert(1)>', groups: ['rebound'] });
+  w.chrome = { runtime: { sendMessage: async m => { messages.push(m); return { ok: true, value: m.type === 'TEST' ? { sent: true } : structuredClone(state) }; } }, tabs: { create: async () => {} } };
+  for (const key of ['SYMBOL', 'GROUPS', 'finite', 'fresh', 'watchlist', 'chartURL']) w[key] = core[key];
+  w.icons = () => {};
+  await w.eval(`(async()=>{${source.replace(/^import .*;\r?\n/gm, '')}})()`);
+  assert.equal(w.document.querySelectorAll('.stock-card').length, 2);
+  assert.equal(w.document.querySelectorAll('.stock-card img').length, 0);
+  assert.match(w.document.getElementById('stock-list-container').textContent, /<img src=x/);
+  w.document.querySelector('[data-group="rebound"]').click();
+  assert.equal(w.document.querySelectorAll('.stock-card').length, 1);
+  w.document.getElementById('btn-open-settings').click();
+  assert.equal(w.document.getElementById('settings-panel').inert, false);
+  w.document.getElementById('btn-test-daytrade-notif').click();
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(messages.at(-1).type, 'TEST');
+  assert.match(w.document.getElementById('action-message').textContent, /Chrome/);
+  w.document.getElementById('btn-close-settings').click();
+  assert.equal(w.document.getElementById('settings-panel').inert, true);
+  w.document.getElementById('btn-upgrade').click();
+  assert.equal(w.document.getElementById('payment-modal').classList.contains('hidden'), false);
+  dom.window.close();
+});

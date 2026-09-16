@@ -35,3 +35,9 @@ jobs:
       - run: pnpm test
       - run: node tests/test_admin_ui.cjs
       - run: node tests/test_asset_versions.cjs
+      - name: Install Chrome extension build dependencies
+        run: pnpm --dir chrome-extension install --frozen-lockfile --ignore-scripts
+      - name: Build production and isolated VM extension packages
+        run: pnpm --dir chrome-extension build
+      - name: Test extension state, notification, and UI behavior
+        run: pnpm --dir chrome-extension test

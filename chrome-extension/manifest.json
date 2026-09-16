@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "EasyStock 台股策略監控",
+  "version": "1.0.0",
+  "minimum_chrome_version": "116",
+  "description": "台股自選、五分鐘策略訊號監控與桌面通知；不執行交易。",
+  "permissions": ["storage", "alarms", "notifications"],
+  "host_permissions": [
+    "https://raw.githubusercontent.com/jimmyeyes03160729/easystock/*",
+    "https://easystock-c237a-default-rtdb.firebaseio.com/*"
+  ],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "EasyStock 台股策略監控" },
+  "icons": { "16": "assets/icon16.png", "48": "assets/icon48.png", "128": "assets/icon128.png" },
+  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'" }
+}
