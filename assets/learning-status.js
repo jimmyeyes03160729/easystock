@@ -73,8 +73,12 @@
     put('learnCoverage',today?.requested!=null?`${fmt(today.downloaded)} / ${fmt(today.requested)}`:'—');
     put('learnCoverageNote',today?`盤中觀察 ${fmt(today.observed_stocks)} 檔 · ${today.report_status==='partial'?'部分完成':today.report_status==='ready'?'復盤完成':'等待完整報告'}`:'今天尚未收到資料');
     const app=s.model_application||{};
-    put('learnModel',app.status==='not_applied'?'當沖模型：尚未套用學習成果':'當沖模型：執行版本待確認');
-    put('learnTraining',`同設定有效日期 ${fmt(tot.training_days)} / 101 · 樣本 ${fmt(tot.training_samples)} / 1,000 · ${tr.status==='candidate_only'?'候選模型待驗證':tr.status==='blocked'?'尚未達訓練條件':'尚未取得訓練結果'}`);
+    /* EASYSTOCK_MODEL_CYCLE_R2 */
+    const modelName=app.model_version?` ${app.model_version}`:'';
+    const modelText={applied:`當沖模型：已載入${modelName}`,scheduled:`當沖模型：驗證通過，等待下次引擎載入${modelName}`,installed_waiting_validation:'當沖模型：閘門已安裝，等待驗證合格',model_not_connected:'當沖模型：已有模型但尚未連接引擎',not_applied:'當沖模型：尚未套用學習成果',unknown:'當沖模型：執行版本待確認'}[app.status]||'當沖模型：執行版本待確認';
+    put('learnModel',modelText);
+    const cycleText={waiting_for_history:'等待 6,600 個有效股票日',waiting_for_archive_lock:'等待歷史下載／實驗釋放資料鎖',building_history_seed:'建立固定歷史種子中',training:'模型訓練與向前驗證中',completed:'本次模型週期完成',blocked:'候選未通過安全條件',paused_for_market_hours:'盤中暫停，避免影響當沖'}[app.cycle_state]||'等待模型週期';
+    put('learnTraining',`每日資料：同設定 ${fmt(tot.training_days)} 日、${fmt(tot.training_samples)} 筆 · 歷史模型：${cycleText}`);
     get('learnProgress').value=Math.min(101,tot.training_days||0);
     put('learnAI',`今日 AI 復盤：${({ok:'完成',failed:'失敗',skipped:'尚未執行'})[today?.ai_status]||'等待資料'}`);
     put('learnUpdated',`最後狀態更新：${date(s.updated_at)}`);
@@ -116,8 +120,11 @@
     put('historyProcessedNote',valid(r.archive_files)?'本次凍結的可用資料，不是完整下載目標':'一檔股票一天算一個股票日');
     put('historyDays',fmt(r.labeled_dates));put('historySamples',fmt(r.labeled_samples));put('historyTestSamples',fmt(t.test_samples));
     if(get('historyProgress'))get('historyProgress').value=valid(r.processed_files)&&r.archive_files>0?Math.min(100,100*r.processed_files/r.archive_files):0;
-    put('historyModel',s.model_application?.status==='not_applied'?'當沖同步：尚未套用歷史模型':'當沖同步：尚待確認');
-    const trainingText=t.status==='experimental_candidate'?'實驗模型已產生 · 等待後續驗證':t.status==='blocked'?`未產生模型 · ${reasonNames[t.reason_code]||reasonNames.other}`:r.state==='training'?'正在訓練與測試':r.state==='replaying'?'先建立特徵與標記，完成後再訓練':'尚未取得本次訓練結果';
+    const app=s.model_application||{},version=app.model_version?` ${app.model_version}`:'';
+    put('historyModel',({applied:`當沖同步：已載入${version}`,scheduled:`當沖同步：驗證通過，等待引擎載入${version}`,installed_waiting_validation:'當沖同步：已連接，等待候選驗證合格',model_not_connected:'當沖同步：模型尚未連接引擎',not_applied:'當沖同步：尚未套用歷史模型',unknown:'當沖同步：尚待確認'})[app.status]||'當沖同步：尚待確認');
+    const cycleNames={waiting_for_history:'等待 6,600 個有效股票日',waiting_for_archive_lock:'等待資料鎖',building_history_seed:'固定歷史種子建立中',training:'正式模型驗證中',completed:'正式模型週期完成',blocked:'候選未通過安全條件',paused_for_market_hours:'盤中暫停'};
+    const experiment=t.status==='experimental_candidate'?'獨立 15 分鐘實驗已完成':t.status==='blocked'?`獨立實驗未產生模型 · ${reasonNames[t.reason_code]||reasonNames.other}`:r.state==='training'?'獨立實驗正在訓練':r.state==='replaying'?'獨立實驗建立特徵中':'等待獨立實驗結果';
+    const trainingText=`${cycleNames[app.cycle_state]||'正式模型週期待確認'} · ${experiment}`;
     put('historyTraining',trainingText);
     const stop={quota_exhausted:'額度用完，下次排程續抓',quota_reserve:'保留額度，下次排程續抓',pair_limit:'分批處理',run_budget:'本批流量上限',pair_failed_inspect_before_retry:'有失敗紀錄',pair_limit_or_plan_complete:'本批結束',downloading:'自動下載中',outside_window:'等待明日 14:00',disk_reserve:'磁碟空間不足，需處理',user_stopped:'手動暫停',transient_error:'連線異常，15 分鐘後續跑',available_range_scanned_with_gaps:'可取得期間已掃描，缺口仍需確認',credentials_missing:'登入設定缺失',error:'下載異常，將自動重試'}[a.stop_reason]||'下載狀態見 VM';
     put('historyDownload',`歷史下載：${fmt(a.archived_stock_days)} / ${fmt(a.target_stock_days)} 股票日 · 失敗 ${fmt(a.failed_stock_days)} · ${stop}`);
