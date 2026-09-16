@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "global_vip_switch": false,
+  "vip_keys_hash": [],
+  "payment_gateway_url": "",
+  "market_holidays": ["2026-09-25", "2026-09-28"],
+  "daytrade_strategy_signals": [],
+  "bounce_strategy_signals": [
+    {
+      "id": "EXAMPLE-2330-20260917-0900",
+      "symbol": "2330",
+      "market": "TW",
+      "name": "台積電（格式示例，不是推薦）",
+      "price": 1000,
+      "change_pct": 1.25,
+      "reason": "格式示例：支撐區反彈。正式資料必須由可信訊號產生器更新。",
+      "generated_at": "2000-01-03T09:00:00+08:00",
+      "quote_at": "2000-01-03T09:00:00+08:00"
+    }
+  ]
+}

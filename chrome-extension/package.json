@@ -1,0 +1,11 @@
+{
+  "name": "easystock-chrome-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tailwindcss -i styles.css -o assets/popup.css --minify && node build.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "devDependencies": { "tailwindcss": "3.4.17" }
+}

@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+html, body { width: 400px; height: 600px; margin: 0; }
+button, a, input { outline-offset: 2px; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid #0284c7; }
+.tab-btn { background: transparent; border: 1px solid transparent; color: #64748b; }
+.tab-btn.tab-active { background: white; border-color: #e2e8f0; color: #0f172a; box-shadow: 0 1px 2px #0000000d; }
+#update-timestamp { max-width: 290px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#action-message { overflow-wrap: anywhere; }
+.stock-card h2 { overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
