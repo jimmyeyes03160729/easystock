@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="/admin/assets/admin.css">
 <script defer src="https://accounts.google.com/gsi/client"></script>
 <script defer src="/admin/assets/admin.js"></script>
+<script defer src="/admin/assets/paper-trade.js"></script>
 </head>
 <body>
 <header><a class="brand" href="https://jimmyeyes03160729.github.io/easystock/">E<span>EasyStock</span></a><button id="theme" type="button">切換明暗</button></header>
@@ -26,6 +27,55 @@
 <div class="actions"><button class="primary" id="save" type="submit">儲存設定</button><button id="reload" type="button">重新載入</button></div><p id="saveStatus" role="status" aria-live="polite"></p>
 </form></section>
 </div>
+
+<section class="panel paper-trade" id="paperTradePanel" style="margin-top:24px">
+<h2>當沖模擬動態帳本</h2>
+<p class="hint">以設定本金模擬實盤開倉（扣除 0.15% 證交稅與手續費折讓），每日損益直接滾入次日可用資金。</p>
+
+<div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0;">
+  <div style="background:var(--bg,#111);padding:14px;border-radius:8px;border:1px solid var(--border,#333);">
+    <div style="font-size:12px;color:var(--muted,#888);">目前可用資金 (滾動)</div>
+    <div id="simCurrentCapital" style="font-size:24px;font-weight:bold;margin-top:4px;color:#4ade80;">-- 元</div>
+    <div id="simReturnRate" style="font-size:11px;color:var(--muted,#888);margin-top:4px;">累計損益: -- 元 (0.00%)</div>
+  </div>
+  <div style="background:var(--bg,#111);padding:14px;border-radius:8px;border:1px solid var(--border,#333);">
+    <div style="font-size:12px;color:var(--muted,#888);">模擬運行狀態</div>
+    <div id="simStatusBadge" style="font-size:16px;font-weight:bold;margin-top:8px;">讀取中...</div>
+    <div id="simStartDate" style="font-size:11px;color:var(--muted,#888);margin-top:4px;">起始日期: --</div>
+  </div>
+</div>
+
+<form id="paperTradeForm" style="margin-bottom:16px;">
+  <label for="simInitialInput">設定模擬起始本金</label>
+  <div class="number" style="display:flex;align-items:center;gap:8px;max-width:320px;margin:8px 0;">
+    <input id="simInitialInput" name="initial_capital" type="number" min="1000" max="100000000" step="10000" value="100000" required>
+    <span>元</span>
+  </div>
+  <div class="actions" style="display:flex;gap:10px;margin-top:10px;">
+    <button class="primary" id="btnSimStart" type="submit">重設本金並開始</button>
+    <button id="btnSimToggle" type="button">暫停 / 啟動模擬</button>
+  </div>
+  <p id="simActionStatus" role="status" aria-live="polite" style="font-size:12px;margin-top:8px;"></p>
+</form>
+
+<details open style="margin-top:16px;"><summary style="cursor:pointer;font-weight:bold;">每日結算歷程 (最近 30 日)</summary>
+  <table style="width:100%;margin-top:10px;border-collapse:collapse;font-size:12px;">
+    <thead>
+      <tr style="border-bottom:1px solid var(--border,#333);color:var(--muted,#888);text-align:left;">
+        <th style="padding:6px 4px;">日期</th>
+        <th style="padding:6px 4px;">起始額度</th>
+        <th style="padding:6px 4px;">當日標的</th>
+        <th style="padding:6px 4px;">當日淨損益</th>
+        <th style="padding:6px 4px;">結算後餘額</th>
+      </tr>
+    </thead>
+    <tbody id="simLogsTableBody">
+      <tr><td colspan="5" style="text-align:center;padding:12px;color:var(--muted,#888);">尚無結算紀錄</td></tr>
+    </tbody>
+  </table>
+</details>
+</section>
+
 <section class="panel" id="conversationPanel" style="margin-top:24px"><h2>群組通知</h2>
 <p class="hint">僅通知已核准群組。個人功能與其他自動推播均停用；推薦條件只在此後台修改。兩個平台的進出場通知可分別開關。</p>
 <div id="conversationList" class="grid"></div>
