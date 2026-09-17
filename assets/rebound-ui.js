@@ -17,7 +17,7 @@ function card(r,index,watch){
  for(const [label,value] of [['支撐帶',t.support.map(money).join('～')],['壓力帶',t.resistance.map(money).join('～')],['策略失效價',money(t.invalid)],['觀察目標',money(t.target)]]){grid.append(node('dt',label),node('dd',value));}
  details.append(grid,node('p',`價格空間／失效距離 ${t.rr.toFixed(1)} 倍（未扣成本）`,'text-sub'));
  e.append(node('p',watch?'基本面待補：'+f.missing.join('、'):'營收、獲利與負債初篩通過；FCF 為輔助資訊',watch?'rebound-warning':'rebound-pass'));
- for(const c of f.checks)details.append(node('p',`${c.label}：${c.value} · ${c.period||'期間待確認'} · 取得 ${c.observed_at}`));
+ for(const c of f.checks){const period=c.period?` · ${c.period}`:'';details.append(node('p',`${c.label}：${c.value}${period} · 取得 ${c.observed_at}`));}
  const fcf=(f.optional||[]).find(x=>x.key==='fcf');
  if(fcf?.status==='positive')details.append(node('p',`自由現金流：${fcf.value}（輔助正向，不作必要門檻）`));
  else if(fcf?.status==='negative')details.append(node('p',`自由現金流：${fcf.value}（輔助警示，不作必要門檻）`));

@@ -23,18 +23,15 @@ function financial(s,asof){
  const fcfMeta=s.field_meta?.fcf,fcfValue=num(s.fcf),fcfAge=dayNumber(asof)-dayNumber(fcfMeta?.as_of);
  const fcfUsable=fcfValue!==null&&fcfMeta&&['official-api','official-filings'].includes(fcfMeta.source)&&fcfAge>=0&&fcfAge<=200&&!(s.legacy_fallback_fields||[]).includes('fcf');
  optional.push({key:'fcf',label:'自由現金流',status:fcfUsable?(fcfValue>0?'positive':'negative'):'unavailable',value:fcfUsable?fcfValue:null,observed_at:fcfUsable?fcfMeta.as_of:null,period:fcfUsable?(fcfMeta.period??null):null});
- // Observation dates are not filing dates; require an identifiable period too.
+ // Keep the monthly revenue period check because it determines whether the
+ // revenue figure is current. Quarterly labels are optional metadata: some
+ // official payloads provide trustworthy EPS/margin/debt values and dates but
+ // omit a normalized YYYY-Qn label. Missing that label alone must not turn an
+ // otherwise valid company into "基本面待補".
  const rev=String(s.revenue_period||'').replace(/[^0-9]/g,'');
  let yr,mo;if(rev.length===5){yr=Number(rev.slice(0,3))+1911;mo=Number(rev.slice(3));}else if(rev.length===6){yr=Number(rev.slice(0,4));mo=Number(rev.slice(4));}
  const a=new Date(asof+'T00:00:00Z'),gap=yr&&mo>=1&&mo<=12?(a.getUTCFullYear()-yr)*12+a.getUTCMonth()+1-mo:NaN;
  if(!(gap>=1&&gap<=2))missing.push('近期營收月份');
- for(const key of ['eps','operating_margin','debt_ratio']){
-  const period=String(s.field_meta?.[key]?.period||'');
-  const m=period.match(/^(\d{4})[- ]?Q([1-4])$/i);
-  if(!m){missing.push('財報年度與季度');break;}
-  const end=Date.UTC(+m[1],+m[2]*3,0)/86400000,age=dayNumber(asof)-end;
-  if(!(age>=0&&age<=200)){missing.push('有效財報期間');break;}
- }
  return {status:failed.length?'failed':missing.length?'incomplete':'passed',missing:[...new Set(missing)],failed,checks,optional};
 }
 function clusters(points,tol){
