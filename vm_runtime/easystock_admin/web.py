@@ -81,7 +81,7 @@ def register_admin(app,store=None,verifier=None):
 
     @bp.get('/admin/assets/<name>')
     def assets(name):
-        if name not in ('admin.js','admin.css'):return '',404
+        if name not in ('admin.js','admin.css','paper-trade.js'):return '',404
         return send_from_directory(STATIC,name)
 
     @bp.get('/admin/config')
@@ -133,6 +133,26 @@ def register_admin(app,store=None,verifier=None):
         authenticated(True);data=body()
         if set(data)!= {'values','version'}:raise ValueError('設定欄位不正確。')
         return jsonify(store.update(data['values'],data['version']))
+
+    @bp.get('/admin/paper-trade')
+    def get_paper_trade():
+        authenticated()
+        return jsonify(store.get_paper_trade())
+
+    @bp.post('/admin/paper-trade/start')
+    def post_paper_trade_start():
+        authenticated(True)
+        data = body()
+        cap = data.get('initial_capital')
+        if cap is None:
+            raise ValueError('缺少本金金額。')
+        return jsonify(store.start_paper_trade(cap))
+
+    @bp.post('/admin/paper-trade/toggle')
+    def post_paper_trade_toggle():
+        authenticated(True)
+        body()
+        return jsonify(store.toggle_paper_trade())
 
     @bp.post('/admin/line-bind')
     def bind():
