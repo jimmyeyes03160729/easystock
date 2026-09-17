@@ -1,10 +1,9 @@
-name: Overnight Picks - Legacy Fugle
+name: Overnight Picks - Rebound Strategy
 
 on:
   schedule:
-    # Taiwan 13:05 / 13:15 preview, 13:42 completed-session research.
-    # GitHub may delay jobs: scanner verifies actual clock and candle age.
-    - cron: "5,15,42 5 * * 1-5"
+    # Taiwan 13:15 preview
+    - cron: "15 5 * * 1-5"
 
   workflow_dispatch:
 
@@ -27,12 +26,9 @@ jobs:
       INTRADAY_SCAN_MAX_SYMBOLS: "50"
       INTRADAY_TOP_N: "3"
 
-      # 舊 Fugle 當沖完全關閉
       INTRADAY_ENABLE_DAYTRADE: "0"
       INTRADAY_ENABLE_OVERNIGHT: "1"
 
-      INTRADAY_MIN_DAYTRADE_SCORE: "76"
-      INTRADAY_MIN_OVERNIGHT_SCORE: "74"
       FUGLE_MIN_INTERVAL_SECONDS: "1.10"
 
     steps:
@@ -78,17 +74,20 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
           python -m pip check
+          # 確保 pandas 已安裝，用於核心判定模組
+          python -m pip install pandas
 
       - name: Verify Scanner Syntax
+        # 這裡將執行的腳本改為假設的新檔名 scan_rebound.py
         run: |
-          python -m py_compile scan_intraday.py
+          python -m py_compile scan_rebound.py
 
-      - name: Scan Overnight Fugle Patterns
+      - name: Scan Overnight Rebound Patterns
         env:
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
         run: |
-          echo "Legacy DAYTRADE: disabled"
-          echo "OVERNIGHT: enabled"
-          python scan_intraday.py
+          echo "OVERNIGHT REBOUND STRATEGY: enabled"
+          # 執行觸底反彈的掃描腳本
+          python scan_rebound.py
