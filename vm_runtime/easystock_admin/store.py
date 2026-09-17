@@ -1,5 +1,6 @@
 """Private local admin state; never stored in public Firebase."""
 from contextlib import contextmanager, closing
+import datetime
 import hashlib
 import hmac
 import json
@@ -53,6 +54,8 @@ class Store:
             CREATE TABLE IF NOT EXISTS receipts(event TEXT PRIMARY KEY,body TEXT NOT NULL,created REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS rate_limits(key TEXT PRIMARY KEY,start REAL NOT NULL,n INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,at REAL NOT NULL,actor TEXT NOT NULL,action TEXT NOT NULL,body TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS paper_trade_settings(id INTEGER PRIMARY KEY CHECK(id=1),initial_capital REAL NOT NULL,current_capital REAL NOT NULL,status TEXT NOT NULL,start_date TEXT NOT NULL,updated_at REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS paper_trade_logs(date TEXT PRIMARY KEY,start_balance REAL NOT NULL,end_balance REAL NOT NULL,net_pnl REAL NOT NULL,symbols TEXT NOT NULL,costs REAL NOT NULL,trades_count INTEGER NOT NULL,created_at REAL NOT NULL);
             ''')
             from .conversations import initialize
             initialize(db)
@@ -90,6 +93,46 @@ class Store:
             db.execute('UPDATE settings SET body=?,version=version+1,updated=? WHERE id=1',(json.dumps(value),time.time()))
             self._audit(db,'google','settings',{'before':before['values'],'after':value})
             return self._state(db)
+
+    def get_paper_trade(self):
+        with self.tx() as db:
+            row = db.execute('SELECT initial_capital,current_capital,status,start_date,updated_at FROM paper_trade_settings WHERE id=1').fetchone()
+            if not row:
+                settings = {'initial_capital': 100000.0, 'current_capital': 100000.0, 'status': 'stopped', 'start_date': '', 'updated_at': time.time()}
+            else:
+                settings = {'initial_capital': row[0], 'current_capital': row[1], 'status': row[2], 'start_date': row[3], 'updated_at': row[4]}
+            logs = []
+            for r in db.execute('SELECT date,start_balance,end_balance,net_pnl,symbols,costs,trades_count FROM paper_trade_logs ORDER BY date DESC LIMIT 30').fetchall():
+                logs.append({
+                    'date': r[0], 'start_balance': r[1], 'end_balance': r[2], 'net_pnl': r[3],
+                    'symbols': r[4], 'costs': r[5], 'trades_count': r[6]
+                })
+            return {'settings': settings, 'logs': logs}
+
+    def start_paper_trade(self, initial_capital):
+        if isinstance(initial_capital, bool) or not isinstance(initial_capital, (int, float)) or not math.isfinite(initial_capital) or initial_capital <= 0:
+            raise ValueError('請輸入大於 0 的有效本金。')
+        cap = round(float(initial_capital), 2)
+        today_str = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime('%Y-%m-%d')
+        with self.tx() as db:
+            db.execute('''INSERT OR REPLACE INTO paper_trade_settings(id, initial_capital, current_capital, status, start_date, updated_at)
+                          VALUES(1, ?, ?, 'running', ?, ?)''', (cap, cap, today_str, time.time()))
+            self._audit(db, 'google', 'paper_trade_start', {'initial_capital': cap, 'start_date': today_str})
+        return self.get_paper_trade()
+
+    def toggle_paper_trade(self):
+        with self.tx() as db:
+            row = db.execute('SELECT status FROM paper_trade_settings WHERE id=1').fetchone()
+            current_status = row[0] if row else 'stopped'
+            next_status = 'stopped' if current_status == 'running' else 'running'
+            if not row:
+                today_str = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime('%Y-%m-%d')
+                db.execute('''INSERT INTO paper_trade_settings(id, initial_capital, current_capital, status, start_date, updated_at)
+                              VALUES(1, 100000.0, 100000.0, ?, ?, ?)''', (next_status, today_str, time.time()))
+            else:
+                db.execute('UPDATE paper_trade_settings SET status=?, updated_at=? WHERE id=1', (next_status, time.time()))
+            self._audit(db, 'google', 'paper_trade_toggle', {'status': next_status})
+        return self.get_paper_trade()
 
     def _limit(self,db,key,limit):
         now=time.time();row=db.execute('SELECT start,n FROM rate_limits WHERE key=?',(key,)).fetchone()
@@ -158,7 +201,6 @@ class Store:
     def line(self,uid,event,action,value=None):
         if not uid or not event:raise Denied('無法確認 LINE 身分或訊息編號。')
         key=digest(uid+':'+event)
-        # Rate limit commits separately, including denied binding attempts.
         with self.tx() as db:self._limit(db,'line:'+digest(uid),12)
         with self.tx() as db:
             old=db.execute('SELECT body FROM receipts WHERE event=?',(key,)).fetchone()
@@ -188,7 +230,6 @@ class Store:
 
 
 def read_live_settings():
-    """Fail closed if installed state is missing/corrupt; no environment fallback after integration."""
     path=db_path()
     uri=path.resolve().as_uri()+'?mode=ro'
     db=sqlite3.connect(uri,uri=True,timeout=1)
@@ -197,3 +238,31 @@ def read_live_settings():
         if not row:raise RuntimeError('Admin settings missing')
         return validate(json.loads(row[0]))
     finally:db.close()
+
+
+def read_paper_trade_settings():
+    path = db_path()
+    if not path.exists():
+        return {'initial_capital': 100000.0, 'current_capital': 100000.0, 'status': 'stopped', 'start_date': ''}
+    uri = path.resolve().as_uri() + '?mode=ro'
+    db = sqlite3.connect(uri, uri=True, timeout=1)
+    try:
+        tbl = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='paper_trade_settings'").fetchone()
+        if not tbl:
+            return {'initial_capital': 100000.0, 'current_capital': 100000.0, 'status': 'stopped', 'start_date': ''}
+        row = db.execute('SELECT initial_capital,current_capital,status,start_date FROM paper_trade_settings WHERE id=1').fetchone()
+        if not row:
+            return {'initial_capital': 100000.0, 'current_capital': 100000.0, 'status': 'stopped', 'start_date': ''}
+        return {'initial_capital': row[0], 'current_capital': row[1], 'status': row[2], 'start_date': row[3]}
+    finally:
+        db.close()
+
+
+def record_paper_trade_settlement(date_str, start_bal, end_bal, net_pnl, symbols_str, costs=0.0, trades_count=1):
+    path = db_path()
+    with closing(sqlite3.connect(path, timeout=5)) as db, db:
+        db.execute('''
+            INSERT OR REPLACE INTO paper_trade_logs(date, start_balance, end_balance, net_pnl, symbols, costs, trades_count, created_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (str(date_str), float(start_bal), float(end_bal), float(net_pnl), str(symbols_str), float(costs), int(trades_count), time.time()))
+        db.execute('UPDATE paper_trade_settings SET current_capital=?, updated_at=? WHERE id=1', (float(end_bal), time.time()))
