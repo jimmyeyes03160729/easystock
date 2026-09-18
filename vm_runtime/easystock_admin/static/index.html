@@ -48,7 +48,7 @@
 <form id="paperTradeForm" style="margin-bottom:16px;">
   <label for="simInitialInput">設定模擬起始本金</label>
   <div class="number" style="display:flex;align-items:center;gap:8px;max-width:320px;margin:8px 0;">
-    <input id="simInitialInput" name="initial_capital" type="number" min="1000" max="100000000" step="10000" value="100000" required>
+    <input id="simInitialInput" name="initial_capital" type="number" min="1000" max="100000000" step="1000" value="100000" required>
     <span>元</span>
   </div>
   <div class="actions" style="display:flex;gap:10px;margin-top:10px;">
@@ -58,7 +58,33 @@
   <p id="simActionStatus" role="status" aria-live="polite" style="font-size:12px;margin-top:8px;"></p>
 </form>
 
-<details open style="margin-top:16px;"><summary style="cursor:pointer;font-weight:bold;">每日結算歷程 (最近 30 日)</summary>
+<!-- 今日持倉狀態 -->
+<div style="margin:20px 0 12px 0;">
+  <div style="font-size:13px;font-weight:bold;color:var(--text,#ddd);margin-bottom:8px;">📌 今日模擬持倉部位</div>
+  <div id="simPositionsContainer" style="font-size:12px;color:var(--muted,#888);">目前無任何持倉部位</div>
+</div>
+
+<!-- 即時決策紀錄與略過原因 -->
+<details open style="margin-top:16px;border:1px solid var(--border,#333);border-radius:6px;padding:12px;">
+  <summary style="cursor:pointer;font-weight:bold;font-size:13px;">📋 今日選股決策與未進場原因紀錄</summary>
+  <table style="width:100%;margin-top:10px;border-collapse:collapse;font-size:12px;">
+    <thead>
+      <tr style="border-bottom:1px solid var(--border,#333);color:var(--muted,#888);text-align:left;">
+        <th style="padding:6px 4px;width:70px;">時間</th>
+        <th style="padding:6px 4px;width:120px;">標的</th>
+        <th style="padding:6px 4px;width:65px;">價格</th>
+        <th style="padding:6px 4px;width:60px;">動作</th>
+        <th style="padding:6px 4px;">決策說明 / 略過原因</th>
+      </tr>
+    </thead>
+    <tbody id="simEventsTableBody">
+      <tr><td colspan="5" style="text-align:center;padding:12px;color:var(--muted,#888);">今日尚無決策紀錄</td></tr>
+    </tbody>
+  </table>
+</details>
+
+<details open style="margin-top:16px;border:1px solid var(--border,#333);border-radius:6px;padding:12px;">
+  <summary style="cursor:pointer;font-weight:bold;font-size:13px;">📊 每日已結算歷程 (最近 30 日)</summary>
   <table style="width:100%;margin-top:10px;border-collapse:collapse;font-size:12px;">
     <thead>
       <tr style="border-bottom:1px solid var(--border,#333);color:var(--muted,#888);text-align:left;">
