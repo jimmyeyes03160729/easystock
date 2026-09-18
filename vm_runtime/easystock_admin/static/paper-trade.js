@@ -39,6 +39,43 @@
     const startEl = document.getElementById('simStartDate');
     if (startEl) startEl.textContent = `起始日期: ${s.start_date || '--'} (本金 ${init.toLocaleString()})`;
 
+    // 渲染持倉部位
+    const posBox = document.getElementById('simPositionsContainer');
+    if (posBox) {
+      if (!data.positions || data.positions.length === 0) {
+        posBox.innerHTML = '<span style="color:var(--muted,#888);">目前無任何持倉部位</span>';
+      } else {
+        posBox.innerHTML = data.positions.map(p => `
+          <div style="background:rgba(255,255,255,0.05);padding:10px 14px;border-radius:6px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(255,255,255,0.1);">
+            <div><strong style="color:#fff;font-size:13px;">${p.symbol} ${p.name}</strong> · ${Number(p.shares).toLocaleString()} 股</div>
+            <div style="color:var(--muted,#aaa);">進場價: <strong style="color:#4ade80;">${p.entry_price}</strong> · 時間: ${p.entry_time}</div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // 渲染今日決策與略過原因
+    const eventsBody = document.getElementById('simEventsTableBody');
+    if (eventsBody) {
+      if (!data.events || data.events.length === 0) {
+        eventsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:12px;color:var(--muted,#888);">今日尚無決策紀錄</td></tr>';
+      } else {
+        eventsBody.innerHTML = data.events.map(ev => {
+          const isBuy = ev.action === '買進';
+          const isSkip = ev.action === '略過';
+          const actColor = isBuy ? '#4ade80' : isSkip ? '#f59e0b' : '#f87171';
+          return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+            <td style="padding:6px 4px;font-family:monospace;">${ev.time}</td>
+            <td style="padding:6px 4px;font-weight:bold;">${ev.symbol} ${ev.name}</td>
+            <td style="padding:6px 4px;">${ev.price}</td>
+            <td style="padding:6px 4px;font-weight:bold;color:${actColor};">${ev.action}</td>
+            <td style="padding:6px 4px;color:${isSkip ? '#fbbf24' : 'inherit'};">${ev.reason}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+
+    // 渲染每日歷史結算紀錄
     const tbody = document.getElementById('simLogsTableBody');
     if (tbody) {
       if (!data.logs || data.logs.length === 0) {
@@ -127,6 +164,6 @@
   document.addEventListener('DOMContentLoaded', () => {
     bindEvents();
     load();
-    setInterval(load, 15000);
+    setInterval(load, 10000);
   });
 })();
