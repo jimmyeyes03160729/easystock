@@ -398,7 +398,7 @@
 
       <div
         id="intradayPickList"
-        class="space-y-1.5 mt-2">
+        class="mt-2">
 
         <div class="text-xs text-sub text-center py-8">
           等待 Shioaji 即時當沖資料…
@@ -3404,7 +3404,12 @@
           ...x,
           _liveStatus: "OPEN"
         })
-      );
+      )
+      .sort((a, b) => {
+        const ta = Date.parse(a.entry_time || "") || 0;
+        const tb = Date.parse(b.entry_time || "") || 0;
+        return tb - ta;
+      });
 
     const closedRows =
       Object.values(
@@ -3513,11 +3518,7 @@
       );
 
 
-    rows =
-      rows.slice(
-        0,
-        6
-      );
+    // rows = rows.slice(0, 6); // 已解除數量限制，自適應網格完整顯示
 
 
     if (!rows.length) {
