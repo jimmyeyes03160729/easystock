@@ -338,3 +338,12 @@ def clear_paper_position(symbol: str):
     path = db_path()
     with closing(sqlite3.connect(path, timeout=5)) as db, db:
         db.execute('DELETE FROM paper_trade_positions WHERE symbol=?', (str(symbol),))
+
+
+def get_paper_position(symbol: str) -> dict | None:
+    path = db_path()
+    with closing(sqlite3.connect(path, timeout=5)) as db:
+        row = db.execute('SELECT symbol, name, entry_price, shares, entry_time FROM paper_trade_positions WHERE symbol=?', (str(symbol),)).fetchone()
+        if row:
+            return {'symbol': row[0], 'name': row[1], 'entry_price': float(row[2]), 'shares': int(row[3]), 'entry_time': row[4]}
+        return None

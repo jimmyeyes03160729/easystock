@@ -25,6 +25,17 @@ def states():
         except Exception:result[unit]={'ActiveState':'unknown'}
     return result
 
+
+# EASYSTOCK_MODEL_STATUS_V2
+def model_application(engine_hash,known_hashes):
+    try:
+        from daytrade_learning.model_status import public_model_application
+        return public_model_application()
+    except Exception:
+        return {'status':'not_applied' if engine_hash in known_hashes else 'unknown',
+                'basis':'reviewed_engine_hash_fallback'}
+
+
 def compute(data,now,service_states,engine_hash,known_hashes):
     errors=[];today=now.date().isoformat();reports=[];labels=[];collection_days=set();observed=set();sample_count=0;last_sample=None
     for p in sorted((data/'reports').glob('*.json')):
@@ -77,7 +88,7 @@ def compute(data,now,service_states,engine_hash,known_hashes):
       'totals':{'collection_days':len(collection_days),'learning_days':len({x['date'] for x in labels}),
                 'training_days':len({x['date'] for x in same}),'training_samples':len(same)},
       'training':{k:training.get(k) for k in ('status','reason','dates','samples','deployment_allowed','trained_through')},
-      'model_application':{'status':'not_applied' if engine_hash in known_hashes else 'unknown','basis':'reviewed_engine_hash'},
+      'model_application':model_application(engine_hash,known_hashes),
       'last_report':{'date':last_report.get('date'),'status':last_report.get('status')}}
 
 def main():
@@ -85,6 +96,65 @@ def main():
     known=read(ROOT/'learning_status_engine_hashes.json',[],[])
     engine_hash=hashlib.sha256((ROOT/'intraday_live.py').read_bytes()).hexdigest()
     result=compute(DATA,datetime.now(TPE),states(),engine_hash,known)
+
+    # ---------------------------------------------------------
+    # Runtime model application status
+    # ---------------------------------------------------------
+    # 不只看 intraday_live.py HASH，也確認目前模型 runtime
+    # 是否真的存在 approved model。
+    try:
+        from daytrade_learning.model_runtime import DaytradeModel
+
+        runtime_model = DaytradeModel()
+        runtime_decision = runtime_model.evaluate({})
+
+        runtime_version = (
+            runtime_decision.get("model_version")
+            or getattr(runtime_model, "model_version", None)
+        )
+
+        runtime_reason = runtime_decision.get("reason")
+
+        if (
+            runtime_reason == "no_approved_model"
+            or runtime_version == "gate-v2-disabled-no-approved-model"
+        ):
+            result["model_application"] = {
+                "status": "not_applied",
+                "basis": "no_approved_model",
+                "model_version": runtime_version,
+            }
+
+        elif (
+            runtime_decision.get("active")
+            and runtime_decision.get("approved")
+        ):
+            result["model_application"] = {
+                "status": (
+                    "applied"
+                    if engine_hash in known
+                    else "unknown"
+                ),
+                "basis": (
+                    "approved_model_and_reviewed_engine"
+                    if engine_hash in known
+                    else "approved_model_engine_unreviewed"
+                ),
+                "model_version": runtime_version,
+            }
+
+    except Exception as exc:
+        result.setdefault(
+            "model_application",
+            {
+                "status": "unknown",
+                "basis": "runtime_check_failed",
+            },
+        )
+        result["model_application"]["runtime_error"] = (
+            f"{type(exc).__name__}: {exc}"
+        )
+
     from firebase_store import FirebaseStore
     store=FirebaseStore()
     o=store.root.child('intraday_picks').get() or {}

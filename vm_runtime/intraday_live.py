@@ -51,6 +51,8 @@ Shioaji：
 
 from __future__ import annotations
 
+from position_manager import PaperWallet
+
 import inspect
 import math
 import os
@@ -78,6 +80,7 @@ from firebase_store import FirebaseStore
 from public_feed import write_public_tick
 from position_manager import PositionManager
 from daytrade_learning.runtime import Recorder
+from daytrade_learning.model_runtime import DaytradeModel, live_features
 from easystock_admin.store import read_live_settings
 from strategy_engine import evaluate_daytrade, clamp
 from paper_trade_game import register_signal, close_signal
@@ -368,18 +371,9 @@ RADAR_MAX_WARM_QUERIES = max(
 )
 
 # 使用者要求：每天最多只產生 3 檔當沖 ENTRY。
-MAX_DAILY_ENTRIES = max(
-    1,
-    min(
-        3,
-        int(
-            os.environ.get(
-                "LIVE_MAX_DAILY_ENTRIES",
-                "3",
-            )
-        ),
-    ),
-)
+paper_wallet = PaperWallet()
+
+MAX_DAILY_ENTRIES = 999
 
 FIREBASE_PRICE_UPDATE_SECONDS = max(
     1.0,
@@ -2798,6 +2792,9 @@ class IntradayLiveEngine:
         self._last_heartbeat = 0.0
         self._force_exit_done = False
         self.learning = Recorder()
+        self.silent_symbols = set()
+        # EASYSTOCK_VALIDATED_MODEL_GATE_V2
+        self.daytrade_model = DaytradeModel()
         self._previous_closes = {}
         self._previous_close_retry = {}
 
@@ -3944,7 +3941,36 @@ class IntradayLiveEngine:
             return
         price, strategy_time = checked
 
-        # 硬性限制：一天最多 3 檔。
+        # EASYSTOCK_VALIDATED_MODEL_GATE_V2
+        stock = self.candidates.get(symbol, {})
+        previous_close = self._previous_closes.get(symbol, (None, None))[1]
+        with self._lock:
+            model_ticks = list(self.radar_ticks.get(symbol, []))
+        feature_row = live_features(
+            price=price,
+            previous_close=previous_close,
+            now_ts=strategy_time.timestamp(),
+            ticks=model_ticks,
+            radar=stock,
+        ) if previous_close else None
+        model_decision = self.daytrade_model.evaluate(feature_row or {})
+        model_reason = None
+        if model_decision.get("active") and model_decision.get("evaluated"):
+            model_probability = float(model_decision["probability"])
+            print(
+                f"[MODEL] {symbol} p={model_probability:.3f} "
+                f"threshold={float(model_decision['threshold']):.3f} "
+                f"version={model_decision.get('model_version')} "
+                f"approved={model_decision.get('approved')}"
+            )
+            if not model_decision.get("approved"):
+                return
+            model_reason = (
+                f"量化模型 {model_probability * 100:.0f}% "
+                f"({model_decision.get('model_version')})"
+            )
+
+        # 硬性限制：一天最多 5 檔。
         # 用 lock 先 reservation，避免多個 Tick callback 同時通過而超過3檔。
         reserved = False
 
@@ -4020,6 +4046,9 @@ class IntradayLiveEngine:
             scanner_reason,
         )
 
+        if model_reason:
+            entry_reasons.insert(1, model_reason)
+
         checked = self.fresh_entry_quote(symbol)
         if checked is None:
             with self._lock:
@@ -4061,6 +4090,37 @@ class IntradayLiveEngine:
 
         self.learning.entry(event)
 
+        # ==========================
+        # 雙軌架構：前台與實盤門檻檢核
+        # ==========================
+        def _check_live_gate(sym, pr):
+            try:
+                st = read_live_settings()
+                lo, hi, cap = (st[k] for k in ("min_price", "max_price", "max_gain_pct"))
+                prev_c = self._previous_closes.get(sym, (None, None))[1]
+                gain_pct = ((pr / prev_c - 1) * 100) if prev_c else 0.0
+                if pr < lo:
+                    return False, f"股價 {pr:.2f} 元低於最低門檻 ({lo:g} 元)"
+                if pr > hi:
+                    return False, f"股價 {pr:.2f} 元高於最高門檻 ({hi:g} 元)"
+                if gain_pct > cap + 1e-9:
+                    return False, f"即時漲幅 {gain_pct:.1f}% 超過上限 ({cap:g}%)"
+                return True, "符合條件"
+            except Exception as _ge:
+                return True, f"檢核例外放行: {_ge}"
+
+        passed_gate, gate_reason = _check_live_gate(symbol, price)
+        if not passed_gate:
+            with self._lock:
+                self.silent_symbols.add(symbol)
+            try:
+                from easystock_admin.store import log_paper_trade_event
+                log_paper_trade_event(symbol, name, price, "略過", f"[後台條件限制] {gate_reason}")
+            except Exception as _log_e:
+                pass
+            print(f"ℹ️ [GATE 略過] {symbol} {name} {price:.2f} 僅供 AI 學習復盤，不推播/不模擬下單：{gate_reason}")
+            return
+
         try:
             self.store.write_entry(
                 event
@@ -4085,6 +4145,10 @@ class IntradayLiveEngine:
                     event.get("trade_id", "")
                 ),
             )
+            try:
+                paper_wallet.try_buy(symbol=symbol, name=name, price=price)
+            except Exception as _p_err:
+                print(f"[PaperWallet Error] ENTRY: {_p_err}")
 
         except Exception as exc:
             print(
@@ -4121,6 +4185,12 @@ class IntradayLiveEngine:
         event: dict,
     ) -> None:
         self.learning.exit(event)
+
+        if symbol in self.silent_symbols:
+            with self._lock:
+                self.silent_symbols.discard(symbol)
+            print(f"ℹ️ [GATE 靜音平倉] {symbol} 已完成 AI 復盤記錄，略過實盤平倉推播")
+            return
 
         try:
             self.store.write_exit(
@@ -4172,6 +4242,10 @@ class IntradayLiveEngine:
                     exit_price=exit_price,
                     reason=reason,
                 )
+                try:
+                    paper_wallet.close_and_settle(symbol=symbol, exit_price=exit_price, exit_reason=reason)
+                except Exception as _p_err:
+                    print(f"[PaperWallet Error] EXIT: {_p_err}")
 
         except Exception as exc:
             print(
