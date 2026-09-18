@@ -14,7 +14,7 @@
   #learningSection .learning-numbers{grid-template-columns:repeat(2,minmax(0,1fr))}
   #learningSection .learning-numbers>div{padding:16px 12px;min-width:0}
   #learningSection .learning-numbers>div:nth-child(2n){border-right:0}
-  #learningSection .learning-numbers>div:nth-child(-n+2){border-bottom:1px dashed var(--border)}
+  #learningSection .learning-numbers>div:nth-child(-n+4){border-bottom:1px dashed var(--border)}
   #learningSection .learning-numbers strong{font-size:clamp(25px,2.3vw,34px);overflow-wrap:anywhere}
   #learningSection .learning-numbers small{line-height:1.7}
   #learningSection .learning-bottom{grid-template-columns:1fr;gap:12px;padding-top:18px}
@@ -34,12 +34,14 @@
   <div class="learning-head"><div><div class="eyebrow">收盤進修 / LEARNING LOG</div><h2 id="learningTitle">牛馬 AI 進修打卡</h2></div></div>
   <div class="learning-columns">
     <article class="learning-column" aria-labelledby="dailyLearningTitle">
-      <header class="learning-column-head"><div><h3 id="dailyLearningTitle">每日資料訓練</h3><p>每天收盤，把今天的經驗留下來。</p></div><span id="learningPhase" class="phase-badge" role="status">等待每日資料</span></header>
+      <header class="learning-column-head"><div><h3 id="dailyLearningTitle">每日資料訓練</h3><p id="dailyLearningDate">等待最近交易日資料</p></div><span id="learningPhase" class="phase-badge" role="status">等待每日資料</span></header>
       <div class="learning-numbers">
         <div><span>累積有效學習日</span><strong id="learnDays">—</strong><small>同一交易日只計一次</small></div>
-        <div><span>今日有效學習股數</span><strong id="learnStocks">—</strong><small>有效樣本中的不重複股票</small></div>
-        <div><span>今日有效樣本</span><strong id="learnSamples">—</strong><small>樣本筆數不等於股票檔數</small></div>
-        <div><span>今日行情收集</span><strong id="learnCoverage">—</strong><small id="learnCoverageNote">等待收盤報告</small></div>
+        <div><span>當日推薦股數</span><strong id="learnStocks">—</strong><small>當沖引擎實際產生的推薦股票</small></div>
+        <div><span>盤中有效觀察股數</span><strong id="learnObserved">—</strong><small>Recorder 實際留下資料的股票</small></div>
+        <div><span>收盤有效學習股數</span><strong id="learnLearned">—</strong><small>完成有效標記的不重複股票</small></div>
+        <div><span>有效標記樣本</span><strong id="learnSamples">—</strong><small>樣本筆數不等於股票檔數</small></div>
+        <div><span>行情收集</span><strong id="learnCoverage">—</strong><small id="learnCoverageNote">等待收盤報告</small></div>
       </div>
       <div class="learning-bottom"><div><b id="learnModel">當沖模型：尚未取得執行狀態</b><p id="learnTraining">訓練進度待確認</p><progress id="learnProgress" max="101" value="0" aria-label="每日資料有效日期進度"></progress></div><div><b id="learnAI">今日 AI 復盤：待確認</b><p id="learnUpdated">尚未收到更新</p><p id="learnError" role="status"></p></div></div>
       <details><summary>每天有資料，就算模型已更新嗎？</summary><p>收集、標記與模型訓練是不同階段。訓練達標後仍需驗證，只有當沖引擎確認載入的版本才算已套用。</p><p id="learnLastReport"></p></details>
@@ -67,11 +69,18 @@
   let busy=false,last=null;
   function render(s){
     const elapsed=Date.now()-Date.parse(s.updated_at),fresh=Number.isFinite(elapsed)&&elapsed>=-60000&&elapsed<180000;
-    const today=s.today?.date===day()?s.today:null,tot=s.totals||{},tr=s.training||{};
+    const today=s.today?.date===day()?s.today:null,session=s.session||today||{},tot=s.totals||{},tr=s.training||{};
+    const sessionDate=session?.date||null;
+    const sessionLabel=sessionDate===day()?'今日交易日':'最近交易日';
+    put('dailyLearningDate',sessionDate?`${sessionLabel}：${sessionDate}`:'等待最近交易日資料');
     put('learningPhase',fresh?({collecting:'盤中收集中',reviewing:'盤後復盤中',training:'模型訓練中',idle:'目前待命',failed:'服務異常',unknown:'執行狀態待確認'})[s.phase]||'狀態待確認':'更新逾時 · 狀態待確認');
-    put('learnDays',fmt(tot.learning_days));put('learnStocks',fmt(today?.learned_stocks));put('learnSamples',fmt(today?.labeled_count));
-    put('learnCoverage',today?.requested!=null?`${fmt(today.downloaded)} / ${fmt(today.requested)}`:'—');
-    put('learnCoverageNote',today?`盤中觀察 ${fmt(today.observed_stocks)} 檔 · ${today.report_status==='partial'?'部分完成':today.report_status==='ready'?'復盤完成':'等待完整報告'}`:'今天尚未收到資料');
+    put('learnDays',fmt(tot.learning_days));
+    put('learnStocks',fmt(session?.recommended_stocks));
+    put('learnObserved',fmt(session?.observed_stocks));
+    put('learnLearned',fmt(session?.learned_stocks));
+    put('learnSamples',fmt(session?.labeled_count));
+    put('learnCoverage',session?.requested!=null?`${fmt(session.downloaded)} / ${fmt(session.requested)}`:'—');
+    put('learnCoverageNote',sessionDate?`盤中觀察 ${fmt(session.observed_stocks)} 檔 · ${session.report_status==='partial'?'部分完成':session.report_status==='ready'?'復盤完成':'等待完整報告'}`:'等待最近交易日資料');
     const app=s.model_application||{};
     /* EASYSTOCK_MODEL_CYCLE_R2 */
     const modelName=app.model_version?` ${app.model_version}`:'';
@@ -80,9 +89,9 @@
     const cycleText={waiting_for_history:'等待 6,600 個有效股票日',waiting_for_archive_lock:'等待歷史下載／實驗釋放資料鎖',building_history_seed:'建立固定歷史種子中',training:'模型訓練與向前驗證中',completed:'本次模型週期完成',blocked:'候選未通過安全條件',paused_for_market_hours:'盤中暫停，避免影響當沖'}[app.cycle_state]||'等待模型週期';
     put('learnTraining',`每日資料：同設定 ${fmt(tot.training_days)} 日、${fmt(tot.training_samples)} 筆 · 歷史模型：${cycleText}`);
     get('learnProgress').value=Math.min(101,tot.training_days||0);
-    put('learnAI',`今日 AI 復盤：${({ok:'完成',failed:'失敗',skipped:'尚未執行'})[today?.ai_status]||'等待資料'}`);
+    put('learnAI',`本交易日 AI 復盤：${({ok:'完成',failed:'失敗',skipped:'尚未執行'})[session?.ai_status]||'等待資料'}`);
     put('learnUpdated',`最後狀態更新：${date(s.updated_at)}`);
-    put('learnLastReport',`最近復盤：${s.last_report?.date||'尚無'} · 累積資料收集日 ${fmt(tot.collection_days)}。未達訓練門檻不代表系統停止收集。`);
+    put('learnLastReport',`最近交易日：${sessionDate||'尚無'} · 推薦 ${fmt(session?.recommended_stocks)} 檔 · 觀察 ${fmt(session?.observed_stocks)} 檔 · 有效學習 ${fmt(session?.learned_stocks)} 檔。最近復盤：${s.last_report?.date||'尚無'} · 累積資料收集日 ${fmt(tot.collection_days)}。`);
     put('learnError',fresh?(s.data_errors?.length?'部分統計檔無法讀取，數值可能不完整。':''):'目前顯示最後收到的資料，不代表服務仍在執行。');
     const o=s.overnight||{};
     put('overnightHealth',`資料來源：Fugle 排程 · 最後掃描 ${date(o.generated_at)} · 原始候選 ${fmt(o.candidate_count)} 檔 · ${o.scan_date===day()?'今日報告':'尚無今日報告'}${o.enabled===false?' · 掃描被停用':''}`);
