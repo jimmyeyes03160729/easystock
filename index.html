@@ -374,13 +374,13 @@
        MARKET + TOP PICKS
        ===================================================== -->
 
-<div class="section-heading ranked-heading" id="intraday-strategies"><h2><span class="section-number">01</span> 當沖</h2><span>盤中即時訊號</span></div><section class="recommendation-section"><div id="daytradeModule" class="panel rounded-2xl p-3">
+<div class="section-heading ranked-heading" id="intraday-strategies"><h2><span class="section-number">01</span> AI 模擬當沖</h2><span>實驗模型・虛擬交易</span></div><section class="recommendation-section"><div id="daytradeModule" class="panel rounded-2xl p-3">
 
       <div
         class="flex items-center justify-between border-b muted-border pb-2">
 
         <div class="font-bold text-xs text-main">
-          即時當沖 <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('daytradeModule','即時當沖')">分享圖片 ↗</button>
+          AI 模擬當沖 <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('daytradeModule','AI 模擬當沖')">分享圖片 ↗</button>
         </div>
 
         <span
@@ -392,8 +392,9 @@
       </div>
 
       <div class="text-[10px] text-sub mt-2">
-        永豐 Shioaji 即時行情 × 5分K × 15分K × VWAP × 量能 × AI市場燈號；
-        09:30 開始、12:30 停止新進場、12:55 強制出場、13:00 完全關閉。
+        永豐 Shioaji 行情 → 瞬間量能雷達 → 11 項特徵 → 歷史 AI 模型判斷模擬進場；
+        20 萬元虛擬帳戶・非真實委託。09:30 起評估、12:30 停止新進場、12:55 強制出場、13:00 結束。
+        AI 模擬版已接線，盤中端到端與真實委託隔離仍待驗收；無今日快照時，不代表正在交易。
       </div>
 
       <div
@@ -401,7 +402,7 @@
         class="mt-2">
 
         <div class="text-xs text-sub text-center py-8">
-          等待 Shioaji 即時當沖資料…
+          等待 AI 模擬當沖資料（尚無當日有效快照）…
         </div>
 
       </div>
@@ -645,7 +646,7 @@
     永豐 Shioaji 負責即時當沖行情，
     Fugle 暫時保留歷史研究與隔日衝資料。
 
-    當沖訊號以 Oracle VM 即時策略為準：
+    AI 模擬當沖以 Oracle VM 發布的有效快照為準；模型分數非勝率，亦不代表真實成交：
     09:30 開始允許進場，
     12:30 停止新進場，
     12:55 強制結束當沖部位，
@@ -885,7 +886,7 @@
   // 舊 Fugle：只保留隔日衝
   let INTRADAY = {};
 
-  // Oracle VM + Shioaji 正式當沖
+  // Oracle VM + Shioaji AI 純模擬當沖（以 VM 有效快照為準）
   let INTRADAY_LIVE = {};
   let LIVE_FETCH_ERROR = '';
   let liveRefreshBusy = false;
