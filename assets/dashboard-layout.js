@@ -68,7 +68,7 @@
   const dual=get('dualReview');
   if(dual){
     dual.querySelector('.eyebrow')?.remove();
-    const detail=disclosure(dual,'展開 Gemini / OpenAI 分析與交叉比對');
+    const detail=disclosure(dual,'展開 OpenAI 每日復盤分析');
     move(['dualFacts'],detail);
     const cards=dual.querySelector('.dual-grid'),compare=dual.querySelector('.dual-compare');
     if(cards)detail.append(cards);if(compare)detail.append(compare);
