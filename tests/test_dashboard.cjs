@@ -54,7 +54,12 @@ run(main);w.onload=null;
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(run('renderLinePickList'),renderer);
   assert(!w.document.getElementById('overnightModule'));
-  assert(w.document.getElementById('recommendationPair').contains(w.document.getElementById('reboundModule')));
+  assert(w.document.getElementById('reboundLayout').contains(w.document.getElementById('reboundModule')));
+  assert(!w.document.getElementById('topPicksModule'));
+  assert(!w.document.getElementById('topPickList'));
+  assert(!w.document.querySelector('a[href="#daily-strategies"]'));
+  assert(w.document.querySelector('a[href="#bottom-rebound"]'));
+  run('renderAllSections()'); // no null access after removing the daily module
   const watchDetails=w.document.querySelector('#reboundWatchSection>details');
   assert(watchDetails&&!watchDetails.open,'technical watchlist collapsed by default');
   assert(!w.document.getElementById('simpleHomeStyle').textContent.includes('height:100%'),'panels must not stretch to the taller sibling');

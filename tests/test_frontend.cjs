@@ -1,5 +1,8 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8');
+assert(!source.includes('id="topPicksModule"'));
+assert(!source.includes('id="topPickList"'));
+assert(!source.includes('function renderTopPicks('));
 const scripts=[...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(x=>x[1]);
 for(const script of scripts)new vm.Script(script);
 const nodes=new Map();
@@ -25,7 +28,6 @@ COMPUTED_STOCKS=all;renderAllSections();const before=document.getElementById('ma
 PRICE_MAX=50;renderAllSections();if(document.getElementById('marketSignalText').textContent!==before)throw Error('Budget changed market');
 const longOnly=fixture('long-only','d');longOnly.selection.strategies.SWING.eligible=false;longOnly.selection.strategies.LONG.eligible=true;
 if(bestStrategyFor(longOnly)!==null)throw Error('Removed LONG strategy recommended');
-if((document.getElementById('topPickList').innerHTML.match(/onclick="openStockDetail/g)||[]).length!==3)throw Error('Top3 sector cap');
 const yesterday=new Date(Date.now()-86400000);
 INTRADAY={scan_date:taiwanDay(yesterday),generated_at:yesterday.toISOString(),session:'close',overnight:[{symbol:'OLD'}]};renderIntradayPicks();
 if(document.getElementById('overnightPickList').innerHTML.includes('OLD') || document.getElementById('overnightPickList').textContent.includes('OLD'))throw Error('Yesterday picks shown');
@@ -43,5 +45,5 @@ for(const x of ['',true,Infinity])if(n(x)!==null)throw Error('Invalid number acc
   await assert.rejects(vm.runInContext('loadSplitSchema()',ctx),/正在更新/);
   vm.runInContext(`fetchJson=async url=>{if(url.endsWith('active_release.json'))return 'A';if(url.endsWith('meta.json'))return {release_id:'A',rule_version:RULE_VERSION,updated_at:taiwanDay()};if(url.endsWith('summary.json'))return {T:{release_id:'A'}};return {};};`,ctx);
   assert.equal((await vm.runInContext('loadSplitSchema()',ctx)).length,1);
-  console.log('PASS frontend: no fallback, full-market regime, sector cap, stale overnight, theme colors, finite numbers, snapshot consistency');
+  console.log('PASS frontend: no fallback, full-market regime, stale overnight, theme colors, finite numbers, snapshot consistency');
 })().catch(e=>{console.error(e);process.exitCode=1});
