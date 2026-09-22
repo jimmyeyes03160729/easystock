@@ -1,108 +1,106 @@
 (() => {
 'use strict';
-const el = id => document.getElementById(id), money = n => Number(n).toFixed(2);
-const FIREBASE_ROOT = 'https://easystock-c237a-default-rtdb.firebaseio.com/market_data';
-
-function node(tag, text, cls) { 
-    const e = document.createElement(tag); 
-    if (text !== undefined) e.textContent = text; 
-    if (cls) e.className = cls; 
-    return e; 
+const el=id=>document.getElementById(id),money=n=>Number(n).toFixed(2);
+const CACHE_KEY='niuma-rebound-0.3';
+let generation=0,lastKey='',cache=new Map();
+try {const saved=JSON.parse(sessionStorage.getItem(CACHE_KEY)||'[]');if(Array.isArray(saved)&&saved.length<=2000)cache=new Map(saved);}catch(_){}
+function saveCache(){try{sessionStorage.setItem(CACHE_KEY,JSON.stringify([...cache]));}catch(_){}}
+function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;}
+function card(r,index,watch){
+ const s=r.stock,t=r.technical,f=r.financial,e=node('article',undefined,'rebound-card');
+ const header=node('div',undefined,'rebound-card-head');header.append(node('span',watch?'資料待補':`TOP ${index+1} · ${t.confirmation==='early'?'初步止跌':'突破確認'}`,'rebound-rank'),node('span',`排序 ${t.score} 分 · 非勝率`,'text-sub'));e.append(header);
+ const quote=node('div',undefined,'rebound-quote');
+ quote.append(node('h3',`${s.symbol} ${s.name||''}`));
+ const price=node('strong',money(s.price)+' 元','rebound-price');
+ price.classList.add(t.dailyChangePct>0?'market-up':t.dailyChangePct<0?'market-down':'text-main');
+ quote.append(price);e.append(quote);
+ const details=node('details'),summary=node('summary','支撐、風險與檢查數據');details.append(summary);
+ details.append(node('p',t.reasons.join(' · '),'text-sub'));
+ const grid=node('dl',undefined,'rebound-levels');
+ for(const [label,value] of [['支撐帶',t.support.map(money).join('～')],['壓力帶',t.resistance.map(money).join('～')],['策略失效價',money(t.invalid)],['觀察目標',money(t.target)]]){grid.append(node('dt',label),node('dd',value));}
+ details.append(grid,node('p',`扣假設來回成本 ${(t.costPct*100).toFixed(1)}% 後空間／風險 ${t.netRR.toFixed(1)} 倍；未扣成本 ${t.rr.toFixed(1)} 倍`,'text-sub'));
+ details.append(node('p','費用為試算；跳空、滑價可能使實際損失超過失效距離。'));
+ e.append(node('p',watch?'基本面待補：'+f.missing.join('、'):'營收、獲利與負債初篩通過；FCF 為輔助資訊',watch?'rebound-warning':'rebound-pass'));
+ for(const c of f.checks)details.append(node('p',`${c.label}：${c.value} · ${c.period||'期間待確認'} · 取得 ${c.observed_at}`));
+ const fcf=(f.optional||[]).find(x=>x.key==='fcf');
+ if(fcf?.status==='positive')details.append(node('p',`自由現金流：${fcf.value}（輔助正向，不作必要門檻）`));
+ else if(fcf?.status==='negative')details.append(node('p',`自由現金流：${fcf.value}（輔助警示，不作必要門檻）`));
+ else details.append(node('p','自由現金流：目前來源未提供可靠欄位，不作淘汰條件。'));
+ details.append(node('p','只檢查最新可用資料，尚未驗證歷史勝率。'));e.append(details);
+ const button=node('button','查看日 K ↗','btn');button.type='button';button.addEventListener('click',()=>{s.rangeRebound=r;openStockDetail(String(s.symbol),'RANGE_REBOUND');});e.append(button);
+ return e;
 }
-
-function card(item, index) {
-    const e = node('article', undefined, 'rebound-card');
-    
-    const header = node('div', undefined, 'rebound-card-head');
-    header.append(node('span', `TOP ${index + 1}`, 'rebound-rank'), node('span', `13:15 波段確認`, 'text-sub'));
-    e.append(header);
-
-    const quote = node('div', undefined, 'rebound-quote');
-    quote.append(node('h3', `${item.symbol} ${item.name || ''}`));
-    const price = node('strong', money(item.price) + ' 元', 'rebound-price text-main');
-    quote.append(price);
-    e.append(quote);
-
-    const details = node('details');
-    details.open = true; 
-    const summary = node('summary', '波段防守與目標價');
-    details.append(summary);
-
-    const grid = node('dl', undefined, 'rebound-levels');
-    grid.append(node('dt', '防守價 (停損)'), node('dd', money(item.stop_loss)));
-    grid.append(node('dt', '目標價 (月線)'), node('dd', money(item.target)));
-    details.append(grid);
-
-    details.append(node('p', '★ 突破昨高 · 收紅K · 近5日報酬轉正', 'rebound-pass'));
-    e.append(details);
-
-    const button = node('button', '查看日 K ↗', 'btn');
-    button.type = 'button';
-    button.addEventListener('click', () => {
-        const mockStock = {
-            symbol: item.symbol,
-            rangeRebound: {
-                stop_loss: item.stop_loss,
-                target: item.target
-            }
-        };
-        if (typeof openStockDetail === 'function') {
-            openStockDetail(String(item.symbol), 'RANGE_REBOUND', mockStock);
-        }
-    });
-    e.append(button);
-
-    return e;
+async function fetchBars(stock){
+ const ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),10000);
+ try {const r=await fetch(stockKlineUrl(stock),{cache:'no-store',signal:ctrl.signal});if(!r.ok)throw new Error('kline');return await r.json();}
+ finally{clearTimeout(timeout);}
 }
-
-async function refresh() {
-    const status = el('reboundStatus'), picks = el('reboundPicks'), watch = el('reboundWatch'), progress = el('reboundProgress');
-    
-    if (picks) picks.replaceChildren();
-    if (watch) watch.replaceChildren();
-    if (el('reboundWatchSection')) el('reboundWatchSection').hidden = true;
-    if (el('reboundDiagnostics')) el('reboundDiagnostics').textContent = '';
-    
-    status.textContent = '正在載入本日 13:15 觸底反彈名單...';
-    if (progress) progress.textContent = '由 Python 模型於雲端運算';
-
-    const tpeTime = new Date(new Date().getTime() + (8 * 60 * 60 * 1000));
-    const todayStr = tpeTime.toISOString().split('T')[0];
-
-    try {
-        const res = await fetch(`${FIREBASE_ROOT}/rebound_picks/${todayStr}.json`, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-
-        if (!data || !Array.isArray(data) || data.length === 0) {
-            status.textContent = '本日 13:15 掃描完畢：沒有符合觸底反彈條件的股票。';
-            return;
-        }
-
-        status.textContent = `本日 13:15 確認：共 ${data.length} 檔符合波段進場條件。`;
-        data.forEach((item, i) => picks.append(card(item, i)));
-
-    } catch (err) {
-        status.textContent = '本日 13:15 尚未產生波段資料，或尚無選股結果。';
-    }
+async function refresh(pool,meta){
+ if(!meta?.updated_at||!Array.isArray(pool)||!pool.length){
+  ++generation;lastKey='';el('reboundPicks').replaceChildren();el('reboundWatch').replaceChildren();
+  el('reboundWatchSection').hidden=true;el('reboundProgress').textContent='';el('reboundDiagnostics').textContent='';
+  el('reboundStatus').textContent=meta?.updated_at?'目前價格篩選範圍內沒有股票。':'等待股票池與日線資料…';return;
+ }
+ const asof=meta.updated_at,key=[meta.release_id,asof,...pool.map(s=>s.symbol)].join('|');
+ if(key===lastKey)return;lastKey=key;const mine=++generation;
+ const status=el('reboundStatus'),picks=el('reboundPicks'),watch=el('reboundWatch'),progress=el('reboundProgress');
+ picks.replaceChildren();watch.replaceChildren();el('reboundWatchSection').hidden=true;
+ const age=RangeRebound.dayNumber(taiwanDay())-RangeRebound.dayNumber(asof);
+ if(!(age>=0&&age<=7)){status.textContent='等待有效的日線資料，暫不推薦。';progress.textContent='';return;}
+ const tally={failed:0,incomplete:0,missing:0,technical:0,short:0,illiquid:0};
+ const jobs=[];const rows=[];const reasons=new Map();
+ const countReason=x=>reasons.set(x,(reasons.get(x)||0)+1);
+ for(const stock of pool){
+  if(!/^\d{4}$/.test(String(stock.symbol))||stock.updated_at!==asof){tally.short++;continue;}
+  if(!Number.isFinite(stock.amount)||stock.amount<5000000){tally.illiquid++;continue;}
+  const f=RangeRebound.financial(stock,asof);
+  if(['failed','unsupported'].includes(f.status)){tally.failed++;f.failed.forEach(countReason);continue;}
+  if(f.status==='incomplete'){tally.incomplete++;f.missing.forEach(x=>countReason('資料待補：'+x));}
+  if(Number.isFinite(stock.kline_count)&&stock.kline_count<RangeRebound.RULES.minBars){tally.short++;continue;}
+  jobs.push({stock,financial:f});
+ }
+ status.textContent='正在檢查支撐、止跌與基本面…';
+ let next=0,done=0;
+ const update=()=>{progress.textContent=`資料 ${asof} · 已檢查 ${done} / ${jobs.length} 檔 · 股票池 ${pool.length} 檔`;};update();
+ async function worker(){
+  while(next<jobs.length&&mine===generation){
+   const r=jobs[next++],cacheKey=`${meta.release_id||asof}:${r.stock.symbol}:${r.stock.price}`;
+   try{
+    let t=cache.get(cacheKey);
+    if(!t){const b=Array.isArray(r.stock.kline)&&r.stock.kline.length?r.stock.kline:await fetchBars(r.stock);if(mine!==generation)return;t=RangeRebound.technical(b,asof,r.stock.price);cache.set(cacheKey,t);}
+    r.technical=t;if(t.eligible)rows.push(r);else {tally.technical++;countReason(t.reason);}
+   }catch(e){tally.missing++;}
+   done++;if(mine===generation)update();
+  }
+ }
+ await Promise.all([worker(),worker(),worker()]);if(mine!==generation)return;
+ const ranked=rows.sort((a,b)=>Number(b.technical.confirmation==='breakout')-Number(a.technical.confirmation==='breakout')||b.technical.score-a.technical.score||String(a.stock.symbol).localeCompare(String(b.stock.symbol)));
+ const selected=ranked.filter(r=>r.financial.status==='passed').slice(0,3),pending=ranked.filter(r=>r.financial.status==='incomplete').slice(0,3);
+ if(selected.length)status.textContent=`本次 ${selected.length} 檔通過試行規則；最多三檔。`;
+ else if(pending.length)status.textContent='有股票形成底部止跌型態，但基本面資料仍不完整，暫不列入正式推薦。';
+ else status.textContent='今天沒有同時形成支撐、止跌與基本面合格的股票，不硬湊三檔。';
+ selected.forEach((r,i)=>picks.append(card(r,i,false)));
+ if(pending.length){el('reboundWatchSection').hidden=false;pending.forEach((r,i)=>watch.append(card(r,i,true)));}
+ el('reboundDiagnostics').textContent=`基本面未達門檻或產業不適用 ${tally.failed} 檔；基本面資料待補 ${tally.incomplete} 檔；日 K／日期不足 ${tally.short} 檔；成交金額不足 ${tally.illiquid} 檔；型態尚未成立 ${tally.technical} 檔；K 線讀取失敗 ${tally.missing} 檔。`;
+ if(tally.missing)status.textContent+=' 部分行情未讀取，本次排序不完整。';
+ el('reboundDiagnostics').textContent+=' 主要原因：'+[...reasons].sort((a,b)=>b[1]-a[1]).slice(0,4).map(([reason,n])=>`${reason} ${n} 檔`).join('；')+'。';
+ if(cache.size>2000)cache.clear();saveCache();
 }
-
-window.RangeReboundUI = {
-    refresh: refresh,
-    chart: (stock, series) => {
-        const r = stock.rangeRebound;
-        if (!r) return;
-        series.createPriceLine({ price: r.stop_loss, color: '#e74c3c', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: '防守價' });
-        series.createPriceLine({ price: r.target, color: '#2ecc71', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: '目標價' });
-    },
-    detail: (stock) => {
-        if(el('stockBacktest')) el('stockBacktest').textContent = '此為 13:15 盤中即時波段確認訊號。';
-    }
+window.RangeReboundUI={refresh:(pool,meta)=>refresh(pool,meta).catch(()=>{el('reboundStatus').textContent='底部反彈檢查暫時失敗，請重新整理。';lastKey='';}),
+ detail(stock){
+  const r=stock.rangeRebound;if(!r)return;
+  el('scoreValue').textContent=r.technical.score;el('scoreLabel').textContent=r.financial.status==='passed'?'底部反彈候選':'基本面待確認';
+  el('scoreQuality').textContent='規則試行 · 排序分不是勝率';el('scoreCircle').style.setProperty('--score',r.technical.score+'%');
+  el('factorGrid').replaceChildren(node('p','支撐 '+r.technical.support.map(money).join('～')+' 元'),node('p','壓力 '+r.technical.resistance.map(money).join('～')+' 元'),node('p','基本面：'+(r.financial.status==='passed'?'營收、獲利、負債初篩通過':r.financial.missing.join('、')+'待確認')));
+  el('modalReason').replaceChildren(...r.technical.reasons.map(x=>node('p','• '+x)));
+  el('stockBacktest').replaceChildren(node('p','底部反彈策略尚無獨立回測與訓練結果，不沿用其他策略的勝率。'));
+ },
+ chart(stock,series){
+  const r=stock.rangeRebound;if(!r)return;
+  const color=getComputedStyle(document.documentElement).getPropertyValue('--main').trim()||'#888888';
+  for(const [title,price] of [['支撐下緣',r.technical.support[0]],['支撐上緣',r.technical.support[1]],['壓力',r.technical.target],['失效',r.technical.invalid]])series.createPriceLine({price,color,lineWidth:1,lineStyle:2,axisLabelVisible:true,title});
+ }
 };
-
-if (el('reboundRetry')) {
-    el('reboundRetry').addEventListener('click', refresh);
-}
-
-refresh();
+el('reboundRetry').addEventListener('click',()=>{lastKey='';cache.clear();saveCache();window.RangeReboundUI.refresh(priceFilteredStocks(),META);});
+if(typeof priceFilteredStocks==='function')window.RangeReboundUI.refresh(priceFilteredStocks(),META);
 })();
