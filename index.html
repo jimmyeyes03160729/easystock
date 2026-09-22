@@ -481,7 +481,7 @@
 <p id="reboundProgress" class="text-sub"></p>
 <div id="reboundPicks" class="rebound-grid"></div>
 <div id="reboundWatchSection" hidden><h3>型態符合，基本面待確認</h3><p class="text-sub">以下是技術觀察名單，尚未列入推薦 TOP 3。</p><div id="reboundWatch" class="rebound-grid"></div></div>
-<details class="rebound-method"><summary>篩選方式與本次檢查結果</summary><p>使用最近 120～252 根日 K，辨識間隔至少 10 個交易日的支撐與壓力觸及；接近支撐後，等待收盤站上前一日高點，價格空間與失效距離至少 2 倍。價格空間尚未扣除交易成本，跳空可能使實際損失超過失效價。</p><p>基本面採試行門檻：單月營收年增不低於 −10%、EPS 與營業利益率為正、負債比低於 65%。資料仍須有官方來源與取得日期；缺少標準化財報季度標籤不再單獨淘汰。自由現金流只作輔助資訊，金融業暫不適用；單月數據不等於長期營運正常。</p><p id="reboundDiagnostics">等待檢查結果。</p><button id="reboundRetry" class="btn" type="button">重新檢查</button></details>
+<details class="rebound-method"><summary>篩選方式與本次檢查結果</summary><p>使用 Firebase 同一版本最近 90～252 根日 K，支撐與壓力至少觸及兩次、相隔至少 7 個交易日、首末跨度至少 14 日。區間至少 10%，價格位於底部 35% 且距支撐不超過 10%，近 8 日需回測支撐。近 3 日突破昨高並守穩者優先；連兩日收高、收紅且收在當日上緣者列為「初步止跌」。今日不可明顯破近期低點。</p><p>扣除假設來回成本 0.6% 後，價格空間／失效風險至少 1.5 倍。這是規則試行，並非已驗證模型或勝率；跳空與滑價可能使實際損失超過失效價。</p><p>基本面初篩：單月營收年增不低於 −20%、EPS 與營業利益率為正、負債比低於 70%。仍要求官方來源、近期取得日期與營收月份；缺財報季度標籤不單獨淘汰，FCF 僅供輔助。金融業不適用。缺必要資料只列觀察名單；單月數據不等於長期營運正常。股票池與價格篩選會影響名單，不保證每天滿三檔。</p><p id="reboundDiagnostics">等待檢查結果。</p><button id="reboundRetry" class="btn" type="button">重新檢查</button></details>
 </section><div class="section-heading ranked-heading" id="market-overview"><h2><span class="section-number"></span> 市場總覽</h2><span>股票池市場狀態</span></div><section class="market-context"><div
       id="marketSignalCard"
       class="panel rounded-2xl p-4">
@@ -848,7 +848,7 @@
 </div>
 
 
-<script src="assets/rebound-engine.js?v=2de049e7ce5c"></script>
+<script src="assets/rebound-engine.js?v=bfd4819e5bc1"></script>
 <script>
 
   /* ========================================================
@@ -5307,7 +5307,7 @@
 <script src="assets/vendor/html2canvas.min.js"></script>
 <script src="assets/module-share.js?v=d047d833f8a3"></script>
 <script src="assets/learning-status.js?v=626bc7006768"></script>
-<script src="assets/rebound-ui.js?v=ee759b13e9c0"></script>
+<script src="assets/rebound-ui.js?v=5ffeb9816ddb"></script>
 <script src="assets/dashboard-layout.js?v=fa54c8d17a8e"></script>
 </body>
 </html>
