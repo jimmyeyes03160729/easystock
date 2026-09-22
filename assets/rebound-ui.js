@@ -1,6 +1,19 @@
 (() => {
 'use strict';
 const el=id=>document.getElementById(id),money=n=>Number(n).toFixed(2);
+if(!el('stockCardInteractionStyle')){
+ const style=document.createElement('style');style.id='stockCardInteractionStyle';
+ style.textContent=`
+ .rebound-card{cursor:pointer;transition:background .15s,border-color .15s;outline-offset:2px}
+ .rebound-card:hover,.rebound-card:focus-visible{outline:2px solid var(--main)}
+ #stockDetailModal:not(.hidden){animation:stockBackdropIn .18s ease-out;background:rgba(0,0,0,.6);backdrop-filter:none}
+ #stockDetailModal .modal-wide{max-width:920px;max-height:90vh;border-radius:14px;border:1px solid var(--border);background:var(--bg)}
+ #stockDetailModal:not(.hidden) .modal-wide,#tradeDialog[open]{animation:stockPanelIn .18s ease-out}
+ @keyframes stockPanelIn{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+ @keyframes stockBackdropIn{from{background:rgba(0,0,0,0)}to{background:rgba(0,0,0,.6)}}
+ @media(prefers-reduced-motion:reduce){#stockDetailModal:not(.hidden),#stockDetailModal:not(.hidden) .modal-wide,#tradeDialog[open]{animation:none}.rebound-card{transition:none}}
+ `;document.head.append(style);
+}
 const CACHE_KEY='niuma-rebound-0.3';
 let generation=0,lastKey='',cache=new Map();
 try {const saved=JSON.parse(sessionStorage.getItem(CACHE_KEY)||'[]');if(Array.isArray(saved)&&saved.length<=2000)cache=new Map(saved);}catch(_){}
@@ -27,7 +40,11 @@ function card(r,index,watch){
  else if(fcf?.status==='negative')details.append(node('p',`自由現金流：${fcf.value}（輔助警示，不作必要門檻）`));
  else details.append(node('p','自由現金流：目前來源未提供可靠欄位，不作淘汰條件。'));
  details.append(node('p','只檢查最新可用資料，尚未驗證歷史勝率。'));e.append(details);
- const button=node('button','查看日 K ↗','btn');button.type='button';button.addEventListener('click',()=>{s.rangeRebound=r;openStockDetail(String(s.symbol),'RANGE_REBOUND');});e.append(button);
+ const open=()=>{s.rangeRebound=r;openStockDetail(String(s.symbol),'RANGE_REBOUND');};
+ e.tabIndex=0;e.setAttribute('aria-label',`${s.symbol} ${s.name||''}：查看日K與反彈選股說明`);
+ e.addEventListener('click',event=>{if(!event.target.closest('button,a,details,input,select,textarea'))open();});
+ e.addEventListener('keydown',event=>{if(event.target===e&&(event.key==='Enter'||event.key===' ')){event.preventDefault();open();}});
+ const button=node('button','查看日 K 與選股說明','btn');button.type='button';button.addEventListener('click',open);e.append(button);
  return e;
 }
 async function fetchBars(stock){
