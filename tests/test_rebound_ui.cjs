@@ -1,0 +1,22 @@
+const {JSDOM}=require('jsdom'),fs=require('node:fs'),assert=require('node:assert/strict');
+const ids=['reboundStatus','reboundPicks','reboundWatch','reboundProgress','reboundWatchSection','reboundDiagnostics','reboundRetry'];
+const dom=new JSDOM(ids.map(x=>`<div id="${x}"></div>`).join(''),{runScripts:'outside-only',url:'https://test.invalid/'}),w=dom.window;
+const rows=Array.from({length:162},(_,i)=>{let c=10+5*(1-Math.abs((i%40)-20)/20),o=c;if(i===161){c=10.5;o=10.05;}return {time:new Date(Date.UTC(2026,0,1+i)).toISOString().slice(0,10),open:o,high:c+.1,low:Math.min(c,o)-.1,close:c};});
+const day=rows.at(-1).time;
+w.taiwanDay=()=>day;w.stockKlineUrl=s=>'/pinned/'+s.symbol;w.openStockDetail=()=>{};
+w.eval(fs.readFileSync('assets/rebound-engine.js','utf8'));
+w.eval(fs.readFileSync('assets/rebound-ui.js','utf8'));
+const stock={symbol:'1234',name:'TEST',price:10.5,updated_at:day,amount:1e7,kline_count:162,rev_yoy:5,eps:1,operating_margin:5,debt_ratio:40,revenue_period:'202605',field_meta:Object.fromEntries(['rev_yoy','eps','operating_margin','debt_ratio'].map(k=>[k,{source:'official-api',as_of:day}]))};
+const txt=id=>w.document.getElementById(id).textContent;
+(async()=>{
+ await w.RangeReboundUI.refresh([],{});assert(txt('reboundStatus').includes('等待'));
+ let calls=0;w.fetch=async url=>{calls++;assert(url.startsWith('/pinned/'));return {ok:true,json:async()=>rows};};
+ await w.RangeReboundUI.refresh([stock],{updated_at:day,release_id:'A'});assert(txt('reboundPicks').includes('TOP 1'));assert(txt('reboundPicks').includes('突破確認'));assert.equal(calls,1);
+ await w.RangeReboundUI.refresh([stock],{updated_at:day,release_id:'A'});assert.equal(calls,1);
+ assert(w.sessionStorage.getItem('niuma-rebound-0.3'));w.eval(fs.readFileSync('assets/rebound-ui.js','utf8'));await w.RangeReboundUI.refresh([stock],{updated_at:day,release_id:'A'});assert.equal(calls,1,'reload reuses versioned session cache');
+ await w.RangeReboundUI.refresh([{...stock,eps:null}],{updated_at:day,release_id:'B'});assert.equal(txt('reboundPicks'),'');assert(txt('reboundWatch').includes('基本面待補'));
+ w.fetch=async()=>({ok:false,status:403});await w.RangeReboundUI.refresh([stock],{updated_at:day,release_id:'C'});assert(txt('reboundStatus').includes('未讀取'));assert(txt('reboundDiagnostics').includes('K 線讀取失敗 1 檔'));
+ w.fetch=async()=>({ok:true,json:async()=>rows});await w.RangeReboundUI.refresh([stock],{updated_at:day,release_id:'D'});assert(txt('reboundPicks').includes('TOP 1'));
+ await w.RangeReboundUI.refresh([],{updated_at:day,release_id:'D'});assert.equal(txt('reboundPicks'),'');assert(txt('reboundStatus').includes('沒有股票'));
+ console.log('PASS rebound UI: waiting, pinned K-line, cache, incomplete fundamentals, read failure, recovery');
+})().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>dom.window.close());
