@@ -7,18 +7,12 @@
   get('overnight-strategies')?.remove();
   document.querySelectorAll('.section-nav a[href="#overnight-strategies"]').forEach(n=>n.remove());
 
-  const daily=get('topPicksModule'),rebound=get('reboundModule');
-  if(daily&&rebound){
-    const oldDaily=daily.closest('.recommendation-section');
-    const heading=get('daily-strategies');
-    const grid=document.createElement('section');grid.id='recommendationPair';grid.setAttribute('aria-label','每日推薦與底部反彈');
-    (heading||oldDaily||daily).before(grid);
-    grid.append(daily,rebound);
-    if(oldDaily&&!oldDaily.children.length)oldDaily.remove();
-    heading?.remove();get('bottom-rebound')?.remove();
-    // Keep previous bookmark targets without duplicating large headings.
-    const dailyAnchor=document.createElement('span');dailyAnchor.id='daily-strategies';daily.prepend(dailyAnchor);
-    const reboundAnchor=document.createElement('span');reboundAnchor.id='bottom-rebound';rebound.prepend(reboundAnchor);
+  const rebound=get('reboundModule');
+  if(rebound){
+    const layout=document.createElement('section');layout.id='reboundLayout';layout.setAttribute('aria-label','底部反彈');
+    rebound.before(layout);layout.append(rebound);
+    get('bottom-rebound')?.remove();
+    const anchor=document.createElement('span');anchor.id='bottom-rebound';rebound.prepend(anchor);
     const title=get('reboundTitle');if(title)title.textContent='底部反彈 TOP 3';
     const watch=get('reboundWatchSection');
     if(watch){
@@ -27,9 +21,8 @@
       while(watch.firstChild)details.append(watch.firstChild);
       watch.append(details);
     }
-    const navDaily=document.querySelector('.section-nav a[href="#daily-strategies"]');
-    if(navDaily)navDaily.textContent='02 每日推薦 / 底部反彈';
-    document.querySelectorAll('.section-nav a[href="#bottom-rebound"]').forEach(n=>n.remove());
+    const nav=document.querySelector('.section-nav a[href="#bottom-rebound"]');
+    if(nav)nav.textContent='02 底部反彈';
   }
 
   const root=get('learningSection');if(!root)return;
@@ -78,25 +71,25 @@
   }
   const style=document.createElement('style');style.id='simpleHomeStyle';
   style.textContent=`
-  #recommendationPair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start;margin:22px 0 30px}
-  #recommendationPair>.panel{min-width:0;padding:20px;margin:0;height:auto;align-self:start}
-  #recommendationPair h2{font-size:18px;line-height:1.6}
-  #recommendationPair #topPickList,#recommendationPair .rebound-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
-  #recommendationPair .share-btn{font-size:11px;white-space:nowrap}
-  #recommendationPair .rebound-module-head{flex-wrap:wrap;gap:8px}
-  #recommendationPair .rebound-card{padding:12px 14px}
-  #recommendationPair .rebound-card h3{margin:7px 0 4px;font-size:16px}
-  #recommendationPair .rebound-price{font-size:21px}
-  #recommendationPair .rebound-quote{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:6px 0}
-  #recommendationPair .rebound-quote h3{min-width:0;overflow-wrap:anywhere;margin:0}
-  #recommendationPair .rebound-quote .rebound-price{white-space:nowrap;flex-shrink:0}
-  #recommendationPair .rebound-card>.btn{padding:4px 8px;font-size:11px;min-height:0}
-  #recommendationPair .rebound-card p{margin:5px 0;line-height:1.5}
-  #recommendationPair .rebound-card details{margin:7px 0}
-  #recommendationPair .rebound-warning,#recommendationPair .rebound-pass{padding:5px 7px}
-  #recommendationPair #reboundWatchSection{margin-top:12px;font-size:12px}
-  #recommendationPair #reboundWatchSection>details>h3{display:none}
-  #daily-strategies,#bottom-rebound{display:block;scroll-margin-top:90px}
+  #reboundLayout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start;margin:22px 0 30px}
+  #reboundLayout>.panel{min-width:0;padding:20px;margin:0;height:auto;align-self:start}
+  #reboundLayout h2{font-size:18px;line-height:1.6}
+  #reboundLayout .rebound-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  #reboundLayout .share-btn{font-size:11px;white-space:nowrap}
+  #reboundLayout .rebound-module-head{flex-wrap:wrap;gap:8px}
+  #reboundLayout .rebound-card{padding:12px 14px}
+  #reboundLayout .rebound-card h3{margin:7px 0 4px;font-size:16px}
+  #reboundLayout .rebound-price{font-size:21px}
+  #reboundLayout .rebound-quote{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:6px 0}
+  #reboundLayout .rebound-quote h3{min-width:0;overflow-wrap:anywhere;margin:0}
+  #reboundLayout .rebound-quote .rebound-price{white-space:nowrap;flex-shrink:0}
+  #reboundLayout .rebound-card>.btn{padding:4px 8px;font-size:11px;min-height:0}
+  #reboundLayout .rebound-card p{margin:5px 0;line-height:1.5}
+  #reboundLayout .rebound-card details{margin:7px 0}
+  #reboundLayout .rebound-warning,#reboundLayout .rebound-pass{padding:5px 7px}
+  #reboundLayout #reboundWatchSection{margin-top:12px;font-size:12px}
+  #reboundLayout #reboundWatchSection>details>h3{display:none}
+  #bottom-rebound{display:block;scroll-margin-top:90px}
   #learningSection{padding:18px 22px}
   #learningSection .learning-head{margin-bottom:12px}
   #learningSection .learning-head h2{font-size:22px;margin:0}
@@ -126,12 +119,13 @@
   #learningSection #dualReview .compact-review-note{font-size:11px;margin:4px 0}
   #learningSection [role=status]:empty{display:none}
   @media(max-width:900px){
-    #recommendationPair{grid-template-columns:1fr}
+    #reboundLayout{grid-template-columns:1fr}
+    #reboundLayout .rebound-grid{grid-template-columns:1fr}
     #learningSection .learning-column{padding:12px 0}
     #learningSection .learning-column+.learning-column{padding:12px 0 0}
     #learningSection #dualReview .dual-head{flex-direction:row;flex-wrap:wrap;gap:8px}
   }
-  @media(max-width:480px){#learningSection{padding:16px}#recommendationPair>.panel{padding:16px}}
+  @media(max-width:480px){#learningSection{padding:16px}#reboundLayout>.panel{padding:16px}}
   `;
   document.head.append(style);
 })();
