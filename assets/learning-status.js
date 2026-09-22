@@ -500,4 +500,40 @@
   setInterval(refresh,60000);
 })();
 
+/* Actual structured feedback and numerical training, independent of prose review. */
+(() => {
+  const parent=document.getElementById('dualOpenaiSummary')?.parentElement;
+  if(!parent)return;
+  const panel=document.createElement('section');panel.setAttribute('aria-label','OpenAI 學習回饋與訓練結果');
+  panel.style.cssText='border-top:1px dashed var(--border);margin-top:18px;padding-top:18px';
+  panel.innerHTML='<h4>學習回饋 → 模擬模型訓練</h4><p id="paperTrainingState">等待實際訓練紀錄</p><p id="paperTrainingCounts"></p><p id="paperTrainingValidation"></p><p id="paperFeedbackState"></p><p id="paperFeedbackSummary"></p><p id="paperTrainingVersion"></p><p id="paperTrainingError" role="status"></p><small>樣本權重經檢查後才用於訓練；不刪除真實虧損。新特徵只保存待驗證。歷史測試不代表明日勝率。</small>';
+  parent.appendChild(panel);
+  const notice=document.getElementById('dualNotice');
+  if(notice)notice.textContent='文字復盤共識只供研究；結構化樣本回饋另外經程式檢查後，供下一次模擬模型訓練。';
+  const put=(id,v)=>{document.getElementById(id).textContent=v;};
+  const fmt=v=>typeof v==='number'&&Number.isFinite(v)?v.toLocaleString('zh-TW'):'—';
+  const date=v=>typeof v==='string'&&Number.isFinite(Date.parse(v))?new Date(v).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'未提供';
+  let busy=false;
+  async function refresh(){
+    if(busy)return;busy=true;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+    try{
+      const response=await fetch(`${FIREBASE_ROOT}/daytrade_learning_status.json`,{cache:'no-store',signal:controller.signal});
+      if(!response.ok)throw new Error('訓練摘要讀取失敗');
+      const status=await response.json(),p=status?.paper_learning;
+      if(!p)throw new Error('等待伺服器發布新訓練摘要');
+      const t=p.training||{},f=p.feedback||{},v=t.validation||{};
+      put('paperTrainingState',`${t.status==='active_for_next_paper_session'?'訓練完成 · 供下一場模擬載入':'尚無完成的訓練紀錄'}｜資料截至 ${t.trained_through||'未提供'}`);
+      put('paperTrainingCounts',`訓練 ${fmt(t.train_samples)} 筆 · 新增盤中樣本 ${fmt(t.forward_samples)} 筆 · 本版實際降權 ${fmt(t.feedback_weighted_samples)} 筆`);
+      put('paperTrainingValidation',`歷史日期切割測試 ${fmt(v.test_samples)} 筆 · Brier 誤差 ${typeof v.brier==='number'?v.brier.toFixed(5):'—'}（越低越好，不是勝率；最終模擬版會再合併資料訓練）`);
+      put('paperFeedbackState',`OpenAI 結構化回饋：${({complete:'完成',failed:'失敗，維持預設權重',waiting_labels:'等待有效標記'})[f.status]||'待確認'} · 樣本日期 ${f.date||'未提供'} · 審查 ${fmt(f.reviewed_samples)} 筆／降權 ${fmt(f.downweighted_samples)} 筆 · 特徵建議 ${fmt(f.feature_proposals)} 項（未套用）`);
+      put('paperFeedbackSummary',f.summary||'尚無結構化回饋；不以文字復盤冒充已訓練。');
+      put('paperTrainingVersion',`版本 ${t.version||'未提供'} · 訓練完成 ${date(t.updated_at)} · 回饋完成 ${date(f.reviewed_at)}`);
+      const age=Date.now()-Date.parse(status.updated_at);
+      put('paperTrainingError',!Number.isFinite(age)||age>180000?'摘要更新逾時：以上為最後紀錄，不代表服務正在執行。':'');
+    }catch(e){put('paperTrainingError',`${e.name==='AbortError'?'讀取逾時':e.message}；保留上次結果。`);}
+    finally{clearTimeout(timer);busy=false;}
+  }
+  refresh();setInterval(refresh,60000);
+})();
+
 /* Simple home R1. Move existing nodes so live updates and share handlers survive. */
