@@ -443,48 +443,7 @@
 <div id="reboundPicks" class="rebound-grid"></div>
 <div id="reboundWatchSection" hidden><h3>型態符合，基本面待確認</h3><p class="text-sub">以下是技術觀察名單，尚未列入推薦 TOP 3。</p><div id="reboundWatch" class="rebound-grid"></div></div>
 <details class="rebound-method"><summary>篩選方式與本次檢查結果</summary><p>使用 Firebase 同一版本最近 90～252 根日 K，支撐與壓力至少觸及兩次、相隔至少 7 個交易日、首末跨度至少 14 日。區間至少 10%，價格位於底部 35% 且距支撐不超過 10%，近 8 日需回測支撐。近 3 日突破昨高並守穩者優先；連兩日收高、收紅且收在當日上緣者列為「初步止跌」。今日不可明顯破近期低點。</p><p>扣除假設來回成本 0.6% 後，價格空間／失效風險至少 1.5 倍。這是規則試行，並非已驗證模型或勝率；跳空與滑價可能使實際損失超過失效價。</p><p>基本面初篩：單月營收年增不低於 −20%、EPS 與營業利益率為正、負債比低於 70%。仍要求官方來源、近期取得日期與營收月份；缺財報季度標籤不單獨淘汰，FCF 僅供輔助。金融業不適用。缺必要資料只列觀察名單；單月數據不等於長期營運正常。股票池與價格篩選會影響名單，不保證每天滿三檔。</p><p id="reboundDiagnostics">等待檢查結果。</p><button id="reboundRetry" class="btn" type="button">重新檢查</button></details>
-</section><div class="section-heading ranked-heading" id="market-overview"><h2><span class="section-number"></span> 市場總覽</h2><span>股票池市場狀態</span></div><section class="market-context"><div
-      id="marketSignalCard"
-      class="panel rounded-2xl p-4">
-
-      <div class="text-[10px] text-sub">
-        股票池市場狀態
-      </div>
-
-      <div class="flex items-center gap-3 mt-2">
-
-        <span
-          id="marketSignalDot"
-          class="w-4 h-4 rounded-full surface">
-        </span>
-
-        <div>
-
-          <div
-            id="marketSignalText"
-            class="text-xl font-bold text-main">
-            計算中
-          </div>
-
-          <div
-            id="marketSignalSub"
-            class="text-[10px] text-sub mt-1">
-            --
-          </div>
-
-        </div>
-
-      </div>
-
-      <div
-        id="marketSignalAdvice"
-        class="text-[11px] mt-3 rounded-xl border muted-border p-2.5 text-sub">
-
-        載入市場廣度與趨勢…
-
-      </div>
-
-    </div></section><section
+</section><section
     id="premarketBriefSection"
     class="panel rounded-2xl p-4">
 
@@ -2216,6 +2175,7 @@
      ======================================================== */
 
   function renderMarketSignal(pool) {
+    if (!document.getElementById("marketSignalCard")) return;
 
     const m =
       evaluateMarket(COMPUTED_STOCKS.filter(validSelection));
@@ -3396,8 +3356,8 @@
 
           const statusClass =
             isOpen
-              ? "text-main muted-border"
-              : "text-main muted-border";
+              ? "trade-open"
+              : "trade-closed";
 
           const reasons =
             Array.isArray(
@@ -3407,7 +3367,7 @@
               : [];
 
           return `
-            <div class="rounded-xl border muted-border p-3 surface">
+            <div class="rounded-xl border muted-border p-3 surface trade-detail-card" role="button" tabindex="0" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(x.name || x.symbol)} 當日K線與選股原因">
 
               <div class="flex items-start justify-between gap-2">
 
@@ -3431,8 +3391,8 @@
                     <span class="text-[8px] border rounded px-1.5 py-0.5 ${statusClass}">
                       ${
                         isOpen
-                          ? "OPEN"
-                          : "CLOSED"
+                          ? "OPEN · 持倉中"
+                          : "CLOSE · 已平倉"
                       }
                     </span>
 
@@ -3571,7 +3531,7 @@
                 x.entry_score != null
                   ? `
                     <div class="text-[9px] text-main mt-2">
-                      量化進場分數：
+                      AI 模型分數（非勝率）：
                       ${escapeHtml(
                         x.entry_score
                       )}
@@ -5057,5 +5017,6 @@
 <script src="assets/learning-status.js?v=72d91f81f87f"></script>
 <script src="assets/rebound-ui.js?v=5ffeb9816ddb"></script>
 <script src="assets/dashboard-layout.js?v=00d13678c126"></script>
+<script src="assets/intraday-chart.js?v=83fde990c304"></script>
 </body>
 </html>
