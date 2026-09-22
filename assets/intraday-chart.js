@@ -7,7 +7,7 @@
  #tradeDialog header{display:flex;align-items:start;justify-content:space-between;gap:16px}#tradeDialog h2{font-size:20px;font-weight:800;margin-bottom:10px}#tradeDialog p,#tradeDialog li{font-size:13px;line-height:1.8}#tradeDialog ul{padding-left:20px;list-style:disc}#tradeDialog svg{width:100%;height:auto;min-width:560px}#tradeChart{overflow-x:auto;margin:14px 0}#tradeDialog button{padding:7px 12px;border:1px solid var(--border,#555);border-radius:6px}#tradeDialog .trade-status{padding:4px 9px;border-radius:5px;display:inline-block}#tradeDialog h3{font-weight:750;margin:14px 0 6px}
  `;document.head.append(style);
  const dialog=document.createElement('dialog');dialog.id='tradeDialog';dialog.setAttribute('aria-labelledby','tradeTitle');
- dialog.innerHTML='<header><div><h2 id="tradeTitle"></h2><span id="tradeStatus" class="trade-status"></span></div><button type="button" aria-label="關閉當日K線">關閉 ✕</button></header><p id="tradeOutcome"></p><p id="tradeChartNote" role="status"></p><div id="tradeChart"></div><h3>為什麼選入這檔？</h3><p id="tradeModelReason"></p><ul id="tradeReasons"></ul><p>圖中紅 K 為上漲、綠 K 為下跌；只顯示已完成的 5 分 K，進出場以模擬成交紀錄為準。</p>';
+ dialog.innerHTML='<header><div><h2 id="tradeTitle"></h2><span id="tradeStatus" class="trade-status"></span></div><button type="button" aria-label="關閉當日K線">關閉 ✕</button></header><p id="tradeOutcome"></p><p id="tradeChartNote" role="status"></p><div id="tradeChart"></div><h3>為什麼選入這檔？</h3><p id="tradeModelReason"></p><ul id="tradeReasons"></ul><p>圖中紅 K 為上漲、綠 K 為下跌；持倉中包含正在形成的 5 分 K，未收完前高低收價仍會變動，進出場以模擬成交紀錄為準。</p>';
  document.body.append(dialog);dialog.querySelector('button').onclick=()=>dialog.close();
  let selected=null,generation=0,controller=null;
  dialog.addEventListener('close',()=>{selected=null;generation++;controller?.abort();});
@@ -30,10 +30,10 @@
  }
  function draw(payload,t){
   const target=document.getElementById('tradeChart');target.replaceChildren();const wanted=day(t.entry_time);
-  const bars=(Array.isArray(payload?.bars)?payload.bars:[]).filter(b=>day(b.time)===wanted&&['open','high','low','close','volume'].every(k=>number(b[k])!==null)&&b.low>0&&b.volume>=0&&b.low<=Math.min(b.open,b.close)&&b.high>=Math.max(b.open,b.close)).sort((a,b)=>Date.parse(a.time)-Date.parse(b.time));
+  const bars=(Array.isArray(payload?.bars)?payload.bars:[]).filter(b=>day(b.time)===wanted&&(!b.forming||t.open)&&['open','high','low','close','volume'].every(k=>number(b[k])!==null)&&b.low>0&&b.volume>=0&&b.low<=Math.min(b.open,b.close)&&b.high>=Math.max(b.open,b.close)).sort((a,b)=>Date.parse(a.time)-Date.parse(b.time));
   if(payload?.date!==wanted||!bars.length){put('tradeChartNote',`${wanted||'該交易日'} 尚無可用的當日K線，等待永豐行情同步。`);return;}
   const age=Date.now()-Date.parse(payload.updated_at),stale=!Number.isFinite(age)||age>180000;
-  put('tradeChartNote',`${wanted} · 永豐行情 · 5 分 K · 更新 ${Number.isFinite(Date.parse(payload.updated_at))?clock(payload.updated_at):'時間未提供'}${t.open&&stale?' · 資料延遲，以下為最後快照':!t.open?' · 已平倉交易紀錄':''}`);
+  put('tradeChartNote',`${wanted} · 永豐行情 · 5 分 K${bars.some(b=>b.forming)?'（最新一根形成中）':''} · 更新 ${Number.isFinite(Date.parse(payload.updated_at))?clock(payload.updated_at):'時間未提供'}${t.open&&stale?' · 資料延遲，以下為最後快照':!t.open?' · 已平倉交易紀錄':''}`);
   const W=800,H=350,left=58,right=690,top=20,bottom=250,range=[...bars.flatMap(b=>[Number(b.low),Number(b.high)]),...['entry_price','exit_price'].map(k=>number(t[k])).filter(x=>x!==null)];
   let lo=Math.min(...range),hi=Math.max(...range),pad=Math.max((hi-lo)*.08,hi*.001);lo-=pad;hi+=pad;
   const start=Date.parse(`${wanted}T09:00:00+08:00`),span=270*60000,x=time=>left+(Date.parse(time)-start)/span*(right-left),y=p=>bottom-(p-lo)/(hi-lo)*(bottom-top),barWidth=7;
@@ -41,7 +41,7 @@
   function add(tag,attrs,text){const el=document.createElementNS(ns,tag);for(const [k,v]of Object.entries(attrs))el.setAttribute(k,String(v));if(text!==undefined)el.textContent=text;svg.append(el);return el;}
   for(let i=0;i<5;i++){const p=lo+(hi-lo)*i/4;add('line',{x1:left,x2:right,y1:y(p),y2:y(p),stroke:'currentColor',opacity:.12});add('text',{x:3,y:y(p)+4,fill:'currentColor','font-size':11},p.toFixed(2));}
   const maxVol=Math.max(1,...bars.map(b=>Number(b.volume)));
-  for(const b of bars){const color=b.close>=b.open?'#f87171':'#34d399',cx=x(b.time)+barWidth/2;add('line',{x1:cx,x2:cx,y1:y(b.high),y2:y(b.low),stroke:color});const rect=add('rect',{x:cx-barWidth/2,y:Math.min(y(b.open),y(b.close)),width:barWidth,height:Math.max(1,Math.abs(y(b.open)-y(b.close))),fill:color});const title=document.createElementNS(ns,'title');title.textContent=`${clock(b.time)} 開 ${b.open} 高 ${b.high} 低 ${b.low} 收 ${b.close} 量 ${b.volume}`;rect.append(title);add('rect',{x:cx-barWidth/2,y:310-b.volume/maxVol*42,width:barWidth,height:b.volume/maxVol*42,fill:color,opacity:.5});}
+  for(const b of bars){const color=b.close>=b.open?'#f87171':'#34d399',cx=x(b.time)+barWidth/2;add('line',{x1:cx,x2:cx,y1:y(b.high),y2:y(b.low),stroke:color});const rect=add('rect',{x:cx-barWidth/2,y:Math.min(y(b.open),y(b.close)),width:barWidth,height:Math.max(1,Math.abs(y(b.open)-y(b.close))),fill:color,opacity:b.forming?.65:1,stroke:b.forming?'#fbbf24':'none','stroke-dasharray':b.forming?'3 2':'none'});const title=document.createElementNS(ns,'title');title.textContent=`${clock(b.time)} 開 ${b.open} 高 ${b.high} 低 ${b.low} 收 ${b.close} 量 ${b.volume}`;rect.append(title);add('rect',{x:cx-barWidth/2,y:310-b.volume/maxVol*42,width:barWidth,height:b.volume/maxVol*42,fill:color,opacity:.5});}
   for(const time of ['09:00','10:00','11:00','12:00','13:00','13:30'])add('text',{x:x(`${wanted}T${time}:00+08:00`),y:335,fill:'currentColor','font-size':11,'text-anchor':'middle'},time);
   for(const [key,when,label,color]of [['entry_price','entry_time','買入','#fbbf24'],['exit_price','exit_time','賣出','#60a5fa']])if(number(t[key])!==null&&day(t[when])===wanted){add('line',{x1:left,x2:right,y1:y(Number(t[key])),y2:y(Number(t[key])),stroke:color,'stroke-dasharray':'4 4'});add('circle',{cx:x(t[when]),cy:y(Number(t[key])),r:5,fill:color});add('text',{x:right+5,y:y(Number(t[key]))+4,fill:color,'font-size':11},`${label} ${price(t[key])}`);}
   target.append(svg);
@@ -56,5 +56,5 @@
  }
  document.addEventListener('click',e=>{const card=e.target.closest('[data-trade-symbol]');if(card)open(card);});
  document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-trade-symbol]')){e.preventDefault();open(e.target);}});
- setInterval(()=>{if(selected&&dialog.open){const latest=trades().find(t=>t.symbol===selected.symbol&&t.entry_time===selected.entry_time);if(latest)selected=latest;refresh(selected);}},60000);
+ setInterval(()=>{if(selected&&dialog.open){const latest=trades().find(t=>t.symbol===selected.symbol&&t.entry_time===selected.entry_time);if(latest)selected=latest;refresh(selected);}},15000);
 })();
