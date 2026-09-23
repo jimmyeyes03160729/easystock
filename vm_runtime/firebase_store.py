@@ -439,15 +439,22 @@ class FirebaseStore:
         }
 
 
-        self.live.child(
-            "open_positions"
-        ).child(
-            symbol
-        ).update(
-            safe_value(
-                payload
-            )
-        )
+        # Price ticks must never create OPEN records: the paper BUY may still
+        # be pending/skipped, or a delayed tick may arrive after EXIT.
+        trade_id = position.get("trade_id")
+        entry_time = safe_value(position.get("entry_time"))
+        if not trade_id or not entry_time:
+            raise ValueError("OPEN price update requires entry identity")
+        clean_payload = safe_value(payload)
+        def update_existing(current):
+            if not isinstance(current, dict):
+                return current
+            if (current.get("status") != "OPEN"
+                    or current.get("trade_id") != trade_id
+                    or current.get("entry_time") != entry_time):
+                return current
+            return {**current, **clean_payload}
+        self.live.child("open_positions").child(symbol).transaction(update_existing)
 
 
     # =====================================================

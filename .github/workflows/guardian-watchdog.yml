@@ -1,0 +1,29 @@
+name: EasyStock External Guardian Watchdog
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/guardian-watchdog.yml'
+      - 'ops/guardian/**'
+  schedule:
+    # Taiwan 08:00-14:59 on weekdays, plus an hourly VM-offline check.
+    - cron: '*/5 0-6 * * 1-5'
+    - cron: '17 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: easystock-external-watchdog
+  cancel-in-progress: false
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Check independent public guardian heartbeat
+        run: python3 ops/guardian/external_watch.py
+      - name: Offline recovery policy regression tests
+        if: github.event_name == 'push'
+        run: python3 ops/guardian/test_guardian.py
