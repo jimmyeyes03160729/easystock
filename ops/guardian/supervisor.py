@@ -44,6 +44,11 @@ def publish(payload):
     except subprocess.TimeoutExpired:
         return False
 
+def worker_running():
+    # A Type=oneshot controller remains "activating" for its entire execution.
+    state=subprocess.run(['systemctl','show','easystock-guardian-worker.service','-p','ActiveState','--value'],capture_output=True,text=True,check=True,timeout=10).stdout.strip()
+    return state in ('active','activating','deactivating')
+
 def tick():
     retry_pending()
     conf = read_json('/etc/easystock-guardian/config.json')
@@ -66,7 +71,7 @@ def tick():
             send('【當沖守護】偵測到異常\n'+', '.join(errors)+'\n正在核對服務、資料時間與模擬帳本。',incident['id']+':detected')
             day = stamp.date().isoformat()
             pending = read_json(STATE/'worker-state.json',{})
-            worker_active = subprocess.run(['systemctl','is-active','--quiet','easystock-guardian-worker.service']).returncode==0
+            worker_active = worker_running()
             if (conf.get('enabled') and not worker_active and not incident.get('job_started')
                     and data['jobs_by_day'].get(day,0) < conf['max_jobs_per_day']):
                 job = {'id':incident['id'],'incident_key':key,'created_at':stamp.isoformat(),'issues':errors,'snapshot':s,'logs':clean_logs()}

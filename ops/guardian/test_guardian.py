@@ -10,6 +10,7 @@ import common
 from common import TPE, classify, permitted_actions
 import live
 import worker
+import supervisor
 
 CAL={'year':2026,'closed':['2026-09-25','2026-09-28']}
 def stamp(day='2026-09-23',time='10:00:00'):
@@ -20,6 +21,12 @@ def healthy():
             'ledger_mismatch':False,'ghost_symbols':[],'syntax_errors':[],'orders_enabled':False}
 
 class Policy(unittest.TestCase):
+    def test_oneshot_worker_blocks_second_incident(self):
+        for state in ('active','activating','deactivating'):
+            with patch.object(supervisor.subprocess,'run',lambda *a,**kw:type('R',(),{'stdout':state})()):
+                self.assertTrue(supervisor.worker_running())
+        with patch.object(supervisor.subprocess,'run',lambda *a,**kw:type('R',(),{'stdout':'inactive'})()):
+            self.assertFalse(supervisor.worker_running())
     def test_healthy(self):self.assertEqual(classify(healthy(),stamp(),CAL),[])
     def test_holiday(self):self.assertEqual(classify({},stamp('2026-09-25'),CAL),[])
     def test_weekend(self):self.assertEqual(classify({},stamp('2026-09-26'),CAL),[])
