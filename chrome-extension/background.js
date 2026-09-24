@@ -153,17 +153,18 @@ export async function updateMarketStatusIcon(data, now = Date.now(), explicitTai
   const marketLevel = data?.live?.market_level || (isMarketOpen ? 'GREEN' : 'UNKNOWN');
 
   const tInfo = explicitTaiex || data?.taiex;
-  let taiexLine = '加權指數：讀取中...';
+  const statusTag = isMarketOpen ? '' : ' (已收盤)';
+  let taiexLine = isMarketOpen ? '加權指數：讀取中...' : '加權指數：休市中';
   let otcLine = '';
   let badgeText = '休';
   let badgeColor = '#64748b';
 
   if (tInfo && typeof tInfo.price === 'number') {
     const sign = tInfo.change >= 0 ? '+' : '';
-    taiexLine = `加權指數：${tInfo.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${sign}${tInfo.change.toFixed(2)} / ${sign}${tInfo.change_pct.toFixed(2)}%)`;
+    taiexLine = `加權指數：${tInfo.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${sign}${tInfo.change.toFixed(2)} / ${sign}${tInfo.change_pct.toFixed(2)}%)${statusTag}`;
     if (typeof tInfo.otc_price === 'number') {
       const oSign = tInfo.otc_change >= 0 ? '+' : '';
-      otcLine = `櫃買指數：${tInfo.otc_price.toFixed(2)} (${oSign}${tInfo.otc_change.toFixed(2)} / ${oSign}${tInfo.otc_change_pct.toFixed(2)}%)`;
+      otcLine = `櫃買指數：${tInfo.otc_price.toFixed(2)} (${oSign}${tInfo.otc_change.toFixed(2)} / ${oSign}${tInfo.otc_change_pct.toFixed(2)}%)${statusTag}`;
     }
   }
 
@@ -199,23 +200,10 @@ export async function updateMarketStatusIcon(data, now = Date.now(), explicitTai
     badgeColor = '#64748b';
   }
 
-  let levelText = '資料準備中';
-  if (isMarketOpen) {
-    if (marketLevel === 'GREEN') levelText = '多方強勢 (綠燈)';
-    else if (marketLevel === 'RED') levelText = '空方保守 (紅燈警戒)';
-    else levelText = '區間震盪 (黃燈中性)';
-  } else {
-    levelText = '非盤中交易時段 (已收盤)';
-  }
-
   const titleLines = [
-    `EasyStock 台股策略監控`,
+    `EasyStock 台股加權指數`,
     taiexLine,
-    ...(otcLine ? [otcLine] : []),
-    `大盤趨勢：${levelText}`,
-    `盤中狀態：${isMarketOpen ? '連續撮合中 (09:00-13:30)' : '已收盤 / 休息中'}`,
-    `當沖持倉：${openPos.length} 檔｜今日平倉：${closedCount} 筆`,
-    `最後更新：${tInfo?.time || timeStr}`
+    ...(otcLine ? [otcLine] : [])
   ];
 
   try {
