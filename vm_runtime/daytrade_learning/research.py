@@ -102,7 +102,17 @@ def collect(api, data, day, observations, max_symbols=500):
                 rows=api.scanners(scanner_type=getattr(sj.ScannerType,name),date=day,count=200,ascending=True,timeout=30000)
                 for r in rows:
                     code=str(getattr(r,'code',''))
-                    if str(getattr(r,'date',''))==day and len(code)==4 and code.isdigit():scanned.add(code)
+                    if str(getattr(r,'date',''))==day and len(code)==4 and code.isdigit():
+                        stocks=getattr(getattr(api,'Contracts',None),'Stocks',None)
+                        if stocks:
+                            in_contracts=False
+                            for ex in ('TSE','OTC'):
+                                try:
+                                    if code in getattr(stocks,ex):
+                                        in_contracts=True;break
+                                except Exception:pass
+                            if not in_contracts:continue
+                        scanned.add(code)
                 break
             except Exception as exc:
                 detail=collection_error(exc,'scanner',attempt)
