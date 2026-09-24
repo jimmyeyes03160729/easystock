@@ -217,17 +217,30 @@ test('background behavior', async t => {
         closed_trades: [{ symbol: '2317' }]
       }
     };
-    await bg.updateMarketStatusIcon(openData, now);
-    assert.ok(titleSet.includes('EasyStock 台股策略監控'));
-    assert.ok(titleSet.includes('多方強勢 (綠燈)'));
-    assert.ok(titleSet.includes('當沖持倉：1 檔'));
-    assert.equal(badgeText, '1');
+    const openDataWithTaiex = {
+      ...openData,
+      taiex: { price: 22800.5, change: 150.2, change_pct: 0.66, otc_price: 270.1, otc_change: 1.2, otc_change_pct: 0.45 }
+    };
+    await bg.updateMarketStatusIcon(openDataWithTaiex, now);
+    assert.ok(titleSet.includes('加權指數：22,800.50 (+150.20 / +0.66%)'));
+    assert.ok(titleSet.includes('櫃買指數：270.10 (+1.20 / +0.45%)'));
+    assert.equal(badgeText, '+150');
     assert.equal(badgeColor, '#ef4444');
+
+    // Negative taiex change
+    const openDataDown = {
+      ...openData,
+      taiex: { price: 22600.0, change: -85.5, change_pct: -0.38 }
+    };
+    await bg.updateMarketStatusIcon(openDataDown, now);
+    assert.ok(titleSet.includes('加權指數：22,600.00 (-85.50 / -0.38%)'));
+    assert.equal(badgeText, '-85');
+    assert.equal(badgeColor, '#22c55e');
 
     // Closed market test
     const offHours = Date.parse('2026-09-17T20:00:00+08:00');
-    await bg.updateMarketStatusIcon(openData, offHours);
-    assert.ok(titleSet.includes('休市'));
+    await bg.updateMarketStatusIcon(openDataWithTaiex, offHours);
+    assert.ok(titleSet.includes('已收盤'));
     assert.equal(badgeText, '休');
     delete chrome.action;
   });

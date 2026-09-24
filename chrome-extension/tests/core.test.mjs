@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { taipei, marketOpen, fresh, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter, BUILTIN_STOCKS, searchStocks } from '../core.js';
+import { taipei, marketOpen, fresh, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter, BUILTIN_STOCKS, searchStocks, searchOnlineStocks } from '../core.js';
 const at = s => Date.parse(s);
 const now = at('2026-09-17T09:30:00+08:00');
 const sample = { id: 'a', symbol: '2330', market: 'TW', name: '台積電', price: 1000, change_pct: 1, reason: '爆量', generated_at: '2026-09-17T09:29:00+08:00', quote_at: '2026-09-17T09:29:00+08:00' };
@@ -138,4 +138,33 @@ test('searchStocks finds stocks by Chinese name, code, prefix, and dynamic codes
   const withExtra = searchStocks('微星', { '2377': { name: '微星' } });
   assert.equal(withExtra[0].symbol, '2377');
   assert.equal(withExtra[0].name, '微星');
+});
+test('searchOnlineStocks queries online autocomplete API and registers results', async () => {
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async url => {
+    assert.ok(url.includes('AutocompleteService'));
+    return new Response(JSON.stringify({
+      ResultSet: {
+        Result: [
+          { symbol: '2645.TW', name: '長榮航太', typeDisp: '權益' },
+          { symbol: '068299.TW', name: '長榮航太認購', typeDisp: '認購' },
+          { symbol: '8069.TWO', name: '元太', typeDisp: '權益' }
+        ]
+      }
+    }));
+  };
+  try {
+    const list = await searchOnlineStocks('長榮航太');
+    assert.equal(list.length, 2);
+    assert.equal(list[0].symbol, '2645');
+    assert.equal(list[0].name, '長榮航太');
+    assert.equal(list[0].market, 'TW');
+    assert.equal(list[1].symbol, '8069');
+    assert.equal(list[1].market, 'TWO');
+
+    const syncFind = searchStocks('長榮航太');
+    assert.ok(syncFind.some(s => s.symbol === '2645' && s.name === '長榮航太'));
+  } finally {
+    globalThis.fetch = origFetch;
+  }
 });

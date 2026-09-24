@@ -82,10 +82,23 @@ export const BUILTIN_STOCKS = [
   { symbol: '2912', name: '統一超', market: 'TW' }
 ];
 
+const DYNAMIC_STOCKS = new Map();
+
+export function registerStocks(stocks) {
+  if (Array.isArray(stocks)) {
+    for (const s of stocks) {
+      if (s?.symbol && s?.market && s?.name) {
+        DYNAMIC_STOCKS.set(s.symbol, { symbol: s.symbol, market: s.market, name: s.name });
+      }
+    }
+  }
+}
+
 export function searchStocks(query, extraQuotes = {}) {
   const q = String(query || '').trim().toUpperCase();
   const pool = new Map();
   for (const s of BUILTIN_STOCKS) pool.set(s.symbol, { ...s });
+  for (const [sym, s] of DYNAMIC_STOCKS.entries()) pool.set(sym, { ...s });
   if (plain(extraQuotes)) {
     for (const [sym, item] of Object.entries(extraQuotes)) {
       if (!pool.has(sym)) {
@@ -117,6 +130,45 @@ export function searchStocks(query, extraQuotes = {}) {
     }
   }
   return results.slice(0, 15);
+}
+
+export async function searchOnlineStocks(query) {
+  const q = String(query || '').trim();
+  if (!q) return [];
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const url = `https://tw.stock.yahoo.com/_td-stock/api/resource/AutocompleteService;query=${encodeURIComponent(q)}`;
+    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const rawList = json?.ResultSet?.Result;
+    if (!Array.isArray(rawList)) return [];
+
+    const results = [];
+    const seen = new Set();
+    for (const item of rawList) {
+      if (!item?.symbol) continue;
+      const m = /^(\d{4,6}[A-Z]?)\.(TW|TWO)$/i.exec(item.symbol);
+      if (!m) continue;
+      const sym = m[1].toUpperCase();
+      if (sym.length > 5 && !sym.startsWith('00')) continue;
+      if (item.typeDisp === '認購' || item.typeDisp === '認售') continue;
+      if (seen.has(sym)) continue;
+      seen.add(sym);
+      results.push({
+        symbol: sym,
+        market: m[2].toUpperCase(),
+        name: String(item.name || sym).trim()
+      });
+    }
+    if (results.length > 0) registerStocks(results);
+    return results.slice(0, 15);
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
 }
 export function taipei(now = Date.now()) {
   const d = new Date(now + 8 * 3600000);

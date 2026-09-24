@@ -44,6 +44,84 @@ export async function remoteConfig(now = Date.now()) {
   await write('configCache', { at: now, value });
   return value;
 }
+export async function fetchTaiexIndex() {
+  if (VM_MODE) {
+    return {
+      price: 22800.00,
+      change: 120.50,
+      change_pct: 0.53,
+      time: '13:30:00',
+      otc_price: 268.50,
+      otc_change: 1.20,
+      otc_change_pct: 0.45
+    };
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const res = await fetch('https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_t00.tw|otc_o00.tw&json=1&delay=0', {
+      signal: controller.signal,
+      cache: 'no-store'
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const arr = json?.msgArray;
+    if (!Array.isArray(arr)) return null;
+
+    const tse = arr.find(m => m && m.c === 't00');
+    const otc = arr.find(m => m && m.c === 'o00');
+
+    let tseData = null, otcData = null;
+    if (tse) {
+      const price = parseFloat(tse.z || tse.y);
+      const prev = parseFloat(tse.y);
+      if (Number.isFinite(price) && Number.isFinite(prev) && prev > 0) {
+        const change = price - prev;
+        const change_pct = (change / prev) * 100;
+        tseData = {
+          price,
+          change,
+          change_pct,
+          time: tse.t || '',
+          high: parseFloat(tse.h) || price,
+          low: parseFloat(tse.l) || price
+        };
+      }
+    }
+    if (otc) {
+      const price = parseFloat(otc.z || otc.y);
+      const prev = parseFloat(otc.y);
+      if (Number.isFinite(price) && Number.isFinite(prev) && prev > 0) {
+        const change = price - prev;
+        const change_pct = (change / prev) * 100;
+        otcData = {
+          price,
+          change,
+          change_pct,
+          time: otc.t || ''
+        };
+      }
+    }
+
+    if (!tseData) return null;
+    return {
+      price: tseData.price,
+      change: tseData.change,
+      change_pct: tseData.change_pct,
+      time: tseData.time,
+      high: tseData.high,
+      low: tseData.low,
+      otc_price: otcData?.price,
+      otc_change: otcData?.change,
+      otc_change_pct: otcData?.change_pct
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function feeds(now, forced = false) {
   const cache = await read('feedCache', null);
   if (cache && now >= cache.at && now - cache.at < TTL) return cache;
@@ -52,16 +130,21 @@ async function feeds(now, forced = false) {
   if (!forced && !marketOpen(now)) return cache || { quotes: {}, live: {} };
   await write('feedAttempt', now);
   try {
-    const [quotes, live] = VM_MODE ? [{ '2330': { name: '台積電（VM 示例）', price: 1000, change_pct: 1.25, updated_at: new Date(now).toISOString() } }, {}] :
-      await Promise.all([json(`${FIREBASE_ROOT}/public_feed.json`), json(`${FIREBASE_ROOT}/intraday_live.json`)]);
+    const [quotes, live, taiex] = VM_MODE ?
+      [{ '2330': { name: '台積電（VM 示例）', price: 1000, change_pct: 1.25, updated_at: new Date(now).toISOString() } }, {}, { price: 22800.00, change: 120.50, change_pct: 0.53, time: '13:30:00' }] :
+      await Promise.all([
+        json(`${FIREBASE_ROOT}/public_feed.json`),
+        json(`${FIREBASE_ROOT}/intraday_live.json`),
+        fetchTaiexIndex().catch(() => null)
+      ]);
     if (!plain(quotes) || !plain(live)) throw new Error('行情格式不符');
-    const value = { at: now, quotes, live };
+    const value = { at: now, quotes, live, taiex: taiex || cache?.taiex || null };
     await write('feedCache', value);
     safe(updateMarketStatusIcon(value, now));
     return value;
   } catch { return { ...(cache || { quotes: {}, live: {} }), error: '行情暫時無法更新；舊報價僅供檢視' }; }
 }
-export async function updateMarketStatusIcon(data, now = Date.now()) {
+export async function updateMarketStatusIcon(data, now = Date.now(), explicitTaiex = null) {
   if (!chrome.action || typeof chrome.action.setTitle !== 'function') return;
   const isMarketOpen = marketOpen(now);
   const timeStr = new Date(now).toLocaleTimeString('zh-TW', { hour12: false });
@@ -69,40 +152,74 @@ export async function updateMarketStatusIcon(data, now = Date.now()) {
   const closedCount = data?.live?.closed_trades ? (Array.isArray(data.live.closed_trades) ? data.live.closed_trades.length : Object.keys(data.live.closed_trades).length) : 0;
   const marketLevel = data?.live?.market_level || (isMarketOpen ? 'GREEN' : 'UNKNOWN');
 
-  let levelText = '資料準備中';
+  const tInfo = explicitTaiex || data?.taiex;
+  let taiexLine = '加權指數：讀取中...';
+  let otcLine = '';
   let badgeText = '休';
   let badgeColor = '#64748b';
 
+  if (tInfo && typeof tInfo.price === 'number') {
+    const sign = tInfo.change >= 0 ? '+' : '';
+    taiexLine = `加權指數：${tInfo.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${sign}${tInfo.change.toFixed(2)} / ${sign}${tInfo.change_pct.toFixed(2)}%)`;
+    if (typeof tInfo.otc_price === 'number') {
+      const oSign = tInfo.otc_change >= 0 ? '+' : '';
+      otcLine = `櫃買指數：${tInfo.otc_price.toFixed(2)} (${oSign}${tInfo.otc_change.toFixed(2)} / ${oSign}${tInfo.otc_change_pct.toFixed(2)}%)`;
+    }
+  }
+
   if (isMarketOpen) {
-    if (marketLevel === 'GREEN') {
-      levelText = '多方強勢 (綠燈)';
-      badgeText = openPos.length > 0 ? String(openPos.length) : '多';
-      badgeColor = '#ef4444';
-    } else if (marketLevel === 'RED') {
-      levelText = '空方保守 (紅燈警戒)';
-      badgeText = '空';
-      badgeColor = '#22c55e';
+    if (tInfo && typeof tInfo.change === 'number') {
+      if (tInfo.change > 0) {
+        badgeText = `+${Math.abs(Math.round(tInfo.change))}`;
+        badgeColor = '#ef4444';
+      } else if (tInfo.change < 0) {
+        badgeText = `-${Math.abs(Math.round(tInfo.change))}`;
+        badgeColor = '#22c55e';
+      } else {
+        badgeText = '平';
+        badgeColor = '#f59e0b';
+      }
+      if (badgeText.length > 4) {
+        badgeText = tInfo.change >= 0 ? `+${tInfo.change_pct.toFixed(1)}%` : `${tInfo.change_pct.toFixed(1)}%`;
+      }
     } else {
-      levelText = '區間震盪 (黃燈中性)';
-      badgeText = openPos.length > 0 ? String(openPos.length) : '震';
-      badgeColor = '#f59e0b';
+      if (marketLevel === 'GREEN') {
+        badgeText = openPos.length > 0 ? String(openPos.length) : '多';
+        badgeColor = '#ef4444';
+      } else if (marketLevel === 'RED') {
+        badgeText = '空';
+        badgeColor = '#22c55e';
+      } else {
+        badgeText = openPos.length > 0 ? String(openPos.length) : '震';
+        badgeColor = '#f59e0b';
+      }
     }
   } else {
-    levelText = '非盤中交易時段 (休市)';
     badgeText = '休';
     badgeColor = '#64748b';
   }
 
-  const title = [
+  let levelText = '資料準備中';
+  if (isMarketOpen) {
+    if (marketLevel === 'GREEN') levelText = '多方強勢 (綠燈)';
+    else if (marketLevel === 'RED') levelText = '空方保守 (紅燈警戒)';
+    else levelText = '區間震盪 (黃燈中性)';
+  } else {
+    levelText = '非盤中交易時段 (已收盤)';
+  }
+
+  const titleLines = [
     `EasyStock 台股策略監控`,
-    `大盤狀態：${levelText}`,
-    `盤中時段：${isMarketOpen ? '連續撮合中 (09:00-13:30)' : '已收盤 / 休息中'}`,
+    taiexLine,
+    ...(otcLine ? [otcLine] : []),
+    `大盤趨勢：${levelText}`,
+    `盤中狀態：${isMarketOpen ? '連續撮合中 (09:00-13:30)' : '已收盤 / 休息中'}`,
     `當沖持倉：${openPos.length} 檔｜今日平倉：${closedCount} 筆`,
-    `最後更新：${timeStr}`
-  ].join('\n');
+    `最後更新：${tInfo?.time || timeStr}`
+  ];
 
   try {
-    await chrome.action.setTitle({ title });
+    await chrome.action.setTitle({ title: titleLines.join('\n') });
     if (chrome.action.setBadgeText) {
       await chrome.action.setBadgeText({ text: badgeText });
       await chrome.action.setBadgeBackgroundColor({ color: badgeColor });
@@ -231,7 +348,7 @@ async function snapshot(refresh = false) {
   const day = ledger(await read('ledger', null), now);
   safe(updateMarketStatusIcon(data, now));
   return { stocks: st.stocks, settings: st.settings, vip: isVIP(c, st.vipHash), vm: VM_MODE,
-    quotes: data.quotes, live: data.live || {}, updatedAt: data.at || null, error: configError || data.error || '',
+    quotes: data.quotes, live: data.live || {}, taiex: data.taiex || null, updatedAt: data.at || null, error: configError || data.error || '',
     marketOpen: marketOpen(now, c?.market_holidays), used: day.count,
     bounce: (c?.bounce_strategy_signals || []).map(x => signal(x, 'rebound', now)).filter(Boolean),
     paymentURL: c?.payment_gateway_url || '' };

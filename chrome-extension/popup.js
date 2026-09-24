@@ -1,8 +1,9 @@
-import { SYMBOL, GROUPS, finite, fresh, watchlist, chartURL, searchStocks } from './core.js';
+import { SYMBOL, GROUPS, finite, fresh, watchlist, chartURL, searchStocks, searchOnlineStocks } from './core.js';
 import { icons } from './icons.js';
 
 const $ = id => document.getElementById(id);
 let view, group = 'all', pending = false;
+let searchDebounce = null;
 const label = { daytrade: '當沖監控', rebound: '觸底反彈' };
 function el(tag, text, className = '') {
   const node = document.createElement(tag); node.textContent = text; node.className = className; return node;
@@ -13,6 +14,27 @@ function status(text, error = false) {
   $('update-timestamp').classList.toggle('text-red-600', error);
   $('action-message').textContent = text;
   $('action-message').classList.toggle('text-red-600', error);
+}
+function renderTaiex() {
+  const tInfo = view?.taiex;
+  if (!tInfo || !finite(tInfo.price)) {
+    $('taiex-price').textContent = '-';
+    $('taiex-change').textContent = '-';
+    $('otc-price').textContent = '-';
+    $('otc-change').textContent = '-';
+    return;
+  }
+  const sign = tInfo.change >= 0 ? '+' : '';
+  $('taiex-price').textContent = tInfo.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  $('taiex-change').textContent = `${sign}${tInfo.change.toFixed(2)} (${sign}${tInfo.change_pct.toFixed(2)}%)`;
+  $('taiex-change').className = `font-semibold ${tInfo.change >= 0 ? 'text-red-600' : 'text-emerald-600'}`;
+
+  if (finite(tInfo.otc_price)) {
+    const oSign = tInfo.otc_change >= 0 ? '+' : '';
+    $('otc-price').textContent = tInfo.otc_price.toFixed(2);
+    $('otc-change').textContent = `${oSign}${tInfo.otc_change.toFixed(2)}%`;
+    $('otc-change').className = `font-medium ${tInfo.otc_change >= 0 ? 'text-red-600' : 'text-emerald-600'}`;
+  }
 }
 async function send(message) {
   const response = await chrome.runtime.sendMessage(message);
@@ -114,6 +136,7 @@ function render() {
     b.setAttribute('aria-selected', String(b.dataset.group === group));
     b.classList.toggle('tab-active', b.dataset.group === group);
   });
+  renderTaiex();
   renderStrategyBar();
   const list = $('stock-list-container'); list.replaceChildren();
   const rows = view.stocks.filter(s => group === 'all' || s.groups.includes(group));
@@ -184,16 +207,9 @@ function render() {
   status(view.error || `${view.vm ? 'VM 隔離測試' : view.marketOpen ? '盤中' : '休市'} · ${stamp} · ${view.vip ? 'VIP' : `今日 ${view.used}/3`}`, !!view.error);
   $('vip-msg').textContent = view.vip ? 'VIP 已開通；每次配置更新重新檢查授權。' : view.vm ? 'VM 測試碼：VIP888（不適用正式版）' : '正式授權碼請向管理員取得；不會保存明文。';
 }
-function updateSuggestions() {
+function renderSuggestionItems(list) {
   const box = $('search-suggestions');
   if (!box || !view) return;
-  const q = $('input-search').value.trim();
-  if (!q) {
-    box.classList.add('hidden');
-    box.replaceChildren();
-    return;
-  }
-  const list = searchStocks(q, view.quotes || {});
   box.replaceChildren();
   if (!list.length) {
     box.append(el('div', '查無相符股票', 'p-2 text-slate-400 text-center text-[11px]'));
@@ -233,14 +249,43 @@ function updateSuggestions() {
     box.append(row);
   }
 }
+function updateSuggestions() {
+  const box = $('search-suggestions');
+  if (!box || !view) return;
+  const q = $('input-search').value.trim();
+  if (!q) {
+    box.classList.add('hidden');
+    box.replaceChildren();
+    return;
+  }
+  const localList = searchStocks(q, view.quotes || {});
+  renderSuggestionItems(localList);
+
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(async () => {
+    const cur = $('input-search').value.trim();
+    if (cur !== q || !cur) return;
+    const onlineList = await searchOnlineStocks(cur);
+    if ($('input-search').value.trim() === cur) {
+      const merged = searchStocks(cur, view.quotes || {});
+      renderSuggestionItems(merged);
+    }
+  }, 180);
+}
 async function add() {
   if (!view) return;
   const input = $('input-search').value.trim();
   if (!input) return;
   $('search-suggestions')?.classList.add('hidden');
 
-  const matches = searchStocks(input, view.quotes || {});
-  let target = matches.find(m => m.symbol === input.toUpperCase() || m.name === input) || matches[0];
+  let matches = searchStocks(input, view.quotes || {});
+  let target = matches.find(m => m.symbol === input.toUpperCase() || m.name === input);
+
+  if (!target && !/^\d+$/.test(input)) {
+    const onlineMatches = await searchOnlineStocks(input);
+    target = onlineMatches.find(m => m.symbol === input.toUpperCase() || m.name === input) || onlineMatches[0];
+  }
+  if (!target) target = matches[0];
 
   let symbol, market = 'TW', name;
   if (target) {
