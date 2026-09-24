@@ -372,17 +372,26 @@
 <div class="section-heading ranked-heading" id="intraday-strategies"><h2><span class="section-number">01</span> AI 模擬當沖</h2><span>實驗模型・虛擬交易</span></div><section class="recommendation-section"><div id="daytradeModule" class="panel rounded-2xl p-3">
 
       <div
-        class="flex items-center justify-between border-b muted-border pb-2">
+        class="flex items-center justify-between border-b muted-border pb-2 flex-wrap gap-2">
 
-        <div class="font-bold text-xs text-main">
-          AI 模擬當沖 <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('daytradeModule','AI 模擬當沖')">分享圖片 ↗</button>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-xs text-main">AI 模擬當沖</span>
+          <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('daytradeModule','AI 模擬當沖')">分享圖片 ↗</button>
         </div>
 
-        <span
-          id="intradayStamp"
-          class="text-[9px] text-main">
-          等待盤中掃描
-        </span>
+        <div class="flex items-center gap-2">
+          <span
+            id="intradayModelBadge"
+            class="text-[10px] font-semibold px-2 py-0.5 rounded border border-main text-main bg-main/5"
+            title="當沖學習模組版本與訓練基準日">
+            當沖模型：載入中…
+          </span>
+          <span
+            id="intradayStamp"
+            class="text-[9px] text-main">
+            等待盤中掃描
+          </span>
+        </div>
 
       </div>
 
@@ -3101,6 +3110,19 @@
           : health.label;
     }
 
+    const modelBadge = document.getElementById("intradayModelBadge");
+    if (modelBadge) {
+      const ms = INTRADAY_LIVE?.model_status || {};
+      const ver = ms.version || "";
+      const match = ver.match(/\d{4}-\d{2}-\d{2}/);
+      if (match) {
+        modelBadge.textContent = `當沖模組：${match[0]}`;
+        modelBadge.title = `模型版本: ${ver}`;
+      } else if (window.__LATEST_LEARNING_DATE) {
+        modelBadge.textContent = `當沖模組：${window.__LATEST_LEARNING_DATE}`;
+      }
+    }
+
 
     const openRows =
       Object.values(
@@ -5014,7 +5036,7 @@
 </dialog>
 <script src="assets/vendor/html2canvas.min.js"></script>
 <script src="assets/module-share.js?v=d047d833f8a3"></script>
-<script src="assets/learning-status.js?v=72d91f81f87f"></script>
+<script src="assets/learning-status.js?v=5fffe2fdd0e6"></script>
 <script src="assets/rebound-ui.js?v=bbc3b5a7a212"></script>
 <script src="assets/dashboard-layout.js?v=00d13678c126"></script>
 <script src="assets/intraday-chart.js?v=3c6fa9154797"></script>
