@@ -301,7 +301,7 @@
     <header class="dual-head">
       <div>
         <div class="eyebrow">收盤 AI 反省週報 / DAILY DEBRIEF</div>
-        <h3 id="dualTitle">📝 OpenAI 社畜每日自嘲反省週報</h3>
+        <h3 id="dualTitle">OpenAI 每日復盤</h3>
         <p id="dualDate">今日當沖輸贏都在這，哪裡追高被套、哪裡停損太慢，AI 幫你客觀寫進小本本。</p>
       </div>
       <span
@@ -319,7 +319,7 @@
     </p>
 
     <article class="dual-card">
-      <h4 style="color:var(--accent,#f59e0b);font-weight:700">社畜反省核心摘要</h4>
+      <h4 style="color:var(--accent,#f59e0b);font-weight:700">📝 社畜自嘲反省核心摘要</h4>
 
       <p id="dualOpenaiSummary" style="font-size:14px;line-height:1.75;color:var(--main);margin:10px 0">
         等待分析
