@@ -28,7 +28,7 @@ class OrderService:
         self.account_info = {}
         self._last_login_time = 0
 
-    def login(self, api_key: str = None, secret_key: str = None):
+    def login(self, api_key: str = None, secret_key: str = None, force_new: bool = True):
         if sj is None:
             raise RuntimeError("伺服器環境未安裝 shioaji 套件，無法連線永豐金證券 API")
 
@@ -37,7 +37,13 @@ class OrderService:
         if not api_key or not secret_key:
             raise ValueError("缺少 API Key 或 Secret Key，請於環境變數或介面中填寫")
 
-        if self.api is None:
+        # 斷線後必須銷毀舊實例重新實例化 Shioaji，否則底層 SolClient C++ Session 無法復原
+        if force_new or self.api is None:
+            if self.api is not None:
+                try:
+                    self.api.logout()
+                except Exception:
+                    pass
             self.api = sj.Shioaji()
 
         try:
@@ -45,10 +51,10 @@ class OrderService:
             acc = self.api.stock_account
             if acc:
                 self.api.set_default_account(acc)
-            
+
             # 等待底層 SolClient 完成連線交握
             time.sleep(1.8)
-            
+
             self.is_logged_in = True
             self._last_login_time = time.time()
             self.account_info = {
@@ -60,17 +66,23 @@ class OrderService:
             return self.account_info
         except Exception as e:
             self.is_logged_in = False
+            self.api = None
             raise RuntimeError(f"永豐 API 登入失敗: {e}")
 
+    def reconnect(self):
+        """徹底銷毀舊連線並重新連線建立全新 Session"""
+        return self.login(force_new=True)
+
     def ensure_ready(self):
-        """確保 Shioaji API 已連線且可用（包含斷線重連機制）"""
+        """確保 Shioaji API 已連線且可用（逾時自動重建實例）"""
         if sj is None:
             raise RuntimeError("伺服器環境未安裝 shioaji 套件，無法連線永豐金證券 API")
         if not self.is_logged_in or not self.api:
-            self.login()
-        elif time.time() - self._last_login_time > 1800:
+            self.login(force_new=True)
+        elif time.time() - self._last_login_time > 600:
+            # 超過 10 分鐘無操作，主動重建連線防 Solace 靜默斷線
             try:
-                self.login()
+                self.reconnect()
             except Exception:
                 pass
 
@@ -107,28 +119,29 @@ class OrderService:
     def get_quote(self, symbol: str):
         self.ensure_ready()
 
-        contract = self._find_contract(symbol)
-        if not contract:
-            try:
-                self.login()
-                contract = self._find_contract(symbol)
-            except Exception:
-                pass
-            if not contract:
-                raise ValueError(f"查無此股票代號: {symbol}")
-
         snapshots = None
+        contract = None
+
         for attempt in range(2):
             try:
+                contract = self._find_contract(symbol)
+                if not contract:
+                    # 重新連線獲取合約表
+                    self.reconnect()
+                    contract = self._find_contract(symbol)
+                if not contract:
+                    raise ValueError(f"查無此股票代號: {symbol}")
+
                 snapshots = self.api.snapshots([contract])
                 if snapshots:
                     break
             except Exception as e:
                 err_str = str(e)
+                # 若遇到 SessionNotEstablished 或 NotReady，自動重建實例再重試
                 if ("SessionNotEstablished" in err_str or "NotReady" in err_str) and attempt == 0:
-                    time.sleep(2)
+                    time.sleep(1.5)
                     try:
-                        self.login()
+                        self.reconnect()
                     except Exception:
                         pass
                     continue
@@ -185,38 +198,42 @@ class OrderService:
         except Exception as e:
             raise RuntimeError(f"憑證簽章啟用失敗 (請核對憑證密碼或確認憑證有效性): {e}")
 
-        contract = self._find_contract(symbol)
-        if not contract:
-            raise ValueError(f"查無標的代號: {symbol}")
-
-        act = sj.constant.Action.Buy if action.upper() == "BUY" else sj.constant.Action.Sell
-        lot_type = getattr(sj.constant.StockOrderLot, "IntradayOdd", "IntradayOdd") if is_odd_lot else getattr(sj.constant.StockOrderLot, "Common", "Common")
-        stock_order_type = getattr(sj.constant, "StockOrderType", None) or getattr(sj.constant, "StockOrderLot", None)
-        rod_type = getattr(stock_order_type, "ROD", "ROD")
-
-        order = self.api.Order(
-            price=float(price),
-            quantity=int(quantity),
-            action=act,
-            price_type=sj.constant.StockPriceType.LMT,
-            order_type=rod_type,
-            order_lot=lot_type,
-            account=self.api.stock_account
-        )
-
         trade = None
         last_exc = None
+
         for attempt in range(2):
             try:
+                contract = self._find_contract(symbol)
+                if not contract:
+                    self.reconnect()
+                    contract = self._find_contract(symbol)
+                if not contract:
+                    raise ValueError(f"查無標的代號: {symbol}")
+
+                act = sj.constant.Action.Buy if action.upper() == "BUY" else sj.constant.Action.Sell
+                lot_type = getattr(sj.constant.StockOrderLot, "IntradayOdd", "IntradayOdd") if is_odd_lot else getattr(sj.constant.StockOrderLot, "Common", "Common")
+                stock_order_type = getattr(sj.constant, "StockOrderType", None) or getattr(sj.constant, "StockOrderLot", None)
+                rod_type = getattr(stock_order_type, "ROD", "ROD")
+
+                order = self.api.Order(
+                    price=float(price),
+                    quantity=int(quantity),
+                    action=act,
+                    price_type=sj.constant.StockPriceType.LMT,
+                    order_type=rod_type,
+                    order_lot=lot_type,
+                    account=self.api.stock_account
+                )
+
                 trade = self.api.place_order(contract, order)
                 break
             except Exception as e:
                 last_exc = e
                 err_msg = str(e)
                 if ("SessionNotEstablished" in err_msg or "NotReady" in err_msg) and attempt == 0:
-                    time.sleep(2.5)
+                    time.sleep(2.0)
                     try:
-                        self.login()
+                        self.reconnect()
                         self.api.activate_ca(ca_path=ca_path, ca_passwd=ca_passwd, person_id=person_id)
                     except Exception:
                         pass
