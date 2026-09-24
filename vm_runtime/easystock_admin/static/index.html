@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-Hant" data-theme="dark">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -7,9 +7,10 @@
 <script defer src="https://accounts.google.com/gsi/client"></script>
 <script defer src="/admin/assets/admin.js"></script>
 <script defer src="/admin/assets/paper-trade.js"></script>
+  <script defer src="/admin/assets/order.js"></script>
 </head>
 <body>
-<header><a class="brand" href="https://jimmyeyes03160729.github.io/easystock/">E<span>EasyStock</span></a><button id="theme" type="button">切換明暗</button></header>
+<header><a class="brand" href="https://jimmyeyes03160729.github.io/easystock/">E<span>EasyStock</span></a><button id="openOrderModal" type="button" style="background:#2563eb;color:#fff;font-weight:600;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;margin-left:auto;margin-right:12px;">🚀 永豐下單</button><button id="theme" type="button">切換明暗</button></header>
 <main>
 <section id="login" class="login panel">
 <p class="eyebrow">管理員登入</p><h1>當沖設定</h1><p class="muted">使用已授權的 Google 帳號登入。</p>
@@ -111,4 +112,89 @@
 <details><summary>最近通知傳送狀態</summary><p class="hint">「送出成功」表示平台已接受，不代表每位成員已讀。逾時或程序中斷不自動重送，避免重複進出場通知。</p><div id="deliveryStatus"></div></details></section>
 </section>
 </main><footer>EasyStock · 當沖管理</footer>
+<!-- 永豐下單 Modal -->
+<div id="orderModal" class="order-modal-backdrop" hidden>
+  <div class="order-modal-box">
+    <div class="order-modal-head">
+      <h2>🚀 永豐證券委託</h2>
+      <button id="closeOrderModal" type="button" class="order-close-btn">&times;</button>
+    </div>
+
+    <!-- 步驟 1: API 驗證 -->
+    <div class="order-section">
+      <div class="order-section-title">步驟 1：帳號連線驗證</div>
+      <div style="display:flex;gap:8px;">
+        <input id="orderApiKey" type="text" placeholder="留空使用環境變數 API Key" style="flex:1;">
+        <input id="orderSecretKey" type="password" placeholder="留空使用環境變數 Secret" style="flex:1;">
+        <button id="btnOrderVerify" type="button" class="primary">連線驗證</button>
+      </div>
+      <div id="orderVerifyBadge" class="order-badge" style="margin-top:6px;">尚未驗證</div>
+    </div>
+
+    <!-- 步驟 2: 報價與五檔 -->
+    <div class="order-section">
+      <div class="order-section-title">步驟 2：股票報價查詢</div>
+      <div style="display:flex;gap:8px;">
+        <input id="orderSymbol" type="text" placeholder="輸入代碼 (例 2834)" style="width:140px;font-weight:bold;">
+        <button id="btnOrderQuery" type="button" class="primary">查詢報價</button>
+      </div>
+
+      <div id="orderQuotePanel" style="margin-top:10px;background:#18181b;padding:12px;border-radius:8px;" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span id="orderStockTitle" style="font-size:16px;font-weight:bold;">--</span>
+          <span id="orderStockPrice" style="font-size:18px;font-weight:bold;">--</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;">
+          <div>
+            <div style="color:#ef4444;border-bottom:1px solid #333;padding-bottom:3px;margin-bottom:4px;font-weight:600;">買盤 (點選帶入價)</div>
+            <table style="width:100%;" id="orderBidTable"></table>
+          </div>
+          <div>
+            <div style="color:#22c55e;border-bottom:1px solid #333;padding-bottom:3px;margin-bottom:4px;font-weight:600;">賣盤 (點選帶入價)</div>
+            <table style="width:100%;" id="orderAskTable"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 步驟 3: 委託條件 (簡約 股 / 張) -->
+    <div class="order-section">
+      <div class="order-section-title">步驟 3：委託條件</div>
+      <div class="order-unit-toggle">
+        <button type="button" id="btnUnitShare" class="unit-btn active">股 (零股)</button>
+        <button type="button" id="btnUnitSheet" class="unit-btn">張 (整張)</button>
+      </div>
+      <div class="order-row">
+        <div class="field-group">
+          <div class="field-header">
+            <label>委託限價 (元)</label>
+          </div>
+          <input id="orderPrice" type="number" step="0.01" placeholder="價格" style="width:100%;">
+        </div>
+        <div class="field-group">
+          <div class="field-header">
+            <label id="orderQtyLabel">委託數量 (股)</label>
+            <div id="quickQtyBtns" class="quick-btns">
+              <button type="button" data-qty="1">1</button>
+              <button type="button" data-qty="10">10</button>
+              <button type="button" data-qty="100">100</button>
+            </div>
+          </div>
+          <input id="orderQty" type="number" value="1" min="1" style="width:100%;">
+        </div>
+      </div>
+      <div id="orderTotalEst" class="order-total-est">預估交割金額：約 0 元</div>
+    </div>
+
+    <!-- 步驟 4: 憑證簽章送單 -->
+    <div class="order-section">
+      <div class="order-section-title">步驟 4：憑證簽章送單</div>
+      <div style="display:flex;gap:8px;">
+        <input id="orderCaPasswd" type="password" placeholder="請輸入永豐電子憑證密碼" style="flex:1;">
+        <button id="btnOrderSubmit" type="button" class="btn-submit-order">⚡ 確認送出委託</button>
+      </div>
+      <div id="orderResult" style="font-size:12px;margin-top:8px;"></div>
+    </div>
+  </div>
+</div>
 </body></html>

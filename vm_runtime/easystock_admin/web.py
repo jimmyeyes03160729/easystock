@@ -87,7 +87,7 @@ def register_admin(app, store=None, verifier=None):
 
     @bp.get('/admin/assets/<name>')
     def assets(name):
-        if name not in ('admin.js', 'admin.css', 'paper-trade.js'):
+        if name not in ('admin.js', 'admin.css', 'paper-trade.js', 'order.js'):
             return '', 404
         return send_from_directory(STATIC, name)
 
@@ -239,6 +239,55 @@ def register_admin(app, store=None, verifier=None):
         body()
         store.unlink()
         return jsonify(ok=True)
+
+    # --------------------------------------------------------
+    # 永豐證券下單 API (包含完整例外捕捉與 JSON 格式錯誤處理)
+    # --------------------------------------------------------
+    from .order_service import order_service
+
+    @bp.post('/admin/api/order/verify')
+    def post_order_verify():
+        try:
+            authenticated()
+            data = request.get_json(silent=True) or {}
+            info = order_service.login(
+                api_key=data.get('api_key'),
+                secret_key=data.get('secret_key')
+            )
+            return jsonify({'ok': True, 'account': info})
+        except Exception as e:
+            return jsonify({'ok': False, 'message': str(e)}), 400
+
+    @bp.post('/admin/api/order/quote')
+    def post_order_quote():
+        try:
+            authenticated()
+            data = request.get_json(silent=True) or {}
+            symbol = data.get('symbol', '').strip()
+            if not symbol:
+                return jsonify({'ok': False, 'message': '請輸入股票代號'}), 400
+            quote = order_service.get_quote(symbol)
+            return jsonify({'ok': True, 'quote': quote})
+        except Exception as e:
+            return jsonify({'ok': False, 'message': str(e)}), 400
+
+    @bp.post('/admin/api/order/place')
+    def post_order_place():
+        try:
+            authenticated()
+            data = request.get_json(silent=True) or {}
+            res = order_service.place_order(
+                symbol=data.get('symbol'),
+                action=data.get('action', 'BUY'),
+                price=float(data.get('price', 0)),
+                quantity=int(data.get('quantity', 1)),
+                is_odd_lot=bool(data.get('is_odd_lot', True)),
+                ca_passwd=data.get('ca_passwd', ''),
+                ca_path=data.get('ca_path')
+            )
+            return jsonify({'ok': True, 'trade': res})
+        except Exception as e:
+            return jsonify({'ok': False, 'message': str(e)}), 400
 
     app.register_blueprint(bp)
     return store
