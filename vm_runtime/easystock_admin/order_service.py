@@ -23,6 +23,7 @@ class OrderService:
         self.is_logged_in = False
         self.account_info = {}
         self._last_login_time = 0
+        self._warmup_attempted = False
 
     def login(self, api_key: str = None, secret_key: str = None):
         api_key = api_key or os.environ.get("SJ_API_KEY", "")
@@ -36,6 +37,12 @@ class OrderService:
         try:
             self.api.login(api_key=api_key, secret_key=secret_key)
             acc = self.api.stock_account
+            if acc:
+                self.api.set_default_account(acc)
+            
+            # 等待底層 SolClient 完成連線交握
+            time.sleep(1.8)
+            
             self.is_logged_in = True
             self._last_login_time = time.time()
             self.account_info = {
@@ -50,7 +57,7 @@ class OrderService:
             raise RuntimeError(f"永豐 API 登入失敗: {e}")
 
     def ensure_ready(self):
-        """確保 Shioaji API 已連線且可用"""
+        """確保 Shioaji API 已連線且可用（包含斷線重連機制）"""
         if not self.is_logged_in or not self.api:
             self.login()
         elif time.time() - self._last_login_time > 1800:
@@ -110,14 +117,14 @@ class OrderService:
                     break
             except Exception as e:
                 err_str = str(e)
-                if "SessionNotEstablished" in err_str or "NotReady" in err_str:
-                    time.sleep(1)
+                if ("SessionNotEstablished" in err_str or "NotReady" in err_str) and attempt == 0:
+                    time.sleep(2)
                     try:
                         self.login()
                     except Exception:
                         pass
-                else:
-                    raise RuntimeError(f"取得即時報價失敗: {err_str}")
+                    continue
+                raise RuntimeError(f"取得即時報價失敗: {err_str}")
 
         if not snapshots:
             raise ValueError(f"目前無法取得 {symbol} 即時行情快照（非交易時段或連線暫未就緒）")
@@ -159,11 +166,11 @@ class OrderService:
 
         ca_path = ca_path or CA_DEFAULT_PATH
         if not Path(ca_path).exists():
-            raise FileNotFoundError(f"找不到憑證檔案: {ca_path}，請確認憑證已上傳至伺服器")
+            raise FileNotFoundError(f"找不到憑證檔案: {ca_path}，請確認憑證已上傳至指定目錄")
 
         person_id = self.account_info.get("person_id") or os.environ.get("PERSON_ID", "")
         if not person_id:
-            raise ValueError("尚未取得身分證字號，請先執行步驟 1 連線驗證或於環境變數中設定 PERSON_ID")
+            raise ValueError("尚未取得身分證字號，請先執行步驟 1 連線驗證或於環境變數配置 PERSON_ID")
 
         try:
             self.api.activate_ca(ca_path=ca_path, ca_passwd=ca_passwd, person_id=person_id)
@@ -189,14 +196,31 @@ class OrderService:
             account=self.api.stock_account
         )
 
-        try:
-            trade = self.api.place_order(contract, order)
-        except Exception as e:
-            err_msg = str(e)
+        trade = None
+        last_exc = None
+        for attempt in range(2):
+            try:
+                trade = self.api.place_order(contract, order)
+                break
+            except Exception as e:
+                last_exc = e
+                err_msg = str(e)
+                if ("SessionNotEstablished" in err_msg or "NotReady" in err_msg) and attempt == 0:
+                    time.sleep(2.5)
+                    try:
+                        self.login()
+                        self.api.activate_ca(ca_path=ca_path, ca_passwd=ca_passwd, person_id=person_id)
+                    except Exception:
+                        pass
+                    continue
+                break
+
+        if trade is None:
+            err_msg = str(last_exc) if last_exc else "未知錯誤"
             if "doesn't have permission" in err_msg or "401" in err_msg:
                 raise RuntimeError("永豐金證券回應權限不足 (401: Token doesn't have permission)。您的 API 金鑰尚未開通【下單交易權限】，請先向永豐證券營業員或於官網 Python API 專區申請開通下單權限。")
             if "SessionNotEstablished" in err_msg or "NotReady" in err_msg:
-                raise RuntimeError("永豐交易通道連線尚未就緒 (Session Not Established)，請稍候 3 秒後重試送單。")
+                raise RuntimeError("永豐交易通道連線尚未就緒 (Session Not Established)，非交易時段（盤後或休市）永豐下單伺服器通道不開放，請於交易日開盤時段 (08:30~13:30) 測試。")
             raise RuntimeError(f"委託送出失敗: {err_msg}")
 
         return {
@@ -211,3 +235,10 @@ class OrderService:
 
 
 order_service = OrderService()
+
+# 模組載入時若具備環境變數金鑰，自動預熱連線
+try:
+    if os.environ.get("SJ_API_KEY") and os.environ.get("SJ_SECRET_KEY"):
+        order_service.login()
+except Exception:
+    pass
