@@ -2,9 +2,16 @@
 # -*- coding: utf-8 -*-
 """Unit tests for Taiwan Market Calendar and Holiday / Typhoon Detection."""
 
-import unittest
+import sys
 from datetime import date
+from pathlib import Path
+import unittest
 from unittest.mock import patch
+
+# 將專案根目錄加入 sys.path，以支援直接執行 python tests/test_market_calendar.py
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from market_calendar import (
     is_market_open,
