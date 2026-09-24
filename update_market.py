@@ -1258,6 +1258,17 @@ def firebase_replace_mapping_chunked(ref, mapping: dict, previous_mapping: dict 
 # ============================================================
 def main() -> None:
     validate_environment()
+
+    # 開盤日自動檢核（排除週末、國定假日與台北市颱風停班）
+    try:
+        from market_calendar import is_market_open
+        is_open, reason, _ = is_market_open()
+        if not is_open and os.environ.get("FORCE_MARKET_UPDATE", "0") != "1":
+            print(f"ℹ️ [MARKET CLOSED] 今日非台股開盤交易日 ({reason})，日線更新作業安全略過。")
+            return
+    except Exception as _cal_err:
+        print(f"⚠️ [CALENDAR WARN] 開盤日檢查例外: {_cal_err}，繼續嘗試抓取。")
+
     market_ref = init_firebase()
     previous = {key: market_ref.child(key).get() or {} for key in ("summary", "kline", "history", "meta")}
     previous_summary_map = previous.get("summary") or {}

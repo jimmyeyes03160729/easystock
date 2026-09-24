@@ -168,6 +168,16 @@ def select_candidates(stocks: list[dict]) -> list[dict]:
 # Main
 # =========================================================
 def main() -> None:
+    # 開盤日自動檢核（排除週末、國定假日與台北市颱風停班）
+    try:
+        from market_calendar import is_market_open
+        is_open, reason, _ = is_market_open()
+        if not is_open and os.environ.get("FORCE_REBOUND_SCAN", "0") != "1":
+            print(f"ℹ️ [MARKET CLOSED] 今日非台股開盤交易日 ({reason})，觸底反彈掃描排程略過。")
+            return
+    except Exception as _cal_err:
+        print(f"⚠️ [CALENDAR WARN] 開盤日檢查例外: {_cal_err}，繼續執行。")
+
     if not FUGLE_API_KEY:
         raise RuntimeError("Missing FUGLE_API_KEY")
 

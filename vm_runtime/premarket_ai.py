@@ -1688,6 +1688,16 @@ def print_brief(brief: dict) -> None:
 
 
 def main() -> None:
+    # 開盤日自動檢核（排除週末、國定假日與台北市颱風停班）
+    try:
+        from market_calendar import is_market_open
+        is_open, reason, _ = is_market_open()
+        if not is_open and os.environ.get("FORCE_PREMARKET_AI", "0") != "1":
+            print(f"🛑 [MARKET CLOSED] 今日台股休市 ({reason})，盤前晨報排程跳過。")
+            return
+    except Exception as _cal_exc:
+        print(f"⚠️ [CALENDAR WARN] 開盤日檢查例外: {_cal_exc}")
+
     no_line = "--no-line" in sys.argv
     no_firebase = "--no-firebase" in sys.argv
 

@@ -22,6 +22,7 @@ jobs:
       - run: python -m pip install -r requirements.txt -r daytrade_learning/requirements.txt python-dotenv Flask
       - run: python tests/test_parsers.py
       - run: python tests/test_selection.py
+      - run: python tests/test_market_calendar.py
       - run: python daytrade_learning/test_core.py
       - run: python tests/test_premarket_entry.py
       - run: python vm_runtime/daytrade_learning/test_integration.py
