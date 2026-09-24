@@ -1023,7 +1023,10 @@
     CURRENT_THEME = theme === 'light' ? 'light' : 'dark';
     document.documentElement.dataset.theme = CURRENT_THEME;
     try { localStorage.setItem('MOHREN_THEME', CURRENT_THEME); } catch (_) {}
-    ['dark', 'light'].forEach(t => document.getElementById(`theme-${t}`).setAttribute('aria-pressed', String(t === CURRENT_THEME)));
+    ['dark', 'light'].forEach(t => {
+      const btn = document.getElementById(`theme-${t}`);
+      if (btn) btn.setAttribute('aria-pressed', String(t === CURRENT_THEME));
+    });
     if (currentChart) currentChart.applyOptions(chartPalette());
     if (currentSeries) currentSeries.applyOptions(candlePalette());
   }
@@ -4651,7 +4654,10 @@
     } finally { slowRefreshBusy = false; }
   }
 
-  window.onload = () => {
+  let booted = false;
+  function boot() {
+    if (booted) return;
+    booted = true;
 
     setTheme(
       CURRENT_THEME
@@ -4670,7 +4676,18 @@
       refreshLiveData,
       5000
     );
-  };
+  }
+
+  window.onload = boot;
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(() => { if (!booted && window.onload === boot) boot(); }, 0);
+    } else if (document.addEventListener) {
+      document.addEventListener('DOMContentLoaded', () => {
+        if (!booted && window.onload === boot) boot();
+      });
+    }
+  }
 
 </script>
 
