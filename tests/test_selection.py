@@ -153,7 +153,7 @@ def test_publication_without_external_writes():
             target.pop(self.path[-1],None)
     q={'symbol':'1111','name':'test','date':'2026-09-09','close':100,'open':99,'high':101,'low':98,'amount':100_000_000,'volume':1_000_000,'exchange':'TWSE'}
     q2={**q,'symbol':'2222','exchange':'TPEx'}
-    with patch.object(m,'validate_environment'),patch.object(m,'init_firebase',return_value=Ref()),patch.object(m,'fetch_many',return_value={}),patch.object(m,'parse_twse_quotes',return_value={'1111':q}),patch.object(m,'parse_tpex_quotes',return_value={'2222':q2}),patch.object(m,'FUGLE_API_KEY',''):
+    with patch.dict('os.environ', {'FORCE_MARKET_UPDATE': '1'}),patch.object(m,'validate_environment'),patch.object(m,'init_firebase',return_value=Ref()),patch.object(m,'fetch_many',return_value={}),patch.object(m,'parse_twse_quotes',return_value={'1111':q}),patch.object(m,'parse_tpex_quotes',return_value={'2222':q2}),patch.object(m,'FUGLE_API_KEY',''):
         m.main()
     active=data['active_release'];rel=data['releases'][active]
     assert rel['meta']['release_id']==active
@@ -175,7 +175,7 @@ def test_publication_without_external_writes():
         if ref.path[0] == 'releases' and ref.path[-1] == 'kline':
             raise RuntimeError('simulated chart upload failure')
         return original(ref, mapping, *args, **kwargs)
-    with patch.object(m,'validate_environment'),patch.object(m,'init_firebase',return_value=Ref()),patch.object(m,'fetch_many',return_value={}),patch.object(m,'parse_twse_quotes',return_value={'1111':q}),patch.object(m,'parse_tpex_quotes',return_value={'2222':q2}),patch.object(m,'FUGLE_API_KEY',''),patch.object(m,'firebase_replace_mapping_chunked',side_effect=fail_kline):
+    with patch.dict('os.environ', {'FORCE_MARKET_UPDATE': '1'}),patch.object(m,'validate_environment'),patch.object(m,'init_firebase',return_value=Ref()),patch.object(m,'fetch_many',return_value={}),patch.object(m,'parse_twse_quotes',return_value={'1111':q}),patch.object(m,'parse_tpex_quotes',return_value={'2222':q2}),patch.object(m,'FUGLE_API_KEY',''),patch.object(m,'firebase_replace_mapping_chunked',side_effect=fail_kline):
         try:
             m.main()
         except RuntimeError as exc:
