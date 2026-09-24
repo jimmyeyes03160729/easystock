@@ -455,6 +455,17 @@ class PositionManager:
                 reason="固定停損",
             )
 
+        # 動態保本機制：若最高價曾漲達 +0.6% 以上，拉升至保本位(成本+0.35%稅費)，杜絕獲利反轉虧損
+        highest = position.get("highest_price", price)
+        entry_price = position.get("entry_price", price)
+        if highest >= entry_price * 1.006 and price <= entry_price * 1.0035:
+            return self.close_position(
+                symbol=symbol,
+                exit_price=price,
+                exit_time=current_time,
+                reason="動態保本出場",
+            )
+
 
         # =================================================
         # 固定停利

@@ -2226,6 +2226,10 @@ def scan_market_activity_universe(
             ):
                 continue
 
+            # 當沖過濾：排除金融保險類股（28開頭），其振幅難以跨越當沖交易成本
+            if symbol.startswith("28"):
+                continue
+
             close = num(
                 row.get("close")
             )
