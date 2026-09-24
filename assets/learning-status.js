@@ -22,8 +22,8 @@
   #learningSection .learning-bottom p{line-height:1.8;overflow-wrap:anywhere}
   #learningSection progress{appearance:none;-webkit-appearance:none;display:block;margin:12px 0;background:var(--border);border:0;border-radius:0;color:var(--main)}
   #learningSection progress::-webkit-progress-bar{background:var(--border)}
-  #learningSection progress::-webkit-progress-value{background:var(--main)}
-  #learningSection progress::-moz-progress-bar{background:var(--main)}
+  #learningSection progress::-webkit-progress-value{background:var(--accent,#f59e0b)}
+  #learningSection progress::-moz-progress-bar{background:var(--accent,#f59e0b)}
   #learningSection .learning-results{border-top:1px dashed var(--border);padding-top:12px}
   #learningSection .learning-results span{display:block;font-size:12px;color:var(--sub);line-height:1.9}
   #learningSection details p{line-height:1.9}
@@ -31,32 +31,82 @@
   `;
   document.head.appendChild(style);
   root.innerHTML=`
-  <div class="learning-head"><div><div class="eyebrow">收盤進修 / LEARNING LOG</div><h2 id="learningTitle">牛馬 AI 進修打卡</h2></div></div>
+  <div class="learning-head">
+    <div>
+      <div class="eyebrow">收盤加班進修 / DRONE SURVIVAL LOG</div>
+      <h2 id="learningTitle">🐮 牛馬 AI 加班進修打卡室</h2>
+      <p style="color:var(--sub);font-size:13px;margin:4px 0 0">白天當沖摸魚被主力修理，晚上留在工位加班覆盤；不求暴富，只求換個便當與湊齊離職自由金。</p>
+    </div>
+  </div>
   <div class="learning-columns">
     <article class="learning-column" aria-labelledby="dailyLearningTitle">
-      <header class="learning-column-head"><div><h3 id="dailyLearningTitle">每日資料訓練</h3><p id="dailyLearningDate">等待最近交易日資料</p></div><span id="learningPhase" class="phase-badge" role="status">等待每日資料</span></header>
+      <header class="learning-column-head">
+        <div>
+          <h3 id="dailyLearningTitle">今日工位實盤自救</h3>
+          <p id="dailyLearningDate">記住每一筆被割肉的痛，隔天開盤不再重蹈覆轍</p>
+        </div>
+        <span id="learningPhase" class="phase-badge" role="status">等待每日資料</span>
+      </header>
       <div class="learning-numbers">
-        <div><span>累積有效學習日</span><strong id="learnDays">—</strong><small>同一交易日只計一次</small></div>
-        <div><span>當日推薦股數</span><strong id="learnStocks">—</strong><small>當沖引擎實際產生的推薦股票</small></div>
-        <div><span>盤中有效觀察股數</span><strong id="learnObserved">—</strong><small>Recorder 實際留下資料的股票</small></div>
-        <div><span>收盤有效學習股數</span><strong id="learnLearned">—</strong><small>完成有效標記的不重複股票</small></div>
-        <div><span>有效標記樣本</span><strong id="learnSamples">—</strong><small>樣本筆數不等於股票檔數</small></div>
-        <div><span>行情收集</span><strong id="learnCoverage">—</strong><small id="learnCoverageNote">等待收盤報告</small></div>
+        <div><span>累積血汗進修日</span><strong id="learnDays">—</strong><small>同一交易日只計一次，不灌水</small></div>
+        <div><span>今日摸魚推薦</span><strong id="learnStocks">—</strong><small>當沖引擎觸發推薦股票檔數</small></div>
+        <div><span>盤中盯盤記錄</span><strong id="learnObserved">—</strong><small>主力急漲急跌留痕檔數</small></div>
+        <div><span>收盤復盤學會</span><strong id="learnLearned">—</strong><small>完成有效特徵標記的股票</small></div>
+        <div><span>有效自救樣本</span><strong id="learnSamples">—</strong><small>含進場急漲、停損出場真實特徵</small></div>
+        <div><span>行情報價收集</span><strong id="learnCoverage">—</strong><small id="learnCoverageNote">等待收盤報告</small></div>
       </div>
-      <div class="learning-bottom"><div><b id="learnModel">當沖模型：尚未取得執行狀態</b><p id="learnTraining">訓練進度待確認</p><progress id="learnProgress" max="101" value="0" aria-label="每日資料有效日期進度"></progress></div><div><b id="learnAI">今日 AI 復盤：待確認</b><p id="learnUpdated">尚未收到更新</p><p id="learnError" role="status"></p></div></div>
-      <details><summary>每天有資料，就算模型已更新嗎？</summary><p>收集、標記與模型訓練是不同階段。訓練達標後仍需驗證，只有當沖引擎確認載入的版本才算已套用。</p><p id="learnLastReport"></p></details>
+      <div class="learning-bottom">
+        <div>
+          <b id="learnModel">當沖模型：載入中…</b>
+          <p id="learnTraining">離職自救進修進度（目標 101 個交易日）</p>
+          <progress id="learnProgress" max="101" value="0" aria-label="每日資料有效日期進度"></progress>
+        </div>
+        <div>
+          <b id="learnAI">今日檢討週報：待確認</b>
+          <p id="learnUpdated">尚未收到更新</p>
+          <p id="learnError" role="status"></p>
+        </div>
+      </div>
+      <details>
+        <summary>💡 為什麼牛馬 AI 每天都要進修？</summary>
+        <p>盤中即時記錄每一檔急漲特徵，收盤後標記勝率與停損停利。當沖模型隔天開盤會載入最新驗證版本，讓每一次被修理的經驗都轉化為防守武器。AI 復盤完成不代表勝率必然提高，但能防範盲目追高。</p>
+        <p id="learnLastReport"></p>
+      </details>
     </article>
     <article class="learning-column" aria-labelledby="historyLearningTitle">
-      <header class="learning-column-head"><div><h3 id="historyLearningTitle">歷史資料訓練</h3><p>回看過去行情，先練習，再驗證。</p></div><span id="historyPhase" class="phase-badge" role="status">等待歷史資料</span></header>
+      <header class="learning-column-head">
+        <div>
+          <h3 id="historyLearningTitle">十年歷史行情特訓</h3>
+          <p>回看過去崩跌與大漲行情，在模擬沙盤中先被痛打一萬次。</p>
+        </div>
+        <span id="historyPhase" class="phase-badge" role="status">等待歷史資料</span>
+      </header>
       <div class="learning-numbers">
-        <div><span>本次已處理股票日</span><strong id="historyProcessed">—</strong><small id="historyProcessedNote">一檔股票一天算一個股票日</small></div>
-        <div><span>有效標記日期</span><strong id="historyDays">—</strong><small>與左側每日學習日分開計算</small></div>
-        <div><span>有效標記樣本</span><strong id="historySamples">—</strong><small>通過檢查的歷史觀察窗口</small></div>
-        <div><span>測試樣本</span><strong id="historyTestSamples">—</strong><small>按日期保留，未參與模型訓練</small></div>
+        <div><span>已扒取歷史股票日</span><strong id="historyProcessed">—</strong><small id="historyProcessedNote">一檔股票一天算一個股票日</small></div>
+        <div><span>有效標記交易日</span><strong id="historyDays">—</strong><small>與左側每日學習日分開計算</small></div>
+        <div><span>歷史血淚觀察窗</span><strong id="historySamples">—</strong><small>通過安全檢查的歷史窗口</small></div>
+        <div><span>盲測考卷樣本</span><strong id="historyTestSamples">—</strong><small>按日期保留，未參與模型訓練</small></div>
       </div>
-      <div class="learning-bottom"><div><b id="historyModel">當沖同步：尚未取得歷史訓練摘要</b><p id="historyTraining">等待 VM 發布進度</p><progress id="historyProgress" max="100" value="0" aria-label="歷史股票日處理進度"></progress><p id="historyDownload">歷史下載進度：待確認</p></div>
-      <div class="learning-results"><b>15 分鐘報價表現實驗</b><span id="historyResult">完成後顯示模型篩選樣本的測試結果</span><span id="historyBaseline">這不是實際成交勝率</span><p id="historyUpdated">尚未收到更新</p><p id="historyError" role="status"></p></div></div>
-      <details><summary>歷史訓練完成，會直接推薦股票嗎？</summary><p>不會。這是獨立的 15 分鐘報價表現實驗，扣除假設成本，不含實盤停利停損與完整持倉管理。模型分數不是當沖勝率，也不會把歷史日期加到每日學習天數。</p><p id="historyRunNote">每次執行只統計該次資料；結果仍需後續驗證。</p></details>
+      <div class="learning-bottom">
+        <div>
+          <b id="historyModel">當沖同步：尚未取得歷史訓練摘要</b>
+          <p id="historyTraining">等待 VM 發布進度</p>
+          <progress id="historyProgress" max="100" value="0" aria-label="歷史股票日處理進度"></progress>
+          <p id="historyDownload">歷史下載進度：待確認</p>
+        </div>
+        <div class="learning-results">
+          <b>15 分鐘極限報價實驗</b>
+          <span id="historyResult">完成後顯示模型篩選樣本的測試結果</span>
+          <span id="historyBaseline">這不是實際成交勝率</span>
+          <p id="historyUpdated">尚未收到更新</p>
+          <p id="historyError" role="status"></p>
+        </div>
+      </div>
+      <details>
+        <summary>📊 歷史訓練對我有什麼幫助？</summary>
+        <p>歷史特訓能在不賠本金的前提下，驗證特徵在過去 6,600 個股票日的表現，替牛馬築起更嚴格的停損防護網。</p>
+        <p id="historyRunNote">每次執行只統計該次資料；結果仍需後續驗證。</p>
+      </details>
     </article>
   </div>`;
 })();
@@ -72,15 +122,15 @@
     const today=s.today?.date===day()?s.today:null,session=s.session||today||{},tot=s.totals||{},tr=s.training||{};
     const sessionDate=session?.date||null;
     const sessionLabel=sessionDate===day()?'今日交易日':'最近交易日';
-    put('dailyLearningDate',sessionDate?`${sessionLabel}：${sessionDate}`:'等待最近交易日資料');
-    put('learningPhase',fresh?({collecting:'盤中收集中',reviewing:'盤後復盤中',training:'模型訓練中',idle:'目前待命',failed:'服務異常',unknown:'執行狀態待確認'})[s.phase]||'狀態待確認':'更新逾時 · 狀態待確認');
+    put('dailyLearningDate',sessionDate?`${sessionLabel}：${sessionDate} · 記住每一筆被割肉的痛`:'等待最近交易日資料');
+    put('learningPhase',fresh?({collecting:'🏃 工位摸魚看盤中',reviewing:'📑 盤後留下來寫檢討週報',training:'💡 深夜模型再進修（自救訓練中）',idle:'☕ 裝忙待命中',failed:'服務異常',unknown:'執行狀態待確認'})[s.phase]||'狀態待確認':'更新逾時 · 狀態待確認');
     put('learnDays',fmt(tot.learning_days));
     put('learnStocks',fmt(session?.recommended_stocks));
     put('learnObserved',fmt(session?.observed_stocks));
     put('learnLearned',fmt(session?.learned_stocks));
     put('learnSamples',fmt(session?.labeled_count));
     put('learnCoverage',session?.requested!=null?`${fmt(session.downloaded)} / ${fmt(session.requested)}`:'—');
-    put('learnCoverageNote',sessionDate?`盤中觀察 ${fmt(session.observed_stocks)} 檔 · ${session.report_status==='partial'?'部分完成':session.report_status==='ready'?'復盤完成':'等待完整報告'}`:'等待最近交易日資料');
+    put('learnCoverageNote',sessionDate?`盤中盯盤 ${fmt(session.observed_stocks)} 檔 · ${session.report_status==='partial'?'部分完成':session.report_status==='ready'?'復盤完成':'等待完整報告'}`:'等待最近交易日資料');
     const app=s.model_application||{};
     const pl=s.paper_learning?.training||{};
     const trainedDate=pl.trained_through||(app.model_version?.match(/\d{4}-\d{2}-\d{2}/)?.[0]);
@@ -91,6 +141,11 @@
         topBadge.textContent=`當沖模組：${trainedDate}`;
         topBadge.title=`模型版本: ${app.model_version||pl.version||trainedDate}${pl.train_samples?` · 樣本數: ${fmt(pl.train_samples)} 筆`:''}`;
       }
+      const metaModel=document.getElementById('metaDaytradeModel');
+      if(metaModel){
+        metaModel.textContent=`${trainedDate}`;
+        metaModel.title=`牛馬 AI 實盤當沖模組基準日: ${trainedDate}`;
+      }
     }
     const modelText = trainedDate
       ? `當沖模型：採用 ${trainedDate} 學習版本${pl.train_samples ? `（${fmt(pl.train_samples)} 筆樣本）` : ''}`
@@ -98,9 +153,9 @@
     put('learnModel',modelText);
     const cycleText={waiting_for_history:'等待 6,600 個有效股票日',waiting_for_archive_lock:'等待歷史下載／實驗釋放資料鎖',building_history_seed:'建立固定歷史種子中',training:'模型訓練與向前驗證中',completed:'本次模型週期完成',blocked:'候選未通過安全條件',paused_for_market_hours:'盤中暫停，避免影響當沖'}[app.cycle_state]||'等待模型週期';
     const trainDetail=pl.forward_samples!=null?`每日實盤累積：${fmt(pl.forward_samples)} 筆新樣本 · 資料基準日 ${trainedDate||'待確認'}`:`每日資料：同設定 ${fmt(tot.training_days)} 日、${fmt(tot.training_samples)} 筆`;
-    put('learnTraining',`${trainDetail} · 歷史模型：${cycleText}`);
+    put('learnTraining',`${trainDetail} · 歷史特訓：${cycleText}`);
     get('learnProgress').value=Math.min(101,tot.training_days||0);
-    put('learnAI',`本交易日 AI 復盤：${({ok:'完成',failed:'失敗',skipped:'尚未執行'})[session?.ai_status]||'等待資料'}`);
+    put('learnAI',`今日檢討週報：${({ok:'完成',failed:'失敗',skipped:'尚未執行'})[session?.ai_status]||'等待資料'}`);
     put('learnUpdated',`最後狀態更新：${date(s.updated_at)}`);
     put('learnLastReport',`最近交易日：${sessionDate||'尚無'} · 推薦 ${fmt(session?.recommended_stocks)} 檔 · 觀察 ${fmt(session?.observed_stocks)} 檔 · 有效學習 ${fmt(session?.learned_stocks)} 檔。最近復盤：${s.last_report?.date||'尚無'} · 累積資料收集日 ${fmt(tot.collection_days)}。`);
     put('learnError',fresh?(s.data_errors?.length?'部分統計檔無法讀取，數值可能不完整。':''):'目前顯示最後收到的資料，不代表服務仍在執行。');
@@ -245,9 +300,9 @@
   section.innerHTML=`
     <header class="dual-head">
       <div>
-        <div class="eyebrow">收盤 AI 復盤 / DAILY REVIEW</div>
-        <h3 id="dualTitle">OpenAI 每日復盤</h3>
-        <p id="dualDate">等待收盤復盤摘要</p>
+        <div class="eyebrow">收盤 AI 反省週報 / DAILY DEBRIEF</div>
+        <h3 id="dualTitle">📝 OpenAI 社畜每日自嘲反省週報</h3>
+        <p id="dualDate">今日當沖輸贏都在這，哪裡追高被套、哪裡停損太慢，AI 幫你客觀寫進小本本。</p>
       </div>
       <span
         class="phase-badge"
@@ -264,9 +319,9 @@
     </p>
 
     <article class="dual-card">
-      <h4>OpenAI 復盤</h4>
+      <h4 style="color:var(--accent,#f59e0b);font-weight:700">社畜反省核心摘要</h4>
 
-      <p id="dualOpenaiSummary">
+      <p id="dualOpenaiSummary" style="font-size:14px;line-height:1.75;color:var(--main);margin:10px 0">
         等待分析
       </p>
 
@@ -276,27 +331,26 @@
         —
       </p>
 
-      <details>
-        <summary>查看待驗證研究方向</summary>
+      <details style="margin-top:10px">
+        <summary>查看待驗證自救研究方向</summary>
         <ul id="dualOpenaiIdeas"></ul>
       </details>
     </article>
 
     <div class="dual-checks">
       <details>
-        <summary>指定數值判斷核對</summary>
+        <summary>指定數值判斷客觀核對</summary>
         <ul id="dualChecks"></ul>
-        <p>
-          數值判斷由程式依原始報告核對。
+        <p style="font-size:11px;color:var(--sub);margin-top:8px">
+          數值判斷由程式依原始報告核對，杜絕幻覺。
           OpenAI 負責摘要及提出待驗證研究方向；
           不代表因果或策略效果已證實。
         </p>
       </details>
     </div>
 
-    <p id="dualNotice">
-      OpenAI 復盤僅供研究；
-      不會自動修改當沖規則或套用模型。
+    <p id="dualNotice" style="font-size:11px;color:var(--sub);margin-top:12px">
+      ⚠️ 社畜保命提示：OpenAI 復盤僅供研究反思，不保證明日勝率；嚴格執行停利停損才是活命之道。
     </p>
 
     <p
