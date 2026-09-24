@@ -103,4 +103,49 @@ test('background behavior', async t => {
     await bg.serial(() => bg.handle({ type: 'VIP', key: 'secret-test' }));
     assert.equal(db.state.vipHash, hash); assert.equal(JSON.stringify(db).includes('secret-test'), false);
   });
+  await t.test('live exit signals correctly parse closed trades with telegram format', async () => {
+    reset(); const stocks = defaultState().stocks;
+    const data = {
+      live: {
+        closed_trades: [
+          { symbol: '2330', name: '台積電', status: 'CLOSED', entry_price: 1000, exit_price: 1025,
+            pnl_pct: 2.5, mfe_pct: 3.0, mae_pct: -0.5, duration_seconds: 1800,
+            exit_reason: '12:55當沖強制出場', exit_time: new Date(now).toISOString() }
+        ]
+      }
+    };
+    const exits = bg.liveExitSignals(data, stocks, now, true);
+    assert.equal(exits.length, 1);
+    assert.equal(exits[0].action, 'SELL');
+    assert.equal(exits[0].symbol, '2330');
+    assert.match(exits[0].telegramText, /✅【當沖出場】/);
+    assert.match(exits[0].telegramText, /報酬：\+2\.50%/);
+  });
+  await t.test('LIVE_DATA_SYNC from content script triggers instant telegram notifications', async () => {
+    reset(); db.state = defaultState();
+    const live = {
+      open_positions: {
+        '2330': {
+          symbol: '2330', name: '台積電', status: 'OPEN', entry_price: 1000, entry_score: '0.90',
+          entry_vwap: 998, entry_reasons: ['突破五分K'], stop_price: 985, take_profit_price: 1030,
+          entry_time: new Date(now).toISOString()
+        }
+      },
+      closed_trades: [
+        {
+          symbol: '2603', name: '長榮', status: 'CLOSED', entry_price: 200, exit_price: 206,
+          pnl_pct: 3.0, mfe_pct: 3.5, mae_pct: -0.2, duration_seconds: 1200,
+          exit_reason: '到達移動停利點', exit_time: new Date(now).toISOString()
+        }
+      ]
+    };
+    const listener = chrome.runtime.onMessage.listeners[0];
+    let response;
+    assert.equal(listener({ type: 'LIVE_DATA_SYNC', live }, { id: 'test', tab: { id: 1 } }, v => { response = v; }), true);
+    await bg.serial(async () => {});
+    assert.equal(response.ok, true);
+    assert.equal(notifications.length, 2);
+    assert.ok(notifications.some(n => n.options.title.includes('🚀【當沖進場訊號】') && n.options.message.includes('2330 台積電')));
+    assert.ok(notifications.some(n => n.options.title.includes('✅【當沖出場】') && n.options.message.includes('2603 長榮')));
+  });
 });

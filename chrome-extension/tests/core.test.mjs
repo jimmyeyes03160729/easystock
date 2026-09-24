@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { taipei, marketOpen, fresh, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL } from '../core.js';
+import { taipei, marketOpen, fresh, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit } from '../core.js';
 const at = s => Date.parse(s);
 const now = at('2026-09-17T09:30:00+08:00');
 const sample = { id: 'a', symbol: '2330', market: 'TW', name: '台積電', price: 1000, change_pct: 1, reason: '爆量', generated_at: '2026-09-17T09:29:00+08:00', quote_at: '2026-09-17T09:29:00+08:00' };
@@ -64,4 +64,33 @@ test('production has narrow permissions, packaged resources, no test VIP', async
   const cfg = JSON.parse(await readFile(new URL('../config.json', import.meta.url)));
   assert.equal(cfg.vip_keys_hash.includes(await sha256('VIP888')), false);
   assert.deepEqual(cfg.bounce_strategy_signals, []);
+});
+test('telegram format generates matching entry and exit messages', () => {
+  const entryMsg = formatTelegramEntry({
+    symbol: '2330', name: '台積電', entry_price: 1000, entry_score: '0.88',
+    entry_vwap: 996.5, entry_reasons: ['量價突破', '站在VWAP之上'],
+    stop_price: 985, take_profit_price: 1030
+  });
+  assert.match(entryMsg, /🚀【當沖進場訊號】/);
+  assert.match(entryMsg, /2330 台積電/);
+  assert.match(entryMsg, /訊號價：1000\.00/);
+  assert.match(entryMsg, /分數：0\.88/);
+  assert.match(entryMsg, /✓ 量價突破/);
+  assert.match(entryMsg, /停損參考：985\.00/);
+  assert.match(entryMsg, /狀態：OPEN/);
+
+  const exitMsg = formatTelegramExit({
+    symbol: '2330', name: '台積電', entry_price: 1000, exit_price: 1025,
+    pnl_pct: 2.5, mfe_pct: 3.0, mae_pct: -0.5, duration_seconds: 1800,
+    exit_reason: '12:55當沖強制出場'
+  });
+  assert.match(exitMsg, /✅【當沖出場】/);
+  assert.match(exitMsg, /2330 台積電/);
+  assert.match(exitMsg, /訊號進場：1000\.00/);
+  assert.match(exitMsg, /訊號出場：1025\.00/);
+  assert.match(exitMsg, /報酬：\+2\.50%/);
+  assert.match(exitMsg, /最高浮盈：\+3\.00%/);
+  assert.match(exitMsg, /最大浮虧：-0\.50%/);
+  assert.match(exitMsg, /持有時間：30分0秒/);
+  assert.match(exitMsg, /出場原因：12:55當沖強制出場/);
 });

@@ -4623,6 +4623,9 @@
         if (live && typeof live === 'object' && !Array.isArray(live) && (live.last_update_at || live.generated_at)) {
           INTRADAY_LIVE = live;
           LIVE_FETCH_ERROR = '';
+          try {
+            window.dispatchEvent(new CustomEvent('easystock-live-update', { detail: live }));
+          } catch (_) {}
         } else {
           LIVE_FETCH_ERROR = 'unavailable';
         }

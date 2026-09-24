@@ -1,5 +1,5 @@
 import { VM_MODE, CONFIG_URL, FIREBASE_ROOT } from './environment.js';
-import { TTL, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState } from './core.js';
+import { TTL, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit } from './core.js';
 
 const ALARM = 'easystock-five-minutes';
 let tail = Promise.resolve();
@@ -60,21 +60,85 @@ async function feeds(now, forced = false) {
     return value;
   } catch { return { ...(cache || { quotes: {}, live: {} }), error: '行情暫時無法更新；舊報價僅供檢視' }; }
 }
-export function liveSignals(data, stocks, now) {
+export function liveSignals(data, stocks, now, allAlerts = false) {
   // A radar candidate is NOT an entry. Only confirmed OPEN signal positions qualify.
   const positions = data.live?.open_positions;
   if (!plain(positions)) return [];
-  return stocks.flatMap(s => {
+  const targets = allAlerts
+    ? Object.keys(positions).map(sym => {
+        const s = stocks.find(x => x.symbol === sym);
+        const p = positions[sym];
+        const m = s?.market || (sym.length === 4 && (sym.startsWith('5') || sym.startsWith('6') || sym.startsWith('8')) ? 'TWO' : 'TW');
+        return { symbol: sym, market: m, name: p?.name || s?.name || sym, groups: ['daytrade'] };
+      })
+    : stocks;
+
+  return targets.flatMap(s => {
     const p = positions[s.symbol], q = data.quotes?.[s.symbol];
-    if (p?.status !== 'OPEN' || !q || !fresh(p.entry_time, now) || !fresh(q.updated_at, now)) return [];
+    if (p?.status !== 'OPEN' || !fresh(p.entry_time, now)) return [];
+    if (q && !fresh(q.updated_at, now)) return [];
     // Current public feed may lack previous close/change. Never invent a percentage.
-    const pct = finite(q.change_pct) ? q.change_pct : finite(q.previous_close) && q.previous_close > 0 ? (q.price / q.previous_close - 1) * 100 : null;
-    const result = signal({ id: `entry:${s.symbol}:${p.entry_time}`, symbol: s.symbol, market: s.market,
-      name: s.name, price: q.price, change_pct: pct, generated_at: p.entry_time, quote_at: q.updated_at,
+    const price = q && finite(q.price) ? q.price : (finite(p.entry_price) ? p.entry_price : 100);
+    const quoteAt = q?.updated_at && fresh(q.updated_at, now) ? q.updated_at : p.entry_time;
+    const pct = q && finite(q.change_pct) ? q.change_pct : (q && finite(q.previous_close) && q.previous_close > 0 ? (q.price / q.previous_close - 1) * 100 : null);
+    const base = signal({ id: `entry:${s.symbol}:${p.entry_time}`, symbol: s.symbol, market: s.market,
+      name: p.name || s.name, price, change_pct: pct, generated_at: p.entry_time, quote_at: quoteAt,
       reason: Array.isArray(p.entry_reasons) ? p.entry_reasons.join('；').slice(0, 200) : '' }, 'daytrade', now, true);
-    return result ? [result] : [];
+    if (!base) return [];
+    return [{
+      ...base,
+      action: 'BUY',
+      entry_price: p.entry_price,
+      entry_score: p.entry_score,
+      entry_vwap: p.entry_vwap,
+      entry_reasons: p.entry_reasons,
+      stop_price: p.stop_price,
+      take_profit_price: p.take_profit_price,
+      telegramText: formatTelegramEntry({ ...p, symbol: s.symbol, name: p.name || s.name })
+    }];
   });
 }
+
+export function liveExitSignals(data, stocks, now, allAlerts = false) {
+  const closedRaw = data.live?.closed_trades;
+  if (!closedRaw) return [];
+  const list = Array.isArray(closedRaw) ? closedRaw : (plain(closedRaw) ? Object.values(closedRaw) : []);
+  return list.flatMap(t => {
+    if (!t || t.status !== 'CLOSED' || !fresh(t.exit_time, now)) return [];
+    const sym = String(t.symbol);
+    const s = stocks.find(x => x.symbol === sym);
+    if (!allAlerts && !s) return [];
+    const market = s?.market || (sym.length === 4 && (sym.startsWith('5') || sym.startsWith('6') || sym.startsWith('8')) ? 'TWO' : 'TW');
+    const name = t.name || s?.name || sym;
+    const price = finite(t.exit_price) ? t.exit_price : (finite(t.price) ? t.price : 100);
+    const pnl = finite(t.pnl_pct) ? t.pnl_pct : null;
+    const base = signal({
+      id: `exit:${sym}:${t.exit_time}`,
+      symbol: sym,
+      market,
+      name,
+      price,
+      change_pct: pnl,
+      generated_at: t.exit_time,
+      quote_at: t.exit_time,
+      reason: t.exit_reason || '平倉出場'
+    }, 'daytrade', now, true);
+    if (!base) return [];
+    return [{
+      ...base,
+      action: 'SELL',
+      entry_price: t.entry_price,
+      exit_price: t.exit_price,
+      pnl_pct: t.pnl_pct,
+      mfe_pct: t.mfe_pct,
+      mae_pct: t.mae_pct,
+      duration_seconds: t.duration_seconds,
+      exit_reason: t.exit_reason,
+      telegramText: formatTelegramExit({ ...t, symbol: sym, name })
+    }];
+  });
+}
+
 async function notify(s, { test = false, vip = false, now = Date.now() } = {}) {
   if (await chrome.notifications.getPermissionLevel() !== 'granted') throw new Error('Chrome 系統通知權限已關閉');
   const original = ledger(await read('ledger', null), now);
@@ -91,11 +155,20 @@ async function notify(s, { test = false, vip = false, now = Date.now() } = {}) {
   next.routes = Object.fromEntries(routes);
   await write('ledger', next);
   try {
+    const isExit = s.action === 'SELL' || s.id?.startsWith('exit:');
+    const isDaytrade = s.strategy === 'daytrade';
+    const defaultTitle = `${test ? '【VM 測試】' : ''}【${isDaytrade ? (isExit ? '當沖出場' : '當沖多方訊號') : '觸底反彈訊號'}】${s.symbol} ${s.name}`;
+    const telegramTitle = `${test ? '【VM 測試】' : ''}${isExit ? '✅【當沖出場】' : '🚀【當沖進場訊號】'}${s.symbol} ${s.name}`;
+    const title = s.telegramText ? telegramTitle : (s.customTitle || defaultTitle);
+
+    const defaultMsg = `現價 ${s.price.toFixed(2)} 元｜${finite(s.change_pct) ? `${s.change_pct >= 0 ? '+' : ''}${s.change_pct.toFixed(2)}%` : '漲跌幅未提供'}\n${s.reason}`;
+    const message = (s.telegramText || defaultMsg) + (test ? '\n示例數字，非交易訊號、不計額度。' : '');
+
     await chrome.notifications.create(id, {
       type: 'basic', iconUrl: chrome.runtime.getURL('assets/icon128.png'),
-      title: `${test ? '【VM 測試】' : ''}【${s.strategy === 'daytrade' ? '當沖多方訊號' : '觸底反彈訊號'}】${s.symbol} ${s.name}`,
-      message: `現價 ${s.price.toFixed(2)} 元｜${finite(s.change_pct) ? `${s.change_pct >= 0 ? '+' : ''}${s.change_pct.toFixed(2)}%` : '漲跌幅未提供'}\n${s.reason}${test ? '\n示例數字，非交易訊號、不計額度。' : ''}`,
-      buttons: [{ title: '查看線圖' }, { title: '今日忽略' }], priority: 1, silent: false
+      title,
+      message,
+      buttons: [{ title: '查看線圖' }, { title: '今日忽略' }], priority: 2, silent: false, requireInteraction: true
     });
     return true;
   } catch (e) { await write('ledger', original); throw e; }
@@ -120,15 +193,44 @@ export async function poll() {
   const c = await remoteConfig(now);
   if (!marketOpen(now, c.market_holidays)) return;
   const data = await feeds(now);
+  const allDaytrade = st.settings.allDaytradeAlerts !== false;
   const signals = [
-    ...liveSignals(data, st.stocks, now),
+    ...liveSignals(data, st.stocks, now, allDaytrade),
+    ...liveExitSignals(data, st.stocks, now, allDaytrade),
     ...c.daytrade_strategy_signals.map(x => signal(x, 'daytrade', now)),
     ...c.bounce_strategy_signals.map(x => signal(x, 'rebound', now))
   ].filter(Boolean);
   const vip = isVIP(c, st.vipHash);
   for (const s of signals) {
-    if (!st.settings[s.strategy] || !st.stocks.some(x => x.symbol === s.symbol && x.market === s.market && x.groups.includes(s.strategy))) continue;
+    if (!st.settings[s.strategy]) continue;
+    const isLiveTrade = Boolean(s.action);
+    if (isLiveTrade && allDaytrade) {
+      // 全市場當沖連動模式：即時買賣訊號直接發送
+    } else if (!st.stocks.some(x => x.symbol === s.symbol && x.market === s.market && x.groups.includes(s.strategy))) {
+      continue;
+    }
     await notify(s, { vip, now });
+  }
+}
+export async function processLiveData(live) {
+  if (!plain(live)) return;
+  const now = Date.now();
+  const st = await state();
+  if (!st.settings.daytrade) return;
+  const data = { quotes: {}, live };
+  const allDaytrade = st.settings.allDaytradeAlerts !== false;
+  const signals = [
+    ...liveSignals(data, st.stocks, now, allDaytrade),
+    ...liveExitSignals(data, st.stocks, now, allDaytrade)
+  ];
+  const c = await remoteConfig(now).catch(() => null);
+  const vip = isVIP(c, st.vipHash);
+  for (const s of signals) {
+    if (allDaytrade) {
+      await notify(s, { vip, now });
+    } else if (st.stocks.some(x => x.symbol === s.symbol && x.market === s.market && x.groups.includes(s.strategy))) {
+      await notify(s, { vip, now });
+    }
   }
 }
 export async function handle(message) {
@@ -151,7 +253,7 @@ export async function handle(message) {
       break;
     }
     case 'SETTINGS': {
-      if (!GROUPS.includes(message.strategy) || typeof message.enabled !== 'boolean') throw new Error('開關格式不正確');
+      if (!GROUPS.includes(message.strategy) && message.strategy !== 'allDaytradeAlerts') throw new Error('開關格式不正確');
       st.settings[message.strategy] = message.enabled; break;
     }
     case 'IMPORT': st.stocks = watchlist(message.stocks); break;
@@ -163,10 +265,34 @@ export async function handle(message) {
       st.vipHash = hash; break; // Never persist or log the plaintext key.
     }
     case 'TEST': {
-      if (!GROUPS.includes(message.strategy)) throw new Error('測試類型不正確');
-      await notify({ symbol: '2330', name: '台積電', market: 'TW', price: 1000, change_pct: 1.25,
-        strategy: message.strategy, reason: message.strategy === 'daytrade' ? '示例：爆量突破五分 K 區間' : '示例：支撐區反彈、量能回升' }, { test: true });
-      return { sent: true };
+      if (message.action === 'SELL') {
+        const fakeExit = {
+          symbol: '2330', name: '台積電', market: 'TW', price: 1025, exit_price: 1025, entry_price: 1000,
+          pnl_pct: 2.5, mfe_pct: 3.0, mae_pct: -0.5, duration_seconds: 1800, exit_reason: '12:55當沖強制出場',
+          strategy: 'daytrade', action: 'SELL'
+        };
+        fakeExit.telegramText = formatTelegramExit(fakeExit);
+        await notify(fakeExit, { test: true });
+        return { sent: true };
+      }
+      if (message.strategy === 'daytrade') {
+        const fakeEntry = {
+          symbol: '2330', name: '台積電', market: 'TW', price: 1000, entry_price: 1000,
+          entry_score: '0.88', entry_vwap: 996.5,
+          entry_reasons: ['爆量突破五分K區間', '站在VWAP之上', '外資主力買超'],
+          stop_price: 985.0, take_profit_price: 1030.0,
+          strategy: 'daytrade', action: 'BUY', reason: '示例：爆量突破五分 K 區間'
+        };
+        fakeEntry.telegramText = formatTelegramEntry(fakeEntry);
+        await notify(fakeEntry, { test: true });
+        return { sent: true };
+      }
+      if (message.strategy === 'rebound') {
+        await notify({ symbol: '2330', name: '台積電', market: 'TW', price: 1000, change_pct: 1.25,
+          strategy: 'rebound', reason: '示例：支撐區反彈、量能回升' }, { test: true });
+        return { sent: true };
+      }
+      throw new Error('測試類型不正確');
     }
     default: throw new Error('不支援的操作');
   }
@@ -185,12 +311,18 @@ async function clicked(id, button = 0) {
   await chrome.notifications.clear(id);
 }
 async function ensureAlarm() {
-  if (!(await chrome.alarms.get(ALARM))) await chrome.alarms.create(ALARM, { delayInMinutes: 1, periodInMinutes: 5 });
+  if (!(await chrome.alarms.get(ALARM))) await chrome.alarms.create(ALARM, { delayInMinutes: 0.5, periodInMinutes: 1 });
 }
 function safe(task) { task.catch(() => { /* No credential-bearing error logs. UI reports current source status. */ }); }
 // Listener registration is synchronous, before any await, to survive MV3 suspension.
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
-  if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('popup.html')) return false;
+  if (sender.id !== chrome.runtime.id) return false;
+  if (message.type === 'LIVE_DATA_SYNC') {
+    safe(serial(() => processLiveData(message.live)));
+    respond({ ok: true });
+    return true;
+  }
+  if (sender.url !== chrome.runtime.getURL('popup.html')) return false;
   serial(() => handle(message)).then(value => respond({ ok: true, value }), e => respond({ ok: false, error: e.message || '操作失敗' }));
   return true;
 });

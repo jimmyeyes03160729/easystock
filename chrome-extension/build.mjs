@@ -33,9 +33,13 @@ function icon(size) {
   return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]), chunk('IHDR', hdr), chunk('IDAT', deflateSync(pixels)), chunk('IEND', Buffer.alloc(0))]);
 }
 await mkdir(join(root, 'assets'), { recursive: true });
-await copyFile(join(root, 'node_modules/tailwindcss/LICENSE'), join(root, 'assets/TAILWIND-LICENSE.txt'));
+try {
+  await copyFile(join(root, 'node_modules/tailwindcss/LICENSE'), join(root, 'assets/TAILWIND-LICENSE.txt'));
+} catch (e) {
+  if (!await readFile(join(root, 'assets/TAILWIND-LICENSE.txt')).catch(() => null)) throw e;
+}
 for (const size of [16, 48, 128]) await writeFile(join(root, `assets/icon${size}.png`), icon(size));
-const files = ['manifest.json', 'popup.html', 'popup.js', 'background.js', 'core.js', 'environment.js', 'icons.js', 'config.json', 'github_config_schema.json', 'README.md', 'assets/popup.css', 'assets/TAILWIND-LICENSE.txt', 'assets/icon16.png', 'assets/icon48.png', 'assets/icon128.png'];
+const files = ['manifest.json', 'popup.html', 'popup.js', 'background.js', 'content-script.js', 'core.js', 'environment.js', 'icons.js', 'config.json', 'github_config_schema.json', 'README.md', 'assets/popup.css', 'assets/TAILWIND-LICENSE.txt', 'assets/icon16.png', 'assets/icon48.png', 'assets/icon128.png'];
 for (const mode of ['production', 'vm']) {
   const out = resolve(root, 'dist', mode);
   await mkdir(join(out, 'assets'), { recursive: true });

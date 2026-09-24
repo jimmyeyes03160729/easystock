@@ -69,7 +69,64 @@ export function canNotify(s, state, now, vip) {
   return !state.ignored[s.symbol] && !state.seen[`${s.strategy}:${s.id}`] &&
     (!state.last[s.symbol] || now - state.last[s.symbol] >= COOLDOWN) && (vip || state.count < 3);
 }
+export function formatTelegramEntry(p) {
+  const symbol = p.symbol || '';
+  const name = p.name || symbol;
+  const price = finite(p.entry_price) ? p.entry_price.toFixed(2) : (finite(p.price) ? p.price.toFixed(2) : '-');
+  const score = p.entry_score ?? p.score ?? '-';
+  const vwap = finite(p.entry_vwap) ? p.entry_vwap.toFixed(2) : (p.entry_vwap || '-');
+  const stop = finite(p.stop_price) ? p.stop_price.toFixed(2) : '-';
+  const tp = finite(p.take_profit_price) ? p.take_profit_price.toFixed(2) : '-';
+  const reasons = Array.isArray(p.entry_reasons)
+    ? p.entry_reasons.map(r => `✓ ${r}`).join('\n')
+    : (p.reason ? `✓ ${p.reason}` : '');
+
+  return [
+    `🚀【當沖進場訊號】`,
+    ``,
+    `${symbol} ${name}`,
+    `訊號價：${price}`,
+    `分數：${score}`,
+    `VWAP：${vwap}`,
+    reasons ? `\n${reasons}` : '',
+    `停損參考：${stop}`,
+    `停利參考：${tp}`,
+    ``,
+    `狀態：OPEN`
+  ].filter(line => line !== null && line !== undefined).join('\n');
+}
+
+export function formatTelegramExit(t) {
+  const symbol = t.symbol || '';
+  const name = t.name || symbol;
+  const entryPrice = finite(t.entry_price) ? t.entry_price.toFixed(2) : '-';
+  const exitPrice = finite(t.exit_price) ? t.exit_price.toFixed(2) : (finite(t.price) ? t.price.toFixed(2) : '-');
+  const pnl = finite(t.pnl_pct) ? t.pnl_pct : 0;
+  const sign = pnl >= 0 ? '+' : '';
+  const mfe = finite(t.mfe_pct) ? `${t.mfe_pct >= 0 ? '+' : ''}${t.mfe_pct.toFixed(2)}%` : '-';
+  const mae = finite(t.mae_pct) ? `${t.mae_pct >= 0 ? '+' : ''}${t.mae_pct.toFixed(2)}%` : '-';
+  const durSec = t.duration_seconds;
+  const durText = finite(durSec) ? `${Math.floor(durSec / 60)}分${durSec % 60}秒` : '-';
+  const reason = t.exit_reason || '平倉出場';
+
+  return [
+    `✅【當沖出場】`,
+    ``,
+    `${symbol} ${name}`,
+    ``,
+    `訊號進場：${entryPrice}`,
+    `訊號出場：${exitPrice}`,
+    ``,
+    `報酬：${sign}${pnl.toFixed(2)}%`,
+    `最高浮盈：${mfe}`,
+    `最大浮虧：${mae}`,
+    `持有時間：${durText}`,
+    ``,
+    `出場原因：${reason}`
+  ].join('\n');
+}
+
 export function defaultState() {
   return { version: 1, stocks: [stock({ symbol: '2330', name: '台積電', market: 'TW', groups: ['daytrade'] })],
-    settings: { daytrade: true, rebound: true }, vipHash: '' };
+    settings: { daytrade: true, rebound: true, allDaytradeAlerts: true }, vipHash: '' };
 }

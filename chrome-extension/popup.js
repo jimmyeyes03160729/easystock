@@ -35,6 +35,7 @@ function render() {
   $('market-status-dot').className = `h-2 w-2 rounded-full ${view.marketOpen && !view.error ? 'bg-emerald-500' : 'bg-slate-400'}`;
   $('market-status-dot').title = view.vm ? 'VM 隔離示例；不自動交易推播' : view.marketOpen ? '盤中排程；報價時間請看個股' : '休市／非盤中時段';
   for (const key of GROUPS) $(`toggle-${key}`).checked = view.settings[key];
+  if ($('toggle-all-daytrade')) $('toggle-all-daytrade').checked = view.settings?.allDaytradeAlerts !== false;
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.setAttribute('aria-selected', String(b.dataset.group === group));
     b.classList.toggle('tab-active', b.dataset.group === group);
@@ -125,6 +126,10 @@ for (const strategy of GROUPS) {
   });
   $(`btn-test-${strategy}-notif`).addEventListener('click', () => act({ type: 'TEST', strategy }, '測試通知已交給 Chrome；音效由 VM 系統設定決定'));
 }
+$('toggle-all-daytrade')?.addEventListener('change', async e => {
+  await act({ type: 'SETTINGS', strategy: 'allDaytradeAlerts', enabled: e.target.checked }); if (view) render();
+});
+$('btn-test-exit-notif')?.addEventListener('click', () => act({ type: 'TEST', action: 'SELL' }, '測試賣出通知已交給 Chrome；音效由 VM 系統設定決定'));
 $('btn-activate-vip').addEventListener('click', async () => {
   const key = $('input-vip-key').value; $('input-vip-key').value = '';
   await act({ type: 'VIP', key }, 'VIP 已開通');
