@@ -156,7 +156,7 @@
 
         <div id="metaStocks"
              class="text-lg font-bold text-main mt-1">
-          --
+          載入中…
         </div>
       </div>
 
@@ -169,7 +169,7 @@
 
         <div id="metaDate"
              class="text-sm font-bold text-main mt-2">
-          --
+          載入中…
         </div>
 
       </div>
@@ -748,9 +748,16 @@
     const elapsed = now - Date.parse(at);
     if (LIVE_FETCH_ERROR) return {label:'連線失敗', message:'即時資料讀取失敗；保留最後成功快照，價格與部位狀態待確認。', current:false};
     if (!at) return {label:'等待資料', message:'尚未收到有效當沖快照，無法確認目前部位。', current:false};
+    if (INTRADAY_LIVE.session === 'closed') {
+      const isToday = taiwanDay(at) === taiwanDay(new Date(now));
+      return {
+        label: isToday ? '當沖已結束' : '盤前待命',
+        message: isToday ? '今日收盤快照；不是即時報價。' : `非盤中時段（保留上一交易日 ${taiwanDay(at)} 收盤戰報・09:00 開盤重置）。`,
+        current: true
+      };
+    }
     if (!Number.isFinite(elapsed) || elapsed < -60000 || taiwanDay(at) !== taiwanDay(new Date(now)))
       return {label:'資料日期異常或過期', message:'目前不是今日有效快照，等待當沖服務更新。', current:false};
-    if (INTRADAY_LIVE.session === 'closed') return {label:'當沖已結束', message:'今日收盤快照；不是即時報價。', current:true};
     if (elapsed > 60000) return {label:'更新逾時', message:'超過 60 秒未更新；下方為最後快照，不代表仍在即時監控。', current:false};
     return {label:'即時監控', message:'', current:true};
   }
@@ -2818,7 +2825,7 @@
           }
         );
 
-    rows =
+    const todayRows =
       rows.filter(
         x =>
           String(
@@ -2829,6 +2836,13 @@
             ""
           ).startsWith(today)
       );
+
+    const isShowingPreviousDay = todayRows.length === 0 && rows.length > 0;
+    if (todayRows.length > 0) {
+      rows = todayRows;
+    } else if (isShowingPreviousDay && healthEl) {
+      healthEl.textContent = `☕ 目前非開盤交易時段 · 保留上一交易日模擬當沖戰報（09:00 開盤自動重置）`;
+    }
 
 
 
@@ -4181,7 +4195,7 @@
 
   async function fetchJson(url) {
     const abort = new AbortController();
-    const timer = setTimeout(() => abort.abort(), 12000);
+    const timer = setTimeout(() => abort.abort(), 30000);
     try {
       const res = await fetch(url, {cache:'no-store', signal:abort.signal});
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -4514,11 +4528,17 @@
 
       console.error(err);
 
-
       status.textContent =
         `Firebase 讀取失敗：${
           err.message
-        }`;
+        }（請點擊上方按鈕重試）`;
+
+      if (!COMPUTED_STOCKS.length) {
+        const stocksEl = document.getElementById("metaStocks");
+        const dateEl = document.getElementById("metaDate");
+        if (stocksEl && stocksEl.textContent.includes('載入')) stocksEl.textContent = '讀取失敗';
+        if (dateEl && dateEl.textContent.includes('載入')) dateEl.textContent = '連線逾時';
+      }
 
     }
 
