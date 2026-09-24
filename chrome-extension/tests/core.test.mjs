@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { taipei, marketOpen, fresh, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter } from '../core.js';
+import { taipei, marketOpen, fresh, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter, BUILTIN_STOCKS, searchStocks } from '../core.js';
 const at = s => Date.parse(s);
 const now = at('2026-09-17T09:30:00+08:00');
 const sample = { id: 'a', symbol: '2330', market: 'TW', name: '台積電', price: 1000, change_pct: 1, reason: '爆量', generated_at: '2026-09-17T09:29:00+08:00', quote_at: '2026-09-17T09:29:00+08:00' };
@@ -113,4 +113,29 @@ test('telegram rebound formatting outputs complete signal message', () => {
   assert.match(reboundMsg, /現價：1000\.00 元｜漲跌：\+2\.50%/);
   assert.match(reboundMsg, /底部出量紅K確認/);
   assert.match(reboundMsg, /狀態：REBOUND/);
+});
+test('searchStocks finds stocks by Chinese name, code, prefix, and dynamic codes', () => {
+  assert.ok(BUILTIN_STOCKS.length >= 70);
+  const byName = searchStocks('台積電');
+  assert.equal(byName[0].symbol, '2330');
+  assert.equal(byName[0].name, '台積電');
+
+  const byCode = searchStocks('2330');
+  assert.equal(byCode[0].symbol, '2330');
+
+  const partial = searchStocks('聯');
+  assert.ok(partial.some(s => s.symbol === '2454' && s.name === '聯發科'));
+  assert.ok(partial.some(s => s.symbol === '2303' && s.name === '聯電'));
+
+  const unknownStock = searchStocks('1101');
+  assert.equal(unknownStock[0].symbol, '1101');
+  assert.equal(unknownStock[0].market, 'TW');
+
+  const otcStock = searchStocks('6285');
+  assert.equal(otcStock[0].symbol, '6285');
+  assert.equal(otcStock[0].market, 'TWO');
+
+  const withExtra = searchStocks('微星', { '2377': { name: '微星' } });
+  assert.equal(withExtra[0].symbol, '2377');
+  assert.equal(withExtra[0].name, '微星');
 });

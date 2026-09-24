@@ -12,7 +12,7 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   const state = { ...core.defaultState(), vip: false, vm: true, quotes: {}, bounce: [], used: 0, marketOpen: false, paymentURL: '' };
   state.stocks.push({ symbol: '8299', market: 'TWO', name: '<img src=x onerror=alert(1)>', groups: ['rebound'] });
   w.chrome = { runtime: { sendMessage: async m => { messages.push(m); return { ok: true, value: m.type === 'TEST' ? { sent: true } : structuredClone(state) }; } }, tabs: { create: async () => {} } };
-  for (const key of ['SYMBOL', 'GROUPS', 'finite', 'fresh', 'watchlist', 'chartURL']) w[key] = core[key];
+  for (const key of ['SYMBOL', 'GROUPS', 'finite', 'fresh', 'watchlist', 'chartURL', 'searchStocks']) w[key] = core[key];
   w.icons = () => {};
   await w.eval(`(async()=>{${source.replace(/^import .*;\r?\n/gm, '')}})()`);
   assert.equal(w.document.querySelectorAll('.stock-card').length, 2);
@@ -20,6 +20,37 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.match(w.document.getElementById('stock-list-container').textContent, /<img src=x/);
   w.document.querySelector('[data-group="rebound"]').click();
   assert.equal(w.document.querySelectorAll('.stock-card').length, 1);
+
+  // Test search suggestions for Chinese name
+  const searchInput = w.document.getElementById('input-search');
+  const suggestBox = w.document.getElementById('search-suggestions');
+  assert.ok(suggestBox);
+  searchInput.value = '台積電';
+  searchInput.dispatchEvent(new w.Event('input'));
+  assert.equal(suggestBox.classList.contains('hidden'), false);
+  assert.match(suggestBox.textContent, /2330/);
+  assert.match(suggestBox.textContent, /台積電/);
+
+  // Test strategy bar and batch add
+  state.live = {
+    open_positions: {
+      '2454': { symbol: '2454', name: '聯發科', status: 'OPEN', entry_price: 1200 }
+    }
+  };
+  w.document.getElementById('btn-refresh').click();
+  await new Promise(r => setTimeout(r, 0));
+  w.document.querySelector('[data-group="daytrade"]').click();
+  const stratBar = w.document.getElementById('strategy-bar');
+  assert.ok(stratBar);
+  assert.equal(stratBar.classList.contains('hidden'), false);
+  assert.match(w.document.getElementById('strategy-bar-title').textContent, /當沖策略即時標的/);
+  const batchBtn = w.document.getElementById('btn-batch-add');
+  assert.ok(batchBtn);
+  batchBtn.click();
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(messages.at(-1).type, 'ADD_BATCH');
+  assert.equal(messages.at(-1).stocks[0].symbol, '2454');
+
   w.document.getElementById('btn-open-settings').click();
   assert.equal(w.document.getElementById('settings-panel').inert, false);
   w.document.getElementById('btn-test-daytrade-notif').click();

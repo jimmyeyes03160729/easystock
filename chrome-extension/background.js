@@ -57,8 +57,57 @@ async function feeds(now, forced = false) {
     if (!plain(quotes) || !plain(live)) throw new Error('行情格式不符');
     const value = { at: now, quotes, live };
     await write('feedCache', value);
+    safe(updateMarketStatusIcon(value, now));
     return value;
   } catch { return { ...(cache || { quotes: {}, live: {} }), error: '行情暫時無法更新；舊報價僅供檢視' }; }
+}
+export async function updateMarketStatusIcon(data, now = Date.now()) {
+  if (!chrome.action || typeof chrome.action.setTitle !== 'function') return;
+  const isMarketOpen = marketOpen(now);
+  const timeStr = new Date(now).toLocaleTimeString('zh-TW', { hour12: false });
+  const openPos = data?.live?.open_positions ? Object.values(data.live.open_positions).filter(p => p?.status === 'OPEN') : [];
+  const closedCount = data?.live?.closed_trades ? (Array.isArray(data.live.closed_trades) ? data.live.closed_trades.length : Object.keys(data.live.closed_trades).length) : 0;
+  const marketLevel = data?.live?.market_level || (isMarketOpen ? 'GREEN' : 'UNKNOWN');
+
+  let levelText = '資料準備中';
+  let badgeText = '休';
+  let badgeColor = '#64748b';
+
+  if (isMarketOpen) {
+    if (marketLevel === 'GREEN') {
+      levelText = '多方強勢 (綠燈)';
+      badgeText = openPos.length > 0 ? String(openPos.length) : '多';
+      badgeColor = '#ef4444';
+    } else if (marketLevel === 'RED') {
+      levelText = '空方保守 (紅燈警戒)';
+      badgeText = '空';
+      badgeColor = '#22c55e';
+    } else {
+      levelText = '區間震盪 (黃燈中性)';
+      badgeText = openPos.length > 0 ? String(openPos.length) : '震';
+      badgeColor = '#f59e0b';
+    }
+  } else {
+    levelText = '非盤中交易時段 (休市)';
+    badgeText = '休';
+    badgeColor = '#64748b';
+  }
+
+  const title = [
+    `EasyStock 台股策略監控`,
+    `大盤狀態：${levelText}`,
+    `盤中時段：${isMarketOpen ? '連續撮合中 (09:00-13:30)' : '已收盤 / 休息中'}`,
+    `當沖持倉：${openPos.length} 檔｜今日平倉：${closedCount} 筆`,
+    `最後更新：${timeStr}`
+  ].join('\n');
+
+  try {
+    await chrome.action.setTitle({ title });
+    if (chrome.action.setBadgeText) {
+      await chrome.action.setBadgeText({ text: badgeText });
+      await chrome.action.setBadgeBackgroundColor({ color: badgeColor });
+    }
+  } catch (_) {}
 }
 export function liveSignals(data, stocks, now, allAlerts = false) {
   // A radar candidate is NOT an entry. Only confirmed OPEN signal positions qualify.
@@ -180,8 +229,9 @@ async function snapshot(refresh = false) {
   try { c = await remoteConfig(now); } catch (e) { configError = e.message; }
   const data = refresh ? await feeds(now, true) : await read('feedCache', { quotes: {}, live: {} });
   const day = ledger(await read('ledger', null), now);
+  safe(updateMarketStatusIcon(data, now));
   return { stocks: st.stocks, settings: st.settings, vip: isVIP(c, st.vipHash), vm: VM_MODE,
-    quotes: data.quotes, updatedAt: data.at || null, error: configError || data.error || '',
+    quotes: data.quotes, live: data.live || {}, updatedAt: data.at || null, error: configError || data.error || '',
     marketOpen: marketOpen(now, c?.market_holidays), used: day.count,
     bounce: (c?.bounce_strategy_signals || []).map(x => signal(x, 'rebound', now)).filter(Boolean),
     paymentURL: c?.payment_gateway_url || '' };
@@ -194,6 +244,7 @@ export async function poll() {
   const c = await remoteConfig(now);
   if (!marketOpen(now, c.market_holidays)) return;
   const data = await feeds(now);
+  safe(updateMarketStatusIcon(data, now));
   const allDaytrade = st.settings.allDaytradeAlerts !== false;
   const allRebound = st.settings.allReboundAlerts !== false;
   const signals = [
@@ -226,9 +277,10 @@ export async function poll() {
 export async function processLiveData(live) {
   if (!plain(live)) return;
   const now = Date.now();
+  const data = { quotes: {}, live };
+  safe(updateMarketStatusIcon(data, now));
   const st = await state();
   if (!st.settings.daytrade) return;
-  const data = { quotes: {}, live };
   const allDaytrade = st.settings.allDaytradeAlerts !== false;
   const signals = [
     ...liveSignals(data, st.stocks, now, allDaytrade),
@@ -255,8 +307,38 @@ export async function handle(message) {
     case 'SNAPSHOT': return snapshot(message.refresh === true);
     case 'ADD': {
       const row = stock(message.stock);
-      if (st.stocks.some(x => x.symbol === row.symbol)) throw new Error('此股票已在自選清單');
-      st.stocks = watchlist([...st.stocks, row]); break;
+      const existing = st.stocks.find(x => x.symbol === row.symbol);
+      if (existing) {
+        const combined = [...new Set([...existing.groups, ...row.groups])];
+        if (combined.length === existing.groups.length) {
+          throw new Error('此股票已在自選清單');
+        }
+        existing.groups = combined;
+      } else {
+        st.stocks = watchlist([...st.stocks, row]);
+      }
+      break;
+    }
+    case 'ADD_BATCH': {
+      if (!Array.isArray(message.stocks) || !message.stocks.length) throw new Error('批次新增格式不正確');
+      const valid = message.stocks.map(s => stock(s));
+      let addedCount = 0;
+      for (const item of valid) {
+        const existing = st.stocks.find(x => x.symbol === item.symbol);
+        if (existing) {
+          const combined = [...new Set([...existing.groups, ...item.groups])];
+          if (combined.length > existing.groups.length) {
+            existing.groups = combined;
+            addedCount++;
+          }
+        } else {
+          st.stocks.push(item);
+          addedCount++;
+        }
+      }
+      if (addedCount === 0) throw new Error('所有股票均已在自選名單中');
+      st.stocks = watchlist(st.stocks);
+      break;
     }
     case 'DELETE': st.stocks = st.stocks.filter(x => x.symbol !== message.symbol); break;
     case 'GROUP': {
@@ -365,8 +447,14 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   return true;
 });
 chrome.alarms.onAlarm.addListener(a => { if (a.name === ALARM) safe(serial(poll)); });
-chrome.runtime.onInstalled.addListener(() => safe(ensureAlarm()));
-chrome.runtime.onStartup.addListener(() => safe(ensureAlarm()));
+chrome.runtime.onInstalled.addListener(() => {
+  safe(ensureAlarm());
+  safe(updateMarketStatusIcon(null));
+});
+chrome.runtime.onStartup.addListener(() => {
+  safe(ensureAlarm());
+  safe(updateMarketStatusIcon(null));
+});
 chrome.notifications.onClicked.addListener(id => safe(serial(() => clicked(id))));
 chrome.notifications.onButtonClicked.addListener((id, index) => safe(serial(() => clicked(id, index))));
 chrome.notifications.onClosed.addListener(id => safe(serial(async () => {
@@ -374,3 +462,4 @@ chrome.notifications.onClosed.addListener(id => safe(serial(async () => {
   if (value?.routes?.[id]) { delete value.routes[id]; await write('ledger', value); }
 })));
 safe(ensureAlarm());
+safe(updateMarketStatusIcon(null));

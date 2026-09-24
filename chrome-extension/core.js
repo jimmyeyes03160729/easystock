@@ -4,6 +4,120 @@ export const SYMBOL = /^\d{4,6}[A-Z]?$/;
 export const GROUPS = ['daytrade', 'rebound'];
 export const plain = v => !!v && typeof v === 'object' && !Array.isArray(v);
 export const finite = v => typeof v === 'number' && Number.isFinite(v);
+
+export const BUILTIN_STOCKS = [
+  { symbol: '2330', name: '台積電', market: 'TW' },
+  { symbol: '2317', name: '鴻海', market: 'TW' },
+  { symbol: '2454', name: '聯發科', market: 'TW' },
+  { symbol: '2308', name: '台達電', market: 'TW' },
+  { symbol: '2382', name: '廣達', market: 'TW' },
+  { symbol: '2303', name: '聯電', market: 'TW' },
+  { symbol: '2603', name: '長榮', market: 'TW' },
+  { symbol: '2609', name: '陽明', market: 'TW' },
+  { symbol: '2615', name: '萬海', market: 'TW' },
+  { symbol: '3008', name: '大立光', market: 'TW' },
+  { symbol: '2412', name: '中華電', market: 'TW' },
+  { symbol: '2881', name: '富邦金', market: 'TW' },
+  { symbol: '2882', name: '國泰金', market: 'TW' },
+  { symbol: '2891', name: '中信金', market: 'TW' },
+  { symbol: '2886', name: '兆豐金', market: 'TW' },
+  { symbol: '2884', name: '玉山金', market: 'TW' },
+  { symbol: '3231', name: '緯創', market: 'TW' },
+  { symbol: '2376', name: '技嘉', market: 'TW' },
+  { symbol: '2357', name: '華碩', market: 'TW' },
+  { symbol: '2356', name: '英業達', market: 'TW' },
+  { symbol: '6669', name: '緯穎', market: 'TW' },
+  { symbol: '3661', name: '世芯-KY', market: 'TW' },
+  { symbol: '3443', name: '創意', market: 'TW' },
+  { symbol: '3035', name: '智原', market: 'TW' },
+  { symbol: '5274', name: '信驊', market: 'TWO' },
+  { symbol: '3529', name: '力旺', market: 'TWO' },
+  { symbol: '6488', name: '環球晶', market: 'TWO' },
+  { symbol: '8299', name: '群聯', market: 'TWO' },
+  { symbol: '1519', name: '華城', market: 'TW' },
+  { symbol: '1513', name: '中興電', market: 'TW' },
+  { symbol: '1503', name: '士電', market: 'TW' },
+  { symbol: '1514', name: '亞力', market: 'TW' },
+  { symbol: '2345', name: '智邦', market: 'TW' },
+  { symbol: '3037', name: '欣興', market: 'TW' },
+  { symbol: '2368', name: '金像電', market: 'TW' },
+  { symbol: '6274', name: '台燿', market: 'TWO' },
+  { symbol: '2383', name: '台光電', market: 'TW' },
+  { symbol: '2002', name: '中鋼', market: 'TW' },
+  { symbol: '1301', name: '台塑', market: 'TW' },
+  { symbol: '1303', name: '南亞', market: 'TW' },
+  { symbol: '1326', name: '台化', market: 'TW' },
+  { symbol: '2618', name: '長榮航', market: 'TW' },
+  { symbol: '2610', name: '華航', market: 'TW' },
+  { symbol: '3293', name: '鈊象', market: 'TWO' },
+  { symbol: '2327', name: '國巨', market: 'TW' },
+  { symbol: '3711', name: '日月光投控', market: 'TW' },
+  { symbol: '2409', name: '友達', market: 'TW' },
+  { symbol: '3481', name: '群創', market: 'TW' },
+  { symbol: '2353', name: '宏碁', market: 'TW' },
+  { symbol: '2324', name: '仁寶', market: 'TW' },
+  { symbol: '4938', name: '和碩', market: 'TW' },
+  { symbol: '8069', name: '元太', market: 'TWO' },
+  { symbol: '3017', name: '奇鋐', market: 'TW' },
+  { symbol: '3324', name: '雙鴻', market: 'TWO' },
+  { symbol: '3653', name: '健策', market: 'TW' },
+  { symbol: '2059', name: '川湖', market: 'TW' },
+  { symbol: '4763', name: '材料-KY', market: 'TW' },
+  { symbol: '6446', name: '藥華藥', market: 'TWO' },
+  { symbol: '6472', name: '保瑞', market: 'TW' },
+  { symbol: '1795', name: '美時', market: 'TW' },
+  { symbol: '3131', name: '弘塑', market: 'TWO' },
+  { symbol: '3583', name: '辛耘', market: 'TW' },
+  { symbol: '5483', name: '中美晶', market: 'TWO' },
+  { symbol: '3105', name: '穩懋', market: 'TWO' },
+  { symbol: '5347', name: '世界', market: 'TWO' },
+  { symbol: '2379', name: '瑞昱', market: 'TW' },
+  { symbol: '2344', name: '華邦電', market: 'TW' },
+  { symbol: '2408', name: '南亞科', market: 'TW' },
+  { symbol: '2337', name: '旺宏', market: 'TW' },
+  { symbol: '1605', name: '華新', market: 'TW' },
+  { symbol: '6869', name: '雲豹能源', market: 'TW' },
+  { symbol: '6806', name: '森崴能源', market: 'TW' },
+  { symbol: '9958', name: '世紀鋼', market: 'TW' },
+  { symbol: '2912', name: '統一超', market: 'TW' }
+];
+
+export function searchStocks(query, extraQuotes = {}) {
+  const q = String(query || '').trim().toUpperCase();
+  const pool = new Map();
+  for (const s of BUILTIN_STOCKS) pool.set(s.symbol, { ...s });
+  if (plain(extraQuotes)) {
+    for (const [sym, item] of Object.entries(extraQuotes)) {
+      if (!pool.has(sym)) {
+        const m = (sym.length === 4 && (sym.startsWith('5') || sym.startsWith('6') || sym.startsWith('8'))) ? 'TWO' : 'TW';
+        pool.set(sym, { symbol: sym, name: item?.name || sym, market: m });
+      } else if (item?.name && pool.get(sym).name === sym) {
+        pool.get(sym).name = item.name;
+      }
+    }
+  }
+  const all = [...pool.values()];
+  if (!q) return all.slice(0, 8);
+
+  const exactSym = all.filter(s => s.symbol === q);
+  const exactName = all.filter(s => s.name.toUpperCase() === q && !exactSym.includes(s));
+  const startSym = all.filter(s => s.symbol.startsWith(q) && !exactSym.includes(s));
+  const startName = all.filter(s => s.name.toUpperCase().startsWith(q) && !exactName.includes(s));
+  const hasName = all.filter(s => s.name.toUpperCase().includes(q) && !exactName.includes(s) && !startName.includes(s));
+  const hasSym = all.filter(s => s.symbol.includes(q) && !exactSym.includes(s) && !startSym.includes(s));
+
+  const results = [...exactSym, ...exactName, ...startName, ...startSym, ...hasName, ...hasSym];
+
+  const match = /^(\d{4,6}[A-Z]?)(?:\.(TW|TWO))?$/i.exec(q);
+  if (match) {
+    const rawSym = match[1];
+    const m = (match[2] || (rawSym.length === 4 && (rawSym.startsWith('5') || rawSym.startsWith('6') || rawSym.startsWith('8')) ? 'TWO' : 'TW')).toUpperCase();
+    if (!results.some(x => x.symbol === rawSym)) {
+      results.unshift({ symbol: rawSym, name: rawSym, market: m });
+    }
+  }
+  return results.slice(0, 15);
+}
 export function taipei(now = Date.now()) {
   const d = new Date(now + 8 * 3600000);
   return { date: d.toISOString().slice(0, 10), weekday: d.getUTCDay(), minute: d.getUTCHours() * 60 + d.getUTCMinutes() };

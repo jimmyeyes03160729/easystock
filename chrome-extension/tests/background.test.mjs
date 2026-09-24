@@ -202,4 +202,49 @@ test('background behavior', async t => {
     assert.ok(winOpened.url.includes('chart.html?symbol=2330'));
     delete chrome.windows;
   });
+  await t.test('updateMarketStatusIcon updates action title and badge with market state', async () => {
+    reset();
+    let titleSet = '', badgeText = '', badgeColor = '';
+    chrome.action = {
+      setTitle: async ({ title }) => { titleSet = title; },
+      setBadgeText: async ({ text }) => { badgeText = text; },
+      setBadgeBackgroundColor: async ({ color }) => { badgeColor = color; }
+    };
+    const openData = {
+      live: {
+        market_level: 'GREEN',
+        open_positions: { '2330': { status: 'OPEN' } },
+        closed_trades: [{ symbol: '2317' }]
+      }
+    };
+    await bg.updateMarketStatusIcon(openData, now);
+    assert.ok(titleSet.includes('EasyStock 台股策略監控'));
+    assert.ok(titleSet.includes('多方強勢 (綠燈)'));
+    assert.ok(titleSet.includes('當沖持倉：1 檔'));
+    assert.equal(badgeText, '1');
+    assert.equal(badgeColor, '#ef4444');
+
+    // Closed market test
+    const offHours = Date.parse('2026-09-17T20:00:00+08:00');
+    await bg.updateMarketStatusIcon(openData, offHours);
+    assert.ok(titleSet.includes('休市'));
+    assert.equal(badgeText, '休');
+    delete chrome.action;
+  });
+  await t.test('ADD_BATCH adds multiple valid stocks and ignores duplicates', async () => {
+    reset(); db.state = defaultState();
+    const batch = [
+      { symbol: '2454', market: 'TW', name: '聯發科', groups: ['daytrade'] },
+      { symbol: '2317', market: 'TW', name: '鴻海', groups: ['rebound'] }
+    ];
+    await bg.serial(() => bg.handle({ type: 'ADD_BATCH', stocks: batch }));
+    assert.ok(db.state.stocks.some(s => s.symbol === '2454'));
+    assert.ok(db.state.stocks.some(s => s.symbol === '2317'));
+
+    // Re-adding same batch throws
+    await assert.rejects(
+      bg.serial(() => bg.handle({ type: 'ADD_BATCH', stocks: batch })),
+      /所有股票均已在自選名單中/
+    );
+  });
 });
