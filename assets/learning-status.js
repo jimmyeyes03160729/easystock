@@ -42,7 +42,7 @@
     <article class="learning-column" aria-labelledby="dailyLearningTitle">
       <header class="learning-column-head">
         <div>
-          <h3 id="dailyLearningTitle">今日工位實盤自救</h3>
+          <h3 id="dailyLearningTitle">每日資料訓練 · 工位自救</h3>
           <p id="dailyLearningDate">記住每一筆被割肉的痛，隔天開盤不再重蹈覆轍</p>
         </div>
         <span id="learningPhase" class="phase-badge" role="status">等待每日資料</span>
@@ -76,7 +76,7 @@
     <article class="learning-column" aria-labelledby="historyLearningTitle">
       <header class="learning-column-head">
         <div>
-          <h3 id="historyLearningTitle">十年歷史行情特訓</h3>
+          <h3 id="historyLearningTitle">歷史資料訓練 · 十年特訓</h3>
           <p>回看過去崩跌與大漲行情，在模擬沙盤中先被痛打一萬次。</p>
         </div>
         <span id="historyPhase" class="phase-badge" role="status">等待歷史資料</span>
