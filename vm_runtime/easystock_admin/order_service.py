@@ -1,7 +1,11 @@
 import os
 import time
 from pathlib import Path
-import shioaji as sj
+
+try:
+    import shioaji as sj
+except ModuleNotFoundError:
+    sj = None
 
 # 自動載入 .env
 env_file = Path("/home/ubuntu/easystock/.env")
@@ -23,9 +27,11 @@ class OrderService:
         self.is_logged_in = False
         self.account_info = {}
         self._last_login_time = 0
-        self._warmup_attempted = False
 
     def login(self, api_key: str = None, secret_key: str = None):
+        if sj is None:
+            raise RuntimeError("伺服器環境未安裝 shioaji 套件，無法連線永豐金證券 API")
+
         api_key = api_key or os.environ.get("SJ_API_KEY", "")
         secret_key = secret_key or os.environ.get("SJ_SECRET_KEY", "")
         if not api_key or not secret_key:
@@ -58,6 +64,8 @@ class OrderService:
 
     def ensure_ready(self):
         """確保 Shioaji API 已連線且可用（包含斷線重連機制）"""
+        if sj is None:
+            raise RuntimeError("伺服器環境未安裝 shioaji 套件，無法連線永豐金證券 API")
         if not self.is_logged_in or not self.api:
             self.login()
         elif time.time() - self._last_login_time > 1800:
@@ -236,9 +244,10 @@ class OrderService:
 
 order_service = OrderService()
 
-# 模組載入時若具備環境變數金鑰，自動預熱連線
-try:
-    if os.environ.get("SJ_API_KEY") and os.environ.get("SJ_SECRET_KEY"):
-        order_service.login()
-except Exception:
-    pass
+# 模組載入時若具備環境變數金鑰且已安裝 shioaji，自動預熱連線
+if sj is not None:
+    try:
+        if os.environ.get("SJ_API_KEY") and os.environ.get("SJ_SECRET_KEY"):
+            order_service.login()
+    except Exception:
+        pass
