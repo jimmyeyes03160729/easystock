@@ -1,5 +1,5 @@
 import { VM_MODE, CONFIG_URL, FIREBASE_ROOT } from './environment.js';
-import { TTL, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit } from './core.js';
+import { TTL, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter } from './core.js';
 
 const ALARM = 'easystock-five-minutes';
 let tail = Promise.resolve();
@@ -80,10 +80,10 @@ export function liveSignals(data, stocks, now, allAlerts = false) {
     // Current public feed may lack previous close/change. Never invent a percentage.
     const price = q && finite(q.price) ? q.price : (finite(p.entry_price) ? p.entry_price : 100);
     const quoteAt = q?.updated_at && fresh(q.updated_at, now) ? q.updated_at : p.entry_time;
-    const pct = q && finite(q.change_pct) ? q.change_pct : (q && finite(q.previous_close) && q.previous_close > 0 ? (q.price / q.previous_close - 1) * 100 : null);
+    const pct = q && finite(q.change_pct) ? q.change_pct : (q && finite(q.previous_close) && q.previous_close > 0 ? (q.price / q.previous_close - 1) * 100 : (finite(p.change_pct) ? p.change_pct : (finite(p.pnl_pct) ? p.pnl_pct : null)));
     const base = signal({ id: `entry:${s.symbol}:${p.entry_time}`, symbol: s.symbol, market: s.market,
       name: p.name || s.name, price, change_pct: pct, generated_at: p.entry_time, quote_at: quoteAt,
-      reason: Array.isArray(p.entry_reasons) ? p.entry_reasons.join('；').slice(0, 200) : '' }, 'daytrade', now, true);
+      reason: Array.isArray(p.entry_reasons) ? (p.entry_reasons.join('；').slice(0, 200) || '當沖進場') : (p.reason || '當沖進場') }, 'daytrade', now, true);
     if (!base) return [];
     return [{
       ...base,
@@ -150,15 +150,16 @@ async function notify(s, { test = false, vip = false, now = Date.now() } = {}) {
   if (!test) {
     next.count += 1; next.last[s.symbol] = now; next.seen[`${s.strategy}:${s.id}`] = true;
   }
-  next.routes[id] = { symbol: s.symbol, market: s.market, day: next.day, test, at: now };
+  next.routes[id] = { symbol: s.symbol, market: s.market, name: s.name, strategy: s.strategy, day: next.day, test, at: now };
   const routes = Object.entries(next.routes).sort((a, b) => b[1].at - a[1].at).slice(0, 500);
   next.routes = Object.fromEntries(routes);
   await write('ledger', next);
   try {
     const isExit = s.action === 'SELL' || s.id?.startsWith('exit:');
     const isDaytrade = s.strategy === 'daytrade';
-    const defaultTitle = `${test ? '【VM 測試】' : ''}【${isDaytrade ? (isExit ? '當沖出場' : '當沖多方訊號') : '觸底反彈訊號'}】${s.symbol} ${s.name}`;
-    const telegramTitle = `${test ? '【VM 測試】' : ''}${isExit ? '✅【當沖出場】' : '🚀【當沖進場訊號】'}${s.symbol} ${s.name}`;
+    const isRebound = s.strategy === 'rebound';
+    const defaultTitle = `${test ? '【VM 測試】' : ''}${isDaytrade ? (isExit ? '【當沖出場】' : '【當沖多方訊號】') : '🛡️【觸底反彈訊號】'}${s.symbol} ${s.name}`;
+    const telegramTitle = `${test ? '【VM 測試】' : ''}${isExit ? '✅【當沖出場】' : (isRebound ? '🛡️【觸底反彈訊號】' : '🚀【當沖進場訊號】')}${s.symbol} ${s.name}`;
     const title = s.telegramText ? telegramTitle : (s.customTitle || defaultTitle);
 
     const defaultMsg = `現價 ${s.price.toFixed(2)} 元｜${finite(s.change_pct) ? `${s.change_pct >= 0 ? '+' : ''}${s.change_pct.toFixed(2)}%` : '漲跌幅未提供'}\n${s.reason}`;
@@ -194,18 +195,28 @@ export async function poll() {
   if (!marketOpen(now, c.market_holidays)) return;
   const data = await feeds(now);
   const allDaytrade = st.settings.allDaytradeAlerts !== false;
+  const allRebound = st.settings.allReboundAlerts !== false;
   const signals = [
-    ...liveSignals(data, st.stocks, now, allDaytrade),
-    ...liveExitSignals(data, st.stocks, now, allDaytrade),
-    ...c.daytrade_strategy_signals.map(x => signal(x, 'daytrade', now)),
-    ...c.bounce_strategy_signals.map(x => signal(x, 'rebound', now))
+    ...(st.settings.daytrade ? liveSignals(data, st.stocks, now, allDaytrade) : []),
+    ...(st.settings.daytrade ? liveExitSignals(data, st.stocks, now, allDaytrade) : []),
+    ...(st.settings.daytrade ? c.daytrade_strategy_signals.map(x => signal(x, 'daytrade', now)) : []),
+    ...(st.settings.rebound ? c.bounce_strategy_signals.map(x => {
+      const sig = signal(x, 'rebound', now);
+      return sig ? { ...sig, telegramText: formatTelegramRebound(sig) } : null;
+    }) : [])
   ].filter(Boolean);
   const vip = isVIP(c, st.vipHash);
   for (const s of signals) {
     if (!st.settings[s.strategy]) continue;
     const isLiveTrade = Boolean(s.action);
-    if (isLiveTrade && allDaytrade) {
+    const isExit = s.action === 'SELL';
+    if (!isExit && !matchFilter(s.price, s.change_pct, st.settings)) {
+      continue;
+    }
+    if (s.strategy === 'daytrade' && isLiveTrade && allDaytrade) {
       // 全市場當沖連動模式：即時買賣訊號直接發送
+    } else if (s.strategy === 'rebound' && allRebound) {
+      // 全市場反彈連動模式
     } else if (!st.stocks.some(x => x.symbol === s.symbol && x.market === s.market && x.groups.includes(s.strategy))) {
       continue;
     }
@@ -226,6 +237,10 @@ export async function processLiveData(live) {
   const c = await remoteConfig(now).catch(() => null);
   const vip = isVIP(c, st.vipHash);
   for (const s of signals) {
+    const isExit = s.action === 'SELL';
+    if (!isExit && !matchFilter(s.price, s.change_pct, st.settings)) {
+      continue;
+    }
     if (allDaytrade) {
       await notify(s, { vip, now });
     } else if (st.stocks.some(x => x.symbol === s.symbol && x.market === s.market && x.groups.includes(s.strategy))) {
@@ -253,8 +268,10 @@ export async function handle(message) {
       break;
     }
     case 'SETTINGS': {
-      if (!GROUPS.includes(message.strategy) && message.strategy !== 'allDaytradeAlerts') throw new Error('開關格式不正確');
-      st.settings[message.strategy] = message.enabled; break;
+      const allowed = [...GROUPS, 'allDaytradeAlerts', 'allReboundAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct'];
+      if (!allowed.includes(message.strategy)) throw new Error('開關格式不正確');
+      st.settings[message.strategy] = message.enabled !== undefined ? message.enabled : message.value;
+      break;
     }
     case 'IMPORT': st.stocks = watchlist(message.stocks); break;
     case 'VIP': {
@@ -288,8 +305,12 @@ export async function handle(message) {
         return { sent: true };
       }
       if (message.strategy === 'rebound') {
-        await notify({ symbol: '2330', name: '台積電', market: 'TW', price: 1000, change_pct: 1.25,
-          strategy: 'rebound', reason: '示例：支撐區反彈、量能回升' }, { test: true });
+        const fakeRebound = {
+          symbol: '2330', name: '台積電', market: 'TW', price: 1000, change_pct: 1.25,
+          strategy: 'rebound', reason: '示例：支撐區反彈、量能回升'
+        };
+        fakeRebound.telegramText = formatTelegramRebound(fakeRebound);
+        await notify(fakeRebound, { test: true });
         return { sent: true };
       }
       throw new Error('測試類型不正確');
@@ -307,7 +328,24 @@ async function clicked(id, button = 0) {
     if (!route.test && route.day === taipei(now).date) {
       const day = ledger(current, now); day.ignored[route.symbol] = true; await write('ledger', day);
     }
-  } else if (button === 0) await chrome.tabs.create({ url: chartURL(route) });
+  } else if (button === 0) {
+    const winUrl = chrome.runtime.getURL(`chart.html?symbol=${encodeURIComponent(route.symbol)}&market=${encodeURIComponent(route.market)}&name=${encodeURIComponent(route.name || route.symbol)}&strategy=${encodeURIComponent(route.strategy || '')}`);
+    if (chrome.windows && typeof chrome.windows.create === 'function') {
+      try {
+        await chrome.windows.create({
+          url: winUrl,
+          type: 'popup',
+          width: 960,
+          height: 680,
+          focused: true
+        });
+      } catch {
+        await chrome.tabs.create({ url: winUrl });
+      }
+    } else {
+      await chrome.tabs.create({ url: chartURL(route) });
+    }
+  }
   await chrome.notifications.clear(id);
 }
 async function ensureAlarm() {

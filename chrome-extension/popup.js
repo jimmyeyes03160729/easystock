@@ -36,6 +36,25 @@ function render() {
   $('market-status-dot').title = view.vm ? 'VM 隔離示例；不自動交易推播' : view.marketOpen ? '盤中排程；報價時間請看個股' : '休市／非盤中時段';
   for (const key of GROUPS) $(`toggle-${key}`).checked = view.settings[key];
   if ($('toggle-all-daytrade')) $('toggle-all-daytrade').checked = view.settings?.allDaytradeAlerts !== false;
+  if ($('toggle-all-rebound')) $('toggle-all-rebound').checked = view.settings?.allReboundAlerts !== false;
+  if ($('radio-filter-all') && $('radio-filter-custom')) {
+    const isCustom = view.settings?.filterMode === 'custom';
+    $('radio-filter-all').checked = !isCustom;
+    $('radio-filter-custom').checked = isCustom;
+    if ($('input-min-price') && document.activeElement !== $('input-min-price')) {
+      $('input-min-price').value = finite(view.settings?.minPrice) ? view.settings.minPrice : '';
+    }
+    if ($('input-max-price') && document.activeElement !== $('input-max-price')) {
+      $('input-max-price').value = finite(view.settings?.maxPrice) ? view.settings.maxPrice : '';
+    }
+    if ($('input-min-pct') && document.activeElement !== $('input-min-pct')) {
+      $('input-min-pct').value = finite(view.settings?.minChangePct) ? view.settings.minChangePct : '';
+    }
+    if ($('filter-status-tag')) {
+      $('filter-status-tag').textContent = isCustom ? '條件過濾中' : '全開模式';
+      $('filter-status-tag').className = `text-[10px] px-1 rounded ${isCustom ? 'text-amber-600 bg-amber-50' : 'text-sky-600 bg-sky-50'}`;
+    }
+  }
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.setAttribute('aria-selected', String(b.dataset.group === group));
     b.classList.toggle('tab-active', b.dataset.group === group);
@@ -71,8 +90,19 @@ function render() {
       });
       item.append(check, document.createTextNode(label[g])); groups.append(item);
     }
-    const chart = el('a', '線圖 ↗', 'text-[11px] text-sky-700');
+    const chart = el('a', '線圖 ↗', 'text-[11px] text-sky-700 cursor-pointer');
     chart.href = chartURL(s); chart.target = '_blank'; chart.rel = 'noopener noreferrer';
+    chart.addEventListener('click', async e => {
+      if (chrome.windows && typeof chrome.windows.create === 'function') {
+        e.preventDefault();
+        const winUrl = chrome.runtime.getURL(`chart.html?symbol=${encodeURIComponent(s.symbol)}&market=${encodeURIComponent(s.market)}&name=${encodeURIComponent(s.name)}`);
+        try {
+          await chrome.windows.create({ url: winUrl, type: 'popup', width: 960, height: 680, focused: true });
+        } catch {
+          await chrome.tabs.create({ url: winUrl });
+        }
+      }
+    });
     bottom.append(groups, chart); card.append(bottom);
     const bounce = view.bounce.find(x => x.symbol === s.symbol && x.market === s.market);
     if (bounce) card.append(el('p', `反彈觀察：${bounce.reason}`, 'text-[10px] text-purple-700'));
@@ -128,6 +158,32 @@ for (const strategy of GROUPS) {
 }
 $('toggle-all-daytrade')?.addEventListener('change', async e => {
   await act({ type: 'SETTINGS', strategy: 'allDaytradeAlerts', enabled: e.target.checked }); if (view) render();
+});
+$('toggle-all-rebound')?.addEventListener('change', async e => {
+  await act({ type: 'SETTINGS', strategy: 'allReboundAlerts', enabled: e.target.checked }); if (view) render();
+});
+$('radio-filter-all')?.addEventListener('change', async e => {
+  if (e.target.checked) {
+    await act({ type: 'SETTINGS', strategy: 'filterMode', value: 'all' });
+    if (view) render();
+  }
+});
+$('radio-filter-custom')?.addEventListener('change', async e => {
+  if (e.target.checked) {
+    await act({ type: 'SETTINGS', strategy: 'filterMode', value: 'custom' });
+    if (view) render();
+  }
+});
+$('btn-save-filter')?.addEventListener('click', async () => {
+  const minP = $('input-min-price').value.trim() ? Number($('input-min-price').value) : null;
+  const maxP = $('input-max-price').value.trim() ? Number($('input-max-price').value) : null;
+  const minPct = $('input-min-pct').value.trim() ? Number($('input-min-pct').value) : null;
+  await act({ type: 'SETTINGS', strategy: 'minPrice', value: minP });
+  await act({ type: 'SETTINGS', strategy: 'maxPrice', value: maxP });
+  await act({ type: 'SETTINGS', strategy: 'minChangePct', value: minPct });
+  await act({ type: 'SETTINGS', strategy: 'filterMode', value: 'custom' });
+  status('條件過濾設定已儲存');
+  if (view) render();
 });
 $('btn-test-exit-notif')?.addEventListener('click', () => act({ type: 'TEST', action: 'SELL' }, '測試賣出通知已交給 Chrome；音效由 VM 系統設定決定'));
 $('btn-activate-vip').addEventListener('click', async () => {

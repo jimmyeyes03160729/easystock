@@ -148,4 +148,58 @@ test('background behavior', async t => {
     assert.ok(notifications.some(n => n.options.title.includes('🚀【當沖進場訊號】') && n.options.message.includes('2330 台積電')));
     assert.ok(notifications.some(n => n.options.title.includes('✅【當沖出場】') && n.options.message.includes('2603 長榮')));
   });
+  await t.test('conditional push filters signals by price range and change pct', async () => {
+    reset(); db.state = defaultState();
+    db.state.settings.filterMode = 'custom';
+    db.state.settings.minPrice = 500;
+    db.state.settings.minChangePct = 2.0;
+    const cheapStock = {
+      open_positions: {
+        '2603': { symbol: '2603', name: '長榮', status: 'OPEN', entry_price: 200, pnl_pct: 3.0, entry_time: new Date(now).toISOString() }
+      }
+    };
+    await bg.serial(() => bg.processLiveData(cheapStock));
+    assert.equal(notifications.length, 0);
+
+    const matchedStock = {
+      open_positions: {
+        '2330': { symbol: '2330', name: '台積電', status: 'OPEN', entry_price: 1000, pnl_pct: 2.5, entry_time: new Date(now).toISOString() }
+      }
+    };
+    await bg.serial(() => bg.processLiveData(matchedStock));
+    assert.equal(notifications.length, 1);
+  });
+  await t.test('rebound push respects independent switch and sends telegram format', async () => {
+    reset(); db.state = defaultState();
+    db.state.settings.daytrade = false;
+    db.state.settings.rebound = false;
+    cfg.bounce_strategy_signals.push(makeSignal('2330'));
+    await bg.serial(bg.poll);
+    assert.equal(notifications.length, 0);
+
+    reset(); db.state = defaultState();
+    db.state.stocks[0].groups = ['rebound'];
+    db.state.settings.daytrade = false;
+    db.state.settings.rebound = true;
+    cfg.bounce_strategy_signals.push(makeSignal('2330'));
+    await bg.serial(bg.poll);
+    assert.equal(notifications.length, 1);
+    assert.ok(notifications[0].options.title.includes('🛡️【觸底反彈訊號】'));
+    assert.ok(notifications[0].options.message.includes('2330'));
+  });
+  await t.test('clicking notification opens standalone chart popup window if supported', async () => {
+    reset();
+    let winOpened = null;
+    chrome.windows = {
+      create: async opts => { winOpened = opts; return { id: 99 }; }
+    };
+    await bg.serial(() => bg.handle({ type: 'TEST', strategy: 'daytrade' }));
+    const id = notifications[0].id;
+    chrome.notifications.onClicked.listeners[0](id);
+    await bg.serial(async () => {});
+    assert.ok(winOpened);
+    assert.equal(winOpened.type, 'popup');
+    assert.ok(winOpened.url.includes('chart.html?symbol=2330'));
+    delete chrome.windows;
+  });
 });

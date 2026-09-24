@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { taipei, marketOpen, fresh, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit } from '../core.js';
+import { taipei, marketOpen, fresh, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter } from '../core.js';
 const at = s => Date.parse(s);
 const now = at('2026-09-17T09:30:00+08:00');
 const sample = { id: 'a', symbol: '2330', market: 'TW', name: '台積電', price: 1000, change_pct: 1, reason: '爆量', generated_at: '2026-09-17T09:29:00+08:00', quote_at: '2026-09-17T09:29:00+08:00' };
@@ -93,4 +93,24 @@ test('telegram format generates matching entry and exit messages', () => {
   assert.match(exitMsg, /最大浮虧：-0\.50%/);
   assert.match(exitMsg, /持有時間：30分0秒/);
   assert.match(exitMsg, /出場原因：12:55當沖強制出場/);
+});
+test('matchFilter supports all-pass, price-range, and change-percentage criteria', () => {
+  const allSettings = { filterMode: 'all', minPrice: 100, maxPrice: 500, minChangePct: 3.0 };
+  assert.equal(matchFilter(50, 1.0, allSettings), true);
+
+  const customSettings = { filterMode: 'custom', minPrice: 50, maxPrice: 200, minChangePct: 2.0 };
+  assert.equal(matchFilter(100, 2.5, customSettings), true);
+  assert.equal(matchFilter(40, 2.5, customSettings), false);
+  assert.equal(matchFilter(250, 2.5, customSettings), false);
+  assert.equal(matchFilter(100, 1.5, customSettings), false);
+});
+test('telegram rebound formatting outputs complete signal message', () => {
+  const reboundMsg = formatTelegramRebound({
+    symbol: '2330', name: '台積電', price: 1000, change_pct: 2.5, reason: '底部出量紅K確認'
+  });
+  assert.match(reboundMsg, /🛡️【觸底反彈訊號】/);
+  assert.match(reboundMsg, /2330 台積電/);
+  assert.match(reboundMsg, /現價：1000\.00 元｜漲跌：\+2\.50%/);
+  assert.match(reboundMsg, /底部出量紅K確認/);
+  assert.match(reboundMsg, /狀態：REBOUND/);
 });

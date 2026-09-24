@@ -126,7 +126,44 @@ export function formatTelegramExit(t) {
   ].join('\n');
 }
 
+export function formatTelegramRebound(s) {
+  const symbol = s.symbol || '';
+  const name = s.name || symbol;
+  const price = finite(s.price) ? s.price.toFixed(2) : '-';
+  const pct = finite(s.change_pct) ? `${s.change_pct >= 0 ? '+' : ''}${s.change_pct.toFixed(2)}%` : '-';
+  const reason = s.reason || '技術面觸底反彈訊號，量能回升';
+
+  return [
+    `🛡️【觸底反彈訊號】`,
+    ``,
+    `${symbol} ${name}`,
+    `現價：${price} 元｜漲跌：${pct}`,
+    ``,
+    `反彈觀察理由：`,
+    `✓ ${reason}`,
+    ``,
+    `狀態：REBOUND (觀察中)`
+  ].join('\n');
+}
+
+export function matchFilter(price, changePct, settings) {
+  if (!settings || settings.filterMode === 'all') return true;
+  if (finite(settings.minPrice) && (!finite(price) || price < settings.minPrice)) return false;
+  if (finite(settings.maxPrice) && (!finite(price) || price > settings.maxPrice)) return false;
+  if (finite(settings.minChangePct) && (!finite(changePct) || changePct < settings.minChangePct)) return false;
+  return true;
+}
+
 export function defaultState() {
   return { version: 1, stocks: [stock({ symbol: '2330', name: '台積電', market: 'TW', groups: ['daytrade'] })],
-    settings: { daytrade: true, rebound: true, allDaytradeAlerts: true }, vipHash: '' };
+    settings: {
+      daytrade: true,
+      rebound: true,
+      allDaytradeAlerts: true,
+      allReboundAlerts: true,
+      filterMode: 'all',
+      minPrice: null,
+      maxPrice: null,
+      minChangePct: null
+    }, vipHash: '' };
 }
