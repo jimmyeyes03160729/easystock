@@ -746,8 +746,9 @@ export async function fetchDailyData(sym, mkt) {
 
   for (const ySym of candidates) {
     const urls = [
-      `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1d&range=6mo`,
-      `https://query2.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1d&range=6mo`
+      `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1d&range=2y`,
+      `https://query2.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1d&range=2y`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1d&range=1y`
     ];
     for (const url of urls) {
       const controller = new AbortController();

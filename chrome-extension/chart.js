@@ -82,7 +82,7 @@ tabDaily.addEventListener('click', () => {
   currentMode = 'daily';
   tabDaily.classList.add('active');
   tabIntraday.classList.remove('active');
-  viewBarsCount = 60;
+  viewBarsCount = 80;
   viewOffset = 0;
   hoverIndex = -1;
   loadData();
@@ -183,12 +183,12 @@ function generateMockIntraday(base = (currentStockInfo.price > 0 ? currentStockI
   return list;
 }
 
-// 產生模擬歷史日K資料 (底價嚴格採用個股真實現價)
+// 產生模擬歷史日K資料 (底價嚴格採用個股真實現價，涵蓋 2 年交易日約 500 根，支援自由平移縮放)
 function generateMockDaily(basePrice = (currentStockInfo.price > 0 ? currentStockInfo.price : 50)) {
   const bars = [];
   let cur = basePrice;
   const now = new Date();
-  for (let i = 90; i >= 0; i--) {
+  for (let i = 730; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 86400000);
     if (d.getDay() === 0 || d.getDay() === 6) continue;
     const change = (Math.random() - 0.48) * (cur * 0.03);
@@ -202,6 +202,61 @@ function generateMockDaily(basePrice = (currentStockInfo.price > 0 ? currentStoc
     cur = close;
   }
   return bars;
+}
+
+// 抓取 Yahoo 歷史 2 年日K走勢 API (直接調用備用路徑，避免跨網域或背景中斷)
+async function fetchYahooDailyDirect() {
+  const ySym = market === 'TWO' ? `${symbol}.TWO` : `${symbol}.TW`;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1d&range=2y`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  try {
+    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const result = json?.chart?.result?.[0];
+    if (!result) throw new Error('查無歷史日K數據');
+
+    const timestamps = result.timestamp;
+    const quotes = result.indicators?.quote?.[0];
+    if (!Array.isArray(timestamps) || !quotes) throw new Error('日K數據格式不符');
+
+    const bars = [];
+    let lastValidPrice = null;
+    for (let i = 0; i < timestamps.length; i++) {
+      const ts = timestamps[i];
+      let c = quotes.close?.[i];
+      let o = quotes.open?.[i];
+      let h = quotes.high?.[i];
+      let l = quotes.low?.[i];
+      let v = quotes.volume?.[i] || 0;
+
+      if (!finite(c)) {
+        if (!finite(lastValidPrice) || lastValidPrice <= 0) continue;
+        c = lastValidPrice;
+        o = c; h = c; l = c;
+      } else {
+        lastValidPrice = c;
+      }
+      if (!finite(o)) o = c;
+      if (!finite(h)) h = Math.max(o, c);
+      if (!finite(l)) l = Math.min(o, c);
+
+      const d = new Date(ts * 1000);
+      const dateStr = d.toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+      bars.push({
+        time: dateStr,
+        open: Number(o),
+        high: Number(h),
+        low: Number(l),
+        close: Number(c),
+        volume: Number(v)
+      });
+    }
+    return bars;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // 抓取 Yahoo 當日 1分K 走勢 API (直接調用備用路徑)
@@ -356,9 +411,14 @@ async function loadData(force = false) {
             bars = bgDaily.bars;
           }
         }
-      } catch (_) {}
+      // 若未取得，優先直接調用 Yahoo 2 年日K
+      if (!Array.isArray(bars) || !bars.length) {
+        try {
+          bars = await fetchYahooDailyDirect();
+        } catch (_) {}
+      }
 
-      // 若未取得，嘗試 Firebase 歷史封存作為 Fallback
+      // 若仍未取得，嘗試 Firebase 歷史封存作為 Fallback
       if (!Array.isArray(bars) || !bars.length) {
         try {
           const klineRes = await fetch(`${FIREBASE_ROOT}/kline/${encodeURIComponent(symbol)}.json`).catch(() => null);
@@ -473,10 +533,23 @@ function updateTooltip(cur, curX, curY, plotWidth, height, isIntraday) {
   if (isIntraday) {
     diffPct = previousClose ? ((cur.close - previousClose) / previousClose) * 100 : 0;
   } else {
-    diffPct = cur.open > 0 ? ((cur.close - cur.open) / cur.open) * 100 : 0;
+    diffPct = (cur.prevClose && cur.prevClose > 0)
+      ? ((cur.close - cur.prevClose) / cur.prevClose) * 100
+      : (cur.open > 0 ? ((cur.close - cur.open) / cur.open) * 100 : 0);
   }
   const pSign = diffPct > 0 ? '▲ +' : (diffPct < 0 ? '▼ ' : '');
   const colorCls = diffPct > 0 ? 'var(--up)' : (diffPct < 0 ? 'var(--down)' : 'var(--main)');
+
+  // 動態更新 Badge 與 Label，不再將日K誤標為「即時點位」
+  const badgeEl = document.getElementById('tip-badge');
+  if (badgeEl) {
+    badgeEl.textContent = isIntraday ? '即時分時' : '歷史日K';
+    badgeEl.style.color = isIntraday ? 'var(--accent)' : '#f59e0b';
+  }
+  const priceLabelEl = document.querySelector('#chart-tooltip .tooltip-row:nth-child(2) .tooltip-label');
+  if (priceLabelEl) {
+    priceLabelEl.textContent = isIntraday ? '分時價格' : '日收盤價';
+  }
 
   setText('tip-date', cur.time || '--');
   setText('tip-price', cur.close.toFixed(2));
@@ -618,9 +691,12 @@ function drawIntraday(width, height) {
     ctx.fillText(`${p.toFixed(2)} (${sign}${diffPct.toFixed(1)}%)`, plotWidth + 4, y + 4);
   }
 
-  // 繪製昨收基準虛線 (嚴格位於畫布中軸線)
+  // 繪製昨收基準虛線 (嚴格位於畫布中軸線 0% 水平基準)
+  const prevY = (previousClose && previousClose >= minPrice && previousClose <= maxPrice)
+    ? getY(previousClose)
+    : Math.floor(mainHeight / 2);
+
   if (previousClose && previousClose >= minPrice && previousClose <= maxPrice) {
-    const prevY = getY(previousClose);
     ctx.strokeStyle = 'rgba(245, 158, 11, 0.7)';
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
@@ -630,7 +706,7 @@ function drawIntraday(width, height) {
     ctx.setLineDash([]);
 
     ctx.fillStyle = '#f59e0b';
-    ctx.fillText(`昨收 ${previousClose.toFixed(2)}`, plotWidth + 4, prevY - 4);
+    ctx.fillText(`0% 昨收 ${previousClose.toFixed(2)}`, plotWidth + 4, prevY - 4);
   }
 
   // 副圖分隔線
@@ -642,39 +718,56 @@ function drawIntraday(width, height) {
   ctx.fillStyle = '#87929a';
   ctx.fillText(`量: ${Math.floor(maxVol)}`, plotWidth + 4, volTop + 12);
 
-  // 繪製走勢折線與漸層光暈面積 (TradingView / Bloomberg 黑曜石電光青藍)
+  // 繪製當日分時走勢折線與漸層光暈（台灣股市規則：超過 0% 為紅色，低於 0% 為綠色）
+  const splitRatio = Math.max(0, Math.min(1, prevY / mainHeight));
+
+  // 1. 折線顏色漸層：超過 0%（y < prevY）為台股紅 #f43f5e，低於 0%（y > prevY）為台股綠 #10b981
+  const lineGrad = ctx.createLinearGradient(0, 0, 0, mainHeight);
+  lineGrad.addColorStop(0, '#f43f5e');
+  lineGrad.addColorStop(Math.max(0, splitRatio - 0.002), '#f43f5e');
+  lineGrad.addColorStop(Math.min(1, splitRatio + 0.002), '#10b981');
+  lineGrad.addColorStop(1, '#10b981');
+
   ctx.beginPath();
   ctx.moveTo(getX(0), getY(visible[0].close));
   for (let i = 1; i < visibleCount; i++) {
     ctx.lineTo(getX(i), getY(visible[i].close));
   }
-  ctx.strokeStyle = '#38bdf8';
+  ctx.strokeStyle = lineGrad;
   ctx.lineWidth = 2.0;
   ctx.stroke();
 
-  // 漸層光暈填充
+  // 2. 漸層光暈填充：0% 基準線上方為紅光，下方為綠光
   ctx.lineTo(getX(visibleCount - 1), mainHeight);
   ctx.lineTo(getX(0), mainHeight);
   ctx.closePath();
-  const grad = ctx.createLinearGradient(0, 0, 0, mainHeight);
-  grad.addColorStop(0, 'rgba(56, 189, 248, 0.28)');
-  grad.addColorStop(0.5, 'rgba(56, 189, 248, 0.08)');
-  grad.addColorStop(1, 'rgba(10, 14, 25, 0)');
-  ctx.fillStyle = grad;
+
+  const areaGrad = ctx.createLinearGradient(0, 0, 0, mainHeight);
+  areaGrad.addColorStop(0, 'rgba(244, 63, 94, 0.28)');
+  areaGrad.addColorStop(Math.max(0, splitRatio - 0.02), 'rgba(244, 63, 94, 0.04)');
+  areaGrad.addColorStop(Math.min(1, splitRatio + 0.02), 'rgba(16, 185, 129, 0.04)');
+  areaGrad.addColorStop(1, 'rgba(16, 185, 129, 0.25)');
+  ctx.fillStyle = areaGrad;
   ctx.fill();
 
-  // 繪製最新即時點脈衝光輝 (Live Tick Pin)
+  // 3. 繪製最新即時點脈衝光輝 (Live Tick Pin)：超過 0% 閃爍紅光，低於 0% 閃爍綠光
   if (visibleCount > 0) {
+    const lastClose = visible[visibleCount - 1].close;
+    const isUp = previousClose ? lastClose >= previousClose : true;
+    const pinColor = isUp ? '#f43f5e' : '#10b981';
+    const pinGlow = isUp ? 'rgba(244, 63, 94, 0.35)' : 'rgba(16, 185, 129, 0.35)';
+
     const lastX = getX(visibleCount - 1);
-    const lastY = getY(visible[visibleCount - 1].close);
+    const lastY = getY(lastClose);
+
     ctx.beginPath();
     ctx.arc(lastX, lastY, 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = pinColor;
     ctx.fill();
 
     ctx.beginPath();
-    ctx.arc(lastX, lastY, 7.5, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.3)';
+    ctx.arc(lastX, lastY, 8, 0, Math.PI * 2);
+    ctx.fillStyle = pinGlow;
     ctx.fill();
   }
 
@@ -953,8 +1046,8 @@ function drawDaily(width, height) {
     setText('m-low', cur.low.toFixed(2));
     setText('m-close', cur.close.toFixed(2));
 
-    const prevClose = hoverIndex > 0 ? visible[hoverIndex - 1].close : cur.open;
-    const diffPct = prevClose > 0 ? ((cur.close - prevClose) / prevClose) * 100 : 0;
+    const prevClose = hoverIndex > 0 ? visible[hoverIndex - 1].close : (startIdx > 0 ? data[startIdx - 1]?.close : cur.open);
+    const diffPct = (prevClose && prevClose > 0) ? ((cur.close - prevClose) / prevClose) * 100 : 0;
     const pSign = diffPct > 0 ? '+' : '';
     setText('m-pct', `${pSign}${diffPct.toFixed(2)}%`);
     setElemColor('m-pct', diffPct > 0 ? 'var(--up)' : (diffPct < 0 ? 'var(--down)' : 'var(--main)'));
@@ -964,6 +1057,7 @@ function drawDaily(width, height) {
     setText('m-ma10', vMA10[hoverIndex] ? vMA10[hoverIndex].toFixed(2) : '--');
     setText('m-ma20', vMA20[hoverIndex] ? vMA20[hoverIndex].toFixed(2) : '--');
 
+    cur.prevClose = prevClose;
     // 連動懸浮 Tooltip
     updateTooltip(cur, curX, curY, plotWidth, height, false);
   } else {
@@ -976,8 +1070,8 @@ function drawDaily(width, height) {
       setText('m-low', last.low.toFixed(2));
       setText('m-close', last.close.toFixed(2));
 
-      const prevClose = visibleCount > 1 ? visible[visibleCount - 2].close : last.open;
-      const diffPct = prevClose > 0 ? ((last.close - prevClose) / prevClose) * 100 : 0;
+      const prevClose = visibleCount > 1 ? visible[visibleCount - 2].close : (startIdx > 0 ? data[startIdx - 1]?.close : last.open);
+      const diffPct = (prevClose && prevClose > 0) ? ((last.close - prevClose) / prevClose) * 100 : 0;
       const pSign = diffPct > 0 ? '+' : '';
       setText('m-pct', `${pSign}${diffPct.toFixed(2)}%`);
       setElemColor('m-pct', diffPct > 0 ? 'var(--up)' : (diffPct < 0 ? 'var(--down)' : 'var(--main)'));
@@ -1027,7 +1121,7 @@ window.addEventListener('mousemove', e => {
 
   if (x >= 0 && x <= plotWidth && n > 0) {
     const barStep = plotWidth / (n || 1);
-    const idx = Math.floor(x / barStep);
+    const idx = Math.min(n - 1, Math.max(0, Math.floor(x / barStep)));
     if (idx >= 0 && idx < n) {
       if (hoverIndex !== idx) {
         hoverIndex = idx;
