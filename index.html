@@ -72,8 +72,9 @@
     .filter-panel button { padding:6px 11px; font-size:12px; }
     .filter-panel button[aria-pressed="true"] { background:var(--accent); color:var(--inverse); border-color:var(--accent); font-weight:700; }
     .section-heading { display:flex; align-items:center; justify-content:space-between; gap:15px; margin:10px 0 14px; }
-    .section-heading h2 { font-size:18px; font-weight:750; letter-spacing:-.02em; }
-    .section-heading span { color:var(--muted); font-size:11px; font-family:"JetBrains Mono",monospace; }
+    .section-heading h2 { font-size:18px; font-weight:750; letter-spacing:-.02em; color:var(--main); }
+    .section-heading h2 span { font-size:inherit!important; font-family:inherit!important; color:inherit!important; font-weight:inherit!important; }
+    .section-heading > span { color:var(--muted); font-size:11px; font-family:"JetBrains Mono",monospace; }
     .overview-grid { display:grid; grid-template-columns:minmax(220px,1fr) minmax(0,3fr); gap:18px; margin-bottom:26px; }
     .workspace section.panel,.overview-grid > .panel,.strategy-grid > .panel { border-radius:12px; padding:20px; }
     .overview-grid h2 { font-size:17px; }
@@ -464,13 +465,11 @@
     </details>
   </section>
 
-  <!-- =====================================================
-       03 牛馬 AI 加班進修打卡室
-       ===================================================== -->
   <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]">
     <div class="flex items-center gap-2">
       <span class="h-6 w-6 rounded-md bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#F59E0B] font-mono text-xs font-bold">03</span>
-      <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9] flex items-center gap-1.5"><span>☕</span><span>牛馬 AI 加班進修打卡室</span></h2>
+      <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9]">☕ 牛馬 AI 加班進修打卡室</h2>
+      <span class="px-2 py-0.5 rounded-full bg-[#1C2B3C] text-[#10B981] font-mono text-[11px] border border-[#10B981]/30">收盤覆盤 · 離職基金</span>
     </div>
     <span class="text-xs text-[#64748B]">收盤加班進修 / DRONE SURVIVAL LOG</span>
   </div>
