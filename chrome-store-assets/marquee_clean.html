@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>當沖吧！牛馬仔 - Chrome Web Store Marquee Banner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Noto Sans TC', 'Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            twRed: '#DC2626',
+            twGreen: '#16A34A',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0b0f19;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Noto Sans TC', 'Plus Jakarta Sans', sans-serif;
+      overflow-x: hidden;
+    }
+    .banner-container {
+      width: 1400px;
+      height: 560px;
+      position: relative;
+      overflow: hidden;
+      box-sizing: border-box;
+      background: radial-gradient(120% 120% at 85% 20%, #1e293b 0%, #0f172a 45%, #090d16 100%);
+    }
+    .grid-pattern {
+      background-size: 32px 32px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    }
+    .glow-radial-blue {
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(37, 99, 235, 0.05) 50%, transparent 75%);
+    }
+    .glow-radial-red {
+      background: radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.03) 60%, transparent 80%);
+    }
+    .glow-radial-green {
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, transparent 70%);
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+    }
+    .glass-dark {
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .popover-shadow {
+      box-shadow: 0 28px 60px -15px rgba(0, 0, 0, 0.65), 0 12px 28px -8px rgba(15, 23, 42, 0.45);
+    }
+    .badge-glow {
+      box-shadow: 0 0 15px rgba(220, 38, 38, 0.25);
+    }
+  </style>
+
+  <style>
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 1400px !important;
+      height: 560px !important;
+      overflow: hidden !important;
+    }
+    .banner-container {
+      width: 1400px !important;
+      height: 560px !important;
+      border-radius: 0 !important;
+    }
+  </style>
+</head>
+<body class="m-0 p-0 overflow-hidden w-[1400px] h-[560px]">
+
+  <!-- Chrome Web Store Marquee Promo Banner Canvas (1400x560) -->
+  <div class="banner-container relative flex items-center shadow-2xl select-none">
+    
+    <!-- Background Decor & Grids -->
+    <div class="absolute inset-0 grid-pattern pointer-events-none"></div>
+    <div class="absolute -top-40 right-40 w-[620px] h-[620px] glow-radial-blue pointer-events-none rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-20 right-10 w-[500px] h-[500px] glow-radial-red pointer-events-none rounded-full blur-2xl"></div>
+    <div class="absolute top-1/4 left-1/3 w-[400px] h-[400px] glow-radial-green pointer-events-none rounded-full blur-3xl"></div>
+
+    <!-- Top Subtle Ambient Ambient Light Bars -->
+    <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-sky-500/50 to-transparent"></div>
+
+    <!-- MAIN CONTENT GRID: 1400px split into Left (Hero Copy + Badges) & Right (Interactive Extension Visuals) -->
+    <div class="relative z-10 w-full h-full px-16 py-10 flex items-center justify-between">
+
+      <!-- LEFT COLUMN: Typography, Branding, Features (Width: ~570px) -->
+      <div class="w-[580px] flex flex-col justify-center space-y-6">
+        
+        <!-- Header Tag / Category -->
+        <div class="flex items-center space-x-3">
+          <div class="flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-800/90 border border-slate-700/80 shadow-inner">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+            </span>
+            <span class="text-xs font-mono font-semibold tracking-wider text-slate-200">TWSE & TPEx 即時串流</span>
+            <span class="text-slate-500 font-mono text-xs">|</span>
+            <span class="text-xs font-mono font-medium text-emerald-400">延遲 24ms</span>
+          </div>
+
+          <div class="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-400/30 text-sky-300 text-xs font-medium">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Chrome 擴充功能官方認證</span>
+          </div>
+        </div>
+
+        <!-- Main Title & Logo Mark -->
+        <div class="space-y-2">
+          <div class="flex items-center space-x-4">
+            <!-- Extension Mascot Logo -->
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-950 p-2 border border-slate-700 shadow-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden group">
+              <div class="absolute inset-0 bg-red-500/10 rounded-2xl"></div>
+              <img src="https://lh3.googleusercontent.com/aida/AEtjO1WFNJ2d6YlurB4tEkdZh02fw8ijTlCvu8JpkeyMACqtpbvZmYNRBMzJMilEiWgnuyUquvodXUSG8NZgAV3WnJyB9i82WF9d2_EPpBZIEwIaFcaaqPP5QG90n0LFxY1Tu-CiPu0s4i4683M645vcl0gkQO24RbBdROVgzeHj6lpcWaXxOEg-W-9ciJZO6cJoyfgkKOC6RKsyrhavUZGV-Sv0qoU2nZeHNg09Csd5Tjl9upp5hkHNRGm2Pg" alt="當沖吧！牛馬仔 Logo" class="w-10 h-10 object-contain drop-shadow-md relative z-10" />
+            </div>
+
+            <div>
+              <div class="flex items-baseline space-x-2">
+                <h1 class="text-4xl font-black tracking-tight text-white flex items-center gap-2">
+                  當沖吧！牛馬仔
+                </h1>
+                <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">v2.6 摸魚旗艦版</span>
+              </div>
+              <p class="text-xs font-mono text-slate-400 tracking-wider uppercase mt-0.5">OFFICE WORKER QUANT LAB · INTRADAY RADAR</p>
+            </div>
+          </div>
+
+          <!-- Slogan / Subtitle -->
+          <div class="pt-2">
+            <h2 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-100 via-white to-slate-300 leading-snug">
+              工位摸魚看盤神器 <span class="text-slate-500 font-light mx-1">·</span> 桌面即時量化雷達
+            </h2>
+            <p class="text-sm text-slate-400 leading-relaxed mt-1.5 font-normal">
+              「有訊號偷摸魚，沒訊號專心裝忙。」極致擬真辦公室白底隱蔽模式，內建台股漲紅跌綠即時演算，守護你的離職自由金。
+            </p>
+          </div>
+        </div>
+
+        <!-- 4 Major Feature Badges Grid (2x2) -->
+        <div class="grid grid-cols-2 gap-2.5 pt-1">
+          <!-- Badge 1 -->
+          <div class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 hover:border-slate-600 transition-colors">
+            <div class="w-8 h-8 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-slate-200">主力爆量秒級偵測</div>
+              <div class="text-[11px] text-slate-400">11項特徵瞬時雷達監控</div>
+            </div>
+          </div>
+
+          <!-- Badge 2 -->
+          <div class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 hover:border-slate-600 transition-colors">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-slate-200">VWAP 攻防與防守位</div>
+              <div class="text-[11px] text-slate-400">動態自適應停損停利</div>
+            </div>
+          </div>
+
+          <!-- Badge 3 -->
+          <div class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 hover:border-slate-600 transition-colors">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-slate-200">桌面即時彈窗通知</div>
+              <div class="text-[11px] text-slate-400">突破買點靜音微通知</div>
+            </div>
+          </div>
+
+          <!-- Badge 4 -->
+          <div class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 hover:border-slate-600 transition-colors">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/15 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-slate-200">明暗雙模一鍵偽裝</div>
+              <div class="text-[11px] text-slate-400">白底專業研報 / 暗黑終端</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Social Proof / CTA Note -->
+        <div class="flex items-center space-x-6 pt-1 text-xs text-slate-400 border-t border-slate-800/80">
+          <div class="flex items-center space-x-1.5">
+            <span class="text-amber-400 font-bold">★★★★★</span>
+            <span class="font-medium text-slate-300">4.9 / 5.0</span>
+            <span class="text-slate-500">(1,280+ 工位社畜好評)</span>
+          </div>
+          <div class="flex items-center space-x-1 text-slate-400">
+            <svg class="w-3.5 h-3.5 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>免費安裝使用</span>
+          </div>
+          <div class="text-slate-500">
+            支援 Chrome · Edge · Brave
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- RIGHT COLUMN: High-Fidelity Floating Extension Mockup & Interactive Card Cascade (Width: ~690px) -->
+      <div class="w-[690px] h-[480px] relative flex items-center justify-end">
+
+        <!-- Ambient Chrome Browser Tab Bar Context Mock (Top Right) -->
+        <div class="absolute -top-3 right-4 flex items-center space-x-2 px-3 py-1.5 rounded-t-xl bg-slate-900/90 border-t border-x border-slate-700/70 text-[11px] text-slate-300 font-mono shadow-md z-0">
+          <div class="w-3 h-3 rounded-full bg-slate-700 flex items-center justify-center">
+            <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+          </div>
+          <span>Chrome 擴充功能快捷欄</span>
+          <div class="flex items-center space-x-1 pl-2 border-l border-slate-700">
+            <img src="https://lh3.googleusercontent.com/aida/AEtjO1WFNJ2d6YlurB4tEkdZh02fw8ijTlCvu8JpkeyMACqtpbvZmYNRBMzJMilEiWgnuyUquvodXUSG8NZgAV3WnJyB9i82WF9d2_EPpBZIEwIaFcaaqPP5QG90n0LFxY1Tu-CiPu0s4i4683M645vcl0gkQO24RbBdROVgzeHj6lpcWaXxOEg-W-9ciJZO6cJoyfgkKOC6RKsyrhavUZGV-Sv0qoU2nZeHNg09Csd5Tjl9upp5hkHNRGm2Pg" class="w-3.5 h-3.5 object-contain" />
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          </div>
+        </div>
+
+        <!-- 1. BACK CARD: 5439 高技企業 個股走勢與技術指標 (Slightly tilted / layered behind) -->
+        <div class="absolute -left-6 top-8 w-[380px] rounded-2xl glass-card popover-shadow p-4 text-slate-800 border border-white/80 transform -rotate-2 hover:rotate-0 transition-transform duration-300 z-10">
+          <!-- Card Header -->
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2.5">
+            <div class="flex items-center space-x-2">
+              <span class="font-mono font-bold text-sm text-slate-900">5439 高技</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">上櫃 · 電子零組件</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <span class="font-mono font-bold text-base text-twRed">253.00</span>
+              <span class="px-1.5 py-0.5 rounded text-[11px] font-bold bg-red-50 text-twRed border border-red-200">+2.43%</span>
+            </div>
+          </div>
+
+          <!-- Micro Mini K-Line Chart SVG -->
+          <div class="bg-slate-50/80 rounded-xl p-2.5 border border-slate-200/60 mb-3">
+            <div class="flex items-center justify-between text-[10px] text-slate-500 font-mono mb-1">
+              <span>日K走勢 · 多頭均線發散</span>
+              <div class="flex items-center space-x-2">
+                <span class="text-amber-500">MA5 251.2</span>
+                <span class="text-sky-500">MA10 247.8</span>
+                <span class="text-purple-500">MA20 242.0</span>
+              </div>
+            </div>
+            
+            <!-- SVG Candlesticks & MA curves -->
+            <svg class="w-full h-20" viewBox="0 0 340 75" fill="none">
+              <!-- Grid lines -->
+              <line x1="0" y1="20" x2="340" y2="20" stroke="#E2E8F0" stroke-dasharray="2 2" stroke-width="1"/>
+              <line x1="0" y1="50" x2="340" y2="50" stroke="#E2E8F0" stroke-dasharray="2 2" stroke-width="1"/>
+              
+              <!-- MA Lines -->
+              <path d="M 10 58 Q 90 52, 170 42 T 330 22" fill="none" stroke="#F59E0B" stroke-width="1.8"/>
+              <path d="M 10 63 Q 90 58, 170 48 T 330 28" fill="none" stroke="#0EA5E9" stroke-width="1.8"/>
+              <path d="M 10 68 Q 90 64, 170 55 T 330 36" fill="none" stroke="#A855F7" stroke-width="1.8"/>
+
+              <!-- Candles (Taiwan: Red Up, Green Down) -->
+              <!-- Candle 1 (Green) -->
+              <line x1="30" y1="50" x2="30" y2="65" stroke="#16A34A" stroke-width="1"/>
+              <rect x="27" y="54" width="6" height="8" fill="#16A34A" rx="1"/>
+              
+              <!-- Candle 2 (Red) -->
+              <line x1="60" y1="46" x2="60" y2="60" stroke="#DC2626" stroke-width="1"/>
+              <rect x="57" y="48" width="6" height="10" fill="#DC2626" rx="1"/>
+
+              <!-- Candle 3 (Red) -->
+              <line x1="90" y1="42" x2="90" y2="58" stroke="#DC2626" stroke-width="1"/>
+              <rect x="87" y="45" width="6" height="9" fill="#DC2626" rx="1"/>
+
+              <!-- Candle 4 (Green pull back) -->
+              <line x1="120" y1="40" x2="120" y2="52" stroke="#16A34A" stroke-width="1"/>
+              <rect x="117" y="42" width="6" height="6" fill="#16A34A" rx="1"/>
+
+              <!-- Candle 5 (Red) -->
+              <line x1="150" y1="36" x2="150" y2="50" stroke="#DC2626" stroke-width="1"/>
+              <rect x="147" y="38" width="6" height="9" fill="#DC2626" rx="1"/>
+
+              <!-- Candle 6 (Big Red break) -->
+              <line x1="180" y1="28" x2="180" y2="48" stroke="#DC2626" stroke-width="1.2"/>
+              <rect x="177" y="32" width="6" height="12" fill="#DC2626" rx="1"/>
+
+              <!-- Candle 7 (Consolidation Red) -->
+              <line x1="210" y1="26" x2="210" y2="42" stroke="#DC2626" stroke-width="1"/>
+              <rect x="207" y="28" width="6" height="10" fill="#DC2626" rx="1"/>
+
+              <!-- Candle 8 (Green doji) -->
+              <line x1="240" y1="24" x2="240" y2="38" stroke="#16A34A" stroke-width="1"/>
+              <rect x="237" y="28" width="6" height="4" fill="#16A34A" rx="1"/>
+
+              <!-- Candle 9 (Strong Red) -->
+              <line x1="270" y1="18" x2="270" y2="35" stroke="#DC2626" stroke-width="1.2"/>
+              <rect x="267" y="20" width="6" height="12" fill="#DC2626" rx="1"/>
+
+              <!-- Candle 10 (Current Day Red Spike) -->
+              <line x1="300" y1="12" x2="300" y2="30" stroke="#DC2626" stroke-width="1.5"/>
+              <rect x="296" y="14" width="8" height="13" fill="#DC2626" rx="1"/>
+            </svg>
+          </div>
+
+          <!-- Micro Quant Factors Pill Bar -->
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="p-1.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="text-[10px] text-slate-400 font-medium">營收 YoY</div>
+              <div class="text-xs font-mono font-bold text-twRed">+5.2%</div>
+            </div>
+            <div class="p-1.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="text-[10px] text-slate-400 font-medium">爆量紅棒</div>
+              <div class="text-xs font-mono font-bold text-slate-800">3.42x</div>
+            </div>
+            <div class="p-1.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="text-[10px] text-slate-400 font-medium">模型訊號</div>
+              <div class="text-xs font-bold text-emerald-600">已過濾審核</div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- 2. FOREGROUND HERO CARD: Chrome Extension Main Popover Window (1:1 High Fidelity) -->
+        <div class="relative w-[450px] rounded-2xl glass-card popover-shadow border border-white text-slate-800 z-20 overflow-hidden transform hover:-translate-y-1 transition-all duration-300">
+          
+          <!-- Extension Chrome-like Navigation Bar Header -->
+          <div class="px-4 py-3 bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border-b border-slate-700/80 text-white flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+              <img src="https://lh3.googleusercontent.com/aida/AEtjO1WFNJ2d6YlurB4tEkdZh02fw8ijTlCvu8JpkeyMACqtpbvZmYNRBMzJMilEiWgnuyUquvodXUSG8NZgAV3WnJyB9i82WF9d2_EPpBZIEwIaFcaaqPP5QG90n0LFxY1Tu-CiPu0s4i4683M645vcl0gkQO24RbBdROVgzeHj6lpcWaXxOEg-W-9ciJZO6cJoyfgkKOC6RKsyrhavUZGV-Sv0qoU2nZeHNg09Csd5Tjl9upp5hkHNRGm2Pg" class="w-6 h-6 object-contain" />
+              <div>
+                <div class="text-xs font-bold tracking-tight flex items-center space-x-1.5">
+                  <span>當沖吧！牛馬仔</span>
+                  <span class="px-1.5 py-0.2 rounded text-[9px] bg-red-600/80 text-white font-mono">盤中監控中</span>
+                </div>
+                <div class="text-[10px] text-slate-400 font-mono">09:30 進場 ➔ 12:30 停止 ➔ 12:55 平倉</div>
+              </div>
+            </div>
+
+            <!-- Header Controls: Mode Toggle & Sync Status -->
+            <div class="flex items-center space-x-2">
+              <div class="flex items-center space-x-1 px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-[10px] font-mono text-emerald-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>即時 24ms</span>
+              </div>
+              <button class="w-6 h-6 rounded-md bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Stock Feed / Radar List (White Clean Office Theme) -->
+          <div class="p-3.5 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between text-xs">
+            <div class="flex items-center space-x-1 font-semibold text-slate-700">
+              <span class="w-2 h-2 rounded-full bg-red-500"></span>
+              <span>01 盤中摸魚 · AI 量化推薦 (TOP 3)</span>
+            </div>
+            <span class="text-[11px] font-mono text-slate-400">今日股票池 #500</span>
+          </div>
+
+          <!-- Stock Item 1: 長榮 2603 (High Momentum Breakout) -->
+          <div class="p-3.5 bg-white hover:bg-slate-50/80 transition-colors border-b border-slate-100 flex items-center justify-between">
+            <div class="space-y-0.5">
+              <div class="flex items-center space-x-2">
+                <span class="font-bold text-slate-900 text-sm">長榮 2603</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-twRed">突破訊號</span>
+                <span class="text-[11px] text-slate-400 font-mono">航運業</span>
+              </div>
+              <div class="flex items-center space-x-3 text-[11px] text-slate-500">
+                <span>防守停損: <strong class="font-mono text-slate-800">186.50</strong></span>
+                <span>主力超買: <strong class="font-mono text-twRed">+3,420張</strong></span>
+              </div>
+            </div>
+
+            <div class="text-right">
+              <div class="text-base font-mono font-black text-twRed leading-tight">192.50</div>
+              <div class="text-xs font-mono font-bold text-twRed">▲ +2.65% (+5.00)</div>
+            </div>
+          </div>
+
+          <!-- Stock Item 2: 台化 1326 (Bottom Rebound) -->
+          <div class="p-3.5 bg-white hover:bg-slate-50/80 transition-colors border-b border-slate-100 flex items-center justify-between">
+            <div class="space-y-0.5">
+              <div class="flex items-center space-x-2">
+                <span class="font-bold text-slate-900 text-sm">台化 1326</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-twGreen">支撐回踩</span>
+                <span class="text-[11px] text-slate-400 font-mono">塑膠工業</span>
+              </div>
+              <div class="flex items-center space-x-3 text-[11px] text-slate-500">
+                <span>月線支撐: <strong class="font-mono text-slate-800">54.20</strong></span>
+                <span>回測完成: <strong class="font-mono text-emerald-600">雙底確認</strong></span>
+              </div>
+            </div>
+
+            <div class="text-right">
+              <div class="text-base font-mono font-black text-twGreen leading-tight">54.80</div>
+              <div class="text-xs font-mono font-bold text-twGreen">▼ -0.54% (-0.30)</div>
+            </div>
+          </div>
+
+          <!-- Stock Item 3: 聯電 2303 (Active Intraday) -->
+          <div class="p-3.5 bg-white hover:bg-slate-50/80 transition-colors flex items-center justify-between">
+            <div class="space-y-0.5">
+              <div class="flex items-center space-x-2">
+                <span class="font-bold text-slate-900 text-sm">聯電 2303</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">量能待放</span>
+                <span class="text-[11px] text-slate-400 font-mono">半導體</span>
+              </div>
+              <div class="flex items-center space-x-3 text-[11px] text-slate-500">
+                <span>VWAP基準: <strong class="font-mono text-slate-800">65.80</strong></span>
+                <span>量比: <strong class="font-mono text-slate-800">1.85x</strong></span>
+              </div>
+            </div>
+
+            <div class="text-right">
+              <div class="text-base font-mono font-black text-twRed leading-tight">66.27</div>
+              <div class="text-xs font-mono font-bold text-twRed">▲ +1.18% (+0.77)</div>
+            </div>
+          </div>
+
+          <!-- Micro Floating Cow-Horse Tip Box (Humorous Worker Tip) -->
+          <div class="mx-3.5 mb-3.5 p-2.5 rounded-xl bg-gradient-to-r from-red-50 to-amber-50 border border-red-100 flex items-center space-x-2.5 text-xs">
+            <div class="w-6 h-6 rounded-lg bg-red-100 text-twRed flex items-center justify-center flex-shrink-0 font-bold text-xs">
+              🐮
+            </div>
+            <div class="text-[11px] text-slate-700 leading-snug">
+              <strong class="text-twRed font-semibold">牛馬作戰錦囊：</strong>
+              長榮盤中震盪守穩 188.0，12:30 外送送達前記得嚴格執行紀律平倉！
+            </div>
+          </div>
+
+          <!-- Extension Footer Action Bar -->
+          <div class="px-4 py-2.5 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+            <div class="flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>Shioaji Tick 即時連線正常</span>
+            </div>
+            <div class="flex items-center space-x-2 text-slate-700">
+              <span class="hover:text-twRed cursor-pointer">快捷鍵 Alt+S 隱藏</span>
+              <span>·</span>
+              <span class="text-sky-600 font-semibold cursor-pointer">完整看板 ↗</span>
+            </div>
+          </div>
+
+        </div>
+
+
+        <!-- 3. FLOATING BADGE / TOAST: Realtime Signal Notification Popup (Bottom Right Floating) -->
+        <div class="absolute -right-3 -bottom-2 z-30 flex items-center space-x-3 px-4 py-3 rounded-xl bg-slate-900/95 border border-slate-700 text-white shadow-2xl backdrop-blur-xl animate-bounce-subtle">
+          <div class="w-9 h-9 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center flex-shrink-0">
+            <span class="text-base">🚨</span>
+          </div>
+          <div>
+            <div class="flex items-center space-x-1.5">
+              <span class="text-xs font-bold text-white">買點觸發推播</span>
+              <span class="text-[10px] font-mono text-red-400 bg-red-500/20 px-1 rounded">即時</span>
+            </div>
+            <div class="text-[11px] text-slate-300 font-mono mt-0.5">
+              長榮 (2603) 突破 VWAP 上揚斜率 42°！
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>

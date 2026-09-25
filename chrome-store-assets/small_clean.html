@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>當沖吧！牛馬仔 - Chrome Web Store 小型宣傳圖塊 (440x280)</title>
+  <!-- Google Fonts: Space Grotesk, Inter, JetBrains Mono, Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet"/>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Inter", "Noto Sans TC", sans-serif;
+      background-color: #030712;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-num {
+      font-family: "JetBrains Mono", monospace;
+    }
+    .font-brand {
+      font-family: "Space Grotesk", "Noto Sans TC", sans-serif;
+    }
+    /* Subtle glowing tech grid texture */
+    .promo-grid {
+      background-size: 16px 16px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    }
+    /* Glow effect */
+    .glow-cyan {
+      box-shadow: 0 0 35px -5px rgba(56, 189, 248, 0.25);
+    }
+    .red-glow {
+      box-shadow: 0 4px 14px rgba(220, 38, 38, 0.25);
+    }
+  </style>
+
+  <style>
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 440px !important;
+      height: 280px !important;
+      overflow: hidden !important;
+      background: #070c18 !important;
+    }
+  </style>
+</head>
+<body class="w-[440px] h-[280px] overflow-hidden m-0 p-0">
+  <div class="relative w-[440px] h-[280px] rounded-none overflow-hidden select-none bg-gradient-to-b from-[#0b132b] via-[#0d1b3a] to-[#070c18] border-0  flex flex-col justify-between p-3.5 box-border">
+      
+      <!-- Tech Grid & Ambient Radial Lighting -->
+      <div class="absolute inset-0 promo-grid pointer-events-none opacity-70"></div>
+      <div class="absolute -top-16 -right-16 w-52 h-52 bg-sky-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-16 -left-16 w-52 h-52 bg-rose-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- ROW 1: BRAND HEADER (LOGO + TITLE + CHROME BADGE) -->
+      <div class="relative z-10 flex items-center justify-between">
+        
+        <!-- Left: Mascot + Brand Name -->
+        <div class="flex items-center gap-2">
+          <!-- Pixel Bull Mascot Icon -->
+          <div class="w-10 h-10 shrink-0 rounded-lg bg-gradient-to-b from-slate-800 to-slate-900 border border-slate-700/80 p-1 shadow-md flex items-center justify-center">
+            <img 
+              src="https://lh3.googleusercontent.com/aida/AEtjO1WFNJ2d6YlurB4tEkdZh02fw8ijTlCvu8JpkeyMACqtpbvZmYNRBMzJMilEiWgnuyUquvodXUSG8NZgAV3WnJyB9i82WF9d2_EPpBZIEwIaFcaaqPP5QG90n0LFxY1Tu-CiPu0s4i4683M645vcl0gkQO24RbBdROVgzeHj6lpcWaXxOEg-W-9ciJZO6cJoyfgkKOC6RKsyrhavUZGV-Sv0qoU2nZeHNg09Csd5Tjl9upp5hkHNRGm2Pg" 
+              alt="當沖吧牛馬仔 官方像素牛頭標誌" 
+              class="w-full h-full object-contain [image-rendering:pixelated]"
+            />
+          </div>
+
+          <div class="flex flex-col">
+            <div class="flex items-center gap-1.5">
+              <h1 class="text-white font-extrabold text-[17px] leading-none tracking-tight font-brand">
+                當沖吧！牛馬仔
+              </h1>
+              <span class="bg-gradient-to-r from-amber-500 to-rose-500 text-white font-black text-[9px] px-1.5 py-0.5 rounded shadow-sm">
+                v2.6 摸魚旗艦
+              </span>
+            </div>
+            <p class="text-sky-200/90 text-[11px] leading-tight font-medium mt-1 tracking-tight">
+              工位摸魚看盤神器 ｜ 台股 AI 量化雷達
+            </p>
+          </div>
+        </div>
+
+        <!-- Right: Official Chrome Badge -->
+        <div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800/90 border border-slate-600/70 shadow-sm backdrop-blur-sm">
+          <svg class="w-3.5 h-3.5 text-sky-400" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/>
+          </svg>
+          <span class="text-slate-200 text-[10px] font-semibold font-mono tracking-tight">Chrome 擴充 ‧ 免費</span>
+        </div>
+      </div>
+
+      <!-- ROW 2: TAIWAN MARKET WHITE TICKER CARD (High Contrast Mini Visual) -->
+      <div class="relative z-10 bg-white rounded-lg p-2.5 shadow-[0_10px_25px_rgba(0,0,0,0.45)] border border-slate-200 text-slate-800">
+        <!-- Stock Details & Big Taiwan Red Price -->
+        <div class="flex items-start justify-between">
+          <div class="flex flex-col">
+            <div class="flex items-center gap-1.5">
+              <span class="font-num font-extrabold text-[15px] text-slate-950 tracking-tight">長榮 2603</span>
+              <span class="text-[10px] font-medium text-slate-500 bg-slate-100 px-1 py-0.2 rounded">航運</span>
+              <span class="text-[9.5px] font-mono font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1 py-0.2 rounded flex items-center gap-0.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping"></span>突破訊號
+              </span>
+            </div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-[10.5px] font-mono text-slate-600 font-medium">爆量紅棒 <span class="text-slate-900 font-bold">1.85x</span></span>
+              <span class="text-slate-300">|</span>
+              <span class="text-[10.5px] font-mono text-slate-600">主力買超 <span class="text-rose-600 font-bold">+3,420張</span></span>
+            </div>
+          </div>
+
+          <!-- Price: Taiwan Stock Red Up -->
+          <div class="text-right">
+            <div class="text-rose-600 font-num font-black text-[20px] leading-none tracking-tight">
+              192.50
+            </div>
+            <div class="text-rose-600 font-num font-bold text-[11px] leading-tight flex items-center justify-end gap-1 mt-0.5">
+              <span>▲ +2.65%</span>
+              <span class="text-[10px] text-rose-500 font-semibold">(+5.00)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Micro Indicator & Sparkline Bar -->
+        <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] font-mono text-slate-500">
+          <div class="flex items-center gap-2">
+            <span class="text-slate-500">VWAP 攻防: <strong class="text-slate-800">191.20</strong></span>
+            <span class="text-slate-300">|</span>
+            <span class="text-emerald-700 bg-emerald-50 px-1 rounded font-semibold">台化 1326 ▼ -0.54%</span>
+          </div>
+
+          <!-- Dynamic Taiwan Trend Sparkline -->
+          <div class="flex items-center gap-1.5">
+            <span class="text-[9px] text-slate-400 font-sans">多頭均線</span>
+            <svg class="w-20 h-4 stroke-rose-600 fill-none" viewBox="0 0 80 16">
+              <path d="M0,13 L14,14 L28,10 L44,11 L58,4 L70,6 L80,1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+            </svg>
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 3: THREE CORE VALUE PROPOSITIONS -->
+      <div class="relative z-10 grid grid-cols-3 gap-1.5">
+        <!-- Feature 1 -->
+        <div class="flex items-center justify-center gap-1 py-1.5 px-1 rounded-md bg-slate-900/80 border border-slate-700/80 backdrop-blur-sm shadow-sm">
+          <span class="text-amber-400 text-xs leading-none">⚡</span>
+          <span class="text-slate-200 text-[10.5px] font-semibold tracking-tight truncate">主力爆量秒級偵測</span>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="flex items-center justify-center gap-1 py-1.5 px-1 rounded-md bg-slate-900/80 border border-slate-700/80 backdrop-blur-sm shadow-sm">
+          <span class="text-rose-400 text-xs leading-none">🔔</span>
+          <span class="text-slate-200 text-[10.5px] font-semibold tracking-tight truncate">桌面即時彈窗推播</span>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="flex items-center justify-center gap-1 py-1.5 px-1 rounded-md bg-slate-900/80 border border-slate-700/80 backdrop-blur-sm shadow-sm">
+          <span class="text-emerald-400 text-xs leading-none">📈</span>
+          <span class="text-slate-200 text-[10.5px] font-semibold tracking-tight truncate">擬真辦公白底偽裝</span>
+        </div>
+      </div>
+
+    </div>
+</body>
+</html>
