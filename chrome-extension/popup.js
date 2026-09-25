@@ -279,26 +279,28 @@ function applyWindowHeight(h) {
   }
 }
 
-// 顯示文字大小設定 (比照截圖：標準 / 較大 / 大，字重與字級即時整體變更)
+// 顯示文字大小設定 (比照截圖：小 / 標準 / 大，字重與字級從小到大階梯顯著清晰)
 function applyFontSize(size) {
-  const validSize = ['standard', 'medium', 'large'].includes(size) ? size : 'standard';
+  let validSize = size;
+  if (size === 'medium') validSize = 'standard';
+  if (!['small', 'standard', 'large'].includes(validSize)) validSize = 'standard';
   const list = $('stock-list-container');
   if (list) {
-    list.classList.remove('size-standard', 'size-medium', 'size-large');
+    list.classList.remove('size-small', 'size-standard', 'size-medium', 'size-large');
     list.classList.add(`size-${validSize}`);
   }
   const preview = $('font-size-preview-box');
   if (preview) {
-    preview.classList.remove('text-[11px]', 'text-xs', 'text-sm', 'text-base', 'font-normal', 'font-bold', 'font-extrabold');
+    preview.classList.remove('text-[11px]', 'text-xs', 'text-sm', 'text-base', 'font-normal', 'font-semibold', 'font-bold', 'font-extrabold');
     const symSpan = preview.querySelector('.preview-sym');
     const chgSpan = preview.querySelector('.preview-chg');
-    if (validSize === 'standard') {
+    if (validSize === 'small') {
       preview.classList.add('text-xs');
-      if (symSpan) symSpan.className = 'preview-sym font-semibold text-slate-800';
-      if (chgSpan) chgSpan.className = 'preview-chg text-red-600 font-semibold';
-    } else if (validSize === 'medium') {
+      if (symSpan) symSpan.className = 'preview-sym font-normal text-slate-600';
+      if (chgSpan) chgSpan.className = 'preview-chg text-red-600 font-normal';
+    } else if (validSize === 'standard') {
       preview.classList.add('text-sm');
-      if (symSpan) symSpan.className = 'preview-sym font-bold text-slate-900';
+      if (symSpan) symSpan.className = 'preview-sym font-bold text-slate-800';
       if (chgSpan) chgSpan.className = 'preview-chg text-red-600 font-bold';
     } else if (validSize === 'large') {
       preview.classList.add('text-base');
@@ -1130,8 +1132,8 @@ $('range-window-height')?.addEventListener('change', async e => {
   applyWindowHeight(val);
 });
 
-// 顯示大小單選監聽 (圖片1效果：標準/較大/大 + 預覽)
-for (const size of ['standard', 'medium', 'large']) {
+// 顯示大小單選監聽 (小 / 標準 / 大 + 預覽)
+for (const size of ['small', 'standard', 'large']) {
   $(`radio-size-${size}`)?.addEventListener('change', async e => {
     if (e.target.checked) {
       if (view?.settings) view.settings.fontSize = size;

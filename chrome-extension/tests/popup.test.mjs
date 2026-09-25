@@ -120,9 +120,22 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.equal(messages.at(-1).strategy, 'windowHeight');
   assert.equal(messages.at(-1).value, 560);
 
-  // Test font size selector (圖片1效果)
+  // Test font size selector (小 / 標準 / 大)
+  const radioSmall = w.document.getElementById('radio-size-small');
+  assert.ok(radioSmall);
+  const radioStandard = w.document.getElementById('radio-size-standard');
+  assert.ok(radioStandard);
   const radioLarge = w.document.getElementById('radio-size-large');
   assert.ok(radioLarge);
+
+  radioSmall.checked = true;
+  radioSmall.dispatchEvent(new w.Event('change'));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(messages.at(-1).type, 'SETTINGS');
+  assert.equal(messages.at(-1).strategy, 'fontSize');
+  assert.equal(messages.at(-1).value, 'small');
+  assert.ok(w.document.getElementById('stock-list-container').classList.contains('size-small'));
+
   radioLarge.checked = true;
   radioLarge.dispatchEvent(new w.Event('change'));
   await new Promise(r => setTimeout(r, 0));

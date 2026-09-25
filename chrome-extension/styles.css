@@ -103,30 +103,35 @@ body.stealth-mode .stock-row:hover {
   justify-content: center;
 }
 
-/* 顯示大小三檔樣式 (標準 / 較大 / 大，階梯顯著拉開) */
-.size-standard .stock-row {
-  padding: 0.3rem 0.6rem;
+/* 顯示大小三檔樣式 (小 / 標準 / 大，層次從小到大顯著清晰拉開) */
+.size-small .stock-row {
+  padding: 0.25rem 0.6rem;
 }
-.size-standard .stock-sym { font-size: 11px; }
-.size-standard .stock-name { font-size: 10px; }
-.size-standard .stock-price { font-size: 12.5px; }
-.size-standard .stock-sub { font-size: 9px; }
+.size-small .stock-sym { font-size: 10.5px; }
+.size-small .stock-name { font-size: 9.5px; }
+.size-small .stock-price { font-size: 12px; }
+.size-small .stock-sub { font-size: 8.5px; }
 
+.size-standard .stock-row,
 .size-medium .stock-row {
-  padding: 0.55rem 0.75rem;
+  padding: 0.45rem 0.7rem;
 }
-.size-medium .stock-sym { font-size: 13.5px; }
-.size-medium .stock-name { font-size: 12px; }
-.size-medium .stock-price { font-size: 15.5px; }
-.size-medium .stock-sub { font-size: 10.5px; }
+.size-standard .stock-sym,
+.size-medium .stock-sym { font-size: 12.5px; }
+.size-standard .stock-name,
+.size-medium .stock-name { font-size: 11px; }
+.size-standard .stock-price,
+.size-medium .stock-price { font-size: 14.5px; }
+.size-standard .stock-sub,
+.size-medium .stock-sub { font-size: 10px; }
 
 .size-large .stock-row {
-  padding: 0.85rem 0.85rem;
+  padding: 0.75rem 0.8rem;
 }
-.size-large .stock-sym { font-size: 16px; }
-.size-large .stock-name { font-size: 13.5px; }
-.size-large .stock-price { font-size: 19px; }
-.size-large .stock-sub { font-size: 12px; }
+.size-large .stock-sym { font-size: 15.5px; }
+.size-large .stock-name { font-size: 13px; }
+.size-large .stock-price { font-size: 18px; }
+.size-large .stock-sub { font-size: 11.5px; }
 
 /* 摸魚緊湊高密度樣式相容 */
 .density-compact .stock-card:not(.stock-row) {
@@ -144,7 +149,7 @@ body.stealth-mode .stock-row:hover {
   font-size: 9px !important;
 }
 
-/* 全面橫向防文字縱向折行與排版加固 */
+/* 全面橫向防文字縱向折行與排版加固 (移除全局 label，避免選項文字擠壓) */
 .shrink-0 { flex-shrink: 0 !important; }
 .whitespace-nowrap { white-space: nowrap !important; }
 .truncate { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
@@ -165,10 +170,20 @@ body.stealth-mode .stock-row:hover {
 #strategy-bar button,
 .stock-card .card-price,
 .stock-card .card-badge,
-label,
 button {
   white-space: nowrap !important;
   flex-shrink: 0 !important;
+}
+
+/* 設定面板排版呼吸感加固 (字距、行高、卡片分層舒適大氣) */
+.setting-toggle-card {
+  transition: all 0.15s ease !important;
+  line-height: 1.45 !important;
+  letter-spacing: 0.015em !important;
+}
+.setting-toggle-card:hover {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
 }
 
 /* 即時通知彈窗最上層懸浮保證 (高於設定抽屜 z-20，絕對可見) */
