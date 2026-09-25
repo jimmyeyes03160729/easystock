@@ -12,7 +12,13 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   const state = { ...core.defaultState(), vip: false, vm: true, quotes: {}, bounce: [], used: 0, marketOpen: false, paymentURL: '' };
   state.stocks.push({ symbol: '8299', market: 'TWO', name: '<img src=x onerror=alert(1)>', groups: ['rebound'] });
   state.bounce.push({ symbol: '8299', market: 'TWO', name: '群聯', price: 500, reason: '支撐區反彈' });
-  w.chrome = { runtime: { sendMessage: async m => { messages.push(m); return { ok: true, value: m.type === 'TEST' ? { sent: true } : structuredClone(state) }; } }, tabs: { create: async () => {} } };
+  w.chrome = { runtime: { sendMessage: async m => {
+    messages.push(m);
+    if (m.type === 'SETTINGS') {
+      state.settings[m.strategy] = m.enabled !== undefined ? m.enabled : m.value;
+    }
+    return { ok: true, value: m.type === 'TEST' ? { sent: true } : structuredClone(state) };
+  } }, tabs: { create: async () => {} } };
   for (const key of ['SYMBOL', 'GROUPS', 'finite', 'fresh', 'watchlist', 'chartURL', 'searchStocks', 'searchOnlineStocks', 'calcChangePct', 'fetchStockClosingQuotes', 'formatTelegramEntry', 'formatTelegramExit', 'formatTelegramRebound']) w[key] = core[key];
   w.icons = () => {};
   state.taiex = { price: 22800.5, change: 150.2, change_pct: 0.66, otc_price: 270.1, otc_change: 1.2, otc_change_pct: 0.45 };
@@ -101,6 +107,48 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.equal(messages.at(-1).type, 'SETTINGS');
   assert.equal(messages.at(-1).strategy, 'pageSize');
   assert.equal(messages.at(-1).value, 8);
+
+  // Test window height slider (圖片1效果)
+  const rangeHeight = w.document.getElementById('range-window-height');
+  assert.ok(rangeHeight);
+  rangeHeight.value = '680';
+  rangeHeight.dispatchEvent(new w.Event('input'));
+  assert.equal(w.document.body.style.height, '680px');
+  rangeHeight.dispatchEvent(new w.Event('change'));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(messages.at(-1).type, 'SETTINGS');
+  assert.equal(messages.at(-1).strategy, 'windowHeight');
+  assert.equal(messages.at(-1).value, 680);
+
+  // Test font size selector (圖片1效果)
+  const radioLarge = w.document.getElementById('radio-size-large');
+  assert.ok(radioLarge);
+  radioLarge.checked = true;
+  radioLarge.dispatchEvent(new w.Event('change'));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(messages.at(-1).type, 'SETTINGS');
+  assert.equal(messages.at(-1).strategy, 'fontSize');
+  assert.equal(messages.at(-1).value, 'large');
+  assert.ok(w.document.getElementById('stock-list-container').classList.contains('size-large'));
+
+  // Test sparkline toggle (圖片1效果)
+  const toggleSpark = w.document.getElementById('toggle-sparkline');
+  assert.ok(toggleSpark);
+  toggleSpark.checked = false;
+  toggleSpark.dispatchEvent(new w.Event('change'));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(messages.at(-1).type, 'SETTINGS');
+  assert.equal(messages.at(-1).strategy, 'showSparkline');
+  assert.equal(messages.at(-1).enabled, false);
+
+  // Test Table Header (圖片2排版)
+  const tableHeader = w.document.getElementById('stock-table-header');
+  assert.ok(tableHeader);
+  assert.match(tableHeader.textContent, /個股/);
+  assert.match(tableHeader.textContent, /今價/);
+  assert.match(tableHeader.textContent, /漲跌/);
+  assert.match(tableHeader.textContent, /高 \/ 低/);
+  assert.match(tableHeader.textContent, /時間/);
 
   w.document.getElementById('btn-close-settings').click();
   assert.equal(w.document.getElementById('settings-panel').inert, true);

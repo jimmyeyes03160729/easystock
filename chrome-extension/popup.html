@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/popup.css">
 </head>
 <body class="bg-slate-50 font-sans text-slate-800 antialiased selection:bg-slate-200">
-  <div class="w-[440px] max-h-[600px] h-[600px] flex flex-col bg-white border border-slate-200 shadow-xl overflow-hidden relative">
+  <div id="popup-container" class="w-[440px] flex flex-col bg-white border border-slate-200 shadow-xl overflow-hidden relative" style="height: 600px; min-height: 480px; max-height: 750px;">
 
     <!-- 即時 In-App 推播通知彈窗 (點擊測試或即時訊號直接在小工具內彈出，最上層浮動) -->
     <div id="in-app-toast" class="hidden absolute top-2 left-2 right-2 z-50 bg-slate-900 text-white p-3 rounded-lg shadow-2xl border border-slate-700 transition-all duration-200" style="z-index: 9999;">
@@ -89,9 +89,19 @@
       </button>
     </section>
 
-    <!-- 自選列表容器 -->
-    <main id="stock-list-container" class="flex-1 overflow-y-auto no-scrollbar p-3 space-y-2">
-      <!-- 動態插入卡片 -->
+    <!-- 表格表頭 (圖片2排版：個股 | 今價 | 漲跌 | 高 / 低 | 走勢 | 時間) -->
+    <div id="stock-table-header" class="grid grid-cols-[100px_62px_64px_62px_64px_36px] items-center px-3 py-1.5 bg-slate-100/90 border-b border-slate-200 text-[10px] text-slate-500 font-semibold select-none">
+      <div class="text-left pl-0.5">個股</div>
+      <div class="text-right pr-1">今價</div>
+      <div class="text-right pr-1">漲跌</div>
+      <div class="text-right pr-1">高 / 低</div>
+      <div id="col-header-sparkline" class="text-center">走勢</div>
+      <div class="text-right pr-0.5">時間</div>
+    </div>
+
+    <!-- 自選列表容器 (圖片2精緻表格清單) -->
+    <main id="stock-list-container" class="flex-1 overflow-y-auto no-scrollbar size-standard divide-y divide-slate-100">
+      <!-- 動態插入表格行 stock-row stock-card -->
     </main>
 
     <!-- 底部狀態列 -->
@@ -128,15 +138,65 @@
           </label>
         </div>
 
-        <!-- 摸魚排版與卡片自定義 -->
-        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-2">
+        <!-- 摸魚排版與外觀自定義 (圖片1：顯示大小、列表高度、列表走勢、每頁筆數) -->
+        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-2.5">
           <h3 class="font-bold text-slate-800 flex items-center justify-between">
-            <span class="flex items-center gap-1"><span>📐</span> <span>摸魚排版與卡片自定義</span></span>
-            <span id="density-status-tag" class="text-[10px] text-sky-700 bg-sky-100 px-1.5 py-0.2 rounded font-semibold">一頁 5 筆 (緊湊)</span>
+            <span class="flex items-center gap-1"><span>📐</span> <span>摸魚排版與外觀自定義</span></span>
+            <span id="density-status-tag" class="text-[10px] text-sky-700 bg-sky-100 px-1.5 py-0.2 rounded font-semibold">+0px</span>
           </h3>
-          <p class="text-[10px] text-slate-400">自定義方框大小與一頁筆數，上班縮小看盤摸魚不顯眼。</p>
-          
-          <div class="space-y-2.5 text-[11px]">
+          <p class="text-[10px] text-slate-400">自定義字體大小、視窗高度與走勢圖，上班縮小看盤摸魚不顯眼。</p>
+
+          <!-- 顯示大小 (圖片1效果：標準/較大/大 + 即時預覽框) -->
+          <div class="space-y-1.5 pt-1">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-700 font-medium text-[11px]">顯示大小:</span>
+              <div class="flex items-center gap-3 text-xs">
+                <label class="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="font-size" id="radio-size-standard" value="standard" checked class="accent-slate-900" />
+                  <span class="text-slate-800">標準</span>
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="font-size" id="radio-size-medium" value="medium" class="accent-slate-900" />
+                  <span class="text-slate-800">較大</span>
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="font-size" id="radio-size-large" value="large" class="accent-slate-900" />
+                  <span class="text-slate-800">大</span>
+                </label>
+              </div>
+            </div>
+            <!-- 即時預覽盒 (圖片1效果) -->
+            <div id="font-size-preview-box" class="bg-white border border-slate-200 rounded px-2.5 py-1.5 text-slate-800 flex items-center justify-between font-mono text-[11px] shadow-2xs">
+              <span class="font-bold">台積電 1000.00</span>
+              <span class="text-red-600 font-semibold">▲+15.00 (+1.52%)</span>
+            </div>
+          </div>
+
+          <!-- 列表高度滑桿 (圖片1效果：+0px 滑動增減) -->
+          <div class="space-y-1 pt-2 border-t border-slate-200">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-700 font-medium text-[11px]">列表高度:</span>
+              <span id="window-height-val" class="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 px-1.5 py-0.2 rounded">+0px</span>
+            </div>
+            <input type="range" id="range-window-height" min="480" max="750" step="10" value="600" class="w-full accent-slate-900 cursor-pointer" />
+            <div class="flex justify-between text-[9px] text-slate-400">
+              <span>緊湊 (480px)</span>
+              <span>預設 (600px)</span>
+              <span>拉長 (750px)</span>
+            </div>
+          </div>
+
+          <!-- 列表走勢開關 (圖片1效果) -->
+          <div class="flex items-center justify-between pt-2 border-t border-slate-200">
+            <div>
+              <span class="text-slate-700 font-medium text-[11px]">列表走勢</span>
+              <span class="block text-[9px] text-slate-400">在股票列表中顯示當日走勢折線圖</span>
+            </div>
+            <input type="checkbox" id="toggle-sparkline" checked class="rounded text-slate-900 cursor-pointer" />
+          </div>
+
+          <!-- 一頁顯示筆數 -->
+          <div class="space-y-2 pt-2 border-t border-slate-200 text-[11px]">
             <div class="flex items-center justify-between">
               <span class="text-slate-700 font-medium">一頁顯示筆數 (3~10 筆):</span>
               <div class="flex items-center gap-2">
@@ -145,18 +205,10 @@
               </div>
             </div>
 
-            <div class="flex items-center justify-between pt-2 border-t border-slate-200">
-              <span class="text-slate-700 font-medium">方框摸魚緊湊度:</span>
-              <div class="flex items-center gap-3">
-                <label class="flex items-center gap-1 cursor-pointer">
-                  <input type="radio" name="card-density" id="radio-density-normal" value="normal" class="accent-slate-900" />
-                  <span class="text-slate-800">標準</span>
-                </label>
-                <label class="flex items-center gap-1 cursor-pointer">
-                  <input type="radio" name="card-density" id="radio-density-compact" value="compact" checked class="accent-slate-900" />
-                  <span class="text-slate-800 font-semibold">極簡緊湊</span>
-                </label>
-              </div>
+            <!-- 隱藏但保留相容 radio-density-normal/compact -->
+            <div class="hidden">
+              <input type="radio" name="card-density" id="radio-density-normal" value="normal" />
+              <input type="radio" name="card-density" id="radio-density-compact" value="compact" checked />
             </div>
           </div>
         </div>

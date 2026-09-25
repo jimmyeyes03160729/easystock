@@ -147,10 +147,16 @@ async function feeds(now, forced = false) {
             const closingMap = await fetchStockClosingQuotes(missing);
             for (const [sym, item] of Object.entries(closingMap)) {
               if (!quotes[sym]) quotes[sym] = item;
-              else if (!finite(calcChangePct(quotes[sym]))) {
-                quotes[sym].change_pct = item.change_pct;
-                quotes[sym].change = item.change;
-                quotes[sym].previous_close = item.previous_close;
+              else {
+                if (!finite(calcChangePct(quotes[sym]))) {
+                  quotes[sym].change_pct = item.change_pct;
+                  quotes[sym].change = item.change;
+                  quotes[sym].previous_close = item.previous_close;
+                }
+                if (!quotes[sym].high && item.high) quotes[sym].high = item.high;
+                if (!quotes[sym].low && item.low) quotes[sym].low = item.low;
+                if (!quotes[sym].open && item.open) quotes[sym].open = item.open;
+                if (!quotes[sym].time && item.time) quotes[sym].time = item.time;
               }
             }
           } catch (_) {}
@@ -482,7 +488,7 @@ export async function handle(message) {
       break;
     }
     case 'SETTINGS': {
-      const allowed = [...GROUPS, 'allDaytradeAlerts', 'allReboundAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'stealthMode', 'pageSize', 'cardDensity'];
+      const allowed = [...GROUPS, 'allDaytradeAlerts', 'allReboundAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'stealthMode', 'pageSize', 'cardDensity', 'fontSize', 'windowHeight', 'showSparkline'];
       if (!allowed.includes(message.strategy)) throw new Error('開關格式不正確');
       st.settings[message.strategy] = message.enabled !== undefined ? message.enabled : message.value;
       break;

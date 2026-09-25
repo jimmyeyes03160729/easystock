@@ -183,8 +183,101 @@ function openChartWindow(s, strategy = '') {
   }
 }
 
+// 平滑 SVG 迷你折線走勢圖 (Sparkline，圖片2效果：漲紅跌綠，帶半透明面積漸層)
+function createSparklineSvg(open, high, low, close, prevClose, isUp) {
+  const w = 56, h = 20;
+  const pClose = (finite(close) && close > 0) ? close : 100;
+  const pPrev = (finite(prevClose) && prevClose > 0) ? prevClose : pClose;
+  const pOpen = (finite(open) && open > 0) ? open : pPrev;
+  const pHigh = (finite(high) && high > 0) ? Math.max(high, pOpen, pClose, pPrev) : Math.max(pOpen, pClose, pPrev) * 1.005;
+  const pLow = (finite(low) && low > 0) ? Math.min(low, pOpen, pClose, pPrev) : Math.min(pOpen, pClose, pPrev) * 0.995;
+
+  const span = Math.max(0.01, pHigh - pLow);
+  const getY = val => Math.max(2, Math.min(h - 2, (h - 2) - ((val - pLow) / span) * (h - 6)));
+
+  const y0 = getY(pOpen);
+  const y1 = getY(isUp ? pOpen - span * 0.15 : pOpen + span * 0.15);
+  const y2 = getY(isUp ? pHigh : pLow);
+  const y3 = getY((pClose + (isUp ? pHigh : pLow)) / 2);
+  const y4 = getY(pClose);
+
+  const pts = [
+    { x: 2, y: y0 },
+    { x: 14, y: y1 },
+    { x: 28, y: y2 },
+    { x: 42, y: y3 },
+    { x: 54, y: y4 }
+  ];
+
+  const pathD = `M ${pts[0].x} ${pts[0].y.toFixed(1)} ` + pts.slice(1).map(p => `L ${p.x} ${p.y.toFixed(1)}`).join(' ');
+  const areaD = `${pathD} L 54 ${h} L 2 ${h} Z`;
+
+  const strokeColor = isUp ? '#ef4444' : '#22c55e';
+  const fillColor = isUp ? 'rgba(239, 68, 68, 0.18)' : 'rgba(34, 197, 94, 0.18)';
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('width', String(w));
+  svg.setAttribute('height', String(h));
+  svg.setAttribute('class', 'overflow-visible inline-block');
+
+  const area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  area.setAttribute('d', areaD);
+  area.setAttribute('fill', fillColor);
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', pathD);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', strokeColor);
+  path.setAttribute('stroke-width', '1.5');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('stroke-linejoin', 'round');
+
+  const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  dot.setAttribute('cx', '54');
+  dot.setAttribute('cy', y4.toFixed(1));
+  dot.setAttribute('r', '2');
+  dot.setAttribute('fill', strokeColor);
+
+  svg.append(area, path, dot);
+  return svg;
+}
+
+// 動態列表高度設定 (圖片1效果：480px ~ 750px，動態顯示 +0px)
+function applyWindowHeight(h) {
+  const val = Math.max(480, Math.min(750, Number(h) || 600));
+  document.body.style.height = `${val}px`;
+  const container = $('popup-container');
+  if (container) container.style.height = `${val}px`;
+  const diff = val - 600;
+  const diffText = diff >= 0 ? `+${diff}px` : `${diff}px`;
+  if ($('window-height-val')) $('window-height-val').textContent = diffText;
+  if ($('density-status-tag')) $('density-status-tag').textContent = diffText;
+  if ($('range-window-height') && document.activeElement !== $('range-window-height')) {
+    $('range-window-height').value = String(val);
+  }
+}
+
+// 顯示文字大小設定 (圖片1效果：標準/較大/大 + 預覽盒)
+function applyFontSize(size) {
+  const validSize = ['standard', 'medium', 'large'].includes(size) ? size : 'standard';
+  const list = $('stock-list-container');
+  if (list) {
+    list.classList.remove('size-standard', 'size-medium', 'size-large');
+    list.classList.add(`size-${validSize}`);
+  }
+  const preview = $('font-size-preview-box');
+  if (preview) {
+    preview.classList.remove('text-[11px]', 'text-[13px]', 'text-[15px]');
+    if (validSize === 'standard') preview.classList.add('text-[11px]');
+    else if (validSize === 'medium') preview.classList.add('text-[13px]');
+    else if (validSize === 'large') preview.classList.add('text-[15px]');
+  }
+  if ($(`radio-size-${validSize}`)) $(`radio-size-${validSize}`).checked = true;
+}
+
 function renderAiMatrix(list) {
-  const wrap = el('div', '', 'space-y-2.5 text-xs pb-2');
+  const wrap = el('div', '', 'space-y-2.5 text-xs pb-2 p-3');
 
   const headerCard = el('div', '', 'p-3 bg-slate-900 text-white rounded-lg shadow-sm space-y-1');
   const badge = el('div', '', 'flex items-center justify-between');
@@ -320,7 +413,7 @@ function renderStrategyBar() {
   }
 }
 
-// 渲染自選看股清單 (落實一頁 3~10 筆排版自定義與摸魚高密度樣式)
+// 渲染自選看股清單 (圖片2精緻表格列：個股 | 今價 | 漲跌 | 高 / 低 | 走勢 | 時間)
 function renderWatchlist(list, isCompact, pageSize) {
   const allRows = view.stocks || [];
   if (!allRows.length) {
@@ -336,9 +429,7 @@ function renderWatchlist(list, isCompact, pageSize) {
 
   const startIdx = (currentWatchlistPage - 1) * pageSize;
   const rows = allRows.slice(startIdx, startIdx + pageSize);
-
-  // 依筆數判定是否進入高密度單行模式 (若 compact 或 pageSize >= 8)
-  const isHighDensity = isCompact || pageSize >= 8;
+  const showSparkline = view.settings?.showSparkline !== false;
 
   for (const s of rows) {
     const q = view.quotes?.[s.symbol], validPrice = finite(q?.price) && q.price > 0;
@@ -346,98 +437,82 @@ function renderWatchlist(list, isCompact, pageSize) {
     const validPct = finite(changePctVal);
     const pct = validPct ? `${changePctVal >= 0 ? '+' : ''}${changePctVal.toFixed(2)}%` : '0.00%';
     const pctColor = validPct ? (changePctVal >= 0 ? 'text-red-600' : 'text-emerald-600') : 'text-slate-400';
+    const isUp = changePctVal >= 0;
+    const sign = isUp ? '▲+' : '▼-';
 
-    const card = el('article', '', `stock-card border border-slate-200 rounded-lg ${isHighDensity ? 'p-1.5' : (pageSize <= 4 ? 'p-3' : 'p-2')} bg-white shadow-2xs hover:border-slate-300 transition`);
+    const card = el('article', '', `stock-row stock-card stock-table-grid ${showSparkline ? '' : 'no-sparkline'}`);
 
     // 系統狀態提示標籤
     const activePos = view.live?.open_positions?.[s.symbol];
     const isReboundTarget = view.bounce?.some(b => b.symbol === s.symbol);
 
-    if (isHighDensity) {
-      // 極簡單行高密度摸魚模式：高度約 40px，一行容納全要素
-      const rowFlex = el('div', '', 'flex items-center justify-between gap-1 text-xs');
-
-      const leftCol = el('div', '', 'flex items-center gap-1.5 min-w-0');
-      leftCol.append(el('span', s.symbol, 'font-bold text-slate-900 font-mono text-[11px]'));
-      leftCol.append(el('span', s.name, 'text-slate-700 truncate font-semibold text-[11px]'));
-      if (activePos && activePos.status === 'OPEN') {
-        leftCol.append(el('span', '⚡當沖', 'text-[9px] bg-sky-100 text-sky-800 font-bold px-1 rounded shrink-0'));
-      }
-      rowFlex.append(leftCol);
-
-      const rightCol = el('div', '', 'flex items-center gap-2 shrink-0');
-      rightCol.append(el('strong', validPrice ? `${q.price.toFixed(2)}` : '--', 'font-bold text-slate-900 text-xs'));
-      rightCol.append(el('span', pct, `font-bold text-[11px] ${pctColor} w-14 text-right`));
-
-      const chartBtn = el('a', '線圖↗', 'text-[10px] text-sky-700 hover:underline font-medium shrink-0 cursor-pointer');
-      chartBtn.href = chartURL(s);
-      chartBtn.target = '_blank';
-      chartBtn.onclick = (e) => {
-        e.preventDefault();
-        openChartWindow(s, activePos ? 'daytrade' : (isReboundTarget ? 'rebound' : ''));
-      };
-      rightCol.append(chartBtn);
-
-      const removeBtn = el('button', '×', 'text-slate-400 hover:text-red-600 text-xs font-bold px-0.5 shrink-0 cursor-pointer');
-      removeBtn.title = `刪除 ${s.symbol}`;
-      removeBtn.onclick = () => act({ type: 'DELETE', symbol: s.symbol }, `已刪除自選股票 ${s.symbol}`);
-      rightCol.append(removeBtn);
-
-      rowFlex.append(rightCol);
-      card.append(rowFlex);
-    } else {
-      // 標準 / 寬敞卡片模式
-      const top = el('div', '', 'flex items-center justify-between gap-1 mb-1');
-      const headLine = el('div', '', 'flex items-center gap-1.5 flex-wrap min-w-0');
-      headLine.append(el('h2', `${s.symbol} ${s.name}`, 'text-xs font-bold text-slate-900 truncate'));
-      headLine.append(el('span', s.market === 'TWO' ? '上櫃' : '上市', 'text-[9px] text-slate-400 bg-slate-100 px-1 py-0.2 rounded shrink-0'));
-      if (activePos && activePos.status === 'OPEN') {
-        headLine.append(el('span', '⚡ 系統當沖中', 'px-1.5 py-0.2 bg-sky-100 text-sky-800 font-semibold rounded text-[9px] shrink-0'));
-      }
-      if (isReboundTarget) {
-        headLine.append(el('span', '🛡️ 反彈觀察', 'px-1.5 py-0.2 bg-purple-100 text-purple-800 font-semibold rounded text-[9px] shrink-0'));
-      }
-
-      const remove = el('button', '×', 'text-slate-400 hover:text-red-600 px-1 font-bold text-sm leading-none shrink-0 cursor-pointer');
-      remove.title = `從自選刪除 ${s.symbol}`;
-      remove.onclick = () => act({ type: 'DELETE', symbol: s.symbol }, `已刪除自選股票 ${s.symbol}`);
-      top.append(headLine, remove);
-      card.append(top);
-
-      const priceRow = el('div', '', 'flex items-center justify-between');
-      const leftPrice = el('div', '', 'flex items-baseline gap-2');
-      leftPrice.append(el('strong', validPrice ? `${q.price.toFixed(2)}` : '尚無報價', `card-price ${pageSize <= 4 ? 'text-lg' : 'text-base'} font-bold text-slate-900`));
-      if (validPrice) leftPrice.append(el('span', '元', 'text-[10px] text-slate-400 font-normal'));
-      if (finite(q?.volume) && q.volume > 0) {
-        leftPrice.append(el('span', `量 ${q.volume.toLocaleString()} 張`, 'card-meta text-[10px] text-slate-400 ml-1'));
-      }
-      priceRow.append(leftPrice);
-
-      const rightPct = el('div', '', 'flex items-center gap-2');
-      rightPct.append(el('span', pct, `text-xs font-bold ${pctColor}`));
-      const chartBtn = el('a', '線圖 ↗', 'text-[11px] text-sky-700 cursor-pointer font-medium hover:underline shrink-0');
-      chartBtn.href = chartURL(s);
-      chartBtn.target = '_blank';
-      chartBtn.onclick = (e) => {
-        e.preventDefault();
-        openChartWindow(s, activePos ? 'daytrade' : (isReboundTarget ? 'rebound' : ''));
-      };
-      rightPct.append(chartBtn);
-      priceRow.append(rightPct);
-      card.append(priceRow);
-
-      if (pageSize <= 4) {
-        const when = q?.updated_at && Number.isFinite(Date.parse(q.updated_at)) ? new Date(q.updated_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '無資料';
-        card.append(el('p', `${view.vm ? 'VM 示例 · ' : ''}${validPrice && fresh(q.updated_at, Date.now()) ? '最新行情' : '最後結盤'} ${when}`, 'card-meta text-[10px] text-slate-400 mt-1'));
-      }
+    // 欄位 1：個股 (代號可點開分時線圖 + 中文名稱)
+    const col1 = el('div', '', 'text-left min-w-0 pr-1 flex flex-col justify-center');
+    const symLink = el('a', s.symbol, 'stock-sym font-bold font-mono text-sky-600 hover:text-sky-700 hover:underline cursor-pointer block leading-tight');
+    symLink.href = chartURL(s);
+    symLink.title = `點擊查看 ${s.symbol} 分時走勢圖`;
+    symLink.onclick = (e) => {
+      e.preventDefault();
+      openChartWindow(s, activePos ? 'daytrade' : (isReboundTarget ? 'rebound' : ''));
+    };
+    const nameRow = el('div', '', 'flex items-center gap-1 min-w-0');
+    const nameSpan = el('span', s.name, 'stock-name text-slate-700 truncate font-medium leading-tight');
+    nameRow.append(nameSpan);
+    if (activePos && activePos.status === 'OPEN') {
+      nameRow.append(el('span', '⚡', 'text-[9px] text-sky-600 shrink-0 font-bold'));
     }
+    col1.append(symLink, nameRow);
+    card.append(col1);
+
+    // 欄位 2：今價
+    const col2 = el('div', '', `text-right font-mono font-bold stock-price pr-1 ${validPrice ? pctColor : 'text-slate-400'}`);
+    col2.textContent = validPrice ? (q.price >= 1000 ? q.price.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) : q.price.toFixed(2)) : '--';
+    card.append(col2);
+
+    // 欄位 3：漲跌 (雙行：上為點數，下為百分比)
+    const col3 = el('div', '', 'text-right font-mono flex flex-col justify-center pr-1');
+    const chgVal = finite(q?.change) ? Math.abs(q.change).toFixed(2) : '0.00';
+    const chgSpan = el('span', validPct ? `${sign}${chgVal}` : '--', `stock-sub font-bold leading-tight ${pctColor}`);
+    const pctSpan = el('span', pct, `stock-sub font-semibold leading-tight ${pctColor}`);
+    col3.append(chgSpan, pctSpan);
+    card.append(col3);
+
+    // 欄位 4：高 / 低 (雙行：上為最高價，下為最低價)
+    const col4 = el('div', '', 'text-right font-mono flex flex-col justify-center pr-1');
+    const highVal = finite(q?.high) && q.high > 0 ? (q.high >= 1000 ? q.high.toFixed(1) : q.high.toFixed(2)) : (validPrice ? q.price.toFixed(1) : '--');
+    const lowVal = finite(q?.low) && q.low > 0 ? (q.low >= 1000 ? q.low.toFixed(1) : q.low.toFixed(2)) : (validPrice ? q.price.toFixed(1) : '--');
+    const highSpan = el('span', highVal, 'stock-sub font-medium text-slate-700 leading-tight');
+    const lowSpan = el('span', lowVal, 'stock-sub font-medium text-slate-500 leading-tight');
+    col4.append(highSpan, lowSpan);
+    card.append(col4);
+
+    // 欄位 5：走勢 (迷你 SVG Sparkline)
+    const col5 = el('div', '', 'col-sparkline flex items-center justify-center');
+    if (showSparkline) {
+      const spark = createSparklineSvg(q?.open, q?.high, q?.low, q?.price, q?.previous_close, isUp);
+      col5.append(spark);
+    }
+    card.append(col5);
+
+    // 欄位 6：時間 (Hover 時顯示刪除按鈕)
+    const col6 = el('div', '', 'text-right flex items-center justify-end relative pr-0.5');
+    const timeText = q?.time || (q?.updated_at && Number.isFinite(Date.parse(q.updated_at)) ? new Date(q.updated_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false }) : '13:30');
+    const timeSpan = el('span', timeText, 'stock-sub font-mono text-slate-400');
+    const delBtn = el('button', '×', 'row-action-btn absolute right-0 text-slate-400 hover:text-red-600 font-bold text-sm px-1 leading-none cursor-pointer bg-white/95 rounded');
+    delBtn.title = `從自選刪除 ${s.symbol}`;
+    delBtn.onclick = (e) => {
+      e.stopPropagation();
+      act({ type: 'DELETE', symbol: s.symbol }, `已刪除自選股票 ${s.symbol}`);
+    };
+    col6.append(timeSpan, delBtn);
+    card.append(col6);
 
     list.append(card);
   }
 
   // 分頁切換器
   if (totalPages > 1) {
-    const pageBar = el('div', '', 'flex items-center justify-between text-xs text-slate-500 pt-2 px-1 border-t border-slate-100');
+    const pageBar = el('div', '', 'flex items-center justify-between text-xs text-slate-500 py-1.5 px-3 bg-slate-50 border-t border-slate-100');
     pageBar.append(el('span', `第 ${currentWatchlistPage} / ${totalPages} 頁 (共 ${totalCount} 檔)`, 'text-[11px] text-slate-500'));
     const btnGroup = el('div', '', 'flex items-center gap-1.5');
 
@@ -632,6 +707,18 @@ function render() {
   if ($('toggle-all-rebound')) $('toggle-all-rebound').checked = view.settings?.allReboundAlerts !== false;
   applyStealthMode(view.settings?.stealthMode);
 
+  // 視窗高度自定義 (圖片1效果)
+  const windowHeight = Number(view.settings?.windowHeight) || 600;
+  applyWindowHeight(windowHeight);
+
+  // 顯示大小自定義 (圖片1效果)
+  const fontSize = view.settings?.fontSize || 'standard';
+  applyFontSize(fontSize);
+
+  // 列表走勢開關 (圖片1效果)
+  const showSparkline = view.settings?.showSparkline !== false;
+  if ($('toggle-sparkline')) $('toggle-sparkline').checked = showSparkline;
+
   // 摸魚排版與每頁筆數同步
   const pageSize = Math.max(3, Math.min(10, Number(view.settings?.pageSize) || 5));
   const cardDensity = view.settings?.cardDensity || 'compact';
@@ -644,9 +731,6 @@ function render() {
   if ($('radio-density-normal') && $('radio-density-compact')) {
     $('radio-density-normal').checked = !isCompact;
     $('radio-density-compact').checked = isCompact;
-  }
-  if ($('density-status-tag')) {
-    $('density-status-tag').textContent = `一頁 ${pageSize} 筆 (${isCompact ? '緊湊' : '標準'})`;
   }
 
   // 條件式推播過濾
@@ -677,6 +761,13 @@ function render() {
 
   renderTaiex();
   renderStrategyBar();
+
+  // 表頭狀態控制 (圖片2排版)
+  const header = $('stock-table-header');
+  if (header) {
+    header.classList.toggle('hidden', group === 'ai_matrix');
+    header.classList.toggle('no-sparkline', !showSparkline);
+  }
 
   const list = $('stock-list-container');
   list.replaceChildren();
@@ -979,6 +1070,43 @@ $('toggle-all-daytrade')?.addEventListener('change', async e => {
 });
 $('toggle-all-rebound')?.addEventListener('change', async e => {
   await act({ type: 'SETTINGS', strategy: 'allReboundAlerts', enabled: e.target.checked }); if (view) render();
+});
+
+// 視窗高度滑桿監聽 (圖片1效果：即時拉動調整 body 高度與儲存)
+$('range-window-height')?.addEventListener('input', e => {
+  const val = Number(e.target.value);
+  if (view?.settings) view.settings.windowHeight = val;
+  applyWindowHeight(val);
+});
+$('range-window-height')?.addEventListener('change', async e => {
+  const val = Number(e.target.value);
+  if (view?.settings) view.settings.windowHeight = val;
+  applyWindowHeight(val);
+  await act({ type: 'SETTINGS', strategy: 'windowHeight', value: val });
+  if (view?.settings) view.settings.windowHeight = val;
+  applyWindowHeight(val);
+});
+
+// 顯示大小單選監聽 (圖片1效果：標準/較大/大 + 預覽)
+for (const size of ['standard', 'medium', 'large']) {
+  $(`radio-size-${size}`)?.addEventListener('change', async e => {
+    if (e.target.checked) {
+      if (view?.settings) view.settings.fontSize = size;
+      applyFontSize(size);
+      await act({ type: 'SETTINGS', strategy: 'fontSize', value: size });
+      if (view?.settings) view.settings.fontSize = size;
+      applyFontSize(size);
+    }
+  });
+}
+
+// 列表走勢圖開關監聽 (圖片1效果)
+$('toggle-sparkline')?.addEventListener('change', async e => {
+  const enabled = e.target.checked;
+  if (view?.settings) view.settings.showSparkline = enabled;
+  await act({ type: 'SETTINGS', strategy: 'showSparkline', enabled });
+  if (view?.settings) view.settings.showSparkline = enabled;
+  render();
 });
 
 // 摸魚排版與卡片自定義監聽 (拉動滑桿即時反應)

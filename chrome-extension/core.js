@@ -242,8 +242,13 @@ export async function fetchStockClosingQuotes(symbols) {
         const parsed = parseFloat(item.changePercent.replace('%', ''));
         if (Number.isFinite(parsed)) change_pct = parsed;
       }
-      if (change_pct === null && price !== null && prev && prev > 0) {
-        change_pct = ((price - prev) / prev) * 100;
+      const high = finite(item.regularMarketDayHigh?.sort) ? item.regularMarketDayHigh.sort : (price !== null ? price : 0);
+      const low = finite(item.regularMarketDayLow?.sort) ? item.regularMarketDayLow.sort : (price !== null ? price : 0);
+      const open = finite(item.regularMarketOpen?.sort) ? item.regularMarketOpen.sort : (prev !== null ? prev : price);
+      let timeStr = '';
+      if (item.regularMarketTime) {
+        const tMatch = String(item.regularMarketTime).match(/(\d{2}:\d{2})/);
+        timeStr = tMatch ? tMatch[1] : String(item.regularMarketTime).slice(0, 5);
       }
       map[sym] = {
         name: item.symbolName || sym,
@@ -251,6 +256,10 @@ export async function fetchStockClosingQuotes(symbols) {
         change: change || 0,
         change_pct: change_pct !== null ? change_pct : 0,
         previous_close: prev,
+        high: high || 0,
+        low: low || 0,
+        open: open || 0,
+        time: timeStr || '13:30',
         volume: finite(item.volume) ? Math.round(item.volume / 1000) : 0,
         updated_at: item.regularMarketTime || new Date().toISOString()
       };
@@ -425,6 +434,9 @@ export function defaultState() {
       minChangePct: null,
       pageSize: 5,
       cardDensity: 'compact',
-      stealthMode: false
+      stealthMode: false,
+      fontSize: 'standard',
+      windowHeight: 600,
+      showSparkline: true
     }, vipHash: '' };
 }
