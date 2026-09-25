@@ -428,6 +428,17 @@ export function matchFilter(price, changePct, settings) {
   return true;
 }
 
+export const BROKERS = [
+  { id: 'sinopac', name: '永豐金證券', shortName: '永豐', url: sym => `https://www.sinotrade.com.tw/Stock/Stock_Instant/Instant?code=${encodeURIComponent(sym)}` },
+  { id: 'fubon', name: '富邦證券', shortName: '富邦', url: sym => `https://fubon-ebrokerdj.fbs.com.tw/z/zk/zkde/zkde.djhtm?a=${encodeURIComponent(sym)}` },
+  { id: 'yuanta', name: '元大證券', shortName: '元大', url: sym => `https://www.yuanta.com.tw/Investment/Stock/StockInfo?symbol=${encodeURIComponent(sym)}` },
+  { id: 'cathay', name: '國泰證券', shortName: '國泰', url: sym => `https://www.cathaysec.com.tw/` }
+];
+
+export function getBroker(id) {
+  return BROKERS.find(b => b.id === id) || BROKERS[0];
+}
+
 export function defaultState() {
   return { version: 1, stocks: [stock({ symbol: '2330', name: '台積電', market: 'TW', groups: ['watchlist'] })],
     settings: {
@@ -444,6 +455,7 @@ export function defaultState() {
       stealthMode: false,
       fontSize: 'standard',
       windowHeight: 500,
-      showSparkline: true
+      showSparkline: true,
+      preferredBroker: 'sinopac'
     }, vipHash: '' };
 }

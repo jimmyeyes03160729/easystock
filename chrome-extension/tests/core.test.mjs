@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { taipei, marketOpen, fresh, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter, BUILTIN_STOCKS, searchStocks, searchOnlineStocks, calcChangePct } from '../core.js';
+import { taipei, marketOpen, fresh, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter, BUILTIN_STOCKS, searchStocks, searchOnlineStocks, calcChangePct, BROKERS, getBroker } from '../core.js';
 const at = s => Date.parse(s);
 const now = at('2026-09-17T09:30:00+08:00');
 const sample = { id: 'a', symbol: '2330', market: 'TW', name: '台積電', price: 1000, change_pct: 1, reason: '爆量', generated_at: '2026-09-17T09:29:00+08:00', quote_at: '2026-09-17T09:29:00+08:00' };
@@ -200,4 +200,23 @@ test('calcChangePct calculates percentage from change_pct, change, or previous_c
   assert.equal(calcChangePct(null), null);
   assert.equal(calcChangePct({}), null);
 });
+
+test('BROKERS definitions, URL generation, and fallback', () => {
+  assert.ok(BROKERS.length >= 4);
+  const sinopac = getBroker('sinopac');
+  assert.equal(sinopac.id, 'sinopac');
+  assert.ok(sinopac.url('2330').includes('code=2330'));
+
+  const fubon = getBroker('fubon');
+  assert.equal(fubon.id, 'fubon');
+  assert.ok(fubon.url('2454').includes('a=2454'));
+
+  const yuanta = getBroker('yuanta');
+  assert.equal(yuanta.id, 'yuanta');
+  assert.ok(yuanta.url('2603').includes('symbol=2603'));
+
+  const fallback = getBroker('unknown_broker');
+  assert.equal(fallback.id, 'sinopac');
+});
+
 

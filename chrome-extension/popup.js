@@ -1,4 +1,4 @@
-import { SYMBOL, GROUPS, finite, fresh, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, fetchStockClosingQuotes, formatTelegramEntry, formatTelegramExit, formatTelegramRebound } from './core.js';
+import { SYMBOL, GROUPS, finite, fresh, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, fetchStockClosingQuotes, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, BROKERS, getBroker } from './core.js';
 import { icons } from './icons.js';
 
 const $ = id => document.getElementById(id);
@@ -181,6 +181,38 @@ function openChartWindow(s, strategy = '') {
   } else {
     chrome.tabs.create({ url: winUrl });
   }
+}
+
+function openBrokerOrder(symbol, market = 'TW', name = '') {
+  const brokerId = view?.settings?.preferredBroker || 'sinopac';
+  const broker = getBroker(brokerId);
+  const targetUrl = broker.url(symbol);
+
+  // 1. 自動複製股票代號至剪貼簿（雙重保險）
+  try {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(symbol).catch(() => {});
+    }
+  } catch (_) {}
+
+  // 2. 開啟券商官方下單網址（新分頁）
+  if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
+    chrome.tabs.create({ url: targetUrl });
+  } else {
+    window.open(targetUrl, '_blank');
+  }
+
+  // 3. 顯示即時 In-App 彈窗與狀態列提示
+  showInAppToast({
+    badgeText: `🚀 ${broker.shortName}下單`,
+    badgeColor: 'bg-red-600',
+    titleText: `${symbol} ${name || ''} 捷徑下單跳轉`,
+    bodyText: `已為您自動複製股票代號「${symbol}」，並開啟 ${broker.name} 官方網頁。`,
+    symbol,
+    market,
+    name: name || symbol
+  });
+  status(`已複製代號 ${symbol} 並跳轉至 ${broker.name}`);
 }
 
 // 平滑 SVG 迷你折線走勢圖 (Sparkline：優先使用真實分時陣列，漲紅跌綠，帶半透明面積漸層)
@@ -665,6 +697,15 @@ function renderDaytrade(list, isCompact) {
     };
     rightData.append(chartBtn);
 
+    const broker = getBroker(view.settings?.preferredBroker);
+    const orderBtn = el('button', `🚀 ${broker.shortName}下單 ↗`, 'btn-broker-order text-[11px] bg-red-600 hover:bg-red-700 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0');
+    orderBtn.title = `點擊複製 ${sym} 並前往 ${broker.name} 下單`;
+    orderBtn.onclick = (e) => {
+      e.preventDefault();
+      openBrokerOrder(sym, m, name);
+    };
+    rightData.append(orderBtn);
+
     dataRow.append(rightData);
     card.append(dataRow);
 
@@ -740,6 +781,15 @@ function renderDaytrade(list, isCompact) {
       openChartWindow({ symbol: sym, market: m, name }, 'daytrade');
     };
     rightData.append(chartBtn);
+
+    const broker = getBroker(view.settings?.preferredBroker);
+    const orderBtn = el('button', `🚀 ${broker.shortName} ↗`, 'btn-broker-order text-[11px] bg-slate-700 hover:bg-slate-800 text-white font-semibold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0');
+    orderBtn.title = `點擊複製 ${sym} 並前往 ${broker.name} 查看`;
+    orderBtn.onclick = (e) => {
+      e.preventDefault();
+      openBrokerOrder(sym, m, name);
+    };
+    rightData.append(orderBtn);
 
     dataRow.append(rightData);
     card.append(dataRow);
@@ -833,6 +883,15 @@ function renderRebound(list, isCompact) {
     };
     rightPct.append(chartBtn);
 
+    const broker = getBroker(view.settings?.preferredBroker);
+    const orderBtn = el('button', `🚀 ${broker.shortName}下單 ↗`, 'btn-broker-order text-[11px] bg-purple-600 hover:bg-purple-700 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0');
+    orderBtn.title = `點擊複製 ${sym} 並前往 ${broker.name} 下單`;
+    orderBtn.onclick = (e) => {
+      e.preventDefault();
+      openBrokerOrder(sym, m, name);
+    };
+    rightPct.append(orderBtn);
+
     priceRow.append(rightPct);
     card.append(priceRow);
 
@@ -879,6 +938,11 @@ function render() {
   if ($('radio-density-normal') && $('radio-density-compact')) {
     $('radio-density-normal').checked = !isCompact;
     $('radio-density-compact').checked = isCompact;
+  }
+
+  // 常用下單券商同步
+  if ($('select-preferred-broker')) {
+    $('select-preferred-broker').value = view.settings?.preferredBroker || 'sinopac';
   }
 
   // 條件式推播過濾
@@ -1298,6 +1362,15 @@ $('radio-density-compact')?.addEventListener('change', async e => {
       render();
     }
   }
+});
+
+// 常用下單券商監聽
+$('select-preferred-broker')?.addEventListener('change', async e => {
+  const brokerId = e.target.value;
+  if (view?.settings) view.settings.preferredBroker = brokerId;
+  await act({ type: 'SETTINGS', strategy: 'preferredBroker', value: brokerId });
+  if (view?.settings) view.settings.preferredBroker = brokerId;
+  render();
 });
 
 // 條件式過濾監聽

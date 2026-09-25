@@ -12,14 +12,15 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   const state = { ...core.defaultState(), vip: false, vm: true, quotes: {}, bounce: [], used: 0, marketOpen: false, paymentURL: '' };
   state.stocks.push({ symbol: '8299', market: 'TWO', name: '<img src=x onerror=alert(1)>', groups: ['rebound'] });
   state.bounce.push({ symbol: '8299', market: 'TWO', name: '群聯', price: 500, reason: '支撐區反彈' });
+  const openedTabs = [];
   w.chrome = { runtime: { sendMessage: async m => {
     messages.push(m);
     if (m.type === 'SETTINGS') {
       state.settings[m.strategy] = m.enabled !== undefined ? m.enabled : m.value;
     }
     return { ok: true, value: m.type === 'TEST' ? { sent: true } : structuredClone(state) };
-  } }, tabs: { create: async () => {} } };
-  for (const key of ['SYMBOL', 'GROUPS', 'finite', 'fresh', 'watchlist', 'chartURL', 'searchStocks', 'searchOnlineStocks', 'calcChangePct', 'fetchStockClosingQuotes', 'formatTelegramEntry', 'formatTelegramExit', 'formatTelegramRebound']) w[key] = core[key];
+  } }, tabs: { create: async t => { openedTabs.push(t); } } };
+  for (const key of ['SYMBOL', 'GROUPS', 'finite', 'fresh', 'watchlist', 'chartURL', 'searchStocks', 'searchOnlineStocks', 'calcChangePct', 'fetchStockClosingQuotes', 'formatTelegramEntry', 'formatTelegramExit', 'formatTelegramRebound', 'BROKERS', 'getBroker']) w[key] = core[key];
   w.icons = () => {};
   state.taiex = { price: 22800.5, change: 150.2, change_pct: 0.66, otc_price: 270.1, otc_change: 1.2, otc_change_pct: 0.45 };
   await w.eval(`(async()=>{${source.replace(/^import .*;\r?\n/gm, '')}})()`);
@@ -194,7 +195,43 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.ok(w.document.getElementById('btn-page-next'));
   assert.ok(w.document.getElementById('watchlist-page-info'));
 
+  // Test Preferred Broker settings and Direct Order Button (當沖與觸底反彈直通券商下單)
+  const brokerSelect = w.document.getElementById('select-preferred-broker');
+  assert.ok(brokerSelect);
+  assert.equal(brokerSelect.value, 'sinopac');
+
+  // 切換到當沖頁籤，驗證有下單按鈕且為永豐下單
+  w.document.querySelector('[data-group="daytrade"]').click();
+  const daytradeOrderBtns = w.document.querySelectorAll('#stock-list-container .btn-broker-order');
+  assert.ok(daytradeOrderBtns.length > 0);
+  assert.match(daytradeOrderBtns[0].textContent, /永豐/);
+
+  // 點擊當沖下單按鈕
+  daytradeOrderBtns[0].click();
+  await new Promise(r => setTimeout(r, 0));
+  assert.ok(openedTabs.length > 0);
+  assert.match(openedTabs.at(-1).url, /sinotrade\.com\.tw.*code=/);
+
+  // 切換券商為富邦證券
+  brokerSelect.value = 'fubon';
+  brokerSelect.dispatchEvent(new w.Event('change'));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(messages.at(-1).strategy, 'preferredBroker');
+  assert.equal(messages.at(-1).value, 'fubon');
+
+  // 切換到觸底反彈頁籤，驗證按鈕文字變為富邦
+  w.document.querySelector('[data-group="rebound"]').click();
+  const reboundOrderBtns = w.document.querySelectorAll('#stock-list-container .btn-broker-order');
+  assert.ok(reboundOrderBtns.length > 0);
+  assert.match(reboundOrderBtns[0].textContent, /富邦/);
+
+  // 點擊反彈的下單按鈕
+  reboundOrderBtns[0].click();
+  await new Promise(r => setTimeout(r, 0));
+  assert.match(openedTabs.at(-1).url, /fubon-ebrokerdj\.fbs\.com\.tw.*a=/);
+
   w.document.getElementById('btn-close-settings').click();
   assert.equal(w.document.getElementById('settings-panel').inert, true);
   dom.window.close();
 });
+
