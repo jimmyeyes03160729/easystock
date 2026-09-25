@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1280, height=720, initial-scale=1.0">
+  <title>Promo Scene 3 - CTA Showcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700;800&family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      width: 1280px;
+      height: 720px;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 30%, #0d1b38 0%, #070b14 100%);
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      color: #f8fafc;
+      position: relative;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    
+    .bg-grid {
+      background-size: 36px 36px;
+      background-image: 
+        linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+    }
+
+    .glow-gold {
+      box-shadow: 0 0 50px -5px rgba(245, 158, 11, 0.4);
+    }
+    .glow-blue {
+      box-shadow: 0 0 60px -5px rgba(14, 165, 233, 0.4);
+    }
+
+    /* Pulse scale */
+    .cta-btn {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  </style>
+</head>
+<body class="bg-grid flex items-center justify-center">
+
+  <!-- Ambient light blobs -->
+  <div class="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-sky-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+  <div class="absolute bottom-1/4 right-1/3 w-[450px] h-[450px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+  <!-- Main Card -->
+  <div class="relative w-[880px] bg-slate-900/90 rounded-3xl border border-slate-700/80 p-10 flex flex-col items-center text-center shadow-2xl backdrop-blur-2xl glow-blue">
+    
+    <!-- Top badge -->
+    <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-950/80 border border-sky-400/40 text-sky-300 text-xs font-bold tracking-wide mb-6">
+      <span class="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span>
+      Chrome Web Store 官方推薦 · 打工族看盤神盾
+    </div>
+
+    <!-- App Logo & Title -->
+    <div class="flex items-center gap-4 mb-4">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-sky-400 via-indigo-500 to-rose-500 p-0.5 shadow-xl">
+        <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+          <span class="text-3xl font-black text-white">🐮</span>
+        </div>
+      </div>
+      <div class="text-left">
+        <h1 class="text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
+          EasyStock · 牛馬自救終端
+          <span class="text-xs font-mono font-bold bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded border border-rose-500/40">PRO</span>
+        </h1>
+        <p class="text-sm text-slate-300 font-medium mt-0.5">台股盤中逐筆跳動 · VWAP 均價突破 · 一鍵摸魚偽裝</p>
+      </div>
+    </div>
+
+    <!-- Star Ratings & Testimonial -->
+    <div class="flex items-center gap-3 my-4 bg-slate-950/70 px-5 py-2.5 rounded-xl border border-slate-800">
+      <div class="text-amber-400 text-base font-bold flex items-center gap-1">
+        ★★★★★ <span class="text-white text-sm font-black ml-1">4.9 / 5.0</span>
+      </div>
+      <span class="text-slate-600">|</span>
+      <div class="text-xs text-slate-300">
+        已守護超過 <span class="text-sky-400 font-bold font-mono">10,000+</span> 筆工位當沖獲利
+      </div>
+    </div>
+
+    <!-- Feature Pillars -->
+    <div class="grid grid-cols-3 gap-4 w-full my-4">
+      <div class="p-3.5 rounded-xl bg-slate-950/50 border border-slate-800 text-left">
+        <div class="text-base mb-1">🛡️ 一鍵摸魚</div>
+        <div class="text-xs text-slate-400">瞬間偽裝日誌/透明模式，主管路過毫無破綻</div>
+      </div>
+      <div class="p-3.5 rounded-xl bg-slate-950/50 border border-slate-800 text-left">
+        <div class="text-base mb-1">⚡ 均線突破</div>
+        <div class="text-xs text-slate-400">盤中實時計算 VWAP，大單點火秒速推播</div>
+      </div>
+      <div class="p-3.5 rounded-xl bg-slate-950/50 border border-slate-800 text-left">
+        <div class="text-base mb-1">🆓 永久免費</div>
+        <div class="text-xs text-slate-400">無廣告無干擾，支援 Chrome 與 Edge 雙平台</div>
+      </div>
+    </div>
+
+    <!-- Big CTA Button -->
+    <div id="cta-button" class="cta-btn mt-4 px-10 py-4 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-black text-lg tracking-wide shadow-2xl flex items-center gap-3 cursor-pointer">
+      <span class="text-xl">🚀</span>
+      <span>免費加入 Chrome / Edge — 立即開裝</span>
+    </div>
+
+    <!-- Outro Quote -->
+    <div class="mt-4 text-xs font-mono text-slate-400 flex items-center gap-2">
+      <span>當沖吧，牛馬仔！守護你的離職自由金</span>
+    </div>
+
+  </div>
+
+  <!-- FRAME CONTROLLER JS -->
+  <script>
+    // Frame controller for 7.0 seconds (210 total frames)
+    window.renderFrame = function(frameIdx, totalFrames = 210) {
+      const progress = frameIdx / totalFrames;
+      const timeSec = progress * 7.0;
+
+      const ctaBtn = document.getElementById('cta-button');
+      // Subtle pulsing scale on CTA button
+      const pulse = 1.0 + Math.sin(timeSec * 4) * 0.04;
+      ctaBtn.style.transform = `scale(${pulse})`;
+      if (Math.sin(timeSec * 4) > 0.5) {
+        ctaBtn.style.boxShadow = '0 0 35px 5px rgba(56, 189, 248, 0.6)';
+      } else {
+        ctaBtn.style.boxShadow = '0 0 20px 2px rgba(56, 189, 248, 0.3)';
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1280, height=720, initial-scale=1.0">
+  <title>Scene 1 Cyber HUD Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@700;800&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      width: 1280px;
+      height: 720px;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      color: #fff;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 30px 40px;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .glow-cyan { text-shadow: 0 0 20px rgba(56, 189, 248, 0.8), 0 0 40px rgba(56, 189, 248, 0.4); }
+    .glow-box { box-shadow: 0 0 35px -5px rgba(14, 165, 233, 0.4); }
+  </style>
+</head>
+<body>
+  <!-- Top HUD Bar -->
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-3 bg-slate-950/80 px-4 py-2 rounded-xl border border-sky-500/40 backdrop-blur-md glow-box">
+      <div class="w-3 h-3 rounded-full bg-rose-500 animate-ping"></div>
+      <span class="text-xs font-bold tracking-wider text-sky-300 uppercase">TAIWAN STOCK MARKET LIVE RADAR</span>
+    </div>
+    <div class="flex items-center gap-2 bg-slate-950/80 px-4 py-2 rounded-xl border border-slate-700 backdrop-blur-md">
+      <span class="text-xs font-mono text-emerald-400 font-bold">● SYSTEM READY</span>
+    </div>
+  </div>
+
+  <!-- Center Callout / Title -->
+  <div class="self-center text-center my-auto flex flex-col items-center">
+    <div class="px-4 py-1.5 rounded-full bg-sky-500/20 border border-sky-400/60 text-sky-300 text-xs font-bold tracking-widest uppercase mb-4 backdrop-blur-md">
+      辦公室上班族 · 工位摸魚看盤神盾
+    </div>
+    <h1 class="text-5xl font-black tracking-tight text-white mb-3 glow-cyan">
+      EasyStock · 牛馬自救終端
+    </h1>
+    <div class="text-xl font-bold text-sky-200 bg-slate-950/85 px-6 py-2.5 rounded-2xl border border-sky-500/30 backdrop-blur-lg">
+      上班想看盤又怕主管站在背後？你缺的是這款工位看盤神器！
+    </div>
+  </div>
+
+  <!-- Bottom Real-time Ticker Bar -->
+  <div class="w-full bg-slate-950/90 border border-slate-700/80 rounded-2xl px-6 py-3.5 flex items-center justify-between backdrop-blur-xl">
+    <div class="flex items-center gap-6 text-sm font-bold mono">
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400">加權指數</span>
+        <span class="text-rose-400">22,854.20</span>
+        <span class="text-rose-500 text-xs">▲ +185.3</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400">2330 台積電</span>
+        <span class="text-rose-400">1,045</span>
+        <span class="text-rose-500 text-xs">▲ +25</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400">00878 國泰高股息</span>
+        <span class="text-rose-400">22.45</span>
+        <span class="text-rose-500 text-xs">▲ +0.35</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 text-xs font-bold text-sky-400">
+      <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+      Chrome / Edge 雙端極速擴充
+    </div>
+  </div>
+</body>
+</html>

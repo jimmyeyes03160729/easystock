@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1280, height=720, initial-scale=1.0">
+  <title>Promo Scene 2 - Interactive Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Noto+Sans+TC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      width: 1280px;
+      height: 720px;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #0b0f19;
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      color: #f8fafc;
+      position: relative;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    
+    .bg-grid {
+      background-size: 32px 32px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    }
+
+    .glow-cyan {
+      box-shadow: 0 0 50px -10px rgba(14, 165, 233, 0.35);
+    }
+    .glow-red {
+      box-shadow: 0 0 35px -5px rgba(239, 68, 68, 0.4);
+    }
+
+    #mouse-cursor {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      pointer-events: none;
+      z-index: 9999;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+    }
+
+    .click-ripple {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(14, 165, 233, 0.5);
+      pointer-events: none;
+      z-index: 9998;
+    }
+  </style>
+</head>
+<body class="bg-grid flex items-center justify-center">
+
+  <!-- Ambient lighting spheres in background -->
+  <div class="absolute -top-32 -left-32 w-96 h-96 bg-sky-600/15 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-rose-600/15 rounded-full blur-3xl pointer-events-none"></div>
+
+  <!-- Background IDE / Office Workspace Watermark (Left side) -->
+  <div class="absolute left-10 top-12 bottom-12 w-[380px] bg-slate-900/70 rounded-xl border border-slate-800 p-5 flex flex-col justify-between backdrop-blur-md opacity-90">
+    <div>
+      <div class="flex items-center gap-2 mb-4 pb-3 border-b border-slate-800">
+        <span class="w-3 h-3 rounded-full bg-rose-500/80 inline-block"></span>
+        <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
+        <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
+        <span class="text-xs text-slate-400 font-mono ml-2">quarterly_report.xlsx - Work</span>
+      </div>
+      <div class="space-y-2 text-xs font-mono text-slate-400">
+        <div class="text-slate-500">// 辦公室日常摸魚監控中...</div>
+        <div class="flex justify-between py-1 border-b border-slate-800/50">
+          <span class="text-slate-300">Revenue Q3</span>
+          <span class="text-emerald-400 font-bold">$14,250,000</span>
+        </div>
+        <div class="flex justify-between py-1 border-b border-slate-800/50">
+          <span class="text-slate-300">Target Growth</span>
+          <span class="text-sky-400 font-bold">+18.5%</span>
+        </div>
+        <div class="flex justify-between py-1 border-b border-slate-800/50">
+          <span class="text-slate-300">Worker Status</span>
+          <span class="text-rose-400 font-bold">🐮 準備當沖</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Dynamic Scene Badge -->
+    <div id="scene-feature-badge" class="p-3.5 rounded-lg bg-sky-950/90 border border-sky-500/50 text-sky-200">
+      <div class="text-xs font-semibold text-sky-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+        功能焦點展示
+      </div>
+      <div id="badge-title" class="text-sm font-bold text-white">台股即時逐筆跳動 · VWAP 均價線</div>
+      <div id="badge-desc" class="text-xs text-slate-300 mt-0.5">毫秒級監控，突破瞬間精準抓取！</div>
+    </div>
+  </div>
+
+  <!-- Center-Right: Chrome Browser Window with EasyStock Popup -->
+  <div class="relative ml-48 w-[450px] bg-slate-900 rounded-2xl border border-slate-700/80 shadow-2xl overflow-hidden glow-cyan flex flex-col">
+    <!-- Chrome Title Bar -->
+    <div class="h-9 bg-slate-950 px-3.5 flex items-center justify-between border-b border-slate-800">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-slate-700 inline-block"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-slate-700 inline-block"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-slate-700 inline-block"></span>
+        <span class="text-[11px] text-slate-400 font-medium ml-2">Chrome 擴充套件</span>
+      </div>
+      <div class="text-[10px] font-mono text-emerald-400 flex items-center gap-1 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+        連線中 12ms
+      </div>
+    </div>
+
+    <!-- NORMAL TRADING VIEW -->
+    <div id="normal-widget-view" class="p-4 bg-slate-900 flex flex-col gap-3">
+      <!-- Widget Top Header -->
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-md bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-md">
+            <span class="text-xs font-black text-white">E</span>
+          </div>
+          <div>
+            <div class="text-xs font-bold text-white tracking-wide">EasyStock · 牛馬自救終端</div>
+            <div class="text-[10px] text-slate-400 font-mono">台股當沖高勝率雷達</div>
+          </div>
+        </div>
+
+        <!-- The Stealth Button! -->
+        <div id="btn-stealth" class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-800 text-amber-300 border border-amber-500/40 flex items-center gap-1.5 shadow-sm">
+          <span class="text-sm">🐮</span>
+          <span id="stealth-label">摸魚</span>
+        </div>
+      </div>
+
+      <!-- Hero Highlight Stock: 00878 -->
+      <div class="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 flex flex-col gap-2 relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold text-sm text-white">00878</span>
+              <span class="text-xs text-slate-300 font-medium">國泰永續高股息</span>
+              <span id="stock-tag" class="text-[10px] bg-rose-950 text-rose-300 px-1 rounded border border-rose-800/60 font-bold">爆量突破</span>
+            </div>
+            <div class="text-[10px] text-slate-400 font-mono mt-0.5">總量: 48,920張 | 外資大單敲進</div>
+          </div>
+          <div class="text-right">
+            <div id="stock-price" class="text-xl font-black mono text-rose-500 tracking-tight">22.35</div>
+            <div id="stock-change" class="text-xs font-bold mono text-rose-400">+1.13% (+0.25)</div>
+          </div>
+        </div>
+
+        <!-- Dynamic Chart Area (VWAP & Intraday curve) -->
+        <div class="relative w-full h-24 bg-slate-900/90 rounded-lg p-2 border border-slate-800/70 overflow-hidden flex flex-col justify-between">
+          <div class="flex items-center justify-between text-[10px] font-mono text-slate-400 z-10">
+            <span class="flex items-center gap-1"><span class="w-2 h-0.5 bg-rose-500 inline-block"></span> 分時即時價</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-0.5 bg-amber-400 inline-block"></span> VWAP均線 22.38</span>
+          </div>
+
+          <!-- SVG Chart canvas -->
+          <svg class="absolute inset-0 w-full h-full" viewBox="0 0 400 100" preserveAspectRatio="none">
+            <!-- Grid lines -->
+            <line x1="0" y1="50" x2="400" y2="50" stroke="#1e293b" stroke-dasharray="4" stroke-width="1" />
+            <!-- VWAP Yellow line -->
+            <path id="svg-vwap" d="M 0 65 Q 100 60, 200 55 T 400 48" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="2" opacity="0.85" />
+            <!-- Intraday Red Price Line -->
+            <path id="svg-price" d="M 0 75 Q 80 70, 150 62 T 260 50 T 400 30" fill="none" stroke="#ef4444" stroke-width="2.5" />
+            <!-- Glowing Head point -->
+            <circle id="svg-head" cx="395" cy="30" r="4.5" fill="#ef4444" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- Secondary Stock: 2330 台積電 -->
+      <div class="px-3 py-2 rounded-lg bg-slate-950/60 border border-slate-800/80 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-xs text-white">2330</span>
+          <span class="text-xs text-slate-300">台積電</span>
+          <span class="text-[9px] bg-slate-800 text-slate-400 px-1 rounded">強勢股</span>
+        </div>
+        <div class="text-right">
+          <span class="text-xs font-bold mono text-rose-500">1,045</span>
+          <span class="text-[11px] font-bold mono text-rose-400 ml-1.5">+2.45%</span>
+        </div>
+      </div>
+
+      <!-- Secondary Stock: 2603 長榮 -->
+      <div class="px-3 py-2 rounded-lg bg-slate-950/60 border border-slate-800/80 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-xs text-white">2603</span>
+          <span class="text-xs text-slate-300">長榮</span>
+          <span class="text-[9px] bg-slate-800 text-slate-400 px-1 rounded">航運</span>
+        </div>
+        <div class="text-right">
+          <span class="text-xs font-bold mono text-rose-500">188.5</span>
+          <span class="text-[11px] font-bold mono text-rose-400 ml-1.5">+1.89%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEALTH DISGUISE VIEW (Activated on click) -->
+    <div id="stealth-widget-view" style="display: none;" class="p-4 bg-slate-950 flex flex-col gap-3 font-mono text-xs text-slate-400">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <span class="text-slate-400 text-[11px]">System Diagnostic Console [PID 4092]</span>
+        <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800">ACTIVE</span>
+      </div>
+      <div class="space-y-1.5 text-[11px] text-slate-400 bg-slate-900/90 p-3 rounded-lg border border-slate-800/80">
+        <div>[09:24:11] Sync worker: db cluster OK (latency 1.2ms)</div>
+        <div>[09:24:12] Cache hit ratio: 98.4% (alloc: 22.45MB)</div>
+        <div>[09:24:14] Heartbeat packet sent: ACK received</div>
+        <div>[09:24:15] Load average: 0.14, 0.22, 0.18</div>
+      </div>
+      <div class="text-center py-2 text-[10px] text-slate-400">
+        🐮 摸魚偽裝中 · 按快捷鍵 B 或點擊即刻切回
+      </div>
+    </div>
+  </div>
+
+  <!-- Windows / Chrome Toast Notification (Bottom Right) -->
+  <div id="toast-notification" style="opacity: 0; transform: translateY(120px);" class="absolute bottom-10 right-10 w-[400px] bg-slate-900 border-2 border-rose-500 rounded-xl p-4 shadow-2xl glow-red flex items-start gap-3">
+    <div class="w-10 h-10 rounded-lg bg-rose-500/20 border border-rose-500/50 flex items-center justify-center shrink-0">
+      <span class="text-xl">🚨</span>
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-xs font-black text-rose-400 uppercase tracking-wide">EasyStock 毫秒突破推播</span>
+        <span class="text-[10px] text-slate-400 font-mono">剛剛 09:24:15</span>
+      </div>
+      <div class="text-sm font-bold text-white leading-snug">
+        00878 突破今日 VWAP 均價線！
+      </div>
+      <div class="text-xs text-slate-300 mt-1">
+        點火買盤大單敲進 +1,500張，價格來到 <span class="text-rose-400 font-bold mono">22.45 (+1.58%)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mouse Cursor Element -->
+  <div id="mouse-cursor" style="left: 700px; top: 380px;">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <path d="M4 2L20 10L12 13L9 21L4 2Z" fill="#38bdf8" stroke="#ffffff" stroke-width="2" stroke-linejoin="round" />
+    </svg>
+  </div>
+
+  <!-- Click Ripple Effect -->
+  <div id="click-ripple" class="click-ripple" style="opacity: 0; transform: scale(0);"></div>
+
+  <!-- FRAME CONTROLLER JS -->
+  <script>
+    // Frame controller for 30fps animation across 10.0 seconds (300 total frames)
+    window.renderFrame = function(frameIdx, totalFrames = 300) {
+      const progress = frameIdx / totalFrames; // 0.0 -> 1.0
+      const timeSec = progress * 10.0; // 0.0s -> 10.0s
+
+      const cursor = document.getElementById('mouse-cursor');
+      const ripple = document.getElementById('click-ripple');
+      const normalView = document.getElementById('normal-widget-view');
+      const stealthView = document.getElementById('stealth-widget-view');
+      const toast = document.getElementById('toast-notification');
+      const stockPrice = document.getElementById('stock-price');
+      const stockChange = document.getElementById('stock-change');
+      const stealthBtn = document.getElementById('btn-stealth');
+      const badgeTitle = document.getElementById('badge-title');
+      const badgeDesc = document.getElementById('badge-desc');
+
+      // 1. Price jump animation (0s - 3s)
+      if (timeSec < 1.0) {
+        stockPrice.innerText = '22.35';
+        stockChange.innerText = '+1.13% (+0.25)';
+        stockPrice.style.transform = 'scale(1.0)';
+      } else if (timeSec < 2.0) {
+        stockPrice.innerText = '22.40';
+        stockChange.innerText = '+1.35% (+0.30)';
+        stockPrice.style.transform = 'scale(1.08)';
+      } else {
+        stockPrice.innerText = '22.45';
+        stockChange.innerText = '+1.58% (+0.35)';
+        stockPrice.style.transform = 'scale(1.15)';
+      }
+
+      // 2. Mouse Cursor trajectory
+      // Button position: x=865, y=210
+      let cursorX = 700;
+      let cursorY = 380;
+
+      if (timeSec < 2.2) {
+        cursorX = 700 + Math.sin(timeSec * 2) * 15;
+        cursorY = 380 + Math.cos(timeSec * 2) * 12;
+      } else if (timeSec < 3.2) {
+        // Glide to stealth button
+        const t = (timeSec - 2.2) / 1.0;
+        const ease = t * (2 - t);
+        cursorX = 700 + (865 - 700) * ease;
+        cursorY = 380 + (210 - 380) * ease;
+      } else if (timeSec < 3.8) {
+        cursorX = 865;
+        cursorY = 210;
+      } else if (timeSec < 6.2) {
+        cursorX = 865 + (timeSec - 3.8) * 8;
+        cursorY = 210 + Math.sin(timeSec * 3) * 6;
+      } else if (timeSec < 6.8) {
+        cursorX = 865;
+        cursorY = 210;
+      } else {
+        // Glide to bottom right toast
+        const t = Math.min(1.0, (timeSec - 6.8) / 1.5);
+        cursorX = 865 + (1020 - 865) * t;
+        cursorY = 210 + (580 - 210) * t;
+      }
+
+      cursor.style.left = cursorX + 'px';
+      cursor.style.top = cursorY + 'px';
+
+      // 3. Stealth Mode toggle states
+      if (timeSec >= 3.3 && timeSec < 6.5) {
+        normalView.style.display = 'none';
+        stealthView.style.display = 'flex';
+        stealthBtn.style.backgroundColor = '#fbbf24';
+        stealthBtn.style.color = '#020617';
+        badgeTitle.innerText = '🛡️ 一鍵摸魚偽裝模式';
+        badgeDesc.innerText = '主管站背後？瞬間切換系統日誌模式！';
+      } else {
+        normalView.style.display = 'flex';
+        stealthView.style.display = 'none';
+        stealthBtn.style.backgroundColor = '#1e293b';
+        stealthBtn.style.color = '#fde68a';
+        if (timeSec >= 6.5) {
+          badgeTitle.innerText = '🚨 桌面原生毫秒級推播通知';
+          badgeDesc.innerText = '均線突破、量能點火第一時間彈出！';
+        } else {
+          badgeTitle.innerText = '台股即時逐筆跳動 · VWAP 均價線';
+          badgeDesc.innerText = '毫秒級監控，突破瞬間精準抓取！';
+        }
+      }
+
+      // 4. Click ripple at 3.3s and 6.5s
+      if ((timeSec >= 3.25 && timeSec <= 3.5) || (timeSec >= 6.45 && timeSec <= 6.7)) {
+        ripple.style.left = '845px';
+        ripple.style.top = '190px';
+        ripple.style.transform = 'scale(2.2)';
+        ripple.style.opacity = '1';
+      } else {
+        ripple.style.transform = 'scale(0)';
+        ripple.style.opacity = '0';
+      }
+
+      // 5. Toast Notification slide-in (6.8s onwards)
+      if (timeSec >= 6.8) {
+        const slideProg = Math.min(1.0, (timeSec - 6.8) / 0.5); // 0.5s slide up
+        const easeSlide = 1 - Math.pow(1 - slideProg, 3);
+        const curY = 120 * (1 - easeSlide);
+        toast.style.transform = `translateY(${curY}px)`;
+        toast.style.opacity = easeSlide.toFixed(2);
+      } else {
+        toast.style.transform = 'translateY(120px)';
+        toast.style.opacity = '0';
+      }
+    };
+  </script>
+</body>
+</html>
