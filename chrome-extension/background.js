@@ -228,8 +228,7 @@ export async function updateMarketStatusIcon(data, now = Date.now(), explicitTai
   try {
     await chrome.action.setTitle({ title: titleLines.join('\n') });
     if (chrome.action.setBadgeText) {
-      await chrome.action.setBadgeText({ text: badgeText });
-      await chrome.action.setBadgeBackgroundColor({ color: badgeColor });
+      await chrome.action.setBadgeText({ text: '' });
     }
   } catch (_) {}
 }

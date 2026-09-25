@@ -224,8 +224,7 @@ test('background behavior', async t => {
     await bg.updateMarketStatusIcon(openDataWithTaiex, now);
     assert.ok(titleSet.includes('加權指數：22,800.50 (+150.20 / +0.66%)'));
     assert.ok(titleSet.includes('櫃買指數：270.10 (+1.20 / +0.45%)'));
-    assert.equal(badgeText, '+150');
-    assert.equal(badgeColor, '#ef4444');
+    assert.equal(badgeText, '');
 
     // Negative taiex change
     const openDataDown = {
@@ -234,14 +233,13 @@ test('background behavior', async t => {
     };
     await bg.updateMarketStatusIcon(openDataDown, now);
     assert.ok(titleSet.includes('加權指數：22,600.00 (-85.50 / -0.38%)'));
-    assert.equal(badgeText, '-85');
-    assert.equal(badgeColor, '#22c55e');
+    assert.equal(badgeText, '');
 
     // Closed market test
     const offHours = Date.parse('2026-09-17T20:00:00+08:00');
     await bg.updateMarketStatusIcon(openDataWithTaiex, offHours);
     assert.ok(titleSet.includes('已收盤'));
-    assert.equal(badgeText, '休');
+    assert.equal(badgeText, '');
     delete chrome.action;
   });
   await t.test('ADD_BATCH adds multiple valid stocks and ignores duplicates', async () => {
