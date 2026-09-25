@@ -27,8 +27,8 @@ if (currentStockInfo.price > 0 && document.getElementById('txt-price')) {
   document.getElementById('txt-price').textContent = currentStockInfo.price.toFixed(2);
 }
 
-// 視野與拖曳縮放狀態
-let viewBarsCount = 80;
+// 視野與拖曳縮放狀態 (預設涵蓋當日全盤 270 根分時 K 線，避免早盤走勢被截斷)
+let viewBarsCount = 270;
 let viewOffset = 0; // 0 表示停留在最新資料，> 0 表示向左平移查看歷史
 let isDragging = false;
 let dragStartX = 0;
@@ -71,7 +71,7 @@ tabIntraday.addEventListener('click', () => {
   currentMode = 'intraday';
   tabIntraday.classList.add('active');
   tabDaily.classList.remove('active');
-  viewBarsCount = 120;
+  viewBarsCount = Math.max(270, intradayData.length || 270);
   viewOffset = 0;
   hoverIndex = -1;
   loadData();
@@ -277,6 +277,8 @@ async function loadData(force = false) {
 
       if (fetched && Array.isArray(fetched.bars) && fetched.bars.length > 0) {
         intradayData = fetched.bars;
+        viewBarsCount = Math.max(270, intradayData.length);
+        viewOffset = 0;
         if (finite(fetched.previousClose) && fetched.previousClose > 0) {
           previousClose = fetched.previousClose;
         }
@@ -294,6 +296,8 @@ async function loadData(force = false) {
         const realBase = (fetched?.price && fetched.price > 0) ? fetched.price :
                          (currentStockInfo.price > 0 ? currentStockInfo.price : (previousClose > 0 ? previousClose : 50));
         intradayData = generateMockIntraday(realBase);
+        viewBarsCount = Math.max(270, intradayData.length);
+        viewOffset = 0;
         currentStockInfo.price = realBase;
         if (previousClose && previousClose > 0) {
           currentStockInfo.change_pct = ((realBase - previousClose) / previousClose) * 100;
@@ -463,8 +467,12 @@ function drawIntraday(width, height) {
   if (!visibleCount) return;
 
   // 計算最高價、最低價、最大成交量
-  let minPrice = previousClose || visible[0].close;
-  let maxPrice = previousClose || visible[0].close;
+  let minPrice = visible[0].close;
+  let maxPrice = visible[0].close;
+  if (previousClose && previousClose > 0) {
+    minPrice = Math.min(minPrice, previousClose);
+    maxPrice = Math.max(maxPrice, previousClose);
+  }
   let maxVol = 1;
 
   for (let i = 0; i < visibleCount; i++) {
@@ -478,10 +486,21 @@ function drawIntraday(width, height) {
     if (b.volume > maxVol) maxVol = b.volume;
   }
 
-  // 昨收線盡量置於中間或有充足上下邊距
-  const priceMargin = Math.max((maxPrice - minPrice) * 0.12, 0.5);
-  minPrice -= priceMargin;
-  maxPrice += priceMargin;
+  // 專業台股對稱昨收中軸定標算法：
+  // 昨收價 (previousClose) 嚴格置於 Y 軸垂直正中心 (50% 高度)，上下漲跌幅對稱
+  if (previousClose && previousClose > 0) {
+    const diffUp = Math.max(0, maxPrice - previousClose);
+    const diffDown = Math.max(0, previousClose - minPrice);
+    const maxDiff = Math.max(diffUp, diffDown);
+    // 預留邊距：若振幅極小至少保留 0.3% 或 0.04 元視窗，避免低價股/ETF 走勢壓扁或貼邊
+    const halfSpan = Math.max(maxDiff * 1.15, previousClose * 0.003, 0.04);
+    minPrice = previousClose - halfSpan;
+    maxPrice = previousClose + halfSpan;
+  } else {
+    const span = Math.max((maxPrice - minPrice) * 0.1, 0.1);
+    minPrice -= span;
+    maxPrice += span;
+  }
   const priceRange = maxPrice - minPrice;
 
   // 座標映射
@@ -493,7 +512,6 @@ function drawIntraday(width, height) {
   // 繪製水平網格線與 Y 軸價格刻度
   ctx.strokeStyle = '#1b202a';
   ctx.lineWidth = 1;
-  ctx.fillStyle = '#64748b';
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'left';
 
@@ -507,11 +525,13 @@ function drawIntraday(width, height) {
     ctx.stroke();
 
     const diffPct = previousClose ? ((p - previousClose) / previousClose) * 100 : 0;
-    const sign = diffPct >= 0 ? '+' : '';
+    const sign = diffPct > 0.001 ? '+' : '';
+    const colorCls = diffPct > 0.001 ? '#ef4444' : (diffPct < -0.001 ? '#22c55e' : '#94a3b8');
+    ctx.fillStyle = colorCls;
     ctx.fillText(`${p.toFixed(2)} (${sign}${diffPct.toFixed(1)}%)`, plotWidth + 4, y + 4);
   }
 
-  // 繪製昨收基準虛線
+  // 繪製昨收基準虛線 (嚴格位於畫布中軸線)
   if (previousClose && previousClose >= minPrice && previousClose <= maxPrice) {
     const prevY = getY(previousClose);
     ctx.strokeStyle = '#475569';
@@ -523,7 +543,7 @@ function drawIntraday(width, height) {
     ctx.setLineDash([]);
 
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`昨收 ${previousClose.toFixed(2)}`, plotWidth + 4, prevY + 4);
+    ctx.fillText(`昨收 ${previousClose.toFixed(2)}`, plotWidth + 4, prevY - 4);
   }
 
   // 副圖分隔線
@@ -596,6 +616,10 @@ function drawIntraday(width, height) {
     const b = visible[i];
     const x = getX(i);
     ctx.fillText(b.time || '', x, height - 6);
+  }
+  if (visibleCount > 1) {
+    const lastB = visible[visibleCount - 1];
+    ctx.fillText(lastB.time || '', getX(visibleCount - 1), height - 6);
   }
 
   // 十字游標

@@ -108,17 +108,17 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.equal(messages.at(-1).strategy, 'pageSize');
   assert.equal(messages.at(-1).value, 8);
 
-  // Test window height slider (圖片1效果)
+  // Test window height slider (最高加到 +100px 即 580px)
   const rangeHeight = w.document.getElementById('range-window-height');
   assert.ok(rangeHeight);
-  rangeHeight.value = '680';
+  rangeHeight.value = '560';
   rangeHeight.dispatchEvent(new w.Event('input'));
-  assert.equal(w.document.body.style.height, '680px');
+  assert.equal(w.document.body.style.height, '560px');
   rangeHeight.dispatchEvent(new w.Event('change'));
   await new Promise(r => setTimeout(r, 0));
   assert.equal(messages.at(-1).type, 'SETTINGS');
   assert.equal(messages.at(-1).strategy, 'windowHeight');
-  assert.equal(messages.at(-1).value, 680);
+  assert.equal(messages.at(-1).value, 560);
 
   // Test font size selector (圖片1效果)
   const radioLarge = w.document.getElementById('radio-size-large');

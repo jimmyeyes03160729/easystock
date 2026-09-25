@@ -175,7 +175,7 @@
             </div>
           </div>
 
-          <!-- 列表高度滑桿 (比照截圖效果：標題 + 說明 + 預設/+101px/+214px + 左邊預設 右邊較高) -->
+          <!-- 列表高度滑桿 (比照截圖效果：標題 + 說明 + 預設/+100px + 左邊預設 右邊較高) -->
           <div class="space-y-1.5 pt-2 border-t border-slate-200">
             <div class="flex items-center justify-between">
               <div>
@@ -184,10 +184,10 @@
               </div>
               <span id="window-height-val" class="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-2xs">預設</span>
             </div>
-            <input type="range" id="range-window-height" min="480" max="720" step="1" value="480" class="w-full accent-sky-600 cursor-pointer" />
+            <input type="range" id="range-window-height" min="480" max="580" step="1" value="480" class="w-full accent-sky-600 cursor-pointer" />
             <div class="flex justify-between text-[10px] text-slate-400 font-medium">
-              <span>預設</span>
-              <span>較高</span>
+              <span>預設 (0px)</span>
+              <span>最高 (+100px)</span>
             </div>
           </div>
 
@@ -264,21 +264,36 @@
             </label>
           </div>
 
-          <!-- 2. 系統推播與即時彈窗測試 (橫向排列，移除勾勾，改為範例) -->
+          <!-- 2. 系統推播與即時彈窗測試 (強制橫向等寬、高質感卡片、放大向量圖示) -->
           <div class="pt-2 border-t border-slate-200 space-y-1.5">
             <div class="flex items-center justify-between">
               <span class="text-[11px] font-bold text-slate-700">系統推播與即時彈窗測試</span>
               <span class="text-[10px] text-slate-400">點擊即時發送</span>
             </div>
-            <div class="grid grid-cols-3 gap-1.5">
-              <button id="btn-test-daytrade-notif" class="py-1.5 px-1 bg-sky-600 hover:bg-sky-700 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center justify-center whitespace-nowrap cursor-pointer">
-                🚀 買進範例
+            <div class="test-btn-group">
+              <button id="btn-test-daytrade-notif" class="test-btn test-btn-buy" title="模擬觸發當沖做多進場推播通知">
+                <svg class="test-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                  <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                  <path d="M9 12H4s.55-3.03 2-4.5c1.62-1.63 5-2.5 5-2.5"/>
+                  <path d="M15 12v5s3.03-.55 4.5-2c1.63-1.62 2.5-5 2.5-5"/>
+                </svg>
+                <span>買進範例</span>
               </button>
-              <button id="btn-test-exit-notif" class="py-1.5 px-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center justify-center whitespace-nowrap cursor-pointer">
-                📉 賣出範例
+              <button id="btn-test-exit-notif" class="test-btn test-btn-exit" title="模擬觸發當沖出場/獲利平倉推播通知">
+                <svg class="test-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <span>出場範例</span>
               </button>
-              <button id="btn-test-rebound-notif" class="py-1.5 px-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center justify-center whitespace-nowrap cursor-pointer">
-                🛡️ 反彈範例
+              <button id="btn-test-rebound-notif" class="test-btn test-btn-rebound" title="模擬觸發觸底反彈訊號推播通知">
+                <svg class="test-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+                <span>反彈範例</span>
               </button>
             </div>
           </div>
