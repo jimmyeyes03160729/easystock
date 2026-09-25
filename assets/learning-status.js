@@ -4,19 +4,21 @@
   if(!root)return;
   const style=document.createElement('style');
   style.textContent=`
+  #learningSection .learning-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px;border-bottom:1px solid var(--border,#232f42);padding-bottom:12px}
+  #learningSection #learningTitle{font-size:14px;font-weight:700;color:var(--main,#f1f5f9);margin:0}
   #learningSection .learning-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border-top:1px solid var(--border)}
   #learningSection .learning-column{min-width:0;padding:26px 24px 6px 0}
   #learningSection .learning-column+.learning-column{border-left:1px dashed var(--border);padding:26px 0 6px 24px}
   #learningSection .learning-column-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}
-  #learningSection .learning-column h3{font-size:21px;margin:0 0 7px;font-weight:850;line-height:1.4}
+  #learningSection .learning-column h3{font-size:16px;margin:0 0 6px;font-weight:700;line-height:1.4}
   #learningSection .learning-column-head p{color:var(--sub);font-size:12px;margin:0;line-height:1.6}
   #learningSection .learning-column .phase-badge{font-size:12px;white-space:normal;text-align:center;flex-shrink:0;max-width:45%;line-height:1.5}
   #learningSection .learning-numbers{grid-template-columns:repeat(2,minmax(0,1fr))}
-  #learningSection .learning-numbers>div{padding:16px 12px;min-width:0}
+  #learningSection .learning-numbers>div{padding:14px 12px;min-width:0}
   #learningSection .learning-numbers>div:nth-child(2n){border-right:0}
   #learningSection .learning-numbers>div:nth-child(-n+4){border-bottom:1px dashed var(--border)}
-  #learningSection .learning-numbers strong{font-size:clamp(25px,2.3vw,34px);overflow-wrap:anywhere}
-  #learningSection .learning-numbers small{line-height:1.7}
+  #learningSection .learning-numbers strong{font-size:18px;font-family:"JetBrains Mono",monospace;font-weight:800;line-height:1.3;display:block;margin:5px 0 3px;overflow-wrap:normal;word-break:keep-all;white-space:nowrap}
+  #learningSection .learning-numbers small{display:block;font-size:11px;color:var(--sub,#64748b);line-height:1.4;margin-top:3px}
   #learningSection .learning-bottom{grid-template-columns:1fr;gap:12px;padding-top:18px}
   #learningSection .learning-bottom b{font-size:14px;line-height:1.7}
   #learningSection .learning-bottom p{line-height:1.8;overflow-wrap:anywhere}
@@ -33,9 +35,8 @@
   root.innerHTML=`
   <div class="learning-head">
     <div>
-      <div class="eyebrow">收盤加班進修 / DRONE SURVIVAL LOG</div>
-      <h2 id="learningTitle">🐮 牛馬 AI 加班進修打卡室</h2>
-      <p style="color:var(--sub);font-size:13px;margin:4px 0 0">白天當沖摸魚被主力修理，晚上留在工位加班覆盤；不求暴富，只求換個便當與湊齊離職自由金。</p>
+      <h2 id="learningTitle">AI 盤後學習與特訓進度</h2>
+      <p style="color:var(--sub);font-size:12px;margin:4px 0 0">白天當沖摸魚被主力修理，晚上留在工位加班覆盤；不求暴富，只求換個便當與湊齊離職自由金。</p>
     </div>
   </div>
   <div class="learning-columns">

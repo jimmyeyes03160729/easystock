@@ -11,9 +11,7 @@
   if(rebound){
     const layout=document.createElement('section');layout.id='reboundLayout';layout.setAttribute('aria-label','底部反彈');
     rebound.before(layout);layout.append(rebound);
-    get('bottom-rebound')?.remove();
-    const anchor=document.createElement('span');anchor.id='bottom-rebound';rebound.prepend(anchor);
-    const title=get('reboundTitle');if(title)title.innerHTML='<span class="h-6 w-6 rounded-md bg-[#1C2B3C] border border-[#232F42] inline-flex items-center justify-center text-[#06B6D4] font-mono text-xs font-bold mr-2 align-middle">02</span><span class="align-middle">底部反彈 TOP 3</span>';
+    const title=get('reboundTitle');if(title)title.textContent='底部反彈觀察標的 · 有支撐，也要等站穩';
     const watch=get('reboundWatchSection');
     if(watch){
       const details=document.createElement('details'),summary=document.createElement('summary');
@@ -29,7 +27,7 @@
   style.textContent=`
   #reboundLayout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start;margin:22px 0 30px}
   #reboundLayout>.panel{min-width:0;padding:20px;margin:0;height:auto;align-self:start}
-  #reboundLayout h2{font-size:18px;line-height:1.6}
+  #reboundLayout h2{font-size:14px;font-weight:700;line-height:1.5;margin:0}
   #reboundLayout .rebound-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
   #reboundLayout .share-btn{font-size:11px;white-space:nowrap}
   #reboundLayout .rebound-module-head{flex-wrap:wrap;gap:8px}
