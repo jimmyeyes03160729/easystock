@@ -240,6 +240,27 @@ def register_admin(app, store=None, verifier=None):
         store.unlink()
         return jsonify(ok=True)
 
+    @bp.get('/admin/bot-policy')
+    def get_bot_policy():
+        authenticated()
+        return jsonify(store.get_bot_policy())
+
+    @bp.put('/admin/bot-policy')
+    def put_bot_policy():
+        authenticated(True)
+        data = body()
+        if 'auto_reply_on_follow' not in data:
+            raise ValueError('缺少自動回覆開關設定。')
+        auto_reply = bool(data.get('auto_reply_on_follow'))
+        private_replies = bool(data.get('private_replies', True))
+        ver = data.get('version')
+        if ver is not None:
+            try:
+                ver = int(ver)
+            except Exception:
+                raise ValueError('設定版本格式不正確。')
+        return jsonify(store.update_bot_policy(auto_reply, private_replies, ver))
+
     # --------------------------------------------------------
     # 永豐證券下單 API (包含完整例外捕捉與 JSON 格式錯誤處理)
     # --------------------------------------------------------

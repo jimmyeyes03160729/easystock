@@ -18,10 +18,19 @@ class Tests(unittest.TestCase):
     def tearDown(self):self.api.stop();self.env.stop();self.tmp.cleanup()
     def update(self,uid=1,**message):
         return {'update_id':uid,'message':{'message_id':8,'date':time.time(),'chat':{'id':-1001234567,'type':'supergroup'},'from':{'id':1,'is_bot':False},'text':'P大盤',**message}}
-    def test_wrong_group_private_bot_stale_ignored_before_query(self):
+    def test_wrong_group_bot_stale_ignored_before_query(self):
         with patch.object(bot.requests,'post') as post:
-            for uid,kwargs in enumerate([{'chat':{'id':1,'type':'private'}},{'chat':{'id':-10022222,'type':'supergroup'}},{'from':{'is_bot':True}},{'date':time.time()-600}],1):bot.handle_update(self.store,self.update(uid,**kwargs))
+            for uid,kwargs in enumerate([{'chat':{'id':-10022222,'type':'supergroup'}},{'from':{'is_bot':True}},{'date':time.time()-600}],1):bot.handle_update(self.store,self.update(uid,**kwargs))
             post.assert_not_called();self.send.assert_not_called()
+    def test_private_chat_query_and_start(self):
+        with patch.object(bot.requests,'post',return_value=Mock(status_code=200,json=lambda:{'messages':[{'type':'text','text':'private quote'}]})) as post:
+            bot.handle_update(self.store,self.update(uid=10,chat={'id':12345,'type':'private'},text='P2330'))
+            post.assert_called_once();self.send.assert_called_once()
+            self.assertEqual(self.send.call_args.args[1]['chat_id'],'12345')
+        self.send.reset_mock()
+        bot.handle_update(self.store,self.update(uid=11,chat={'id':12345,'type':'private'},text='/start'))
+        self.send.assert_called_once()
+        self.assertIn('歡迎使用',self.send.call_args.args[1]['text'])
     def test_update_dedup_and_offset_persist(self):
         with patch.object(bot.requests,'post',return_value=Mock(status_code=200,json=lambda:{'messages':[{'type':'text','text':'quote'}]})) as post:
             bot.handle_update(self.store,self.update());bot.handle_update(Store(self.store.path),self.update())

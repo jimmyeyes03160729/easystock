@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-Hant" data-theme="dark">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -103,12 +103,31 @@
 </details>
 </section>
 
-<section class="panel" id="conversationPanel" style="margin-top:24px"><h2>群組通知</h2>
-<p class="hint">僅通知已核准群組。個人功能與其他自動推播均停用；推薦條件只在此後台修改。兩個平台的進出場通知可分別開關。</p>
+<section class="panel" id="conversationPanel" style="margin-top:24px"><h2>通知與機器人設定</h2>
+<p class="hint">可開關 LINE 與 Telegram 的群組查詢、進出場推播，以及個人加入好友時的自動歡迎導引。個人私訊與群組均支援即時看盤指令。</p>
+
+<!-- 加入好友自動回覆設定卡片 -->
+<div id="botPolicyCard" style="background:var(--bg,#111);padding:14px 18px;border-radius:8px;border:1px solid var(--border,#333);margin:16px 0;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+    <div>
+      <div style="font-size:14px;font-weight:bold;color:var(--text,#ddd);">🤖 加入好友自動回覆（LINE & Telegram）</div>
+      <div style="font-size:12px;color:var(--muted,#888);margin-top:4px;">當新使用者加為好友或首次啟動機器人時，自動發送指令操作導引與歡迎訊息。</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <label style="display:flex;align-items:center;cursor:pointer;gap:8px;font-size:13px;font-weight:600;">
+        <input id="autoReplyToggle" type="checkbox" style="width:18px;height:18px;cursor:pointer;">
+        <span>啟用自動回覆</span>
+      </label>
+      <button id="saveBotPolicy" type="button" class="primary" style="padding:4px 14px;font-size:12px;">儲存開關</button>
+    </div>
+  </div>
+  <p id="botPolicyStatus" role="status" aria-live="polite" style="font-size:12px;margin-top:8px;margin-bottom:0;"></p>
+</div>
+
 <div id="conversationList" class="grid"></div>
 <button type="button" id="reloadLine">重新載入群組設定</button><p id="conversationStatus" role="status" aria-live="polite"></p>
 <button type="button" id="checkUsage">查詢本月 LINE 用量</button><p id="lineUsage" role="status">群組推播按接收人數計費，例如 7 人群組推播一次計 7 則；不是一個群組算一則。</p>
-<p class="hint">LINE 群組查詢回覆不扣月訊息額度。Telegram 支援 P大盤、#台積電、K2330、T2330 等相同查詢與圖卡按鈕。查詢與通知各自獨立；兩平台均不回覆私訊。</p>
+<p class="hint">LINE 群組查詢回覆不扣月訊息額度。LINE 與 Telegram 支援 1 對 1 私訊及群組指令查詢（P2330、K2330、#大盤、T2330 等），點擊圖卡按鈕可即時切換。</p>
 <details><summary>最近通知傳送狀態</summary><p class="hint">「送出成功」表示平台已接受，不代表每位成員已讀。逾時或程序中斷不自動重送，避免重複進出場通知。</p><div id="deliveryStatus"></div></details></section>
 </section>
 </main><footer>EasyStock · 當沖管理</footer>

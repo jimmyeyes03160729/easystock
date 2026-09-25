@@ -10,7 +10,7 @@ async function api(path,{method='GET',body}={}){
 }
 function applySettings(data){version=data.version;el('maxGain').value=data.values.max_gain_pct;el('minPrice').value=data.values.min_price;el('maxPrice').value=data.values.max_price;el('version').textContent='設定版本 '+version;}
 async function session(){const s=await api('session');csrf=s.csrf;el('identity').textContent=s.email;return s;}
-async function enter(){await session();applySettings(await api('settings'));await reloadConversations();el('login').hidden=true;el('workspace').hidden=false;}
+async function enter(){await session();applySettings(await api('settings'));await reloadConversations();try{await loadBotPolicy();}catch(_){}el('login').hidden=true;el('workspace').hidden=false;}
 async function loginSetup(){
   try{
     const config=await api('config');
@@ -61,6 +61,27 @@ function applyConversations(data){
   for(const row of data.deliveries||[]){const p=document.createElement('p');p.textContent=`${row.channel==='line'?'LINE':'Telegram'} · ${labels[row.status]||'未知狀態'} · ${new Date(row.at*1000).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}`;el('deliveryStatus').append(p);}
   if(!data.deliveries?.length)el('deliveryStatus').textContent='尚無通知紀錄。';
 }
-async function reloadConversations(){applyConversations(await api('notification-groups'));}
+let botPolicyVersion=1;
+async function loadBotPolicy(){
+  try{
+    const p=await api('bot-policy');
+    if(p&&p.auto_reply_on_follow!==undefined){
+      if(el('autoReplyToggle'))el('autoReplyToggle').checked=!!p.auto_reply_on_follow;
+      botPolicyVersion=p.version||1;
+    }
+  }catch(_){}
+}
+if(el('saveBotPolicy')){
+  el('saveBotPolicy').onclick=async()=>{
+    const btn=el('saveBotPolicy');btn.disabled=true;message('botPolicyStatus','正在儲存…');
+    try{
+      const auto_reply_on_follow=!!el('autoReplyToggle')?.checked;
+      const res=await api('bot-policy',{method:'PUT',body:{auto_reply_on_follow,version:botPolicyVersion}});
+      botPolicyVersion=res.version;
+      message('botPolicyStatus','已儲存！'+(auto_reply_on_follow?'已啟用加入好友自動回覆':'已關閉加入好友自動回覆'));
+    }catch(e){message('botPolicyStatus',e.message,true);}finally{btn.disabled=false;}
+  };
+}
+async function reloadConversations(){applyConversations(await api('notification-groups'));try{await loadBotPolicy();}catch(_){}}
 el('reloadLine').onclick=async()=>{try{await reloadConversations();message('conversationStatus','已載入最新設定。');}catch(e){message('conversationStatus',e.message,true);}};
 (async()=>{try{await enter();}catch{await loginSetup();}})();

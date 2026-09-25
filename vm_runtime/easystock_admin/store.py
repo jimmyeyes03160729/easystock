@@ -69,6 +69,8 @@ class Store:
             CREATE TABLE IF NOT EXISTS paper_trade_logs(date TEXT PRIMARY KEY,start_balance REAL NOT NULL,end_balance REAL NOT NULL,net_pnl REAL NOT NULL,symbols TEXT NOT NULL,costs REAL NOT NULL,trades_count INTEGER NOT NULL,created_at REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS paper_trade_positions(symbol TEXT PRIMARY KEY,name TEXT NOT NULL,entry_price REAL NOT NULL,shares INTEGER NOT NULL,entry_time TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS paper_trade_events(id INTEGER PRIMARY KEY AUTOINCREMENT,date TEXT NOT NULL,time_str TEXT NOT NULL,symbol TEXT NOT NULL,name TEXT NOT NULL,price REAL NOT NULL,action TEXT NOT NULL,reason TEXT NOT NULL,created_at REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS bot_policy(id INTEGER PRIMARY KEY CHECK(id=1),auto_reply_on_follow INTEGER NOT NULL DEFAULT 1,private_replies INTEGER NOT NULL DEFAULT 1,version INTEGER NOT NULL DEFAULT 1);
+            INSERT OR IGNORE INTO bot_policy(id, auto_reply_on_follow, private_replies, version) VALUES(1, 1, 1, 1);
             ''')
             from .conversations import initialize
             initialize(db)
@@ -111,6 +113,50 @@ class Store:
             db.execute('UPDATE settings SET body=?,version=version+1,updated=? WHERE id=1', (json.dumps(value), time.time()))
             self._audit(db, 'google', 'settings', {'before': before['values'], 'after': value})
             return self._state(db)
+
+    def get_bot_policy(self) -> dict:
+        with self.tx() as db:
+            row = db.execute('SELECT auto_reply_on_follow, private_replies, version FROM bot_policy WHERE id=1').fetchone()
+            if not row:
+                db.execute('INSERT OR IGNORE INTO bot_policy(id, auto_reply_on_follow, private_replies, version) VALUES(1, 1, 1, 1)')
+                row = (1, 1, 1)
+            return {
+                'auto_reply_on_follow': bool(row[0]),
+                'private_replies': bool(row[1]),
+                'version': int(row[2]),
+            }
+
+    def update_bot_policy(self, auto_reply_on_follow: bool, private_replies: bool = True, version: int | None = None) -> dict:
+        with self.tx() as db:
+            row = db.execute('SELECT version FROM bot_policy WHERE id=1').fetchone()
+            curr_ver = int(row[0]) if row else 1
+            if version is not None and curr_ver != version:
+                raise Conflict('機器人設定已被變更，請重新載入。')
+            db.execute(
+                'UPDATE bot_policy SET auto_reply_on_follow=?, private_replies=?, version=version+1 WHERE id=1',
+                (1 if auto_reply_on_follow else 0, 1 if private_replies else 0)
+            )
+            self._audit(db, 'google', 'bot_policy', {
+                'auto_reply_on_follow': bool(auto_reply_on_follow),
+                'private_replies': bool(private_replies),
+            })
+        return self.get_bot_policy()
+
+    def is_auto_reply_on_follow_enabled(self) -> bool:
+        try:
+            with self.tx() as db:
+                row = db.execute('SELECT auto_reply_on_follow FROM bot_policy WHERE id=1').fetchone()
+                return bool(row[0]) if row else True
+        except Exception:
+            return True
+
+    def is_private_replies_enabled(self) -> bool:
+        try:
+            with self.tx() as db:
+                row = db.execute('SELECT private_replies FROM bot_policy WHERE id=1').fetchone()
+                return bool(row[0]) if row else True
+        except Exception:
+            return True
 
     def get_paper_trade(self):
         with self.tx() as db:

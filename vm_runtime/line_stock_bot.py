@@ -509,21 +509,53 @@ def callback():
 
     for event in payload.get("events", []):
 
-        source = event.get("source") or {}
-        # No private commands, binding exceptions, or legacy-room handling.
-        if source.get('type') != 'group':
-            continue
-        from easystock_admin.conversations import observe, allowed
-        observe(ADMIN_STORE, source)
-        if not allowed(ADMIN_STORE, source):
+        # 1. 處理加入好友（Follow）事件
+        if event.get("type") == "follow":
+            if ADMIN_STORE.is_auto_reply_on_follow_enabled():
+                reply_token = event.get("replyToken")
+                if reply_token:
+                    welcome_text = (
+                        "👋 歡迎加入 EasyStock 智慧量化看盤機器人！\n\n"
+                        "您可以直接在此傳送股票代碼或指令查詢：\n\n"
+                        "📈 【即時走勢】\n"
+                        "傳送 P2330 或 P台積電 (附分時走勢與五檔撮合)\n\n"
+                        "🕯️ 【日K線圖】\n"
+                        "傳送 K2330 或 K台積電 (附MA均線與KD指標)\n\n"
+                        "🏛️ 【三大法人】\n"
+                        "傳送 T2330 或 T台積電 (外資/投信/自營商)\n\n"
+                        "💰 【股利殖利率】\n"
+                        "傳送 D2330 或 D台積電\n\n"
+                        "📊 【大盤指數】\n"
+                        "傳送 #大盤、P大盤 或 K大盤\n\n"
+                        "⚡ 【盤勢快報】\n"
+                        "傳送 早報 或 當沖 查閱即時情報\n\n"
+                        "💡 隨時輸入「指令」可再次查看完整說明！"
+                    )
+                    try:
+                        line_reply(reply_token, [{"type": "text", "text": welcome_text}])
+                    except Exception as exc:
+                        print(f"[LINE FOLLOW ERROR] {type(exc).__name__}: {exc}")
             continue
 
-        if source.get("type") == "group":
+        if event.get("type") != "message":
+            continue
+
+        source = event.get("source") or {}
+        source_type = source.get("type")
+
+        # 2. 支援群組與個人私訊（1對1對話）
+        if source_type == "group":
+            from easystock_admin.conversations import observe, allowed
+            observe(ADMIN_STORE, source)
+            if not allowed(ADMIN_STORE, source):
+                continue
             group_id = source.get("groupId")
             if group_id:
                 register_group(group_id)
-
-        if event.get("type") != "message":
+        elif source_type == "user":
+            if not ADMIN_STORE.is_private_replies_enabled():
+                continue
+        else:
             continue
 
         message = event.get("message") or {}
@@ -558,9 +590,12 @@ def callback():
 
         cmd = parse_command(text)
 
-        # 不認得的文字 = 群組一般聊天，不回覆。
+        # 在個人私訊中，常見問候詞自動導向指令說明
         if cmd is None:
-            continue
+            if source_type == "user" and text.lower() in ("你好", "您好", "哈囉", "hi", "hello", "/start"):
+                cmd = parse_command("指令")
+            else:
+                continue
 
         reply_token = event.get(
             "replyToken"
@@ -574,7 +609,8 @@ def callback():
                 cmd
             )
 
-            if _should_silence_reply(messages):
+            # 群組中查不到保持安靜；個人私訊則正常回覆
+            if source_type == "group" and _should_silence_reply(messages):
                 continue
 
             line_reply(
