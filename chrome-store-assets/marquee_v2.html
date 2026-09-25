@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EasyStock Chrome Extension &amp; Web Platform Marquee Banner</title>
+<!-- Tailwind CSS v3 with forms & container queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500;600;700;800&amp;family=Noto+Sans+TC:wght@400;500;600;700;900&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            display: ['Space Grotesk', 'Noto Sans TC', 'sans-serif'],
+          },
+          colors: {
+            twUp: '#f43f5e',      // Taiwan Stock Red (Rise)
+            twUpGlow: '#fb7185',
+            twDown: '#10b981',    // Taiwan Stock Green (Fall)
+            twDownDark: '#047857',
+            cyberDark: '#050b17',
+            panelNavy: '#0a1329',
+            cardBg: '#0f1d3d',
+            accentCyan: '#06b6d4',
+            accentAmber: '#f59e0b',
+          }
+        }
+      }
+    };
+  </script>
+<!-- BEGIN: Custom CSS Styling -->
+<style data-purpose="background-mesh">
+    .cyber-grid-bg {
+      background-color: #050b17;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 75%, rgba(244, 63, 94, 0.14) 0%, transparent 45%),
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+    }
+  </style>
+<style data-purpose="glass-and-glow">
+    .glass-panel {
+      background: rgba(10, 19, 41, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+    }
+    .glass-card-elevated {
+      background: rgba(13, 25, 52, 0.92);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.65), 0 0 25px rgba(6, 182, 212, 0.15);
+    }
+    .text-glow-gradient {
+      background: linear-gradient(135deg, #38bdf8 0%, #ffffff 45%, #fb7185 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .notification-glow {
+      box-shadow: 0 10px 30px -5px rgba(244, 63, 94, 0.35), 0 0 0 1px rgba(244, 63, 94, 0.4);
+    }
+  </style>
+<!-- END: Custom CSS Styling -->
+</head>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-4 antialiased overflow-x-hidden">
+<!-- BEGIN: Marquee Canvas Container (Exact 1400x560 Chrome Web Store Recommended Aspect Ratio) -->
+<main class="w-[1400px] h-[560px] max-w-[1400px] max-h-[560px] cyber-grid-bg rounded-2xl relative overflow-hidden border border-slate-800 shadow-[0_25px_60px_rgba(0,0,0,0.8)] flex select-none" data-purpose="marquee-banner">
+<!-- Decorative background glow orbs -->
+<div class="absolute -top-24 -left-20 w-96 h-96 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+<div class="absolute -bottom-24 right-96 w-96 h-96 bg-rose-500/15 rounded-full blur-3xl pointer-events-none"></div>
+<div class="absolute top-1/2 right-10 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+<!-- BEGIN: Left Marketing Column -->
+<section class="w-[580px] h-full p-8 flex flex-col justify-between z-10 shrink-0" data-purpose="left-hero-column">
+<!-- Top Badges / Status Cluster -->
+<div>
+<div class="flex items-center gap-2 mb-3">
+<!-- Live Data Ping Badge -->
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-950/70 border border-cyan-500/30 text-cyan-400 text-[11px] font-mono font-medium shadow-[0_0_10px_rgba(6,182,212,0.2)]">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span>
+<span>TWSE &amp; TPEx 即時串流 ‧ 24ms 極速</span>
+</div>
+<!-- Chrome Verified Badge -->
+<div class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-950/60 border border-blue-500/30 text-blue-300 text-[11px] font-medium">
+<svg class="w-3.5 h-3.5 text-blue-400" fill="currentColor" viewbox="0 0 20 20">
+<path clip-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill-rule="evenodd"></path>
+</svg>
+<span>擴充功能官方認證</span>
+</div>
+<!-- Mascot Version Pill -->
+<div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800/80 border border-slate-700 text-slate-300 text-[11px] font-mono">
+<img alt="EasyStock Bull Mascot" class="w-3.5 h-3.5 object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WFNJ2d6YlurB4tEkdZh02fw8ijTlCvu8JpkeyMACqtpbvZmYNRBMzJMilEiWgnuyUquvodXUSG8NZgAV3WnJyB9i82WF9d2_EPpBZIEwIaFcaaqPP5QG90n0LFxY1Tu-CiPu0s4i4683M645vcl0gkQO24RbBdROVgzeHj6lpcWaXxOEg-W-9ciJZO6cJoyfgkKOC6RKsyrhavUZGV-Sv0qoU2nZeHNg09Csd5Tjl9upp5hkHNRGm2Pg"/>
+<span class="text-amber-400 font-bold">v2.6</span>
+</div>
+</div>
+<!-- Tagline & Monumental Headline -->
+<div class="space-y-1">
+<p class="text-[12px] font-mono tracking-wider font-semibold text-cyan-400 uppercase flex items-center gap-1.5">
+<span class="text-rose-500">#EasyStock</span> · 當沖吧！牛馬仔 · 台股當沖社畜終端
+          </p>
+<h1 class="text-[34px] leading-[1.12] font-black tracking-tight font-sans">
+            工位摸魚看盤神器 <span class="text-slate-400 font-light">✕</span><br/>
+<span class="text-glow-gradient text-[37px] drop-shadow-sm">台股 AI 量化雷達</span>
+</h1>
+<p class="text-[13px] text-slate-300 leading-relaxed pt-1.5 font-normal">
+<strong class="text-cyan-300 font-semibold">雙端聯動</strong>：網頁深度量化分析 (<span class="font-mono text-slate-300 underline underline-offset-2 decoration-cyan-500/50">jimmyeyes.com/easystock</span>) ＋ 工位極速摸魚小工具，守護打工人的離職自由金。
+          </p>
+</div>
+</div>
+<!-- Feature Grid: 4 Pillars -->
+<div class="grid grid-cols-2 gap-2.5 my-1" data-purpose="feature-grid">
+<!-- Feature 1 -->
+<div class="glass-panel p-2.5 rounded-lg border-l-2 border-l-rose-500 hover:border-l-rose-400 transition-colors">
+<div class="flex items-center gap-1.5 text-xs font-bold text-white mb-0.5">
+<span class="text-base leading-none">🐷</span>
+<span>一鍵摸魚偽裝</span>
+</div>
+<p class="text-[11px] text-slate-400 leading-tight">極速切換空白/財報，辦公隱蔽度 100%</p>
+</div>
+<!-- Feature 2 -->
+<div class="glass-panel p-2.5 rounded-lg border-l-2 border-l-cyan-400 hover:border-l-cyan-300 transition-colors">
+<div class="flex items-center gap-1.5 text-xs font-bold text-white mb-0.5">
+<span class="text-base leading-none">⚡</span>
+<span>盤中秒級爆量偵測</span>
+</div>
+<p class="text-[11px] text-slate-400 leading-tight">11 項即時技術量化指標秒級篩選</p>
+</div>
+<!-- Feature 3 -->
+<div class="glass-panel p-2.5 rounded-lg border-l-2 border-l-amber-400 hover:border-l-amber-300 transition-colors">
+<div class="flex items-center gap-1.5 text-xs font-bold text-white mb-0.5">
+<span class="text-base leading-none">📈</span>
+<span>獨立 Pro 分時走勢</span>
+</div>
+<p class="text-[11px] text-slate-400 leading-tight">動態 VWAP 均價線 ✕ 即時量能階梯</p>
+</div>
+<!-- Feature 4 -->
+<div class="glass-panel p-2.5 rounded-lg border-l-2 border-l-emerald-400 hover:border-l-emerald-300 transition-colors">
+<div class="flex items-center gap-1.5 text-xs font-bold text-white mb-0.5">
+<span class="text-base leading-none">🔔</span>
+<span>買賣點即時推播</span>
+</div>
+<p class="text-[11px] text-slate-400 leading-tight">斜率突破瞬間觸發毫秒通知彈窗</p>
+</div>
+</div>
+<!-- Social Proof & Call to Action Footer -->
+<div class="pt-2 border-t border-slate-800/80 flex items-center justify-between" data-purpose="cta-section">
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5 text-amber-400 text-xs font-mono font-bold">
+<span class="tracking-widest">★★★★★</span>
+<span class="text-white text-[13px]">4.9 / 5.0</span>
+<span class="text-slate-400 font-sans font-normal text-[11px]">(1,280+ 社畜好評)</span>
+</div>
+<div class="text-[11px] text-slate-400 mt-0.5 font-medium flex items-center gap-2">
+<span>免費安裝</span>
+<span class="text-slate-600">•</span>
+<span>Chrome / Edge / Brave 通用</span>
+</div>
+</div>
+<!-- CTA Button Pill -->
+<button class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-cyan-600 hover:from-rose-400 hover:to-cyan-500 text-white font-bold text-sm shadow-[0_4px_20px_rgba(244,63,94,0.4)] transition-all transform active:scale-95 cursor-pointer">
+<!-- Chrome Icon SVG -->
+<svg class="w-4 h-4 fill-current" viewbox="0 0 24 24">
+<path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.79-2.607zm14.041 3.992a5.45 5.45 0 0 1 1.341 6.368L11.961 24c.013 0 .026.001.039.001 6.627 0 12-5.373 12-12 0-2.316-.657-4.478-1.79-6.315l-6.238.776z"></path>
+</svg>
+<span>加入 Chrome 摸魚隊伍</span>
+</button>
+</div>
+</section>
+<!-- END: Left Marketing Column -->
+<!-- BEGIN: Right Synergy Column (3D Layered Mockups: Web Platform + Chrome Extension Widget + Pro Tools) -->
+<section class="relative w-[820px] h-full overflow-hidden" data-purpose="right-visual-synergy">
+<!-- ============================================== -->
+<!-- LAYER 1: Deep Web Platform Browser Mockup (jimmyeyes.com/easystock) -->
+<!-- ============================================== -->
+<div class="absolute -top-3 left-4 w-[660px] h-[580px] rounded-xl glass-panel border border-slate-700/70 shadow-2xl overflow-hidden opacity-90 transform -rotate-1 origin-top-left" data-purpose="web-platform-window">
+<!-- Browser Top Bar -->
+<div class="bg-slate-900/90 px-3.5 py-2 border-b border-slate-800 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="flex gap-1.5">
+<span class="w-2.5 h-2.5 rounded-full bg-rose-500/80 inline-block"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-amber-500/80 inline-block"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block"></span>
+</div>
+<!-- Mock Address Bar -->
+<div class="flex items-center gap-1.5 px-3 py-1 bg-slate-950/80 rounded-md border border-slate-800 text-[11px] font-mono text-slate-400 w-80">
+<svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-slate-200">https://jimmyeyes.com/easystock/</span>
+<span class="text-cyan-400">#live-terminal</span>
+</div>
+</div>
+<div class="flex items-center gap-2 font-mono text-[10px] text-emerald-400">
+<span class="px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/30">● Shioaji API 連線中</span>
+</div>
+</div>
+<!-- Web Dashboard Inner Preview -->
+<div class="p-4 space-y-3 bg-slate-950/60 font-sans">
+<!-- Top Dashboard Metric Row -->
+<div class="flex items-center justify-between bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 text-xs">
+<div class="flex items-center gap-2">
+<span class="text-slate-400">工位摸魚 · 社畜看盤室</span>
+<span class="text-slate-600">|</span>
+<span class="text-cyan-400 font-mono font-semibold">熱門股票池 TOP 500</span>
+</div>
+<div class="flex items-center gap-3 font-mono text-[11px]">
+<span class="text-slate-400">模型特徵完備度: <strong class="text-white">90%</strong></span>
+<span class="px-2 py-0.5 rounded bg-blue-900/50 text-blue-300 font-bold border border-blue-700/50">多因子動態篩網 v2</span>
+</div>
+</div>
+<!-- Daytrade Rhythm Bar -->
+<div class="bg-slate-900/50 p-2 rounded-lg border border-slate-800/80 text-[11px] flex items-center justify-between">
+<span class="text-slate-400 font-medium">⏰ 當沖社畜作息表</span>
+<div class="flex items-center gap-3 font-mono text-[10px]">
+<span class="text-rose-400 font-semibold bg-rose-950/40 px-1.5 py-0.5 rounded border border-rose-800/30">09:30 開工進場</span>
+<span class="text-slate-600">➔</span>
+<span class="text-amber-400 font-semibold bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/30">12:30 停止新單·午餐</span>
+<span class="text-slate-600">➔</span>
+<span class="text-emerald-400 font-semibold bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-800/30">12:55 強制平倉收工</span>
+</div>
+</div>
+<!-- Quant Stock Table inside Web Platform -->
+<div class="space-y-1.5">
+<!-- Row 1: 長榮 2603 -->
+<div class="p-2.5 bg-slate-900/90 rounded-lg border border-rose-500/30 flex items-center justify-between text-xs font-mono">
+<div class="flex items-center gap-2">
+<span class="text-slate-400 text-[10px]">#1</span>
+<span class="font-bold text-white font-sans">長榮</span>
+<span class="text-cyan-400">2603</span>
+<span class="px-1.5 py-0.2 bg-rose-950/70 text-rose-300 rounded text-[10px]">航運龍頭</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-slate-300">量比: <span class="text-white font-bold">2.41</span></span>
+<span class="text-slate-300">VWAP: 189.20</span>
+<span class="text-rose-400 font-bold text-sm bg-rose-950/80 px-2 py-0.5 rounded border border-rose-500/50">192.50 ▲ +2.65%</span>
+</div>
+</div>
+<!-- Row 2: 高技 5439 (From User Snapshot Reference) -->
+<div class="p-2.5 bg-slate-900/60 rounded-lg border border-slate-800 flex items-center justify-between text-xs font-mono opacity-80">
+<div class="flex items-center gap-2">
+<span class="text-slate-400 text-[10px]">#2</span>
+<span class="font-bold text-white font-sans">高技</span>
+<span class="text-cyan-400">5439</span>
+<span class="px-1.5 py-0.2 bg-slate-800 text-slate-300 rounded text-[10px]">上櫃 PCB</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-slate-400">ROE: 37.6%</span>
+<span class="text-slate-400">EPS: 8.15</span>
+<span class="text-rose-400 font-bold bg-rose-950/50 px-2 py-0.5 rounded border border-rose-900/40">253.00 ▲ +2.43%</span>
+</div>
+</div>
+<!-- Row 3: 聯電 2303 -->
+<div class="p-2.5 bg-slate-900/40 rounded-lg border border-slate-800 flex items-center justify-between text-xs font-mono opacity-60">
+<div class="flex items-center gap-2">
+<span class="text-slate-400 text-[10px]">#3</span>
+<span class="font-bold text-white font-sans">聯電</span>
+<span class="text-cyan-400">2303</span>
+<span class="px-1.5 py-0.2 bg-slate-800 text-slate-400 rounded text-[10px]">半導體</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-slate-400">外資超買: +1.2萬張</span>
+<span class="text-rose-400 font-bold">66.27 ▲ +1.18%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- ============================================== -->
+<!-- LAYER 2: Chrome Extension Foreground Floating Widget ('牛馬自救終端') -->
+<!-- ============================================== -->
+<div class="absolute top-8 left-16 w-[360px] glass-card-elevated rounded-2xl border border-cyan-500/40 shadow-2xl z-20 overflow-hidden font-sans" data-purpose="chrome-extension-popup">
+<!-- Extension Header -->
+<div class="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 p-3 border-b border-slate-800 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="relative">
+<img alt="EasyStock Extension Mascot" class="w-7 h-7 object-contain drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]" src="https://lh3.googleusercontent.com/aida/AEtjO1WFNJ2d6YlurB4tEkdZh02fw8ijTlCvu8JpkeyMACqtpbvZmYNRBMzJMilEiWgnuyUquvodXUSG8NZgAV3WnJyB9i82WF9d2_EPpBZIEwIaFcaaqPP5QG90n0LFxY1Tu-CiPu0s4i4683M645vcl0gkQO24RbBdROVgzeHj6lpcWaXxOEg-W-9ciJZO6cJoyfgkKOC6RKsyrhavUZGV-Sv0qoU2nZeHNg09Csd5Tjl9upp5hkHNRGm2Pg"/>
+<span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-slate-900"></span>
+</div>
+<div>
+<div class="flex items-center gap-1.5">
+<h3 class="text-xs font-bold text-white tracking-wide">EasyStock</h3>
+<span class="text-[9px] px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/40 font-mono">牛馬自救</span>
+</div>
+<div class="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+<span>摸魚狀態:</span>
+<span class="text-emerald-400 font-semibold">安全無警報</span>
+</div>
+</div>
+</div>
+<!-- Quick Action Buttons -->
+<div class="flex items-center gap-1.5">
+<button class="px-2.5 py-1 rounded bg-rose-950/80 hover:bg-rose-900 border border-rose-500/50 text-[10px] text-rose-200 font-bold transition-all shadow-[0_0_8px_rgba(244,63,94,0.2)]">
+              🐷 摸魚
+            </button>
+<button class="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700">
+              ⚙
+            </button>
+</div>
+</div>
+<!-- Taiwan Market Indices Ticker Strip (Taiwan Rules: Green is Drop ▼) -->
+<div class="bg-slate-950 px-3 py-1.5 border-b border-slate-800/80 flex items-center justify-between text-[11px] font-mono">
+<div class="flex items-center gap-1.5">
+<span class="text-slate-400">加權</span>
+<span class="text-twDown font-bold">48,024.60</span>
+<span class="text-twDown text-[10px]">▼ -132.69</span>
+</div>
+<div class="h-3 w-px bg-slate-800"></div>
+<div class="flex items-center gap-1.5">
+<span class="text-slate-400">櫃買</span>
+<span class="text-twDown font-bold">412.99</span>
+<span class="text-twDown text-[10px]">▼ -0.77%</span>
+</div>
+</div>
+<!-- Navigation Tabs -->
+<div class="grid grid-cols-4 bg-slate-900/90 text-center text-[11px] border-b border-slate-800">
+<button class="py-1.5 font-bold text-cyan-400 border-b-2 border-cyan-400 bg-cyan-950/20">⭐ 自選</button>
+<button class="py-1.5 text-slate-400 hover:text-slate-200">🎯 當沖</button>
+<button class="py-1.5 text-slate-400 hover:text-slate-200">🛡️ 觸底</button>
+<button class="py-1.5 text-slate-400 hover:text-slate-200">🤖 AI模型</button>
+</div>
+<!-- Extension Real-time Watchlist Rows (Taiwan Stock Colors: Green = Down, Red = Up) -->
+<div class="p-2 space-y-1.5 bg-slate-950/70 font-mono text-xs">
+<!-- Stock Row 1: 00878 (Green Fall) -->
+<div class="p-2 rounded-lg bg-slate-900/80 border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition-colors">
+<div>
+<div class="flex items-center gap-1.5">
+<span class="font-sans font-bold text-slate-200 text-xs">國泰永續高股息</span>
+<span class="text-[10px] text-cyan-400 font-mono">00878</span>
+</div>
+<span class="text-[9px] text-slate-400 font-sans">社畜被動領息</span>
+</div>
+<!-- Sparkline Mini SVG (Falling) -->
+<svg class="w-14 h-5 stroke-twDown fill-none" viewbox="0 0 60 20">
+<path d="M2 4 L15 6 L30 14 L45 12 L58 17" stroke-linecap="round" stroke-width="1.5"></path>
+</svg>
+<div class="text-right">
+<div class="font-bold text-twDown text-sm">34.88</div>
+<div class="text-[10px] text-twDown font-bold">▼ -0.60%</div>
+</div>
+</div>
+<!-- Stock Row 2: 6862 三集瑞-KY (Green Fall) -->
+<div class="p-2 rounded-lg bg-slate-900/80 border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition-colors">
+<div>
+<div class="flex items-center gap-1.5">
+<span class="font-sans font-bold text-slate-200 text-xs">三集瑞-KY</span>
+<span class="text-[10px] text-cyan-400 font-mono">6862</span>
+</div>
+<span class="text-[9px] text-slate-400 font-sans">被動元件</span>
+</div>
+<!-- Sparkline Mini SVG (Falling) -->
+<svg class="w-14 h-5 stroke-twDown fill-none" viewbox="0 0 60 20">
+<path d="M2 5 L18 8 L32 7 L45 15 L58 16" stroke-linecap="round" stroke-width="1.5"></path>
+</svg>
+<div class="text-right">
+<div class="font-bold text-twDown text-sm">139.00</div>
+<div class="text-[10px] text-twDown font-bold">▼ -0.36%</div>
+</div>
+</div>
+<!-- Stock Row 3: 2603 長榮 (Taiwan RED IS UP ▲) Highlight Target -->
+<div class="p-2 rounded-lg bg-rose-950/40 border border-rose-500/60 shadow-[0_0_12px_rgba(244,63,94,0.25)] flex items-center justify-between">
+<div>
+<div class="flex items-center gap-1.5">
+<span class="font-sans font-bold text-white text-xs">長榮</span>
+<span class="text-[10px] text-rose-300 font-mono">2603</span>
+<span class="px-1 py-0.2 rounded bg-rose-900/90 text-rose-200 text-[9px] font-sans font-bold animate-pulse">突破</span>
+</div>
+<span class="text-[9px] text-rose-200 font-sans">當沖買盤爆發 1.8x</span>
+</div>
+<!-- Sparkline Mini SVG (Rising Sharp) -->
+<svg class="w-14 h-5 stroke-twUp fill-none" viewbox="0 0 60 20">
+<path d="M2 17 L15 13 L28 15 L40 6 L58 3" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+<div class="text-right">
+<div class="font-bold text-twUp text-sm">192.50</div>
+<div class="text-[10px] text-twUp font-extrabold flex items-center justify-end gap-0.5">
+<span>▲</span> +2.65%
+              </div>
+</div>
+</div>
+</div>
+<!-- Extension Footer Bar -->
+<div class="p-2 bg-slate-900/95 border-t border-slate-800 flex items-center justify-between text-[10px] font-mono text-slate-400">
+<span class="text-emerald-400 flex items-center gap-1">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            即時報價中
+          </span>
+<span class="text-slate-500">按住 Alt+S 隱藏</span>
+</div>
+</div>
+<!-- ============================================== -->
+<!-- LAYER 3A: Floating Pro Intraday VWAP Chart Card (Top Right) -->
+<!-- ============================================== -->
+<div class="absolute top-6 right-6 w-[340px] glass-card-elevated rounded-xl border border-cyan-500/40 p-3 z-30 font-sans shadow-[0_15px_35px_rgba(0,0,0,0.7)]" data-purpose="pro-chart-preview">
+<!-- Pro Chart Header -->
+<div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-rose-500"></span>
+<span class="text-xs font-bold text-white">長榮 (2603) 分時走勢</span>
+</div>
+<div class="flex items-center gap-1 font-mono text-[10px]">
+<span class="px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/30">VWAP 189.20</span>
+</div>
+</div>
+<!-- SVG Micro Chart -->
+<div class="relative h-28 w-full bg-slate-950/80 rounded-lg p-2 border border-slate-800/80 overflow-hidden">
+<!-- Background Grid lines -->
+<div class="absolute inset-0 grid grid-rows-3 grid-cols-4 pointer-events-none opacity-20">
+<div class="border-b border-r border-slate-700"></div>
+<div class="border-b border-r border-slate-700"></div>
+<div class="border-b border-r border-slate-700"></div>
+<div class="border-b border-slate-700"></div>
+<div class="border-b border-r border-slate-700"></div>
+<div class="border-b border-r border-slate-700"></div>
+<div class="border-b border-r border-slate-700"></div>
+<div class="border-b border-slate-700"></div>
+</div>
+<!-- Dynamic VWAP line (Dotted Cyan) & Price Line (Taiwan Red Rise) -->
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 300 90">
+<!-- Dotted VWAP benchmark -->
+<path d="M 0 55 Q 75 52 150 48 T 300 42" fill="none" stroke="#06b6d4" stroke-dasharray="4 3" stroke-width="1.5"></path>
+<!-- Area Glow Gradient -->
+<defs>
+<lineargradient id="bullGlow" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#f43f5e" stop-opacity="0.35"></stop>
+<stop offset="100%" stop-color="#f43f5e" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<!-- Rising Bull Price Curve -->
+<path d="M 0 68 L 40 60 L 90 64 L 140 46 L 190 50 L 230 25 L 270 28 L 300 12 L 300 90 L 0 90 Z" fill="url(#bullGlow)"></path>
+<path d="M 0 68 L 40 60 L 90 64 L 140 46 L 190 50 L 230 25 L 270 28 L 300 12" fill="none" stroke="#f43f5e" stroke-linecap="round" stroke-width="2.5"></path>
+<!-- Breakout Cross Marker Dot -->
+<circle class="animate-ping" cx="230" cy="25" fill="#fb7185" r="4"></circle>
+<circle cx="230" cy="25" fill="#ffffff" r="3"></circle>
+<circle cx="300" cy="12" fill="#f43f5e" r="3.5"></circle>
+</svg>
+<!-- Current Price Bubble Pin -->
+<div class="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-rose-600 text-white font-mono font-bold text-[10px] shadow-lg">
+            192.50 ▲ (+2.65%)
+          </div>
+<!-- Sub label -->
+<div class="absolute bottom-1 left-2 text-[9px] font-mono text-cyan-400">
+            ▲ 突破 VWAP +1.74%
+          </div>
+</div>
+<div class="mt-2 flex items-center justify-between text-[10px] font-mono text-slate-400">
+<span>量能: 48,210 張 (秒級爆量)</span>
+<span class="text-rose-400 font-bold">主力多頭排列</span>
+</div>
+</div>
+<!-- ============================================== -->
+<!-- LAYER 3B: Floating Instant Signal Notification Toast (Bottom Right) -->
+<!-- ============================================== -->
+<div class="absolute bottom-6 right-6 w-[340px] glass-panel rounded-xl notification-glow p-3.5 z-30 font-sans border-l-4 border-l-rose-500 animate-pulse duration-1000" data-purpose="toast-notification">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-2">
+<span class="text-base leading-none">🚨</span>
+<div>
+<span class="text-xs font-bold text-white">盤中突破即時推播</span>
+<span class="text-[10px] text-slate-400 font-mono ml-1">[11:28:40]</span>
+</div>
+</div>
+<span class="px-1.5 py-0.2 rounded bg-rose-950 text-rose-300 border border-rose-600/50 text-[10px] font-mono font-bold">
+            AI 信心 88%
+          </span>
+</div>
+<p class="mt-2 text-xs text-slate-200 leading-snug">
+<strong class="text-white font-bold">長榮 (2603)</strong> 突破 VWAP 上揚斜率 42°，瞬間爆量 <span class="text-rose-400 font-bold font-mono">1.85x</span>！已達當沖攻擊判定。
+        </p>
+<div class="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
+<span class="text-slate-400 font-mono">觸發條件: 爆量突破 &amp; 多頭共振</span>
+<span class="text-cyan-400 font-bold hover:underline cursor-pointer">一鍵跟單/查籌碼 →</span>
+</div>
+</div>
+</section>
+<!-- END: Right Synergy Column -->
+</main>
+<!-- END: Marquee Canvas Container -->
+</body></html>

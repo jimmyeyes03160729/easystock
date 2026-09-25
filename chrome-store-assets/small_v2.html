@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EasyStock · 牛馬自救終端 - Chrome Web Store 小型宣傳圖塊 (440x280)</title>
+  <!-- Material Symbols & Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #030712;
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-mono-num {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .grid-bg {
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.15) 0%, transparent 65%),
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 100% 100%, 14px 14px, 14px 14px;
+    }
+    /* Taiwan Stock Color Semantic: Red UP, Green DOWN */
+    .tw-up { color: #f43f5e; }
+    .tw-down { color: #10b981; }
+    .bg-tw-up-subtle { background-color: rgba(244, 63, 94, 0.12); }
+    .bg-tw-down-subtle { background-color: rgba(16, 185, 129, 0.12); }
+  </style>
+</head>
+<body class="min-h-screen w-full flex items-center justify-center p-4 bg-[#050814]">
+
+  <!-- Outer Showcase Wrapper with Meta Label -->
+  <div class="flex flex-col items-center gap-3">
+    <!-- Format Specification Indicator Bar -->
+    <div class="flex items-center justify-between w-[440px] px-1 text-slate-400 text-[11px] font-mono-num">
+      <span class="flex items-center gap-1.5 text-cyan-400 font-medium">
+        <span class="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+        Chrome Web Store Small Promo Tile
+      </span>
+      <span class="bg-slate-900/90 text-slate-300 px-2 py-0.5 rounded border border-slate-800 text-[10px]">
+        440 × 280 px (1:1 官方標準規格)
+      </span>
+    </div>
+
+    <!-- MAIN PROMO CONTAINER (EXACT 440 x 280 PIXELS) -->
+    <div class="relative w-[440px] h-[280px] overflow-hidden select-none rounded-xl border border-slate-700/60 shadow-[0_20px_50px_rgba(0,0,0,0.85)] grid-bg flex flex-col justify-between p-3.5 bg-[#070d1a]">
+      
+      <!-- Top Ambient Corner Glows -->
+      <div class="absolute -top-12 -right-12 w-44 h-44 bg-cyan-500/15 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="absolute -bottom-16 -left-12 w-48 h-48 bg-rose-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+      <!-- Top Row: Extension Title Bar & Official Chrome Badge -->
+      <div class="relative z-10 flex items-center justify-between">
+        <!-- Logo & Branding -->
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-cyan-500/30 p-1 flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.25)]">
+            <img src="https://lh3.googleusercontent.com/aida/AEtjO1WFNJ2d6YlurB4tEkdZh02fw8ijTlCvu8JpkeyMACqtpbvZmYNRBMzJMilEiWgnuyUquvodXUSG8NZgAV3WnJyB9i82WF9d2_EPpBZIEwIaFcaaqPP5QG90n0LFxY1Tu-CiPu0s4i4683M645vcl0gkQO24RbBdROVgzeHj6lpcWaXxOEg-W-9ciJZO6cJoyfgkKOC6RKsyrhavUZGV-Sv0qoU2nZeHNg09Csd5Tjl9upp5hkHNRGm2Pg" alt="EasyStock 牛馬仔" class="w-full h-full object-contain" />
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-white font-bold text-[14px] tracking-tight flex items-center gap-1">
+                EasyStock
+                <span class="text-cyan-400 font-normal text-[12px]">· 牛馬自救終端</span>
+              </span>
+              <span class="bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[9px] px-1 py-0.2 rounded font-mono-num font-semibold">
+                v2.6
+              </span>
+            </div>
+            <p class="text-slate-400 text-[9.5px] leading-none tracking-tight mt-0.5">
+              台股即時串流 · 工位看盤神器
+            </p>
+          </div>
+        </div>
+
+        <!-- Official Chrome Pill Badge -->
+        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900/90 border border-slate-700/80 shadow-inner">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" fill="#2563eb" opacity="0.2"/>
+            <path fill="#ea4335" d="M12 2C7.58 2 3.84 4.88 2.5 8.9L6.5 15.8C6.18 14.65 6 13.35 6 12c0-3.31 2.69-6 6-6h9.54C19.78 3.63 16.14 2 12 2z"/>
+            <path fill="#fbbc05" d="M21.54 6H12c-1.66 0-3.17.67-4.24 1.76L3.26 15.65C4.7 19.38 8.35 22 12.6 22c3.08 0 5.86-1.32 7.78-3.44l-3.88-6.72c-.31.81-1.02 1.4-1.9 1.56L21.54 6z"/>
+            <path fill="#34a853" d="M12 6c3.31 0 6 2.69 6 6 0 1.35-.45 2.6-1.22 3.6l-4.5-7.8c-.37-.64-.99-1.12-1.72-1.36L12 6z"/>
+            <circle cx="12" cy="12" r="4" fill="#ffffff"/>
+            <circle cx="12" cy="12" r="3" fill="#1d4ed8"/>
+          </svg>
+          <span class="text-slate-200 text-[9.5px] font-medium font-mono-num">Chrome 擴充小工具</span>
+        </div>
+      </div>
+
+      <!-- Center Feature: The High-Density Extension Widget Window -->
+      <div class="relative z-10 w-full bg-[#0c1527]/95 rounded-lg border border-slate-700/80 shadow-[0_8px_24px_rgba(0,0,0,0.55)] p-2 backdrop-blur-md">
+        
+        <!-- Widget Header Sub-Bar -->
+        <div class="flex items-center justify-between pb-1.5 border-b border-slate-800/80 text-[10px]">
+          <div class="flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 -ml-2.5"></span>
+            <span class="text-slate-200 font-semibold text-[11px] tracking-tight">EasyStock 視窗</span>
+            <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] px-1 py-0.2 rounded font-medium">摸魚中</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded text-[9.5px] font-medium flex items-center gap-0.5">
+              <span>🐷</span>
+              <span>摸魚</span>
+            </button>
+            <button class="bg-slate-800 text-slate-300 hover:text-white px-1.5 py-0.5 rounded text-[9.5px] border border-slate-700">
+              ⚙ 設定
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Search Bar -->
+        <div class="mt-1.5 flex items-center gap-1.5">
+          <div class="flex-1 bg-slate-950/70 border border-slate-800 rounded px-2 py-0.5 flex items-center justify-between text-[9px] text-slate-400">
+            <span class="truncate">🔍 代號 / 中文，例 2330 或 台積電</span>
+            <kbd class="text-[8px] bg-slate-800 px-1 rounded text-slate-400 font-mono-num">/</kbd>
+          </div>
+          <span class="bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 text-[9px] px-1.5 py-0.5 rounded font-medium shrink-0">
+            + 新增
+          </span>
+        </div>
+
+        <!-- Real-Time Index Ticker Strip (Taiwan Red Up / Green Down) -->
+        <div class="mt-1.5 bg-slate-900/80 rounded px-2 py-1 flex items-center justify-between text-[9.5px] font-mono-num border border-slate-800/70">
+          <div class="flex items-center gap-1">
+            <span class="text-slate-400 font-medium">加權</span>
+            <span class="text-slate-200 font-bold">48,024.60</span>
+            <span class="tw-down font-bold">▼ -132.69 (-0.28%)</span>
+          </div>
+          <div class="flex items-center gap-1 text-[9px]">
+            <span class="text-slate-400 font-medium">櫃買</span>
+            <span class="text-slate-200 font-bold">412.99</span>
+            <span class="tw-down font-bold">▼ -0.77%</span>
+          </div>
+        </div>
+
+        <!-- 4 Category Tabs -->
+        <div class="mt-1.5 flex items-center gap-1 border-b border-slate-800/80 pb-1 text-[9.5px]">
+          <span class="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40 flex items-center gap-0.5">
+            ⭐ 自選
+          </span>
+          <span class="px-1.5 py-0.5 rounded text-slate-400 hover:text-slate-200 flex items-center gap-0.5">
+            🎯 當沖
+          </span>
+          <span class="px-1.5 py-0.5 rounded text-slate-400 hover:text-slate-200 flex items-center gap-0.5">
+            🛡️ 觸底反彈
+          </span>
+          <span class="px-1.5 py-0.5 rounded text-slate-400 hover:text-slate-200 flex items-center gap-0.5">
+            🤖 當沖AI架構
+          </span>
+        </div>
+
+        <!-- Stock Watchlist Rows (High-density real stocks with sparklines) -->
+        <div class="mt-1 flex flex-col gap-1 text-[10px]">
+          <!-- Stock 1: 00878 -->
+          <div class="flex items-center justify-between bg-slate-900/50 hover:bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-800/50">
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold text-slate-200 font-mono-num text-[10.5px]">00878</span>
+              <span class="text-slate-300 text-[10px]">國泰永續高股息</span>
+            </div>
+            <!-- Mini Green Down Sparkline -->
+            <svg class="w-16 h-3 stroke-emerald-400 fill-none" viewBox="0 0 64 12">
+              <path d="M0,2 L14,3 L26,7 L38,5 L50,9 L64,10" stroke-width="1.25" stroke-linecap="round"/>
+            </svg>
+            <div class="flex items-center gap-1.5 text-right font-mono-num">
+              <span class="text-slate-200 font-semibold">34.88</span>
+              <span class="tw-down font-bold text-[9.5px]">▼ -0.60%</span>
+            </div>
+          </div>
+
+          <!-- Stock 2: 6862 -->
+          <div class="flex items-center justify-between bg-slate-900/50 hover:bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-800/50">
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold text-slate-200 font-mono-num text-[10.5px]">6862</span>
+              <span class="text-slate-300 text-[10px]">三集瑞-KY</span>
+            </div>
+            <!-- Dynamic Down/Fluctuate Sparkline -->
+            <svg class="w-16 h-3 stroke-emerald-400 fill-none" viewBox="0 0 64 12">
+              <path d="M0,3 L12,2 L25,6 L36,4 L48,8 L64,7" stroke-width="1.25" stroke-linecap="round"/>
+            </svg>
+            <div class="flex items-center gap-1.5 text-right font-mono-num">
+              <span class="text-slate-200 font-semibold">139.00</span>
+              <span class="tw-down font-bold text-[9.5px]">▼ -0.36%</span>
+            </div>
+          </div>
+
+          <!-- Stock 3: 2603 (Red Up Highlight for Contrast) -->
+          <div class="flex items-center justify-between bg-slate-900/50 hover:bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-800/50">
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold text-slate-200 font-mono-num text-[10.5px]">2603</span>
+              <span class="text-slate-300 text-[10px]">長榮</span>
+              <span class="text-[8px] bg-rose-500/20 text-rose-300 border border-rose-500/40 px-0.5 rounded">突破</span>
+            </div>
+            <!-- Red Up Sparkline -->
+            <svg class="w-16 h-3 stroke-rose-500 fill-none" viewBox="0 0 64 12">
+              <path d="M0,10 L15,9 L28,7 L42,5 L54,2 L64,1" stroke-width="1.25" stroke-linecap="round"/>
+            </svg>
+            <div class="flex items-center gap-1.5 text-right font-mono-num">
+              <span class="tw-up font-bold">192.50</span>
+              <span class="tw-up font-bold text-[9.5px]">▲ +2.65%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Widget Bottom Mini-Status -->
+        <div class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between text-[8.5px] text-slate-400 font-mono-num">
+          <span class="flex items-center gap-1">
+            <span class="w-1 h-1 rounded-full bg-slate-500"></span>
+            休市 · 23:09:54
+          </span>
+          <span class="text-cyan-400/80">TWSE & TPEx 逐筆行情</span>
+        </div>
+      </div>
+
+      <!-- Bottom Promotional Feature Pillars (3 Key Selling Points) -->
+      <div class="relative z-10 grid grid-cols-3 gap-1.5 pt-0.5">
+        <div class="flex items-center justify-center gap-1 py-1 px-1 rounded-md bg-slate-900/80 border border-slate-700/60 shadow-sm">
+          <span class="text-xs">🐷</span>
+          <span class="text-slate-200 text-[10px] font-semibold tracking-tight">工位一鍵摸魚偽裝</span>
+        </div>
+        <div class="flex items-center justify-center gap-1 py-1 px-1 rounded-md bg-slate-900/80 border border-slate-700/60 shadow-sm">
+          <span class="text-xs">⚡</span>
+          <span class="text-slate-200 text-[10px] font-semibold tracking-tight">盤中即時走勢與K線</span>
+        </div>
+        <div class="flex items-center justify-center gap-1 py-1 px-1 rounded-md bg-slate-900/80 border border-slate-700/60 shadow-sm">
+          <span class="text-xs">🔔</span>
+          <span class="text-slate-200 text-[10px] font-semibold tracking-tight">突破買賣點即時推播</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Secondary Context Caption for Store Compliance Review -->
+    <div class="flex items-center gap-3 text-slate-500 text-[10.5px] font-mono-num">
+      <span>Chrome Web Store 官方 440 × 280 規格</span>
+      <span>•</span>
+      <span>真實 EasyStock 終端介面還原</span>
+      <span>•</span>
+      <span>台股漲紅跌綠色標</span>
+    </div>
+  </div>
+
+</body>
+</html>
