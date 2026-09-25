@@ -59,13 +59,13 @@
     .brand { display:flex; align-items:center; gap:13px; text-decoration:none; color:var(--main); }
     .brand-mark { display:grid; place-items:center; width:44px; height:44px; background:var(--main); color:var(--inverse); font-size:22px; font-weight:900; border-radius:10px; }
     .brand strong { display:block; font-size:18px; letter-spacing:.08em; }
-    .brand small { display:block; color:var(--muted); font-size:9px; letter-spacing:.15em; font-family:"JetBrains Mono",monospace; }
+    .brand small { display:block; color:var(--muted); font-size:12px; letter-spacing:.08em; font-weight:500; }
     .topbar-right { display:flex; gap:12px; align-items:center; }
-    .market-tag { font-size:11px; letter-spacing:.12em; color:var(--muted); font-family:"JetBrains Mono",monospace; }
+    .market-tag { font-size:12px; letter-spacing:.08em; color:var(--muted); font-family:"JetBrains Mono",monospace; }
     .intro { display:flex; justify-content:space-between; gap:24px; align-items:flex-end; padding:28px 0 22px; }
-    .eyebrow { color:var(--accent); font-size:10px; letter-spacing:.22em; font-weight:700; text-transform:uppercase; font-family:"JetBrains Mono",monospace; }
+    .eyebrow { color:var(--accent); font-size:12px; letter-spacing:.15em; font-weight:700; text-transform:uppercase; font-family:"JetBrains Mono",monospace; }
     .intro h1 { margin:6px 0 9px; font-size:clamp(28px,3.1vw,42px); line-height:1.25; font-weight:800; letter-spacing:-.035em; }
-    .intro p { color:var(--sub); font-size:13px; }
+    .intro p { color:var(--sub); font-size:13.5px; }
     .intro-status { text-align:right; max-width:400px; }
     .intro-status .btn { margin-bottom:10px; padding:7px 15px; border-radius:8px; font-size:12px; }
     .section-nav { display:flex; gap:24px; border-bottom:1px solid var(--border); margin-bottom:24px; overflow-x:auto; }
@@ -99,10 +99,12 @@
     .strategy-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-bottom:18px; }
     .strategy-grid > .panel > div:first-child .font-bold { font-size:16px; }
     .strategy-grid [onclick*="openStockDetail"] { padding:16px; margin-top:10px; border-radius:8px; }
-    .workspace [class~="text-[8px]"],.workspace [class~="text-[9px]"],.modal-wide [class~="text-[8px]"],.modal-wide [class~="text-[9px]"] { font-size:11px; }
-    [class~="text-[10px]"],[class~="text-[11px]"] { font-size:12px; }
+    /* 全面提升微型字體與間距，消除擁擠發糊感 */
+    [class*="text-[8px]"], [class*="text-[9px]"], [class*="text-[10px]"] { font-size:12px!important; line-height:1.45!important; letter-spacing:0.015em; }
+    [class*="text-[11px]"] { font-size:12.5px!important; line-height:1.45!important; letter-spacing:0.015em; }
+    .workspace [class~="text-[8px]"],.workspace [class~="text-[9px]"],.modal-wide [class~="text-[8px]"],.modal-wide [class~="text-[9px]"] { font-size:12px!important; }
     .disclaimer { margin-top:28px; padding:20px!important; background:var(--panel); border:1px solid var(--border); border-radius:12px!important; line-height:1.8; }
-    .footer-line { display:flex; justify-content:space-between; gap:12px; font-size:11px; letter-spacing:.08em; color:var(--muted); padding-top:16px; font-family:"JetBrains Mono",monospace; }
+    .footer-line { display:flex; justify-content:space-between; gap:12px; font-size:12px; letter-spacing:.05em; color:var(--muted); padding-top:16px; }
     .modal-wide { box-shadow:0 24px 100px #000a; }
     .score-ring { background:conic-gradient(from 180deg,var(--accent) 0 var(--score),var(--border) var(--score) 100%); }
     ::-webkit-scrollbar { width:6px; height:6px; }
@@ -151,7 +153,7 @@
   /* Text overrides */
   html[data-theme="light"] .text-\[\#F1F5F9\], html.light .text-\[\#F1F5F9\], html:not(.dark) .text-\[\#F1F5F9\] { color: #0B1C30 !important; }
   html[data-theme="light"] .text-\[\#94A3B8\], html.light .text-\[\#94A3B8\], html:not(.dark) .text-\[\#94A3B8\] { color: #475569 !important; }
-  html[data-theme="light"] .text-\[\#64748B\], html.light .text-\[\#64748B\], html:not(.dark) .text-\[\#64748B\] { color: #64748B !important; }
+  html[data-theme="light"] .text-\[\#64748B\], html.light .text-\[\#64748B\], html:not(.dark) .text-\[\#64748B\] { color: #475569 !important; }
 
   /* Hover overrides */
   html[data-theme="light"] .hover\:bg-\[\#1C2B3C\]:hover, html.light .hover\:bg-\[\#1C2B3C\]:hover, html:not(.dark) .hover\:bg-\[\#1C2B3C\]:hover { background-color: #E2E8F0 !important; }
@@ -365,9 +367,9 @@
         <div class="flex flex-col">
           <div class="flex items-center gap-2">
             <strong class="text-xl font-bold tracking-tight text-[#F1F5F9]">當沖吧！牛馬仔</strong>
-            <span class="px-1.5 py-0.5 rounded bg-[#1C2B3C] text-[#F59E0B] font-mono text-[10px] font-semibold border border-[#F59E0B]/30">v2.6 摸魚版</span>
+            <span class="px-2 py-0.5 rounded-md bg-[#1C2B3C] text-[#F59E0B] font-mono text-xs font-bold border border-[#F59E0B]/30">v2.6 摸魚版</span>
           </div>
-          <small class="text-[#64748B] text-[10px] tracking-wider font-mono">OFFICE WORKER QUANT LAB · 工號 9527 出勤看盤</small>
+          <small class="text-[#64748B] text-xs tracking-wider font-mono font-medium mt-0.5">OFFICE WORKER QUANT LAB · 工號 9527 出勤看盤</small>
         </div>
       </a>
 
@@ -393,16 +395,16 @@
       </nav>
 
       <div class="flex items-center gap-3">
-        <button type="button" id="themeToggleBtn" onclick="toggleTheme()" class="btn flex items-center gap-1.5 px-3 py-1 rounded-xl border border-[#232F42] bg-[#1A2234] text-[#F1F5F9] hover:bg-[#262C3E] text-xs font-semibold cursor-pointer transition-all shadow-sm" title="切換明暗主題">
+        <button type="button" id="themeToggleBtn" onclick="toggleTheme()" class="btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#232F42] bg-[#1A2234] text-[#F1F5F9] hover:bg-[#262C3E] text-xs font-semibold cursor-pointer transition-all shadow-sm" title="切換明暗主題">
           <span class="material-symbols-outlined text-[16px]" id="themeToggleIcon">dark_mode</span>
           <span id="themeToggleLabel">深色模式</span>
         </button>
 
-        <div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-xl bg-[#0D1C2D] border border-[#232F42]">
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0D1C2D] border border-[#232F42]">
           <span class="material-symbols-outlined text-[#F59E0B] text-[18px]">coffee</span>
           <div class="flex flex-col text-left">
             <span class="font-mono text-xs text-[#F1F5F9] leading-none">工位摸魚工程師</span>
-            <span class="text-[9px] text-[#64748B] leading-tight font-mono">9527 · 在線</span>
+            <span class="text-xs text-[#64748B] leading-normal font-mono font-medium">9527 · 在線</span>
           </div>
         </div>
       </div>
@@ -447,76 +449,76 @@
   <header class="system-header panel" aria-label="資料狀態">
     <div class="system-stats grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2.5">
 
-      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
-        <div class="flex items-center justify-between text-[11px] text-[#64748B] font-medium">
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <div class="flex items-center justify-between text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">
           <span>熱門股票池</span>
-          <span class="text-[#06B6D4] font-mono text-[10px]">TWSE+TPEx</span>
+          <span class="text-[#06B6D4] font-mono text-xs font-semibold px-1.5 py-0.5 rounded bg-[#06B6D4]/10">TWSE+TPEx</span>
         </div>
-        <div id="metaStocks" class="text-xl font-bold font-mono text-[#F1F5F9] mt-1">
+        <div id="metaStocks" class="text-xl font-bold font-mono text-[#F1F5F9] my-0.5">
           載入中…
         </div>
-        <span class="text-[10px] text-[#64748B]">成交額 TOP 500</span>
+        <span class="text-xs text-[#64748B] font-medium leading-normal">成交額 TOP 500</span>
       </div>
 
-      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
-        <span class="text-[11px] text-[#64748B] font-medium">資料日期</span>
-        <div id="metaDate" class="text-sm font-bold font-mono text-[#F1F5F9] mt-1">
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <span class="text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">資料日期</span>
+        <div id="metaDate" class="text-sm sm:text-base font-bold font-mono text-[#F1F5F9] my-0.5">
           載入中…
         </div>
-        <span class="text-[10px] text-[#64748B]">後端即時同步</span>
+        <span class="text-xs text-[#64748B] font-medium leading-normal">後端即時同步</span>
       </div>
 
-      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
-        <span class="text-[11px] text-[#64748B] font-medium">隔日衝最後掃描</span>
-        <div id="metaScanTime" class="text-sm font-bold font-mono text-[#F1F5F9] mt-1">
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <span class="text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">隔日衝最後掃描</span>
+        <div id="metaScanTime" class="text-sm sm:text-base font-bold font-mono text-[#F1F5F9] my-0.5">
           --
         </div>
-        <span class="text-[10px] text-[#64748B]">尾盤量能優先</span>
+        <span class="text-xs text-[#64748B] font-medium leading-normal">尾盤量能優先</span>
       </div>
 
-      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
-        <span class="text-[11px] text-[#64748B] font-medium">網頁讀取</span>
-        <div id="metaRefreshTime" class="text-sm font-bold font-mono text-[#F1F5F9] mt-1">
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <span class="text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">網頁讀取</span>
+        <div id="metaRefreshTime" class="text-sm sm:text-base font-bold font-mono text-[#F1F5F9] my-0.5">
           --
         </div>
-        <span class="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
-          <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 延遲 24ms
+        <span class="text-xs text-emerald-400 flex items-center gap-1.5 font-mono font-medium leading-normal">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span> 延遲 24ms
         </span>
       </div>
 
-      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
-        <span class="text-[11px] text-[#64748B] font-medium">模型資料完整度</span>
-        <div id="metaQuality" class="text-xl font-bold font-mono text-[#F59E0B] mt-1">
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <span class="text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">模型資料完整度</span>
+        <div id="metaQuality" class="text-xl font-bold font-mono text-[#F59E0B] my-0.5">
           --
         </div>
-        <span class="text-[10px] text-[#64748B]">特徵完備度評估</span>
+        <span class="text-xs text-[#64748B] font-medium leading-normal">特徵完備度評估</span>
       </div>
 
-      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
-        <span class="text-[11px] text-[#64748B] font-medium">回測訊號數</span>
-        <div id="metaSignals" class="text-xl font-bold font-mono text-[#F1F5F9] mt-1">
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <span class="text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">回測訊號數</span>
+        <div id="metaSignals" class="text-xl font-bold font-mono text-[#F1F5F9] my-0.5">
           --
         </div>
-        <span class="text-[10px] text-[#64748B]">十年間歷史樣本</span>
+        <span class="text-xs text-[#64748B] font-medium leading-normal">十年間歷史樣本</span>
       </div>
 
-      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
-        <span class="text-[11px] text-[#64748B] font-medium">掃描模式</span>
-        <div id="metaSession" class="text-sm font-bold font-mono text-[#06B6D4] mt-1">
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <span class="text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">掃描模式</span>
+        <div id="metaSession" class="text-sm sm:text-base font-bold font-mono text-[#06B6D4] my-0.5">
           --
         </div>
-        <span class="text-[10px] text-[#64748B]">僅供量化研究</span>
+        <span class="text-xs text-[#64748B] font-medium leading-normal">僅供量化研究</span>
       </div>
 
-      <div class="rounded-xl border border-emerald-500/30 p-3 bg-[#131A26] flex flex-col justify-between shadow-sm ring-1 ring-emerald-500/20">
-        <div class="flex items-center justify-between text-[11px] text-emerald-400 font-semibold">
+      <div class="rounded-xl border border-emerald-500/30 p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5 ring-1 ring-emerald-500/20">
+        <div class="flex items-center justify-between text-xs sm:text-[13px] text-emerald-400 font-bold tracking-wide">
           <span>今日當沖模組</span>
           <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
         </div>
-        <div id="metaDaytradeModel" class="text-sm font-bold font-mono text-[#F1F5F9] mt-1" title="今日牛馬 AI 實盤當沖學習版本">
+        <div id="metaDaytradeModel" class="text-sm sm:text-base font-bold font-mono text-[#F1F5F9] my-0.5" title="今日牛馬 AI 實盤當沖學習版本">
           載入中…
         </div>
-        <div id="metaTracking" class="text-[10px] text-[#64748B] font-mono">
+        <div id="metaTracking" class="text-xs text-[#64748B] font-mono font-medium leading-normal">
           盤前待命中
         </div>
       </div>
@@ -527,30 +529,30 @@
   <!-- =====================================================
        RADAR FILTER TOOLBAR
        ===================================================== -->
-  <div class="filter-panel bg-[#131A26] border border-[#232F42] p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-sm mb-6" role="region" aria-label="股票篩選">
+  <div class="filter-panel bg-[#131A26] border border-[#232F42] p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-sm mb-6" role="region" aria-label="股票篩選">
     <div class="flex items-center gap-2 flex-wrap">
-      <div class="flex items-center gap-1 text-[#64748B] font-mono text-xs">
-        <span class="material-symbols-outlined text-[16px] text-[#F59E0B]">filter_alt</span>
+      <div class="flex items-center gap-1.5 text-[#64748B] font-mono text-xs sm:text-[13px]">
+        <span class="material-symbols-outlined text-[18px] text-[#F59E0B]">filter_alt</span>
         <span class="font-semibold text-[#F1F5F9]">單張預算快選:</span>
       </div>
-      <button data-price="" aria-pressed="true" onclick="setQuickPrice(null)" class="btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#F59E0B] text-[#0B0F17] border-0 shadow-sm">不限</button>
-      <button data-price="50" aria-pressed="false" onclick="setQuickPrice(50)" class="btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">50以下</button>
-      <button data-price="100" aria-pressed="false" onclick="setQuickPrice(100)" class="btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">100以下</button>
-      <button data-price="200" aria-pressed="false" onclick="setQuickPrice(200)" class="btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">200以下</button>
-      <div class="hidden sm:flex items-center gap-1 bg-[#0D1C2D] border border-[#232F42] px-2 py-1 rounded-lg text-xs">
-        <span class="text-[10px] text-[#64748B]">價格:</span>
-        <input aria-label="最低股價" id="priceMin" type="number" min="0" step="1" placeholder="最低" oninput="setPriceRange()" class="w-12 bg-transparent text-xs text-[#F1F5F9] outline-none text-center font-mono" />
+      <button data-price="" aria-pressed="true" onclick="setQuickPrice(null)" class="btn px-3 py-1.5 rounded-lg text-xs sm:text-[13px] font-semibold bg-[#F59E0B] text-[#0B0F17] border-0 shadow-sm">不限</button>
+      <button data-price="50" aria-pressed="false" onclick="setQuickPrice(50)" class="btn px-3 py-1.5 rounded-lg text-xs sm:text-[13px] font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">50以下</button>
+      <button data-price="100" aria-pressed="false" onclick="setQuickPrice(100)" class="btn px-3 py-1.5 rounded-lg text-xs sm:text-[13px] font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">100以下</button>
+      <button data-price="200" aria-pressed="false" onclick="setQuickPrice(200)" class="btn px-3 py-1.5 rounded-lg text-xs sm:text-[13px] font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">200以下</button>
+      <div class="hidden sm:flex items-center gap-1.5 bg-[#0D1C2D] border border-[#232F42] px-2.5 py-1.5 rounded-lg text-xs">
+        <span class="text-xs text-[#64748B] font-medium">價格:</span>
+        <input aria-label="最低股價" id="priceMin" type="number" min="0" step="1" placeholder="最低" oninput="setPriceRange()" class="w-14 bg-transparent text-xs text-[#F1F5F9] outline-none text-center font-mono" />
         <span class="text-[#64748B]">～</span>
-        <input aria-label="最高股價" id="priceMax" type="number" min="0" step="1" placeholder="最高" oninput="setPriceRange()" class="w-12 bg-transparent text-xs text-[#F1F5F9] outline-none text-center font-mono" />
+        <input aria-label="最高股價" id="priceMax" type="number" min="0" step="1" placeholder="最高" oninput="setPriceRange()" class="w-14 bg-transparent text-xs text-[#F1F5F9] outline-none text-center font-mono" />
       </div>
-      <div class="hidden md:flex items-center gap-1 bg-[#0D1C2D] border border-[#232F42] px-2 py-1 rounded-lg text-xs" title="以一張約1000股估算，不影響零股交易">
-        <span class="text-[10px] text-[#64748B]">單張預算:</span>
-        <input aria-label="單張預算" id="budgetInput" type="number" min="0" step="10000" placeholder="不限" oninput="setBudget()" class="w-16 bg-transparent text-xs text-[#F1F5F9] outline-none text-right font-mono" />
+      <div class="hidden md:flex items-center gap-1.5 bg-[#0D1C2D] border border-[#232F42] px-2.5 py-1.5 rounded-lg text-xs" title="以一張約1000股估算，不影響零股交易">
+        <span class="text-xs text-[#64748B] font-medium">單張預算:</span>
+        <input aria-label="單張預算" id="budgetInput" type="number" min="0" step="10000" placeholder="不限" oninput="setBudget()" class="w-20 bg-transparent text-xs text-[#F1F5F9] outline-none text-right font-mono" />
       </div>
     </div>
     <div class="flex items-center gap-2 self-end lg:self-center">
-      <span class="text-[#64748B] text-xs">顯示排行:</span>
-      <select aria-label="顯示標的數量" onchange="setDisplayLimit(Number(this.value))" class="bg-[#0D1C2D] border border-[#232F42] rounded-lg px-2.5 py-1 text-xs text-[#F1F5F9] outline-none font-mono">
+      <span class="text-[#64748B] text-xs sm:text-[13px] font-medium">顯示排行:</span>
+      <select aria-label="顯示標的數量" onchange="setDisplayLimit(Number(this.value))" class="bg-[#0D1C2D] border border-[#232F42] rounded-lg px-3 py-1.5 text-xs sm:text-[13px] text-[#F1F5F9] outline-none font-mono">
         <option value="5">Top 5</option>
         <option value="10">Top 10</option>
       </select>
@@ -561,40 +563,40 @@
        01 盤中摸魚 · AI 模擬當沖
        ===================================================== -->
   <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]" id="intraday-strategies">
-    <div class="flex items-center gap-2">
-      <span class="h-6 w-6 rounded-md bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#F59E0B] font-mono text-xs font-bold">01</span>
+    <div class="flex items-center gap-2.5">
+      <span class="h-7 w-7 rounded-lg bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#F59E0B] font-mono text-xs font-bold shadow-sm">01</span>
       <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9]">盤中摸魚 · AI 模擬當沖</h2>
-      <span class="px-2 py-0.5 rounded-full bg-[#1C2B3C] text-[#06B6D4] font-mono text-[11px] border border-[#06B6D4]/30">工位自救 · 虛擬交易</span>
+      <span class="px-2.5 py-1 rounded-full bg-[#1C2B3C] text-[#06B6D4] font-mono text-xs font-semibold border border-[#06B6D4]/30">工位自救 · 虛擬交易</span>
     </div>
-    <span class="text-xs text-[#64748B]">永豐 Shioaji 行情 ➔ 量能雷達 ➔ 11項特徵 ➔ AI 模型判斷</span>
+    <span class="text-xs text-[#64748B] font-medium">永豐 Shioaji 行情 ➔ 量能雷達 ➔ 11項特徵 ➔ AI 模型判斷</span>
   </div>
 
   <section class="recommendation-section mb-8">
-    <div id="daytradeModule" class="bg-[#131A26] border border-[#232F42] rounded-2xl p-4 shadow-sm">
+    <div id="daytradeModule" class="bg-[#131A26] border border-[#232F42] rounded-2xl p-4 sm:p-5 shadow-sm">
       <div class="flex items-center justify-between border-b border-[#232F42] pb-3 flex-wrap gap-2">
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-sm text-[#F1F5F9]">AI 模擬當沖標的</span>
-          <span id="intradayModelBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 font-mono">當沖模型: 載入中…</span>
-          <span id="intradayStamp" class="text-xs text-[#64748B] font-mono">等待盤中掃描</span>
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <span class="font-bold text-sm sm:text-base text-[#F1F5F9]">AI 模擬當沖標的</span>
+          <span id="intradayModelBadge" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 font-mono">當沖模型: 載入中…</span>
+          <span id="intradayStamp" class="text-xs text-[#64748B] font-mono font-medium">等待盤中掃描</span>
         </div>
-        <button class="btn share-btn flex items-center gap-1 px-2.5 py-1 rounded bg-[#1C2B3C] hover:bg-[#273647] text-[#F1F5F9] text-xs" type="button" data-share-ignore onclick="prepareModuleShare('daytradeModule','AI 模擬當沖')">
-          <span class="material-symbols-outlined text-[13px]">share</span> 分享圖片 ↗
+        <button class="btn share-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1C2B3C] hover:bg-[#273647] text-[#F1F5F9] text-xs font-semibold" type="button" data-share-ignore onclick="prepareModuleShare('daytradeModule','AI 模擬當沖')">
+          <span class="material-symbols-outlined text-[15px]">share</span> 分享圖片 ↗
         </button>
       </div>
 
       <!-- 四步節奏條 (Execution Rhythm Bar) -->
-      <div class="my-3 py-2 px-3 rounded-lg bg-[#0D1C2D] border border-[#232F42]/60 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] text-[#64748B]">
-        <div class="flex items-center gap-1.5"><span class="text-[#06B6D4] font-bold">09:30</span><span>開工摸魚進場</span></div>
+      <div class="my-3.5 py-2.5 px-4 rounded-xl bg-[#0D1C2D] border border-[#232F42]/60 flex flex-wrap items-center justify-between gap-3 font-mono text-xs sm:text-[13px] text-[#64748B]">
+        <div class="flex items-center gap-1.5"><span class="text-[#06B6D4] font-bold">09:30</span><span class="font-medium">開工摸魚進場</span></div>
         <span class="text-[#232F42]">➔</span>
-        <div class="flex items-center gap-1.5"><span class="text-[#F59E0B] font-bold">12:30</span><span>停止新單 · 等待午餐外送</span></div>
+        <div class="flex items-center gap-1.5"><span class="text-[#F59E0B] font-bold">12:30</span><span class="font-medium">停止新單 · 等待午餐外送</span></div>
         <span class="text-[#232F42]">➔</span>
-        <div class="flex items-center gap-1.5"><span class="text-[#EF4444] font-bold">12:55</span><span>強制平倉收工 · 遠離盤面</span></div>
+        <div class="flex items-center gap-1.5"><span class="text-[#EF4444] font-bold">12:55</span><span class="font-medium">強制平倉收工 · 遠離盤面</span></div>
         <span class="text-[#232F42]">➔</span>
-        <div class="flex items-center gap-1.5"><span class="text-[#F1F5F9] font-bold">13:00</span><span>收盤總結與反省</span></div>
+        <div class="flex items-center gap-1.5"><span class="text-[#F1F5F9] font-bold">13:00</span><span class="font-medium">收盤總結與反省</span></div>
       </div>
 
       <div id="intradayPickList" class="mt-3">
-        <div class="text-xs text-[#64748B] text-center py-8 font-mono">等待 AI 模擬當沖資料（尚無當日有效快照）…</div>
+        <div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-mono">等待 AI 模擬當沖資料（尚無當日有效快照）…</div>
       </div>
     </div>
   </section>
@@ -639,78 +641,78 @@
         <span class="material-symbols-outlined text-[13px]">share</span> 分享圖片 ↗
       </button>
     </div>
-    <div class="flex items-center justify-between flex-wrap gap-2 my-2.5 font-mono text-[11px]">
-      <p id="activeFilterLabel" class="text-[#64748B]">全部價格</p>
-      <div class="rebound-rule-note px-2 py-0.5 rounded bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30">規則試行 · 尚無驗證勝率 · 資料不足不列入推薦</div>
+    <div class="flex items-center justify-between flex-wrap gap-2 my-2.5 font-mono text-xs sm:text-[13px]">
+      <p id="activeFilterLabel" class="text-[#64748B] font-medium">全部價格</p>
+      <div class="rebound-rule-note px-3 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 text-xs font-semibold">規則試行 · 尚無驗證勝率 · 資料不足不列入推薦</div>
     </div>
-    <p id="reboundStatus" role="status" aria-live="polite" class="text-xs text-[#64748B] font-mono">等待日線資料…</p>
-    <p id="reboundProgress" class="text-xs text-[#64748B] font-mono"></p>
+    <p id="reboundStatus" role="status" aria-live="polite" class="text-xs text-[#64748B] font-mono font-medium">等待日線資料…</p>
+    <p id="reboundProgress" class="text-xs text-[#64748B] font-mono font-medium"></p>
     <div id="reboundPicks" class="rebound-grid mt-3"></div>
     <div id="reboundWatchSection" hidden class="mt-4 pt-3 border-t border-[#232F42]">
-      <h3 class="text-sm font-bold text-[#F1F5F9] mb-1">型態符合，基本面待確認</h3>
-      <p class="text-xs text-[#64748B] mb-2">以下是技術觀察名單，尚未列入推薦 TOP 3。</p>
+      <h3 class="text-sm sm:text-base font-bold text-[#F1F5F9] mb-1">型態符合，基本面待確認</h3>
+      <p class="text-xs text-[#64748B] mb-2 font-medium">以下是技術觀察名單，尚未列入推薦 TOP 3。</p>
       <div id="reboundWatch" class="rebound-grid"></div>
     </div>
-    <details class="rebound-method mt-3 p-3 rounded-lg bg-[#0D1C2D] border border-[#232F42]/60 text-xs text-[#64748B] leading-relaxed">
-      <summary class="cursor-pointer font-bold text-[#F1F5F9] hover:text-[#06B6D4] flex items-center gap-1">
-        <span class="material-symbols-outlined text-[16px] text-[#F59E0B]">analytics</span>
+    <details class="rebound-method mt-3 p-3.5 rounded-xl bg-[#0D1C2D] border border-[#232F42]/60 text-xs sm:text-[13px] text-[#64748B] leading-relaxed">
+      <summary class="cursor-pointer font-bold text-[#F1F5F9] hover:text-[#06B6D4] flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[18px] text-[#F59E0B]">analytics</span>
         <span>篩選方式與本次檢查結果</span>
       </summary>
-      <p class="mt-2">使用 Firebase 同一版本最近 90～252 根日 K，支撐與壓力至少觸及兩次、相隔至少 7 個交易日、首末跨度至少 14 日。區間至少 10%，價格位於底部 35% 且距支撐不超過 10%，近 8 日需回測支撐。近 3 日突破昨高並守穩者優先；連兩日收高、收紅且收在當日上緣者列為「初步止跌」。今日不可明顯破近期低點。</p>
-      <p class="mt-1">扣除假設來回成本 0.6% 後，價格空間／失效風險至少 1.5 倍。基本面初篩：單月營收年增不低於 −20%、EPS 與營業利益率為正、負債比低於 70%。</p>
-      <p id="reboundDiagnostics" class="mt-2 text-[#06B6D4] font-mono">等待檢查結果。</p>
-      <button id="reboundRetry" class="btn mt-2 px-3 py-1 rounded bg-[#1C2B3C] text-xs font-semibold text-[#F1F5F9]" type="button">重新檢查</button>
+      <p class="mt-2.5">使用 Firebase 同一版本最近 90～252 根日 K，支撐與壓力至少觸及兩次、相隔至少 7 個交易日、首末跨度至少 14 日。區間至少 10%，價格位於底部 35% 且距支撐不超過 10%，近 8 日需回測支撐。近 3 日突破昨高並守穩者優先；連兩日收高、收紅且收在當日上緣者列為「初步止跌」。今日不可明顯破近期低點。</p>
+      <p class="mt-1.5">扣除假設來回成本 0.6% 後，價格空間／失效風險至少 1.5 倍。基本面初篩：單月營收年增不低於 −20%、EPS 與營業利益率為正、負債比低於 70%。</p>
+      <p id="reboundDiagnostics" class="mt-2 text-[#06B6D4] font-mono font-medium">等待檢查結果。</p>
+      <button id="reboundRetry" class="btn mt-2 px-3 py-1.5 rounded-lg bg-[#1C2B3C] text-xs font-semibold text-[#F1F5F9]" type="button">重新檢查</button>
     </details>
   </section>
 
   <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]">
-    <div class="flex items-center gap-2">
-      <span class="h-6 w-6 rounded-md bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#F59E0B] font-mono text-xs font-bold">03</span>
+    <div class="flex items-center gap-2.5">
+      <span class="h-7 w-7 rounded-lg bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#F59E0B] font-mono text-xs font-bold shadow-sm">03</span>
       <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9]">☕ 牛馬 AI 加班進修打卡室</h2>
-      <span class="px-2 py-0.5 rounded-full bg-[#1C2B3C] text-[#10B981] font-mono text-[11px] border border-[#10B981]/30">收盤覆盤 · 離職基金</span>
+      <span class="px-2.5 py-1 rounded-full bg-[#1C2B3C] text-[#10B981] font-mono text-xs font-semibold border border-[#10B981]/30">收盤覆盤 · 離職基金</span>
     </div>
-    <span class="text-xs text-[#64748B]">收盤加班進修 / DRONE SURVIVAL LOG</span>
+    <span class="text-xs text-[#64748B] font-medium">收盤加班進修 / DRONE SURVIVAL LOG</span>
   </div>
 
-  <section class="panel learning-panel bg-[#131A26] border border-[#232F42] rounded-2xl p-4 shadow-sm mb-8" id="learningSection" aria-labelledby="learningTitle">
+  <section class="panel learning-panel bg-[#131A26] border border-[#232F42] rounded-2xl p-4 sm:p-5 shadow-sm mb-8" id="learningSection" aria-labelledby="learningTitle">
     <div class="learning-head flex items-start justify-between gap-4 border-b border-[#232F42] pb-3">
       <div>
-        <h2 id="learningTitle" class="text-sm font-bold text-[#F1F5F9] m-0">AI 盤後學習與特訓進度</h2>
-        <p class="text-[#64748B] text-xs mt-1">白天當沖被修理，晚上留下來加班看盤；不求暴富，只求換個便當與湊齊離職自由金。</p>
+        <h2 id="learningTitle" class="text-sm sm:text-base font-bold text-[#F1F5F9] m-0">AI 盤後學習與特訓進度</h2>
+        <p class="text-[#64748B] text-xs sm:text-[13px] mt-1 font-medium">白天當沖被修理，晚上留下來加班看盤；不求暴富，只求換個便當與湊齊離職自由金。</p>
       </div>
-      <span id="learningPhase" class="phase-badge px-2.5 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 font-mono text-xs font-bold" role="status">等待學習資料</span>
+      <span id="learningPhase" class="phase-badge px-3 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 font-mono text-xs font-bold" role="status">等待學習資料</span>
     </div>
     
-    <div class="learning-numbers grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 my-4">
-      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-2.5 rounded-xl">
-        <span class="text-[11px] text-[#64748B] block">累積血汗進修日</span>
+    <div class="learning-numbers grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 my-4">
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3.5 rounded-xl flex flex-col justify-between min-h-[96px] gap-1">
+        <span class="text-xs sm:text-[13px] font-semibold text-[#64748B] tracking-wide block">累積血汗進修日</span>
         <strong id="learnDays" class="text-2xl font-bold font-mono text-[#F59E0B] block my-0.5">—</strong>
-        <small class="text-[9px] text-[#64748B] block">同一交易日只計一次</small>
+        <span class="text-xs text-[#64748B] block mt-1 leading-normal font-medium">同一交易日只計一次</span>
       </div>
-      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-2.5 rounded-xl">
-        <span class="text-[11px] text-[#64748B] block">今日摸魚推薦</span>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3.5 rounded-xl flex flex-col justify-between min-h-[96px] gap-1">
+        <span class="text-xs sm:text-[13px] font-semibold text-[#64748B] tracking-wide block">今日摸魚推薦</span>
         <strong id="learnStocks" class="text-2xl font-bold font-mono text-[#F1F5F9] block my-0.5">—</strong>
-        <small class="text-[9px] text-[#64748B] block">當沖引擎觸發推薦檔數</small>
+        <span class="text-xs text-[#64748B] block mt-1 leading-normal font-medium">當沖引擎觸發推薦檔數</span>
       </div>
-      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-2.5 rounded-xl">
-        <span class="text-[11px] text-[#64748B] block">盤中盯盤記錄</span>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3.5 rounded-xl flex flex-col justify-between min-h-[96px] gap-1">
+        <span class="text-xs sm:text-[13px] font-semibold text-[#64748B] tracking-wide block">盤中盯盤記錄</span>
         <strong id="learnObserved" class="text-2xl font-bold font-mono text-[#F1F5F9] block my-0.5">—</strong>
-        <small class="text-[9px] text-[#64748B] block">主力急漲急跌留痕檔數</small>
+        <span class="text-xs text-[#64748B] block mt-1 leading-normal font-medium">主力急漲急跌留痕檔數</span>
       </div>
-      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-2.5 rounded-xl">
-        <span class="text-[11px] text-[#64748B] block">收盤復盤學會</span>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3.5 rounded-xl flex flex-col justify-between min-h-[96px] gap-1">
+        <span class="text-xs sm:text-[13px] font-semibold text-[#64748B] tracking-wide block">收盤復盤學會</span>
         <strong id="learnLearned" class="text-2xl font-bold font-mono text-[#06B6D4] block my-0.5">—</strong>
-        <small class="text-[9px] text-[#64748B] block">完整有效標記的不重複股票</small>
+        <span class="text-xs text-[#64748B] block mt-1 leading-normal font-medium">完整有效標記的不重複股票</span>
       </div>
-      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-2.5 rounded-xl">
-        <span class="text-[11px] text-[#64748B] block">有效自救樣本</span>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3.5 rounded-xl flex flex-col justify-between min-h-[96px] gap-1">
+        <span class="text-xs sm:text-[13px] font-semibold text-[#64748B] tracking-wide block">有效自救樣本</span>
         <strong id="learnSamples" class="text-2xl font-bold font-mono text-[#F1F5F9] block my-0.5">—</strong>
-        <small class="text-[9px] text-[#64748B] block">含進場急漲、停損出場特徵</small>
+        <span class="text-xs text-[#64748B] block mt-1 leading-normal font-medium">含進場急漲、停損出場特徵</span>
       </div>
-      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-2.5 rounded-xl">
-        <span class="text-[11px] text-[#64748B] block">行情報價收集</span>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3.5 rounded-xl flex flex-col justify-between min-h-[96px] gap-1">
+        <span class="text-xs sm:text-[13px] font-semibold text-[#64748B] tracking-wide block">行情報價收集</span>
         <strong id="learnCoverage" class="text-2xl font-bold font-mono text-emerald-400 block my-0.5">—</strong>
-        <small id="learnCoverageNote" class="text-[9px] text-[#64748B] block">等待收盤報告</small>
+        <span id="learnCoverageNote" class="text-xs text-[#64748B] block mt-1 leading-normal font-medium">等待收盤報告</span>
       </div>
     </div>
 
@@ -737,7 +739,7 @@
   <!-- =====================================================
        DISCLAIMER
        ===================================================== -->
-  <section class="disclaimer text-[11px] text-[#64748B] leading-relaxed p-4 rounded-xl bg-[#0B0F17] border border-[#232F42] my-6">
+  <section class="disclaimer text-xs sm:text-[13px] text-[#64748B] leading-relaxed p-5 rounded-2xl bg-[#0B0F17] border border-[#232F42] my-6 shadow-sm">
     <div class="font-bold text-[#F1F5F9] mb-1 flex items-center gap-1.5">
       <span class="material-symbols-outlined text-[15px] text-[#F59E0B]">gavel</span>
       <span>社畜看盤免責條款 & 量化隔離說明</span>
@@ -794,7 +796,7 @@
 
           <span
             id="modalCategory"
-            class="text-[10px] px-2 py-0.5 rounded border muted-border text-sub">
+            class="text-xs px-2.5 py-1 rounded-md border muted-border text-sub font-medium">
             --
           </span>
 
@@ -802,7 +804,7 @@
 
         <div
           id="modalSubTitle"
-          class="text-[10px] text-sub font-mono mt-1">
+          class="text-xs text-sub font-mono mt-1 font-medium">
           --
         </div>
 
@@ -815,7 +817,7 @@
           id="modalYahooLink"
           target="_blank"
           rel="noopener noreferrer"
-          class="btn text-[10px] px-2.5 py-1.5 rounded-lg">
+          class="btn text-xs px-3 py-1.5 rounded-lg font-semibold">
 
           Yahoo ↗
 
@@ -874,19 +876,19 @@
 
               <div>
 
-                <div class="text-[10px] text-sub">
+                <div class="text-xs text-sub font-medium">
                   策略排序分（不是勝率）
                 </div>
 
                 <div
                   id="scoreLabel"
-                  class="text-sm font-bold text-main mt-1">
+                  class="text-sm sm:text-base font-bold text-main mt-1">
                   --
                 </div>
 
                 <div
                   id="scoreQuality"
-                  class="text-[10px] text-sub mt-1">
+                  class="text-xs text-sub mt-1 font-mono font-medium">
                   --
                 </div>
 
@@ -907,9 +909,9 @@
       </div>
 
 
-      <div class="panel rounded-xl p-3">
+      <div class="panel rounded-xl p-3.5">
 
-        <div class="text-xs font-bold text-main mb-2">
+        <div class="text-xs sm:text-sm font-bold text-main mb-2">
           基本面／估值
         </div>
 
@@ -921,15 +923,15 @@
       </div>
 
 
-      <div class="panel rounded-xl p-3">
+      <div class="panel rounded-xl p-3.5">
 
-        <div class="text-xs font-bold text-main mb-2">
+        <div class="text-xs sm:text-sm font-bold text-main mb-2">
           量化模型入選理由
         </div>
 
         <div
           id="modalReason"
-          class="text-[11px] text-sub leading-relaxed space-y-1.5">
+          class="text-xs sm:text-[13px] text-sub leading-relaxed space-y-2 font-medium">
         </div>
 
       </div>
@@ -2502,7 +2504,7 @@
 
       c.innerHTML =
         `
-        <div class="text-[11px] text-sub text-center py-8">
+        <div class="text-xs sm:text-sm text-sub text-center py-8">
           無合格標的，或必要資料不足；不以其他股票補名單
         </div>
         `;
@@ -2524,29 +2526,29 @@
             return `
               <div
                 role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="openStockDetail('${s.symbol}','${x.strategy}')"
-                class="cursor-pointer rounded-xl border muted-border p-2.5 surface hover:translate-y-[-1px] transition">
+                class="cursor-pointer rounded-xl border muted-border p-3.5 surface hover:translate-y-[-1px] transition">
 
-                <div class="flex justify-between gap-2">
+                <div class="flex justify-between gap-2.5">
 
                   <div class="min-w-0">
 
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex items-center gap-2">
 
-                      <span class="text-[9px] text-sub">
+                      <span class="text-xs text-sub font-mono font-medium">
                         #${idx + 1}
                       </span>
 
-                      <span class="font-bold text-xs text-main truncate">
+                      <span class="font-bold text-sm text-main truncate">
                         ${escapeHtml(s.name)}
                       </span>
 
-                      <span class="text-[9px] text-sub">
+                      <span class="text-xs text-sub font-mono">
                         ${escapeHtml(s.symbol)}
                       </span>
 
                     </div>
 
-                    <div class="text-[9px] text-sub mt-1">
+                    <div class="text-xs text-sub mt-1.5 leading-normal">
                       ${strategyName(x.strategy)}
                       ·
                       資料完整度 ${fmt(s.dataQuality, 0)}%
@@ -2558,11 +2560,11 @@
 
                   <div class="text-right shrink-0">
 
-                    <div class="text-sm font-bold text-main">
+                    <div class="text-sm sm:text-base font-bold text-main">
                       ${fmt(s.price, 2)}
                     </div>
 
-                    <div class="text-[9px] metric-good">
+                    <div class="text-xs font-semibold metric-good mt-0.5">
                       排序分 ${x.confidence}
                     </div>
 
@@ -2786,11 +2788,11 @@
                     : ""
                 } rounded-xl border muted-border p-2.5 surface hover:translate-y-[-1px] transition">
 
-                <div class="flex justify-between gap-2">
+                <div class="flex justify-between gap-2.5">
 
                   <div>
 
-                    <div class="text-[9px] text-sub">
+                    <div class="text-xs text-sub font-mono font-medium">
                       #${idx + 1}
                       ·
                       ${
@@ -2800,11 +2802,11 @@
                       }
                     </div>
 
-                    <div class="font-bold text-xs text-main mt-1">
+                    <div class="font-bold text-sm text-main mt-1">
 
                       ${escapeHtml(x.name)}
 
-                      <span class="text-[9px] text-sub">
+                      <span class="text-xs text-sub font-mono">
                         ${escapeHtml(x.symbol)}
                       </span>
 
@@ -2815,11 +2817,11 @@
 
                   <div class="text-right">
 
-                    <div class="text-sm font-bold text-main">
+                    <div class="text-sm sm:text-base font-bold text-main">
                       ${fmt(x.price, 2)}
                     </div>
 
-                    <div class="text-[9px] metric-good">
+                    <div class="text-xs font-semibold metric-good mt-0.5">
                       線型 ${score ?? "--"}
                     </div>
 
@@ -2828,7 +2830,7 @@
                 </div>
 
 
-                <div class="flex flex-wrap gap-1 mt-2">
+                <div class="flex flex-wrap gap-1.5 mt-2.5">
 
                   ${reasons
                     .slice(0, 3)
@@ -2836,7 +2838,7 @@
                       r =>
                         `
                         <span
-                          class="text-[8px] px-1.5 py-0.5 rounded border muted-border text-main">
+                          class="text-xs px-2 py-0.5 rounded border muted-border text-main font-medium">
 
                           ${escapeHtml(r)}
 
@@ -2849,7 +2851,7 @@
                 </div>
 
 
-                <div class="grid grid-cols-3 gap-1 mt-2 text-[8px]">
+                <div class="grid grid-cols-3 gap-2 mt-2.5 text-xs">
 
                   <div>
 
@@ -2857,7 +2859,7 @@
                       VWAP
                     </span>
 
-                    <div class="text-main">
+                    <div class="text-main font-mono font-semibold">
                       ${
                         x.vwap == null
                           ? "N/A"
@@ -2874,7 +2876,7 @@
                       量比
                     </span>
 
-                    <div class="text-main">
+                    <div class="text-main font-mono font-semibold">
                       ${
                         x.volume_ratio == null
                           ? "N/A"
@@ -2894,7 +2896,7 @@
                       15m趨勢
                     </span>
 
-                    <div class="text-main">
+                    <div class="text-main font-mono font-semibold">
                       ${
                         x.fifteen_trend == null
                           ? "N/A"
@@ -2911,17 +2913,17 @@
 
 
                 <div
-                  class="mt-2 pt-2 border-t muted-border">
+                  class="mt-2.5 pt-2 border-t muted-border">
 
                   <div class="grid grid-cols-2 gap-2">
 
                     <div>
 
-                      <div class="text-[8px] text-sub">
+                      <div class="text-xs text-sub">
                         首次出現
                       </div>
 
-                      <div class="text-[9px] text-main font-mono">
+                      <div class="text-xs text-main font-mono font-medium">
                         ${
                           x.first_seen_at
                             ? firstSeen
@@ -2934,11 +2936,11 @@
 
                     <div>
 
-                      <div class="text-[8px] text-sub">
+                      <div class="text-xs text-sub">
                         最後掃描
                       </div>
 
-                      <div class="text-[9px] text-main font-mono">
+                      <div class="text-xs text-main font-mono font-medium">
                         ${lastSeen}
                       </div>
 
@@ -2947,7 +2949,7 @@
                   </div>
 
 
-                  <div class="text-[8px] text-main mt-1">
+                  <div class="text-xs text-main mt-1.5 font-medium">
 
                     ⏱ 持續
                     ${durationText}
@@ -2957,7 +2959,7 @@
                 </div>
 
 
-                <div class="text-[8px] text-main mt-2">
+                <div class="text-xs text-main mt-2 font-medium">
 
                   ⚠
                   ${escapeHtml(risk)}
@@ -3217,7 +3219,7 @@
       }
 
       container.innerHTML = `
-        <div class="text-[11px] text-sub text-center py-8">
+        <div class="text-xs sm:text-sm text-sub text-center py-8 font-medium">
           ${message}
         </div>
       `;
@@ -3320,14 +3322,14 @@
               : [];
 
           return `
-            <div class="rounded-xl border muted-border p-3 surface trade-detail-card" role="button" tabindex="0" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(x.name || x.symbol)} 當日K線與選股原因">
+            <div class="rounded-xl border muted-border p-3.5 sm:p-4 surface trade-detail-card" role="button" tabindex="0" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(x.name || x.symbol)} 當日K線與選股原因">
 
-              <div class="flex items-start justify-between gap-2">
+              <div class="flex items-start justify-between gap-2.5">
 
                 <div>
-                  <div class="flex items-center gap-1.5">
+                  <div class="flex items-center gap-2 flex-wrap">
 
-                    <span class="font-bold text-sm text-main">
+                    <span class="font-bold text-base text-main">
                       ${escapeHtml(
                         x.name
                         ||
@@ -3335,13 +3337,13 @@
                       )}
                     </span>
 
-                    <span class="text-[9px] text-sub">
+                    <span class="text-xs text-sub font-mono font-medium">
                       ${escapeHtml(
                         x.symbol
                       )}
                     </span>
 
-                    <span class="text-[8px] border rounded px-1.5 py-0.5 ${statusClass}">
+                    <span class="text-xs font-semibold border rounded-md px-2 py-0.5 ${statusClass}">
                       ${
                         isOpen
                           ? "OPEN · 持倉中"
@@ -3351,7 +3353,7 @@
 
                   </div>
 
-                  <div class="text-[9px] text-sub mt-1">
+                  <div class="text-xs text-sub mt-1.5 leading-normal font-medium">
                     ${
                       isOpen
                         ? "Shioaji 即時監控中"
@@ -3365,8 +3367,8 @@
                 </div>
 
 
-                <div class="text-right">
-                  <div class="text-sm font-bold text-main">
+                <div class="text-right shrink-0">
+                  <div class="text-base sm:text-lg font-bold text-main font-mono">
                     ${
                       displayPrice !== null
                         ? fmt(
@@ -3377,7 +3379,7 @@
                     }
                   </div>
 
-                  <div class="text-[11px] font-bold ${pnlClass}">
+                  <div class="text-xs sm:text-sm font-bold ${pnlClass} mt-0.5">
                     ${pnlText}
                   </div>
                 </div>
@@ -3385,12 +3387,12 @@
               </div>
 
 
-              <div class="grid grid-cols-2 gap-2 mt-3 text-[9px]">
+              <div class="grid grid-cols-2 gap-2.5 mt-3 text-xs">
 
-                <div class="rounded-lg border muted-border p-2">
-                  <div class="text-sub">進場</div>
+                <div class="rounded-lg border muted-border p-2.5">
+                  <div class="text-sub font-medium">進場</div>
 
-                  <div class="text-main font-mono mt-1">
+                  <div class="text-sm font-bold text-main font-mono mt-1">
                     ${
                       entry !== null
                         ? fmt(
@@ -3401,7 +3403,7 @@
                     }
                   </div>
 
-                  <div class="text-main mt-0.5">
+                  <div class="text-xs text-main font-mono mt-1">
                     ${
                       x.entry_time
                         ? formatTaiwanDateTime(
@@ -3413,8 +3415,8 @@
                 </div>
 
 
-                <div class="rounded-lg border muted-border p-2">
-                  <div class="text-sub">
+                <div class="rounded-lg border muted-border p-2.5">
+                  <div class="text-sub font-medium">
                     ${
                       isOpen
                         ? "目前 / 最高"
@@ -3422,7 +3424,7 @@
                     }
                   </div>
 
-                  <div class="text-main font-mono mt-1">
+                  <div class="text-sm font-bold text-main font-mono mt-1">
                     ${
                       isOpen
                         ? `${
@@ -3453,7 +3455,7 @@
                     }
                   </div>
 
-                  <div class="text-main mt-0.5">
+                  <div class="text-xs text-main font-mono mt-1">
                     ${
                       isOpen
                         ? (
@@ -3483,11 +3485,11 @@
                 &&
                 x.entry_score != null
                   ? `
-                    <div class="text-[9px] text-main mt-2">
+                    <div class="text-xs text-main mt-2.5 font-medium leading-normal">
                       AI 模型分數（非勝率）：
-                      ${escapeHtml(
+                      <span class="font-mono font-bold">${escapeHtml(
                         x.entry_score
-                      )}
+                      )}</span>
                     </div>
                   `
                   : ""
@@ -3499,12 +3501,12 @@
                 &&
                 x.trailing_stop != null
                   ? `
-                    <div class="text-[9px] text-main mt-1">
+                    <div class="text-xs text-main mt-1.5 font-medium leading-normal">
                       移動停利：
-                      ${fmt(
+                      <span class="font-mono font-bold">${fmt(
                         x.trailing_stop,
                         2
-                      )}
+                      )}</span>
                     </div>
                   `
                   : ""
@@ -3514,7 +3516,7 @@
               ${
                 reasons.length
                   ? `
-                    <div class="flex flex-wrap gap-1 mt-2">
+                    <div class="flex flex-wrap gap-1.5 mt-2.5">
                       ${
                         reasons
                         .slice(
@@ -3523,7 +3525,7 @@
                         )
                         .map(
                           reason => `
-                            <span class="text-[8px] rounded border muted-border px-1.5 py-0.5 text-main">
+                            <span class="text-xs rounded-md border muted-border px-2 py-0.5 text-main font-medium">
                               ✓ ${escapeHtml(reason)}
                             </span>
                           `
@@ -3541,18 +3543,18 @@
                 &&
                 x.mfe_pct != null
                   ? `
-                    <div class="grid grid-cols-2 gap-2 mt-2 text-[8px] text-sub">
+                    <div class="grid grid-cols-2 gap-2 mt-2.5 text-xs text-sub font-medium py-1 px-2 rounded-lg bg-black/5 dark:bg-white/5">
 
                       <div>
                         最高浮盈
-                        <span class="${marketClass(x.mfe_pct)}">
+                        <span class="font-bold ${marketClass(x.mfe_pct)}">
                           ${Number(x.mfe_pct).toFixed(2)}%
                         </span>
                       </div>
 
                       <div>
                         最大浮虧
-                        <span class="${marketClass(x.mae_pct)}">
+                        <span class="font-bold ${marketClass(x.mae_pct)}">
                           ${Number(x.mae_pct).toFixed(2)}%
                         </span>
                       </div>
@@ -3858,13 +3860,13 @@
         .map(
           ([label, value]) =>
             `
-            <div class="panel rounded-lg p-2">
+            <div class="panel rounded-xl p-2.5">
 
-              <div class="text-[9px] text-sub">
+              <div class="text-xs text-sub font-medium">
                 ${label}
               </div>
 
-              <div class="text-xs font-bold text-main mt-1">
+              <div class="text-sm font-bold text-main font-mono mt-1">
                 ${value}
               </div>
 
@@ -3979,13 +3981,13 @@
         .map(
           ([label, value]) =>
             `
-            <div class="panel rounded-lg p-2">
+            <div class="panel rounded-xl p-2.5">
 
-              <div class="text-[9px] text-sub">
+              <div class="text-xs text-sub font-medium">
                 ${label}
               </div>
 
-              <div class="text-sm font-bold ${label === '平均報酬' ? marketClass(bt.avg_return) : 'text-main'} mt-1">
+              <div class="text-sm font-bold font-mono ${label === '平均報酬' ? marketClass(bt.avg_return) : 'text-main'} mt-1">
                 ${value}
               </div>
 
