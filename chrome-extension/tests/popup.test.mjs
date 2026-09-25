@@ -200,38 +200,46 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.ok(brokerSelect);
   assert.equal(brokerSelect.value, 'sinopac');
 
-  // 切換到當沖頁籤，驗證有下單按鈕且為永豐下單
+  // 驗證視覺化卡片清單已正確渲染
+  const brokerCards = w.document.querySelectorAll('#broker-card-grid .broker-choice-card');
+  assert.ok(brokerCards.length >= 6);
+  assert.match(w.document.getElementById('current-broker-badge').textContent, /🔴\s*永豐金證券/);
+
+  // 切換到當沖頁籤，驗證有下單按鈕且為永豐下單（含專屬紅圈圖示）
   w.document.querySelector('[data-group="daytrade"]').click();
   const daytradeOrderBtns = w.document.querySelectorAll('#stock-list-container .btn-broker-order');
   assert.ok(daytradeOrderBtns.length > 0);
-  assert.match(daytradeOrderBtns[0].textContent, /永豐/);
+  assert.match(daytradeOrderBtns[0].textContent, /🔴\s*永豐/);
 
-  // 點擊當沖下單按鈕
+  // 點擊當沖下單按鈕（應跳轉至新理財網有效個股頁面）
   daytradeOrderBtns[0].click();
   await new Promise(r => setTimeout(r, 0));
   assert.ok(openedTabs.length > 0);
-  assert.match(openedTabs.at(-1).url, /sinotrade\.com\.tw.*code=/);
+  assert.match(openedTabs.at(-1).url, /sinotrade\.com\.tw\/newweb\/TradingCenter_TWStocks_Stock\/\?code=/);
 
-  // 切換券商為富邦證券
-  brokerSelect.value = 'fubon';
-  brokerSelect.dispatchEvent(new w.Event('change'));
+  // 點擊富邦證券卡片切換
+  const fubonCard = Array.from(brokerCards).find(c => c.getAttribute('data-broker-id') === 'fubon');
+  assert.ok(fubonCard);
+  fubonCard.click();
   await new Promise(r => setTimeout(r, 0));
   assert.equal(messages.at(-1).strategy, 'preferredBroker');
   assert.equal(messages.at(-1).value, 'fubon');
+  assert.match(w.document.getElementById('current-broker-badge').textContent, /🔵\s*富邦/);
 
-  // 切換到觸底反彈頁籤，驗證按鈕文字變為富邦
+  // 切換到觸底反彈頁籤，驗證按鈕文字變為富邦（含專屬藍圈圖示）
   w.document.querySelector('[data-group="rebound"]').click();
   const reboundOrderBtns = w.document.querySelectorAll('#stock-list-container .btn-broker-order');
   assert.ok(reboundOrderBtns.length > 0);
-  assert.match(reboundOrderBtns[0].textContent, /富邦/);
+  assert.match(reboundOrderBtns[0].textContent, /🔵\s*富邦/);
 
   // 點擊反彈的下單按鈕
   reboundOrderBtns[0].click();
   await new Promise(r => setTimeout(r, 0));
-  assert.match(openedTabs.at(-1).url, /fubon-ebrokerdj\.fbs\.com\.tw.*a=/);
+  assert.match(openedTabs.at(-1).url, /fubon-ebrokerdj\.fbs\.com\.tw\/Z\/ZC\/ZCA\/ZCA\.djhtm\?a=/);
 
   w.document.getElementById('btn-close-settings').click();
   assert.equal(w.document.getElementById('settings-panel').inert, true);
+  await new Promise(r => setTimeout(r, 200));
   dom.window.close();
 });
 

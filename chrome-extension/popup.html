@@ -228,21 +228,28 @@
         </div>
 
         <!-- 常用下單券商捷徑 (支援情境 A 網址直通下單與自動複製股票代號) -->
-        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-2">
+        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-2.5">
           <div class="flex items-center justify-between">
             <span class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
               <span>🚀</span> <span>常用下單券商捷徑</span>
             </span>
-            <span class="text-[10px] text-sky-700 bg-sky-100 px-1.5 py-0.2 rounded font-semibold">直通下單</span>
+            <span id="current-broker-badge" class="text-[10px] text-white bg-red-600 px-2 py-0.5 rounded font-bold shadow-2xs">🔴 永豐金證券</span>
           </div>
-          <p class="text-[10px] text-slate-400">當沖與觸底反彈標的點擊「下單」時，自動開啟指定券商頁面並複製股票代號。</p>
-          <div class="flex items-center justify-between pt-1">
-            <span class="text-slate-700 font-medium text-[11px]">預設跳轉券商：</span>
-            <select id="select-preferred-broker" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-800 focus:outline-none focus:border-slate-600 font-medium cursor-pointer shadow-2xs">
+          <p class="text-[10px] text-slate-500">在「當沖」與「觸底反彈」點擊下單時，自動開啟所選券商官方頁面並複製股票代號。</p>
+          
+          <!-- 視覺化券商圖示切換清單 -->
+          <div id="broker-card-grid" class="grid grid-cols-2 gap-1.5 pt-1">
+            <!-- 由 popup.js 動態渲染券商卡片 -->
+          </div>
+
+          <div class="hidden">
+            <select id="select-preferred-broker">
               <option value="sinopac">永豐金證券 (大戶投)</option>
               <option value="fubon">富邦證券 (e點通)</option>
               <option value="yuanta">元大證券 (投資先生)</option>
               <option value="cathay">國泰證券 (數位證券)</option>
+              <option value="kgi">凱基證券 (隨身e策略)</option>
+              <option value="esun">玉山證券 (A+理財贏家)</option>
             </select>
           </div>
         </div>

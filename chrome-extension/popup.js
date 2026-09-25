@@ -1,7 +1,7 @@
 import { SYMBOL, GROUPS, finite, fresh, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, fetchStockClosingQuotes, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, BROKERS, getBroker } from './core.js';
 import { icons } from './icons.js';
 
-const $ = id => document.getElementById(id);
+const $ = id => (typeof document !== 'undefined' && document ? document.getElementById(id) : null);
 let view, group = 'watchlist', pending = false;
 let searchDebounce = null;
 let enriching = false;
@@ -202,12 +202,12 @@ function openBrokerOrder(symbol, market = 'TW', name = '') {
     window.open(targetUrl, '_blank');
   }
 
-  // 3. 顯示即時 In-App 彈窗與狀態列提示
+  // 3. 顯示即時 In-App 彈窗與狀態列提示（附帶券商圖示與完整說明）
   showInAppToast({
-    badgeText: `🚀 ${broker.shortName}下單`,
-    badgeColor: 'bg-red-600',
+    badgeText: `${broker.icon || '🚀'} ${broker.name}`,
+    badgeColor: broker.badgeColor || 'bg-red-600',
     titleText: `${symbol} ${name || ''} 捷徑下單跳轉`,
-    bodyText: `已為您自動複製股票代號「${symbol}」，並開啟 ${broker.name} 官方網頁。`,
+    bodyText: `已為您自動複製股票代號「${symbol}」，並為您開啟 ${broker.name}（${broker.appDesc || ''}）官方頁面。`,
     symbol,
     market,
     name: name || symbol
@@ -698,7 +698,7 @@ function renderDaytrade(list, isCompact) {
     rightData.append(chartBtn);
 
     const broker = getBroker(view.settings?.preferredBroker);
-    const orderBtn = el('button', `🚀 ${broker.shortName}下單 ↗`, 'btn-broker-order text-[11px] bg-red-600 hover:bg-red-700 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0');
+    const orderBtn = el('button', `${broker.icon || '🚀'} ${broker.shortName}下單 ↗`, `btn-broker-order text-[11px] ${broker.badgeColor || 'bg-red-600'} hover:opacity-90 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0`);
     orderBtn.title = `點擊複製 ${sym} 並前往 ${broker.name} 下單`;
     orderBtn.onclick = (e) => {
       e.preventDefault();
@@ -783,7 +783,7 @@ function renderDaytrade(list, isCompact) {
     rightData.append(chartBtn);
 
     const broker = getBroker(view.settings?.preferredBroker);
-    const orderBtn = el('button', `🚀 ${broker.shortName} ↗`, 'btn-broker-order text-[11px] bg-slate-700 hover:bg-slate-800 text-white font-semibold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0');
+    const orderBtn = el('button', `${broker.icon || '🚀'} ${broker.shortName} ↗`, 'btn-broker-order text-[11px] bg-slate-700 hover:bg-slate-800 text-white font-semibold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0');
     orderBtn.title = `點擊複製 ${sym} 並前往 ${broker.name} 查看`;
     orderBtn.onclick = (e) => {
       e.preventDefault();
@@ -884,7 +884,7 @@ function renderRebound(list, isCompact) {
     rightPct.append(chartBtn);
 
     const broker = getBroker(view.settings?.preferredBroker);
-    const orderBtn = el('button', `🚀 ${broker.shortName}下單 ↗`, 'btn-broker-order text-[11px] bg-purple-600 hover:bg-purple-700 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0');
+    const orderBtn = el('button', `${broker.icon || '🚀'} ${broker.shortName}下單 ↗`, `btn-broker-order text-[11px] ${broker.badgeColor || 'bg-purple-600'} hover:opacity-90 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0`);
     orderBtn.title = `點擊複製 ${sym} 並前往 ${broker.name} 下單`;
     orderBtn.onclick = (e) => {
       e.preventDefault();
@@ -904,7 +904,60 @@ function renderRebound(list, isCompact) {
   }
 }
 
+function renderBrokerSelector() {
+  const container = $('broker-card-grid');
+  const currentId = view?.settings?.preferredBroker || 'sinopac';
+  const currentBroker = getBroker(currentId);
+
+  const badge = $('current-broker-badge');
+  if (badge) {
+    badge.textContent = `${currentBroker.icon || '🚀'} ${currentBroker.name}`;
+    badge.className = `text-[10px] px-2 py-0.5 rounded font-bold text-white shadow-2xs ${currentBroker.badgeColor || 'bg-red-600'}`;
+  }
+
+  const select = $('select-preferred-broker');
+  if (select && select.value !== currentId) {
+    select.value = currentId;
+  }
+
+  if (!container) return;
+  container.replaceChildren();
+
+  for (const b of BROKERS) {
+    const isSelected = b.id === currentId;
+    const card = el('button', '', `broker-choice-card text-left p-2 rounded-lg border transition cursor-pointer flex flex-col justify-between ${isSelected ? 'border-sky-500 bg-sky-50/50 ring-1 ring-sky-500 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`);
+    card.setAttribute('type', 'button');
+    card.setAttribute('data-broker-id', b.id);
+    card.title = `切換為 ${b.name}`;
+
+    const top = el('div', '', 'flex items-center justify-between w-full');
+    const left = el('div', '', 'flex items-center gap-1.5 font-bold text-xs text-slate-800');
+    left.append(el('span', b.icon || '🚀', 'text-sm leading-none'));
+    left.append(el('span', b.shortName, 'truncate'));
+    top.append(left);
+
+    if (isSelected) {
+      top.append(el('span', '✓', 'text-[11px] font-extrabold text-sky-600 shrink-0'));
+    }
+    card.append(top);
+
+    const desc = el('span', b.appDesc || '', `text-[9px] truncate block mt-1 ${isSelected ? 'text-sky-700 font-semibold' : 'text-slate-400'}`);
+    card.append(desc);
+
+    card.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (select) {
+        select.value = b.id;
+        select.dispatchEvent(new Event('change'));
+      }
+    });
+
+    container.append(card);
+  }
+}
+
 function render() {
+  renderBrokerSelector();
   $('market-status-dot').className = `h-2 w-2 rounded-full ${view.marketOpen && !view.error ? 'bg-emerald-500' : 'bg-slate-400'}`;
   $('market-status-dot').title = view.vm ? 'VM 隔離示例；不自動交易推播' : view.marketOpen ? '盤中排程；報價時間請看個股' : '休市／非盤中時段';
   for (const key of GROUPS) {
@@ -1138,10 +1191,12 @@ function updateSuggestions() {
 
   clearTimeout(searchDebounce);
   searchDebounce = setTimeout(async () => {
-    const cur = $('input-search').value.trim();
+    const inputEl = $('input-search');
+    if (!inputEl) return;
+    const cur = inputEl.value.trim();
     if (cur !== q || !cur) return;
     const onlineList = await searchOnlineStocks(cur);
-    if ($('input-search').value.trim() === cur) {
+    if ($('input-search')?.value.trim() === cur) {
       const merged = searchStocks(cur, view.quotes || {});
       renderSuggestionItems(merged);
     }

@@ -429,10 +429,60 @@ export function matchFilter(price, changePct, settings) {
 }
 
 export const BROKERS = [
-  { id: 'sinopac', name: '永豐金證券', shortName: '永豐', url: sym => `https://www.sinotrade.com.tw/Stock/Stock_Instant/Instant?code=${encodeURIComponent(sym)}` },
-  { id: 'fubon', name: '富邦證券', shortName: '富邦', url: sym => `https://fubon-ebrokerdj.fbs.com.tw/z/zk/zkde/zkde.djhtm?a=${encodeURIComponent(sym)}` },
-  { id: 'yuanta', name: '元大證券', shortName: '元大', url: sym => `https://www.yuanta.com.tw/Investment/Stock/StockInfo?symbol=${encodeURIComponent(sym)}` },
-  { id: 'cathay', name: '國泰證券', shortName: '國泰', url: sym => `https://www.cathaysec.com.tw/` }
+  {
+    id: 'sinopac',
+    name: '永豐金證券',
+    shortName: '永豐',
+    icon: '🔴',
+    badgeColor: 'bg-red-600',
+    appDesc: '大戶投 / 新理財網',
+    url: sym => `https://www.sinotrade.com.tw/newweb/TradingCenter_TWStocks_Stock/?code=${encodeURIComponent(sym)}`
+  },
+  {
+    id: 'fubon',
+    name: '富邦證券',
+    shortName: '富邦',
+    icon: '🔵',
+    badgeColor: 'bg-sky-600',
+    appDesc: 'e點通 / MoneyDJ即時',
+    url: sym => `https://fubon-ebrokerdj.fbs.com.tw/Z/ZC/ZCA/ZCA.djhtm?a=${encodeURIComponent(sym)}`
+  },
+  {
+    id: 'yuanta',
+    name: '元大證券',
+    shortName: '元大',
+    icon: '🟠',
+    badgeColor: 'bg-amber-600',
+    appDesc: '投資先生 / eYuanta',
+    url: sym => `https://www.yuanta.com.tw/eyuanta/`
+  },
+  {
+    id: 'cathay',
+    name: '國泰證券',
+    shortName: '國泰',
+    icon: '🟢',
+    badgeColor: 'bg-emerald-600',
+    appDesc: '數位證券官方平台',
+    url: sym => `https://www.cathaysec.com.tw/cathaysec/`
+  },
+  {
+    id: 'kgi',
+    name: '凱基證券',
+    shortName: '凱基',
+    icon: '🟣',
+    badgeColor: 'bg-indigo-600',
+    appDesc: '隨身e策略 / 官方交易',
+    url: sym => `https://www.kgi.com.tw/`
+  },
+  {
+    id: 'esun',
+    name: '玉山證券',
+    shortName: '玉山',
+    icon: '🟩',
+    badgeColor: 'bg-teal-600',
+    appDesc: 'A+理財贏家官方平台',
+    url: sym => `https://www.esunsec.com.tw/`
+  }
 ];
 
 export function getBroker(id) {

@@ -202,18 +202,20 @@ test('calcChangePct calculates percentage from change_pct, change, or previous_c
 });
 
 test('BROKERS definitions, URL generation, and fallback', () => {
-  assert.ok(BROKERS.length >= 4);
+  assert.ok(BROKERS.length >= 6);
   const sinopac = getBroker('sinopac');
   assert.equal(sinopac.id, 'sinopac');
-  assert.ok(sinopac.url('2330').includes('code=2330'));
+  assert.equal(sinopac.icon, '🔴');
+  assert.ok(sinopac.url('2330').includes('TradingCenter_TWStocks_Stock/?code=2330'));
 
   const fubon = getBroker('fubon');
   assert.equal(fubon.id, 'fubon');
-  assert.ok(fubon.url('2454').includes('a=2454'));
+  assert.equal(fubon.icon, '🔵');
+  assert.ok(fubon.url('2454').includes('ZCA.djhtm?a=2454'));
 
   const yuanta = getBroker('yuanta');
   assert.equal(yuanta.id, 'yuanta');
-  assert.ok(yuanta.url('2603').includes('symbol=2603'));
+  assert.ok(yuanta.url('2603').includes('eyuanta'));
 
   const fallback = getBroker('unknown_broker');
   assert.equal(fallback.id, 'sinopac');
