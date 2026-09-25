@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "EasyStock 台股策略監控",
+  "name": "當沖吧！牛馬仔 - 工位摸魚看盤神器 ｜ 台股 AI 量化雷達",
   "version": "1.0.0",
   "minimum_chrome_version": "116",
-  "description": "台股自選、五分鐘策略訊號監控與桌面通知；不執行交易。",
+  "description": "上班摸魚不露餡！台股盤中爆量雷達、突破點火即時推播與自救量化分析，打工人專屬的桌面極速看盤室。",
   "permissions": ["storage", "alarms", "notifications"],
   "host_permissions": [
     "https://raw.githubusercontent.com/jimmyeyes03160729/easystock/*",
@@ -16,7 +16,7 @@
   "background": { "service_worker": "background.js", "type": "module" },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "EasyStock 台股策略監控",
+    "default_title": "當沖吧！牛馬仔 - 工位摸魚看盤神器",
     "default_icon": { "16": "assets/icon16.png", "48": "assets/icon48.png", "128": "assets/icon128.png" }
   },
   "icons": { "16": "assets/icon16.png", "48": "assets/icon48.png", "128": "assets/icon128.png" },
