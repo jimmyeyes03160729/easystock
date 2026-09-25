@@ -43,7 +43,7 @@ for (const size of [16, 48, 128]) {
   const existing = await readFile(iconPath).catch(() => null);
   if (!existing || existing.length === 0) await writeFile(iconPath, icon(size));
 }
-const files = ['manifest.json', 'popup.html', 'popup.js', 'chart.html', 'chart.js', 'background.js', 'content-script.js', 'core.js', 'environment.js', 'icons.js', 'config.json', 'github_config_schema.json', 'README.md', 'assets/popup.css', 'assets/TAILWIND-LICENSE.txt', 'assets/icon16.png', 'assets/icon48.png', 'assets/icon128.png'];
+const files = ['manifest.json', 'popup.html', 'popup.js', 'chart.html', 'chart.js', 'background.js', 'content-script.js', 'core.js', 'environment.js', 'icons.js', 'config.json', 'github_config_schema.json', 'README.md', 'assets/popup.css', 'assets/TAILWIND-LICENSE.txt', 'assets/icon16.png', 'assets/icon48.png', 'assets/icon128.png', 'assets/icon.svg'];
 for (const mode of ['production', 'vm']) {
   const out = resolve(root, 'dist', mode);
   await mkdir(join(out, 'assets'), { recursive: true });

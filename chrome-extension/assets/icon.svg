@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="100%" height="100%">
+  <!-- Transparent background variation with Golden Horns & High-Contrast Edges for Dark/Light Toolbar -->
+
+  <!-- Left Green Candlestick -->
+  <line x1="6" y1="15" x2="6" y2="25" stroke="#16A34A" stroke-width="1.5" stroke-linecap="round"/>
+  <rect x="4.5" y="17" width="3" height="6" rx="0.75" fill="#22C55E"/>
+
+  <!-- Center Ox Candlestick -->
+  <!-- Upper wick -->
+  <line x1="16" y1="3.5" x2="16" y2="8" stroke="#EF4444" stroke-width="1.75" stroke-linecap="round"/>
+
+  <!-- Distinct Golden Bull Horns (Pop out visibly on both black and white browser bars) -->
+  <path d="M 11.5 9 C 9 6.5, 8 4.5, 9.2 4 C 10.8 4, 11.8 6.5, 12.8 8 Z" fill="#F59E0B"/>
+  <path d="M 20.5 9 C 23 6.5, 24 4.5, 22.8 4 C 21.2 4, 20.2 6.5, 19.2 8 Z" fill="#F59E0B"/>
+
+  <!-- Red Candle Body -->
+  <rect x="11.5" y="8" width="9" height="12" rx="1.5" fill="#EF4444"/>
+
+  <!-- Corporate Dead Eyes (Tired / Overworked) -->
+  <rect x="13.2" y="11.5" width="2" height="1.2" fill="#18181B"/>
+  <rect x="16.8" y="11.5" width="2" height="1.2" fill="#18181B"/>
+
+  <!-- Tie as Lower Wick -->
+  <polygon points="15,20 17,20 16.7,21.5 15.3,21.5" fill="#991B1B"/>
+  <polygon points="15.3,21.5 14,24.5 14.5,28 16,30.5 17.5,28 18,24.5 16.7,21.5" fill="#DC2626"/>
+
+  <!-- Right Green Candlestick -->
+  <line x1="26" y1="7" x2="26" y2="20" stroke="#16A34A" stroke-width="1.5" stroke-linecap="round"/>
+  <rect x="24.5" y="10" width="3" height="7" rx="0.75" fill="#22C55E"/>
+</svg>
