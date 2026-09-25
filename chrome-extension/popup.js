@@ -172,7 +172,8 @@ function applyStealthMode(enabled) {
 }
 
 function openChartWindow(s, strategy = '') {
-  const winUrl = chrome.runtime.getURL(`chart.html?symbol=${encodeURIComponent(s.symbol)}&market=${encodeURIComponent(s.market)}&name=${encodeURIComponent(s.name || s.symbol)}&strategy=${encodeURIComponent(strategy)}`);
+  const priceParam = (s.price && Number.isFinite(Number(s.price))) ? `&price=${encodeURIComponent(s.price)}` : '';
+  const winUrl = chrome.runtime.getURL(`chart.html?symbol=${encodeURIComponent(s.symbol)}&market=${encodeURIComponent(s.market)}&name=${encodeURIComponent(s.name || s.symbol)}${priceParam}&strategy=${encodeURIComponent(strategy)}`);
   if (chrome.windows && typeof chrome.windows.create === 'function') {
     chrome.windows.create({ url: winUrl, type: 'popup', width: 960, height: 680, focused: true }).catch(() => {
       chrome.tabs.create({ url: winUrl });

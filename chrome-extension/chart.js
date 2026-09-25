@@ -6,6 +6,7 @@ const symbol = (params.get('symbol') || '2330').toUpperCase();
 const market = (params.get('market') || 'TW').toUpperCase();
 let stockName = params.get('name') || symbol;
 const strategyType = params.get('strategy') || '';
+const initPrice = parseFloat(params.get('price'));
 
 const canvas = document.getElementById('kline-canvas');
 const ctx = canvas.getContext('2d');
@@ -16,7 +17,15 @@ let currentMode = 'intraday'; // 'intraday' (當日分時 1分K) 或 'daily' (�
 let intradayData = [];
 let dailyData = [];
 let previousClose = null;
-let currentStockInfo = { price: 0, change_pct: 0, vwap: null, reason: '' };
+let currentStockInfo = {
+  price: (finite(initPrice) && initPrice > 0) ? initPrice : 0,
+  change_pct: 0,
+  vwap: null,
+  reason: ''
+};
+if (currentStockInfo.price > 0 && document.getElementById('txt-price')) {
+  document.getElementById('txt-price').textContent = currentStockInfo.price.toFixed(2);
+}
 
 // 視野與拖曳縮放狀態
 let viewBarsCount = 80;
@@ -85,11 +94,13 @@ function calculateMA(bars, period) {
   return result;
 }
 
-// 產生模擬當日 1分K 分時資料 (VM 或無網路 fallback)
-function generateMockIntraday(base = 1000) {
+// 產生模擬當日 1分K 分時資料 (僅在無網路或離線時 fallback，底價嚴格採用個股真實現價)
+function generateMockIntraday(base = (currentStockInfo.price > 0 ? currentStockInfo.price : 50)) {
   const list = [];
   let cur = base;
-  previousClose = Math.round((base * 0.99) * 100) / 100;
+  if (!previousClose || previousClose <= 0) {
+    previousClose = Math.round((base * 0.99) * 100) / 100;
+  }
   let cumAmount = 0;
   let cumVol = 0;
   const startMinute = 9 * 60; // 09:00
@@ -108,8 +119,8 @@ function generateMockIntraday(base = 1000) {
     list.push({
       time: `${hh}:${mm}`,
       open: cur,
-      high: Math.round((cur + Math.random() * 1.5) * 100) / 100,
-      low: Math.round((cur - Math.random() * 1.5) * 100) / 100,
+      high: Math.round((cur + Math.random() * 0.5) * 100) / 100,
+      low: Math.round((cur - Math.random() * 0.5) * 100) / 100,
       close: cur,
       volume: vol,
       vwap
@@ -118,8 +129,8 @@ function generateMockIntraday(base = 1000) {
   return list;
 }
 
-// 產生模擬歷史日K資料
-function generateMockDaily(basePrice = 1000) {
+// 產生模擬歷史日K資料 (底價嚴格採用個股真實現價)
+function generateMockDaily(basePrice = (currentStockInfo.price > 0 ? currentStockInfo.price : 50)) {
   const bars = [];
   let cur = basePrice;
   const now = new Date();
@@ -127,10 +138,10 @@ function generateMockDaily(basePrice = 1000) {
     const d = new Date(now.getTime() - i * 86400000);
     if (d.getDay() === 0 || d.getDay() === 6) continue;
     const change = (Math.random() - 0.48) * (cur * 0.03);
-    const open = Math.round((cur + (Math.random() - 0.5) * 5) * 100) / 100;
+    const open = Math.round((cur + (Math.random() - 0.5) * 2) * 100) / 100;
     const close = Math.round((cur + change) * 100) / 100;
-    const high = Math.round((Math.max(open, close) + Math.random() * 8) * 100) / 100;
-    const low = Math.round((Math.min(open, close) - Math.random() * 8) * 100) / 100;
+    const high = Math.round((Math.max(open, close) + Math.random() * 2) * 100) / 100;
+    const low = Math.round((Math.min(open, close) - Math.random() * 2) * 100) / 100;
     const vol = Math.floor(1000 + Math.random() * 15000);
     const timeStr = d.toISOString().slice(0, 10);
     bars.push({ time: timeStr, open, high, low, close, volume: vol });
@@ -139,8 +150,8 @@ function generateMockDaily(basePrice = 1000) {
   return bars;
 }
 
-// 抓取 Yahoo 當日 1分K 走勢 API
-async function fetchYahooIntraday() {
+// 抓取 Yahoo 當日 1分K 走勢 API (直接調用備用路徑)
+async function fetchYahooIntradayDirect() {
   const ySym = market === 'TWO' ? `${symbol}.TWO` : `${symbol}.TW`;
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1m&range=1d`;
   const controller = new AbortController();
@@ -153,7 +164,8 @@ async function fetchYahooIntraday() {
     if (!result) throw new Error('查無當日分時數據');
 
     const meta = result.meta;
-    previousClose = finite(meta?.previousClose) ? meta.previousClose : (finite(meta?.chartPreviousClose) ? meta.chartPreviousClose : null);
+    const prevClose = finite(meta?.previousClose) ? meta.previousClose : (finite(meta?.chartPreviousClose) ? meta.chartPreviousClose : null);
+    const regularPrice = finite(meta?.regularMarketPrice) ? meta.regularMarketPrice : null;
 
     const timestamps = result.timestamp;
     const quotes = result.indicators?.quote?.[0];
@@ -162,7 +174,7 @@ async function fetchYahooIntraday() {
     const bars = [];
     let cumAmount = 0;
     let cumVol = 0;
-    let lastValidPrice = previousClose || 0;
+    let lastValidPrice = prevClose || regularPrice || 0;
 
     for (let i = 0; i < timestamps.length; i++) {
       const ts = timestamps[i];
@@ -187,7 +199,6 @@ async function fetchYahooIntraday() {
       cumVol += v;
       const vwap = cumVol > 0 ? cumAmount / cumVol : c;
 
-      // 轉換台北時間 HH:mm
       const d = new Date(ts * 1000);
       const timeStr = d.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
 
@@ -202,11 +213,11 @@ async function fetchYahooIntraday() {
       });
     }
 
-    if (!previousClose && bars.length > 0) {
-      previousClose = bars[0].open;
-    }
-
-    return bars;
+    return {
+      bars,
+      previousClose: prevClose || (bars[0] ? bars[0].open : regularPrice),
+      price: regularPrice || (bars.at(-1)?.close ?? null)
+    };
   } finally {
     clearTimeout(timer);
   }
@@ -219,12 +230,13 @@ async function loadData(force = false) {
 
   try {
     if (VM_MODE) {
+      const base = currentStockInfo.price > 0 ? currentStockInfo.price : 50;
       if (currentMode === 'intraday') {
-        intradayData = generateMockIntraday(1000);
-        currentStockInfo = { price: 1000, change_pct: 1.25, vwap: 996.5, reason: 'VM 隔離示例數據' };
+        intradayData = generateMockIntraday(base);
+        currentStockInfo = { price: base, change_pct: 1.25, vwap: base * 0.996, reason: 'VM 隔離示例數據' };
       } else {
-        dailyData = generateMockDaily(1000);
-        currentStockInfo = { price: 1000, change_pct: 1.25, vwap: null, reason: 'VM 隔離示例歷史日K' };
+        dailyData = generateMockDaily(base);
+        currentStockInfo = { price: base, change_pct: 1.25, vwap: null, reason: 'VM 隔離示例歷史日K' };
       }
       renderInfo();
       draw();
@@ -234,20 +246,43 @@ async function loadData(force = false) {
 
     // 當前為當日分時模式
     if (currentMode === 'intraday') {
-      try {
-        intradayData = await fetchYahooIntraday();
-      } catch (err) {
-        console.warn('Yahoo 1分K 抓取失敗，回退至備用走勢:', err);
-        if (!intradayData.length) intradayData = generateMockIntraday(1000);
+      let fetched = null;
+      // 優先向具有完整 host_permissions 的 Service Worker 請求分時走勢，避免頁面受到 CORS 限制
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        try {
+          const resp = await chrome.runtime.sendMessage({ type: 'FETCH_INTRADAY', symbol, market });
+          if (resp?.ok && resp.value) fetched = resp.value;
+        } catch (_) {}
+      }
+      if (!fetched || !fetched.bars || !fetched.bars.length) {
+        try {
+          fetched = await fetchYahooIntradayDirect();
+        } catch (_) {}
       }
 
-      if (intradayData.length > 0) {
-        const last = intradayData.at(-1);
-        currentStockInfo.price = last.close;
-        if (previousClose && previousClose > 0) {
-          currentStockInfo.change_pct = ((last.close - previousClose) / previousClose) * 100;
+      if (fetched && Array.isArray(fetched.bars) && fetched.bars.length > 0) {
+        intradayData = fetched.bars;
+        if (finite(fetched.previousClose) && fetched.previousClose > 0) {
+          previousClose = fetched.previousClose;
         }
-        currentStockInfo.vwap = last.vwap || null;
+        if (finite(fetched.price) && fetched.price > 0) {
+          currentStockInfo.price = fetched.price;
+        } else if (intradayData.length > 0) {
+          currentStockInfo.price = intradayData.at(-1).close;
+        }
+        if (previousClose && previousClose > 0 && currentStockInfo.price > 0) {
+          currentStockInfo.change_pct = ((currentStockInfo.price - previousClose) / previousClose) * 100;
+        }
+        currentStockInfo.vwap = intradayData.at(-1)?.vwap || null;
+      } else {
+        // 若完全無法取得分時 K 線，使用個股真實現價生成適應性走勢，絕對不使用硬編碼 1000 元
+        const realBase = (fetched?.price && fetched.price > 0) ? fetched.price :
+                         (currentStockInfo.price > 0 ? currentStockInfo.price : (previousClose > 0 ? previousClose : 50));
+        intradayData = generateMockIntraday(realBase);
+        currentStockInfo.price = realBase;
+        if (previousClose && previousClose > 0) {
+          currentStockInfo.change_pct = ((realBase - previousClose) / previousClose) * 100;
+        }
       }
     } else {
       // 當前為歷史日K模式
@@ -278,7 +313,8 @@ async function loadData(force = false) {
           volume: Number(b.volume || b.amount || 0)
         })).filter(b => finite(b.open) && finite(b.close) && b.time);
       } else {
-        dailyData = generateMockDaily(1000);
+        const realBase = currentStockInfo.price > 0 ? currentStockInfo.price : (previousClose > 0 ? previousClose : 50);
+        dailyData = generateMockDaily(realBase);
       }
 
       if (dailyData.length > 0) {

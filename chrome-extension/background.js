@@ -529,11 +529,104 @@ export async function handle(message) {
       }
       throw new Error('測試類型不正確');
     }
+    case 'FETCH_INTRADAY': {
+      const sym = String(message.symbol || '').toUpperCase();
+      const mkt = String(message.market || 'TW').toUpperCase();
+      return await fetchIntradayData(sym, mkt);
+    }
     default: throw new Error('不支援的操作');
   }
   await write('state', st);
   return snapshot();
 }
+
+export async function fetchIntradayData(sym, mkt) {
+  if (!sym) return { bars: [], previousClose: null, price: null };
+  const ySym = mkt === 'TWO' ? `${sym}.TWO` : `${sym}.TW`;
+  const urls = [
+    `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1m&range=1d`,
+    `https://query2.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1m&range=1d`
+  ];
+
+  for (const url of urls) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    try {
+      const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+      if (!res.ok) continue;
+      const json = await res.json();
+      const result = json?.chart?.result?.[0];
+      if (!result) continue;
+      const meta = result.meta;
+      const previousClose = finite(meta?.previousClose) ? meta.previousClose : (finite(meta?.chartPreviousClose) ? meta.chartPreviousClose : null);
+      const regularPrice = finite(meta?.regularMarketPrice) ? meta.regularMarketPrice : null;
+      const timestamps = result.timestamp;
+      const quotes = result.indicators?.quote?.[0];
+      if (!Array.isArray(timestamps) || !quotes) continue;
+
+      const bars = [];
+      let cumAmount = 0, cumVol = 0;
+      let lastValidPrice = previousClose || regularPrice || 0;
+
+      for (let i = 0; i < timestamps.length; i++) {
+        const ts = timestamps[i];
+        let c = quotes.close?.[i];
+        let o = quotes.open?.[i];
+        let h = quotes.high?.[i];
+        let l = quotes.low?.[i];
+        let v = quotes.volume?.[i] || 0;
+
+        if (!finite(c)) {
+          if (!finite(lastValidPrice) || lastValidPrice <= 0) continue;
+          c = lastValidPrice;
+          o = c; h = c; l = c;
+        } else {
+          lastValidPrice = c;
+        }
+        if (!finite(o)) o = c;
+        if (!finite(h)) h = Math.max(o, c);
+        if (!finite(l)) l = Math.min(o, c);
+
+        cumAmount += c * v;
+        cumVol += v;
+        const vwap = cumVol > 0 ? cumAmount / cumVol : c;
+        const d = new Date(ts * 1000);
+        const timeStr = d.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+
+        bars.push({
+          time: timeStr,
+          open: Number(o),
+          high: Number(h),
+          low: Number(l),
+          close: Number(c),
+          volume: Number(v),
+          vwap: Number(vwap)
+        });
+      }
+
+      return {
+        bars,
+        previousClose: previousClose || (bars[0] ? bars[0].open : regularPrice),
+        price: regularPrice || (bars.at(-1)?.close ?? 0)
+      };
+    } catch (_) {
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // 若當日分時走勢暫無或失敗，從收盤/即時報價取得真實個股價格，絕對防止誤顯為 1000
+  try {
+    const qMap = await fetchStockClosingQuotes([sym]);
+    const q = qMap[sym];
+    if (q && finite(q.price) && q.price > 0) {
+      return { bars: [], previousClose: q.previous_close || q.price, price: q.price };
+    }
+  } catch (_) {}
+
+  return { bars: [], previousClose: null, price: null };
+}
+
 async function clicked(id, button = 0) {
   const now = Date.now(), current = await read('ledger', null), route = current?.routes?.[id];
   if (!route || !SYMBOL.test(route.symbol) || !['TW', 'TWO'].includes(route.market)) return;
@@ -543,7 +636,8 @@ async function clicked(id, button = 0) {
       const day = ledger(current, now); day.ignored[route.symbol] = true; await write('ledger', day);
     }
   } else if (button === 0) {
-    const winUrl = chrome.runtime.getURL(`chart.html?symbol=${encodeURIComponent(route.symbol)}&market=${encodeURIComponent(route.market)}&name=${encodeURIComponent(route.name || route.symbol)}&strategy=${encodeURIComponent(route.strategy || '')}`);
+    const priceParam = (route.price && finite(route.price)) ? `&price=${encodeURIComponent(route.price)}` : '';
+    const winUrl = chrome.runtime.getURL(`chart.html?symbol=${encodeURIComponent(route.symbol)}&market=${encodeURIComponent(route.market)}&name=${encodeURIComponent(route.name || route.symbol)}${priceParam}&strategy=${encodeURIComponent(route.strategy || '')}`);
     if (chrome.windows && typeof chrome.windows.create === 'function') {
       try {
         await chrome.windows.create({
@@ -574,7 +668,8 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     respond({ ok: true });
     return true;
   }
-  if (sender.url !== chrome.runtime.getURL('popup.html')) return false;
+  const allowed = [chrome.runtime.getURL('popup.html'), chrome.runtime.getURL('chart.html')];
+  if (!allowed.some(u => sender.url?.startsWith(u))) return false;
   serial(() => handle(message)).then(value => respond({ ok: true, value }), e => respond({ ok: false, error: e.message || '操作失敗' }));
   return true;
 });
