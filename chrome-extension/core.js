@@ -443,7 +443,7 @@ export function defaultState() {
       cardDensity: 'compact',
       stealthMode: false,
       fontSize: 'standard',
-      windowHeight: 480,
+      windowHeight: 500,
       showSparkline: true
     }, vipHash: '' };
 }

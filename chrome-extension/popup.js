@@ -259,9 +259,9 @@ function createSparklineSvg(open, high, low, close, prevClose, isUp, sparkPoints
   return svg;
 }
 
-// 動態列表高度設定 (真實改變整體視窗尺寸：同時設定 html, body 與 container，上限至 +100px 即 580px)
+// 動態列表高度設定 (真實改變整體視窗尺寸：同時設定 html, body 與 container，預設 500px 即 +20px，上限至 +100px 即 580px)
 function applyWindowHeight(h) {
-  const val = Math.max(380, Math.min(580, Number(h) || 480));
+  const val = Math.max(380, Math.min(580, Number(h) || 500));
   if (document.documentElement) document.documentElement.style.height = `${val}px`;
   if (document.body) document.body.style.height = `${val}px`;
   const container = $('popup-container');
@@ -271,7 +271,7 @@ function applyWindowHeight(h) {
     container.style.maxHeight = `${val}px`;
   }
   const diff = val - 480;
-  const tagText = diff <= 0 ? '預設' : `+${diff}px`;
+  const tagText = diff === 0 ? '預設 (0px)' : (diff > 0 ? `+${diff}px` : `${diff}px`);
   if ($('window-height-val')) $('window-height-val').textContent = tagText;
   if ($('density-status-tag')) $('density-status-tag').textContent = tagText;
   if ($('range-window-height') && document.activeElement !== $('range-window-height')) {
@@ -855,8 +855,8 @@ function render() {
   if ($('toggle-all-rebound')) $('toggle-all-rebound').checked = view.settings?.allReboundAlerts !== false;
   applyStealthMode(view.settings?.stealthMode);
 
-  // 視窗高度自定義 (比照截圖：預設 480px)
-  const windowHeight = Number(view.settings?.windowHeight) || 480;
+  // 視窗高度自定義 (比照截圖：預設 500px 即 +20px)
+  const windowHeight = Number(view.settings?.windowHeight) || 500;
   applyWindowHeight(windowHeight);
 
   // 顯示大小自定義 (圖片1效果)
