@@ -8,6 +8,7 @@
 
 firebase-service-account.json
 *-firebase-adminsdk-*.json
+client_secret*.json
 
 *.key
 *.pem
