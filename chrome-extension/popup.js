@@ -1,9 +1,10 @@
-import { SYMBOL, GROUPS, finite, fresh, watchlist, chartURL, searchStocks, searchOnlineStocks } from './core.js';
+import { SYMBOL, GROUPS, finite, fresh, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, fetchStockClosingQuotes } from './core.js';
 import { icons } from './icons.js';
 
 const $ = id => document.getElementById(id);
 let view, group = 'all', pending = false;
 let searchDebounce = null;
+let enriching = false;
 const label = { daytrade: '當沖監控', rebound: '觸底反彈' };
 function el(tag, text, className = '') {
   const node = document.createElement(tag); node.textContent = text; node.className = className; return node;
@@ -17,23 +18,46 @@ function status(text, error = false) {
 }
 function renderTaiex() {
   const tInfo = view?.taiex;
+  const banner = $('taiex-banner');
   if (!tInfo || !finite(tInfo.price)) {
     $('taiex-price').textContent = '-';
+    $('taiex-price').className = 'font-bold text-slate-900';
     $('taiex-change').textContent = '-';
     $('otc-price').textContent = '-';
+    $('otc-price').className = 'font-medium text-slate-700';
     $('otc-change').textContent = '-';
+    if (banner) banner.className = 'flex items-center justify-between px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[11px]';
     return;
   }
-  const sign = tInfo.change >= 0 ? '+' : '';
+  const isUp = tInfo.change >= 0;
+  const sign = isUp ? '+' : '';
+  const arrow = isUp ? '▲ ' : '▼ ';
+  const colorClass = isUp ? 'text-red-600' : 'text-emerald-600';
+
   $('taiex-price').textContent = tInfo.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  $('taiex-change').textContent = `${sign}${tInfo.change.toFixed(2)} (${sign}${tInfo.change_pct.toFixed(2)}%)`;
-  $('taiex-change').className = `font-semibold ${tInfo.change >= 0 ? 'text-red-600' : 'text-emerald-600'}`;
+  $('taiex-price').className = `font-bold ${colorClass}`;
+  $('taiex-change').textContent = `${arrow}${sign}${tInfo.change.toFixed(2)} (${sign}${tInfo.change_pct.toFixed(2)}%)`;
+  $('taiex-change').className = `font-semibold ${colorClass}`;
 
   if (finite(tInfo.otc_price)) {
-    const oSign = tInfo.otc_change >= 0 ? '+' : '';
+    const otcUp = tInfo.otc_change >= 0;
+    const oSign = otcUp ? '+' : '';
+    const oArrow = otcUp ? '▲ ' : '▼ ';
+    const oColorClass = otcUp ? 'text-red-600' : 'text-emerald-600';
+
     $('otc-price').textContent = tInfo.otc_price.toFixed(2);
-    $('otc-change').textContent = `${oSign}${tInfo.otc_change.toFixed(2)}%`;
-    $('otc-change').className = `font-medium ${tInfo.otc_change >= 0 ? 'text-red-600' : 'text-emerald-600'}`;
+    $('otc-price').className = `font-medium ${oColorClass}`;
+    $('otc-change').textContent = `${oArrow}${oSign}${tInfo.otc_change.toFixed(2)}%`;
+    $('otc-change').className = `font-medium ${oColorClass}`;
+  }
+
+  if (banner) {
+    const bgClass = isUp ? 'bg-red-50/40 border-red-100' : 'bg-emerald-50/40 border-emerald-100';
+    banner.className = `flex items-center justify-between px-3 py-1.5 ${bgClass} border-b text-[11px] transition-colors cursor-pointer`;
+    banner.title = '點擊查看 Yahoo 大盤加權指數即時走勢';
+    banner.onclick = () => {
+      chrome.tabs.create({ url: 'https://tw.stock.yahoo.com/quote/%5ETWII' });
+    };
   }
 }
 async function send(message) {
@@ -263,8 +287,11 @@ function render() {
     }
     price.append(leftPrice);
 
-    const pct = finite(q?.change_pct) ? `${q.change_pct >= 0 ? '+' : ''}${q.change_pct.toFixed(2)}%` : '漲跌幅未提供';
-    price.append(el('span', pct, `text-xs font-semibold ${finite(q?.change_pct) ? (q.change_pct >= 0 ? 'text-red-600' : 'text-emerald-600') : 'text-slate-400'}`));
+    const changePctVal = calcChangePct(q);
+    const validPct = finite(changePctVal);
+    const pct = validPct ? `${changePctVal >= 0 ? '+' : ''}${changePctVal.toFixed(2)}%` : '0.00% (結盤)';
+    const pctColor = validPct ? (changePctVal >= 0 ? 'text-red-600' : 'text-emerald-600') : 'text-slate-400';
+    price.append(el('span', pct, `text-xs font-semibold ${pctColor}`));
     card.append(price);
 
     const when = q?.updated_at && Number.isFinite(Date.parse(q.updated_at)) ? new Date(q.updated_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '無資料';
@@ -302,6 +329,38 @@ function render() {
   const stamp = view.updatedAt ? new Date(view.updatedAt).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '尚未更新';
   status(view.error || `${view.vm ? 'VM 隔離測試' : view.marketOpen ? '盤中' : '休市'} · ${stamp} · ${view.vip ? 'VIP' : `今日 ${view.used}/3`}`, !!view.error);
   $('vip-msg').textContent = view.vip ? 'VIP 已開通；每次配置更新重新檢查授權。' : view.vm ? 'VM 測試碼：VIP888（不適用正式版）' : '正式授權碼請向管理員取得；不會保存明文。';
+  if (!view.vm && view.stocks?.length) {
+    enrichMissingQuotes();
+  }
+}
+async function enrichMissingQuotes() {
+  if (!view || enriching || view.vm) return;
+  const missing = view.stocks.filter(s => {
+    const q = view.quotes?.[s.symbol];
+    return !q || !finite(calcChangePct(q)) || !finite(q.price);
+  });
+  if (!missing.length) return;
+  enriching = true;
+  try {
+    const closingMap = await fetchStockClosingQuotes(missing);
+    if (closingMap && Object.keys(closingMap).length > 0) {
+      if (!view.quotes) view.quotes = {};
+      let updated = false;
+      for (const [sym, item] of Object.entries(closingMap)) {
+        if (!view.quotes[sym] || !finite(view.quotes[sym].price)) {
+          view.quotes[sym] = item;
+          updated = true;
+        } else if (!finite(calcChangePct(view.quotes[sym]))) {
+          view.quotes[sym].change_pct = item.change_pct;
+          view.quotes[sym].change = item.change;
+          view.quotes[sym].previous_close = item.previous_close;
+          updated = true;
+        }
+      }
+      if (updated && !pending) render();
+    }
+  } catch (_) {}
+  finally { enriching = false; }
 }
 function renderSuggestionItems(list) {
   const box = $('search-suggestions');

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { taipei, marketOpen, fresh, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter, BUILTIN_STOCKS, searchStocks, searchOnlineStocks } from '../core.js';
+import { taipei, marketOpen, fresh, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter, BUILTIN_STOCKS, searchStocks, searchOnlineStocks, calcChangePct } from '../core.js';
 const at = s => Date.parse(s);
 const now = at('2026-09-17T09:30:00+08:00');
 const sample = { id: 'a', symbol: '2330', market: 'TW', name: '台積電', price: 1000, change_pct: 1, reason: '爆量', generated_at: '2026-09-17T09:29:00+08:00', quote_at: '2026-09-17T09:29:00+08:00' };
@@ -168,3 +168,36 @@ test('searchOnlineStocks queries online autocomplete API and registers results',
     globalThis.fetch = origFetch;
   }
 });
+
+test('searchOnlineStocks excludes 5-digit convertible bonds and prefers TW over duplicate TWO', async () => {
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    return new Response(JSON.stringify({
+      ResultSet: {
+        Result: [
+          { symbol: '6862.TW', name: '三集瑞-KY', typeDisp: '權益' },
+          { symbol: '68621.TWO', name: '三集瑞一KY', typeDisp: '債券' },
+          { symbol: '6862.TWO', name: '三集瑞-KY(舊櫃)', typeDisp: '權益' }
+        ]
+      }
+    }));
+  };
+  try {
+    const list = await searchOnlineStocks('6862');
+    assert.equal(list.length, 1);
+    assert.equal(list[0].symbol, '6862');
+    assert.equal(list[0].name, '三集瑞-KY');
+    assert.equal(list[0].market, 'TW');
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});
+
+test('calcChangePct calculates percentage from change_pct, change, or previous_close', () => {
+  assert.equal(calcChangePct({ change_pct: 1.5 }), 1.5);
+  assert.equal(calcChangePct({ price: 105, previous_close: 100 }), 5.0);
+  assert.equal(calcChangePct({ price: 105, change: 5 }), 5.0);
+  assert.equal(calcChangePct(null), null);
+  assert.equal(calcChangePct({}), null);
+});
+

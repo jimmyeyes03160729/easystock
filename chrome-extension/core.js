@@ -88,17 +88,36 @@ export function registerStocks(stocks) {
   if (Array.isArray(stocks)) {
     for (const s of stocks) {
       if (s?.symbol && s?.market && s?.name) {
+        const existing = DYNAMIC_STOCKS.get(s.symbol);
+        if (existing?.market === 'TW' && s.market === 'TWO') continue;
         DYNAMIC_STOCKS.set(s.symbol, { symbol: s.symbol, market: s.market, name: s.name });
       }
     }
   }
 }
 
+export function calcChangePct(q) {
+  if (!q) return null;
+  if (finite(q.change_pct)) return q.change_pct;
+  if (finite(q.change) && finite(q.price) && (q.price - q.change) > 0) {
+    return (q.change / (q.price - q.change)) * 100;
+  }
+  if (finite(q.price) && finite(q.previous_close) && q.previous_close > 0) {
+    return ((q.price - q.previous_close) / q.previous_close) * 100;
+  }
+  if (finite(q.last_close_change_pct)) return q.last_close_change_pct;
+  return null;
+}
+
 export function searchStocks(query, extraQuotes = {}) {
   const q = String(query || '').trim().toUpperCase();
   const pool = new Map();
   for (const s of BUILTIN_STOCKS) pool.set(s.symbol, { ...s });
-  for (const [sym, s] of DYNAMIC_STOCKS.entries()) pool.set(sym, { ...s });
+  for (const [sym, s] of DYNAMIC_STOCKS.entries()) {
+    const existing = pool.get(sym);
+    if (existing?.market === 'TW' && s.market === 'TWO') continue;
+    pool.set(sym, { ...s });
+  }
   if (plain(extraQuotes)) {
     for (const [sym, item] of Object.entries(extraQuotes)) {
       if (!pool.has(sym)) {
@@ -109,7 +128,17 @@ export function searchStocks(query, extraQuotes = {}) {
       }
     }
   }
-  const all = [...pool.values()];
+  const rawAll = [...pool.values()];
+  // 排除 5 碼可轉債 (如 68621)；若存在上市 (TW)，不保留上櫃 (TWO)
+  const all = rawAll.filter(s => {
+    if (s.symbol.length === 5 && !s.symbol.startsWith('00') && /^\d+$/.test(s.symbol)) return false;
+    if (s.market === 'TWO') {
+      const base4 = s.symbol.slice(0, 4);
+      if (rawAll.some(other => other.market === 'TW' && (other.symbol === s.symbol || other.symbol === base4))) return false;
+    }
+    return true;
+  });
+
   if (!q) return all.slice(0, 8);
 
   const exactSym = all.filter(s => s.symbol === q);
@@ -152,13 +181,28 @@ export async function searchOnlineStocks(query) {
       const m = /^(\d{4,6}[A-Z]?)\.(TW|TWO)$/i.exec(item.symbol);
       if (!m) continue;
       const sym = m[1].toUpperCase();
+      const market = m[2].toUpperCase();
+
+      // 排除 5 碼純數字之可轉債 (如 68621 三集瑞一KY)，僅保留 4 碼股票、特別股 (如 2881A) 與 00 開頭之 ETF (如 0050, 00919)
+      if (sym.length === 5 && !sym.startsWith('00') && /^\d+$/.test(sym)) continue;
       if (sym.length > 5 && !sym.startsWith('00')) continue;
-      if (item.typeDisp === '認購' || item.typeDisp === '認售') continue;
+      if (item.typeDisp === '認購' || item.typeDisp === '認售' || item.typeDisp === '債券') continue;
+
+      const base4 = sym.slice(0, 4);
+      // 「有上市的就不要多個上櫃」：同一標的若已有上市 (TW)，不保留上櫃 (TWO)
+      if (market === 'TWO') {
+        const hasTw = results.some(r => r.market === 'TW' && (r.symbol === sym || r.symbol === base4));
+        if (hasTw) continue;
+      } else if (market === 'TW') {
+        const twoIdx = results.findIndex(r => r.market === 'TWO' && (r.symbol === sym || r.symbol.startsWith(base4)));
+        if (twoIdx !== -1) results.splice(twoIdx, 1);
+      }
+
       if (seen.has(sym)) continue;
       seen.add(sym);
       results.push({
         symbol: sym,
-        market: m[2].toUpperCase(),
+        market,
         name: String(item.name || sym).trim()
       });
     }
@@ -166,6 +210,54 @@ export async function searchOnlineStocks(query) {
     return results.slice(0, 15);
   } catch {
     return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function fetchStockClosingQuotes(symbols) {
+  if (!Array.isArray(symbols) || !symbols.length) return {};
+  const queryList = symbols.map(s => {
+    if (typeof s === 'string') return s.includes('.') ? s : `${s}.TW`;
+    return `${s.symbol}.${s.market || 'TW'}`;
+  }).slice(0, 40);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const url = `https://tw.stock.yahoo.com/_td-stock/api/resource/StockServices.stockList;symbols=${queryList.join(',')}`;
+    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+    if (!res.ok) return {};
+    const list = await res.json();
+    if (!Array.isArray(list)) return {};
+    const map = {};
+    for (const item of list) {
+      if (!item?.symbol) continue;
+      const sym = item.symbol.split('.')[0].toUpperCase();
+      const price = finite(item.price?.sort) ? item.price.sort : (finite(item.regularMarketPreviousClose?.sort) ? item.regularMarketPreviousClose.sort : null);
+      const prev = finite(item.regularMarketPreviousClose?.sort) ? item.regularMarketPreviousClose.sort : null;
+      let change = finite(item.change?.sort) ? item.change.sort : (price !== null && prev !== null ? price - prev : 0);
+      let change_pct = null;
+      if (typeof item.changePercent === 'string') {
+        const parsed = parseFloat(item.changePercent.replace('%', ''));
+        if (Number.isFinite(parsed)) change_pct = parsed;
+      }
+      if (change_pct === null && price !== null && prev && prev > 0) {
+        change_pct = ((price - prev) / prev) * 100;
+      }
+      map[sym] = {
+        name: item.symbolName || sym,
+        price: price || 0,
+        change: change || 0,
+        change_pct: change_pct !== null ? change_pct : 0,
+        previous_close: prev,
+        volume: finite(item.volume) ? Math.round(item.volume / 1000) : 0,
+        updated_at: item.regularMarketTime || new Date().toISOString()
+      };
+    }
+    return map;
+  } catch {
+    return {};
   } finally {
     clearTimeout(timer);
   }

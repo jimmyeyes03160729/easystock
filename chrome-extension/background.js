@@ -1,5 +1,5 @@
 import { VM_MODE, CONFIG_URL, FIREBASE_ROOT } from './environment.js';
-import { TTL, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter } from './core.js';
+import { TTL, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter, calcChangePct, fetchStockClosingQuotes } from './core.js';
 
 const ALARM = 'easystock-five-minutes';
 let tail = Promise.resolve();
@@ -138,6 +138,25 @@ async function feeds(now, forced = false) {
         fetchTaiexIndex().catch(() => null)
       ]);
     if (!plain(quotes) || !plain(live)) throw new Error('行情格式不符');
+    if (!VM_MODE) {
+      const st = await state().catch(() => null);
+      if (st?.stocks?.length) {
+        const missing = st.stocks.filter(s => !quotes[s.symbol] || !finite(calcChangePct(quotes[s.symbol])));
+        if (missing.length) {
+          try {
+            const closingMap = await fetchStockClosingQuotes(missing);
+            for (const [sym, item] of Object.entries(closingMap)) {
+              if (!quotes[sym]) quotes[sym] = item;
+              else if (!finite(calcChangePct(quotes[sym]))) {
+                quotes[sym].change_pct = item.change_pct;
+                quotes[sym].change = item.change;
+                quotes[sym].previous_close = item.previous_close;
+              }
+            }
+          } catch (_) {}
+        }
+      }
+    }
     const value = { at: now, quotes, live, taiex: taiex || cache?.taiex || null };
     await write('feedCache', value);
     safe(updateMarketStatusIcon(value, now));
@@ -316,7 +335,8 @@ async function notify(s, { test = false, vip = false, now = Date.now() } = {}) {
     const telegramTitle = `${test ? '【VM 測試】' : ''}${isExit ? '✅【當沖出場】' : (isRebound ? '🛡️【觸底反彈訊號】' : '🚀【當沖進場訊號】')}${s.symbol} ${s.name}`;
     const title = s.telegramText ? telegramTitle : (s.customTitle || defaultTitle);
 
-    const defaultMsg = `現價 ${s.price.toFixed(2)} 元｜${finite(s.change_pct) ? `${s.change_pct >= 0 ? '+' : ''}${s.change_pct.toFixed(2)}%` : '漲跌幅未提供'}\n${s.reason}`;
+    const changePctVal = calcChangePct(s);
+    const defaultMsg = `現價 ${s.price.toFixed(2)} 元｜${finite(changePctVal) ? `${changePctVal >= 0 ? '+' : ''}${changePctVal.toFixed(2)}%` : '結盤 0.00%'}\n${s.reason}`;
     const message = (s.telegramText || defaultMsg) + (test ? '\n示例數字，非交易訊號、不計額度。' : '');
 
     await chrome.notifications.create(id, {

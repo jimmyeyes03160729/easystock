@@ -12,7 +12,7 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   const state = { ...core.defaultState(), vip: false, vm: true, quotes: {}, bounce: [], used: 0, marketOpen: false, paymentURL: '' };
   state.stocks.push({ symbol: '8299', market: 'TWO', name: '<img src=x onerror=alert(1)>', groups: ['rebound'] });
   w.chrome = { runtime: { sendMessage: async m => { messages.push(m); return { ok: true, value: m.type === 'TEST' ? { sent: true } : structuredClone(state) }; } }, tabs: { create: async () => {} } };
-  for (const key of ['SYMBOL', 'GROUPS', 'finite', 'fresh', 'watchlist', 'chartURL', 'searchStocks', 'searchOnlineStocks']) w[key] = core[key];
+  for (const key of ['SYMBOL', 'GROUPS', 'finite', 'fresh', 'watchlist', 'chartURL', 'searchStocks', 'searchOnlineStocks', 'calcChangePct', 'fetchStockClosingQuotes']) w[key] = core[key];
   w.icons = () => {};
   state.taiex = { price: 22800.5, change: 150.2, change_pct: 0.66, otc_price: 270.1, otc_change: 1.2, otc_change_pct: 0.45 };
   await w.eval(`(async()=>{${source.replace(/^import .*;\r?\n/gm, '')}})()`);
@@ -20,7 +20,9 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.equal(w.document.querySelectorAll('.stock-card img').length, 0);
   assert.match(w.document.getElementById('stock-list-container').textContent, /<img src=x/);
   assert.match(w.document.getElementById('taiex-price').textContent, /22,800\.50/);
-  assert.match(w.document.getElementById('taiex-change').textContent, /\+150\.20/);
+  assert.ok(w.document.getElementById('taiex-price').classList.contains('text-red-600'));
+  assert.match(w.document.getElementById('taiex-change').textContent, /▲\s*\+150\.20/);
+  assert.equal(w.document.getElementById('stock-list-container').textContent.includes('漲跌幅未提供'), false);
   w.document.querySelector('[data-group="rebound"]').click();
   assert.equal(w.document.querySelectorAll('.stock-card').length, 1);
 
