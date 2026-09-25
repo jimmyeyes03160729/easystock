@@ -104,6 +104,15 @@
       <!-- 動態插入表格行 stock-row stock-card -->
     </main>
 
+    <!-- 自選分頁控制列 (固定置於休市狀態列正上方) -->
+    <div id="watchlist-pagination-bar" class="hidden flex items-center justify-between text-xs text-slate-500 py-1.5 px-3 bg-slate-50 border-t border-slate-200 shrink-0 select-none">
+      <span id="watchlist-page-info" class="text-[11px] text-slate-500">第 1 / 1 頁 (共 0 檔)</span>
+      <div class="flex items-center gap-1.5">
+        <button id="btn-page-prev" class="px-2 py-0.5 rounded text-[11px] border border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer">上一頁</button>
+        <button id="btn-page-next" class="px-2 py-0.5 rounded text-[11px] border border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer">下一頁</button>
+      </div>
+    </div>
+
     <!-- 底部狀態列 -->
     <footer class="px-3 py-2 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
       <span id="update-timestamp">狀態：就緒</span>

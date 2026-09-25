@@ -548,26 +548,28 @@ function renderWatchlist(list, isCompact, pageSize) {
     list.append(card);
   }
 
-  // 分頁切換器
-  if (totalPages > 1) {
-    const pageBar = el('div', '', 'flex items-center justify-between text-xs text-slate-500 py-1.5 px-3 bg-slate-50 border-t border-slate-100');
-    pageBar.append(el('span', `第 ${currentWatchlistPage} / ${totalPages} 頁 (共 ${totalCount} 檔)`, 'text-[11px] text-slate-500'));
-    const btnGroup = el('div', '', 'flex items-center gap-1.5');
-
-    const prevBtn = el('button', '上一頁', `px-2 py-0.5 rounded text-[11px] border border-slate-200 ${currentWatchlistPage > 1 ? 'hover:bg-slate-100 text-slate-700 cursor-pointer' : 'opacity-40 cursor-not-allowed'}`);
-    if (currentWatchlistPage > 1) {
-      prevBtn.onclick = () => { currentWatchlistPage--; render(); };
+  // 自選分頁控制列 (固定置於休市狀態列正上方，不再隨清單筆數飄移在中間)
+  const paginationBar = $('watchlist-pagination-bar');
+  if (paginationBar) {
+    if (totalPages > 1) {
+      paginationBar.classList.remove('hidden');
+      const pageInfo = $('watchlist-page-info');
+      if (pageInfo) pageInfo.textContent = `第 ${currentWatchlistPage} / ${totalPages} 頁 (共 ${totalCount} 檔)`;
+      const prevBtn = $('btn-page-prev');
+      const nextBtn = $('btn-page-next');
+      if (prevBtn) {
+        prevBtn.className = `px-2 py-0.5 rounded text-[11px] border border-slate-200 ${currentWatchlistPage > 1 ? 'hover:bg-slate-100 text-slate-700 cursor-pointer' : 'opacity-40 cursor-not-allowed'}`;
+        prevBtn.disabled = currentWatchlistPage <= 1;
+        prevBtn.onclick = () => { if (currentWatchlistPage > 1) { currentWatchlistPage--; render(); } };
+      }
+      if (nextBtn) {
+        nextBtn.className = `px-2 py-0.5 rounded text-[11px] border border-slate-200 ${currentWatchlistPage < totalPages ? 'hover:bg-slate-100 text-slate-700 cursor-pointer' : 'opacity-40 cursor-not-allowed'}`;
+        nextBtn.disabled = currentWatchlistPage >= totalPages;
+        nextBtn.onclick = () => { if (currentWatchlistPage < totalPages) { currentWatchlistPage++; render(); } };
+      }
+    } else {
+      paginationBar.classList.add('hidden');
     }
-    btnGroup.append(prevBtn);
-
-    const nextBtn = el('button', '下一頁', `px-2 py-0.5 rounded text-[11px] border border-slate-200 ${currentWatchlistPage < totalPages ? 'hover:bg-slate-100 text-slate-700 cursor-pointer' : 'opacity-40 cursor-not-allowed'}`);
-    if (currentWatchlistPage < totalPages) {
-      nextBtn.onclick = () => { currentWatchlistPage++; render(); };
-    }
-    btnGroup.append(nextBtn);
-
-    pageBar.append(btnGroup);
-    list.append(pageBar);
   }
 }
 
@@ -810,6 +812,9 @@ function render() {
   const list = $('stock-list-container');
   list.replaceChildren();
   list.classList.toggle('density-compact', isCompact);
+
+  const paginationBar = $('watchlist-pagination-bar');
+  if (paginationBar) paginationBar.classList.add('hidden');
 
   if (group === 'ai_matrix') {
     renderAiMatrix(list);

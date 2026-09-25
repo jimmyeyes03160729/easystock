@@ -150,6 +150,13 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.match(tableHeader.textContent, /高 \/ 低/);
   assert.match(tableHeader.textContent, /時間/);
 
+  // Test Watchlist Pagination Bar (固定釘在底部狀態列上方)
+  const paginationBar = w.document.getElementById('watchlist-pagination-bar');
+  assert.ok(paginationBar);
+  assert.ok(w.document.getElementById('btn-page-prev'));
+  assert.ok(w.document.getElementById('btn-page-next'));
+  assert.ok(w.document.getElementById('watchlist-page-info'));
+
   w.document.getElementById('btn-close-settings').click();
   assert.equal(w.document.getElementById('settings-panel').inert, true);
   dom.window.close();
