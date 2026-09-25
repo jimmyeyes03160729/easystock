@@ -319,13 +319,20 @@ export async function sha256(text) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map(v => v.toString(16).padStart(2, '0')).join('');
 }
 export function isVIP(c, hash) { return !!c && (c.global_vip_switch || (typeof hash === 'string' && c.vip_keys_hash.includes(hash))); }
-export function signal(raw, strategy, now, allowMissingChange = false) {
+export function signal(raw, strategy, now, allowMissingChange = false, allowRecent = false) {
   if (!plain(raw) || !GROUPS.includes(strategy) || typeof raw.symbol !== 'string' || !SYMBOL.test(raw.symbol) || !['TW', 'TWO'].includes(raw.market)) return null;
   if (typeof raw.id !== 'string' || !raw.id || raw.id.length > 120 || !finite(raw.price) || raw.price <= 0 || (!finite(raw.change_pct) && !(allowMissingChange && raw.change_pct === null))) return null;
-  if (!fresh(raw.generated_at, now) || !fresh(raw.quote_at, now)) return null;
+  if (allowRecent) {
+    if (typeof raw.generated_at !== 'string' || typeof raw.quote_at !== 'string') return null;
+    const gn = Date.parse(raw.generated_at), qn = Date.parse(raw.quote_at);
+    if (!Number.isFinite(gn) || !Number.isFinite(qn) || gn > now + 60000 || qn > now + 60000 || now - gn > 14 * 86400 * 1000) return null;
+  } else {
+    if (!fresh(raw.generated_at, now) || !fresh(raw.quote_at, now)) return null;
+  }
   if (typeof raw.name !== 'string' || !raw.name || raw.name.length > 60 || typeof raw.reason !== 'string' || !raw.reason || raw.reason.length > 200) return null;
   return { id: raw.id, symbol: raw.symbol, market: raw.market, name: raw.name, price: raw.price,
-    change_pct: raw.change_pct, reason: raw.reason, generated_at: raw.generated_at, quote_at: raw.quote_at, strategy };
+    change_pct: raw.change_pct, reason: raw.reason, generated_at: raw.generated_at, quote_at: raw.quote_at, strategy,
+    score: raw.score, confirmation: raw.confirmation };
 }
 export const chartURL = s => `https://tw.stock.yahoo.com/quote/${s.symbol}.${s.market}`;
 export function ledger(value, now) {

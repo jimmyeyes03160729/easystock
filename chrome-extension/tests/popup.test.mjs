@@ -63,6 +63,30 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.equal(messages.at(-1).type, 'ADD_BATCH');
   assert.equal(messages.at(-1).stocks[0].symbol, '2454');
 
+  // Test closed_trades rendering in daytrade tab (同步網頁已平倉動態)
+  state.live = {
+    closed_trades: {
+      'trade1': { symbol: '3094', name: '聯傑', status: 'CLOSED', entry_price: 55.4, exit_price: 55.2, pnl_pct: -0.7, exit_reason: '15分觀察期到期' }
+    }
+  };
+  w.document.getElementById('btn-refresh').click();
+  await new Promise(r => setTimeout(r, 0));
+  w.document.querySelector('[data-group="daytrade"]').click();
+  assert.match(w.document.getElementById('stock-list-container').textContent, /3094 聯傑/);
+  assert.match(w.document.getElementById('stock-list-container').textContent, /已平倉/);
+  assert.match(w.document.getElementById('stock-list-container').textContent, /15分觀察期到期/);
+
+  // Test bounce rebound rendering (同步網頁底部反彈名單)
+  state.bounce = [
+    { symbol: '5439', name: '高技', market: 'TWO', price: 253, change_pct: 2.85, score: 86, confirmation: 'breakout', reason: '突破確認' }
+  ];
+  w.document.getElementById('btn-refresh').click();
+  await new Promise(r => setTimeout(r, 0));
+  w.document.querySelector('[data-group="rebound"]').click();
+  assert.match(w.document.getElementById('stock-list-container').textContent, /5439 高技/);
+  assert.match(w.document.getElementById('stock-list-container').textContent, /突破確認/);
+  assert.match(w.document.getElementById('stock-list-container').textContent, /253/);
+
   // Test AI Matrix tab rendering
   w.document.querySelector('[data-group="ai_matrix"]').click();
   const listContainer = w.document.getElementById('stock-list-container');
