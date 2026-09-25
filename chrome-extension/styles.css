@@ -12,3 +12,33 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 #action-message { overflow-wrap: anywhere; }
 .stock-card h2 { overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* 牛馬上班偷看摸魚模式 (Stealth Mode) */
+body.stealth-mode {
+  background-color: #f1f5f9;
+}
+body.stealth-mode .text-red-600 {
+  color: #64748b !important;
+}
+body.stealth-mode .text-emerald-600 {
+  color: #475569 !important;
+}
+body.stealth-mode .bg-sky-600 {
+  background-color: #475569 !important;
+}
+body.stealth-mode #brand-title {
+  color: #334155 !important;
+}
+body.stealth-mode .stock-card {
+  border-color: #cbd5e1 !important;
+  background-color: #ffffff !important;
+}
+.ai-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.375rem;
+}
+

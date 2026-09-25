@@ -12,12 +12,16 @@
     <!-- 頂部列與搜尋 -->
     <header class="p-3 border-b border-slate-100 bg-white sticky top-0 z-10">
       <div class="flex items-center justify-between mb-2">
-        <div class="flex items-center gap-2">
-          <div id="market-status-dot" class="h-2 w-2 rounded-full bg-slate-400" title="離線 / 休市"></div>
-          <h1 class="text-sm font-bold tracking-tight text-slate-900">StockWatch Pro</h1>
-          <span id="vip-status-badge" class="hidden text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200">VIP</span>
+        <div class="flex items-center gap-1.5 min-w-0">
+          <div id="market-status-dot" class="h-2 w-2 rounded-full bg-slate-400 shrink-0" title="離線 / 休市"></div>
+          <h1 id="brand-title" class="text-xs font-bold tracking-tight text-slate-900 truncate">EasyStock · 牛馬自救終端</h1>
+          <span id="brand-tag" class="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 py-0.2 rounded border border-slate-200 shrink-0">摸魚中</span>
+          <span id="vip-status-badge" class="hidden text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200 shrink-0">VIP</span>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button id="btn-stealth-toggle" aria-label="切換牛馬上班摸魚偽裝模式" title="一鍵切換牛馬上班摸魚偽裝模式 (快捷鍵 B)" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 flex items-center gap-1 transition">
+            <span>🐮</span> <span id="stealth-btn-label">摸魚</span>
+          </button>
           <button id="btn-open-settings" aria-label="開啟設定" class="text-slate-400 hover:text-slate-600 transition">
             <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
           </button>
@@ -51,9 +55,10 @@
 
     <!-- 群組切換 Tabs -->
     <nav id="group-tabs" class="flex px-3 py-1.5 border-b border-slate-100 gap-1 text-xs bg-slate-50/50">
-      <button class="tab-btn px-2.5 py-1 rounded font-medium text-slate-900 bg-white border border-slate-200 shadow-xs" data-group="all">全部</button>
-      <button class="tab-btn px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800" data-group="daytrade">當沖監控</button>
-      <button class="tab-btn px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800" data-group="rebound">觸底反彈</button>
+      <button class="tab-btn px-2 py-1 rounded font-medium text-slate-900 bg-white border border-slate-200 shadow-xs" data-group="all">全部</button>
+      <button class="tab-btn px-2 py-1 rounded font-medium text-slate-500 hover:text-slate-800" data-group="daytrade">當沖監控</button>
+      <button class="tab-btn px-2 py-1 rounded font-medium text-slate-500 hover:text-slate-800" data-group="rebound">觸底反彈</button>
+      <button class="tab-btn px-2 py-1 rounded font-medium text-slate-500 hover:text-slate-800" data-group="ai_matrix">🤖 當沖AI架構</button>
     </nav>
 
     <!-- 策略標的池與一鍵加入自選 -->
@@ -94,6 +99,20 @@
       </div>
       <div class="flex-1 overflow-y-auto p-3 space-y-4 text-xs">
         <p id="action-message" role="status" aria-live="polite" class="text-[11px] text-slate-500"></p>
+
+        <!-- 牛馬專屬摸魚偽裝模式 -->
+        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+          <label class="flex items-center justify-between cursor-pointer">
+            <div>
+              <span class="font-bold text-slate-800 flex items-center gap-1">
+                <span>🐮</span> <span>牛馬上班摸魚偽裝模式</span>
+              </span>
+              <span class="block text-[10px] text-slate-500">淡化刺眼紅綠盤面，標題偽裝成系統指標 (快捷鍵 B)</span>
+            </div>
+            <input type="checkbox" id="toggle-stealth" class="rounded text-slate-900 cursor-pointer" />
+          </label>
+        </div>
+
         <!-- 測試與推播專用區 (VM / 除錯用) -->
         <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
           <h3 class="font-bold text-slate-800 mb-1 flex items-center gap-1">

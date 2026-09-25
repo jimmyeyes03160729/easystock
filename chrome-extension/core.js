@@ -330,6 +330,7 @@ export function defaultState() {
       filterMode: 'all',
       minPrice: null,
       maxPrice: null,
-      minChangePct: null
+      minChangePct: null,
+      stealthMode: false
     }, vipHash: '' };
 }

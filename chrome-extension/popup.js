@@ -52,9 +52,100 @@ async function act(message, success = '') {
   } catch (e) { status(e.message, true); }
   finally { pending = false; document.body.removeAttribute('aria-busy'); }
 }
+function applyStealthMode(enabled) {
+  document.body.classList.toggle('stealth-mode', !!enabled);
+  const brand = $('brand-title');
+  const tag = $('brand-tag');
+  const btnLabel = $('stealth-btn-label');
+  const toggleCheckbox = $('toggle-stealth');
+  if (toggleCheckbox) toggleCheckbox.checked = !!enabled;
+  if (enabled) {
+    if (brand) brand.textContent = 'SysMonitor · Cluster Metrics';
+    if (tag) tag.textContent = 'Running';
+    if (btnLabel) btnLabel.textContent = '搬磚中';
+  } else {
+    if (brand) brand.textContent = 'EasyStock · 牛馬自救終端';
+    if (tag) tag.textContent = '摸魚中';
+    if (btnLabel) btnLabel.textContent = '摸魚';
+  }
+}
+
+function renderAiMatrix(list) {
+  const wrap = el('div', '', 'space-y-2.5 text-xs pb-2');
+
+  const headerCard = el('div', '', 'p-3 bg-slate-900 text-white rounded-lg shadow-sm space-y-1');
+  const badge = el('div', '', 'flex items-center justify-between');
+  badge.append(el('span', 'EASYSTOCK QUANT ENGINE', 'text-[10px] font-mono tracking-wider text-sky-400 font-bold'));
+  badge.append(el('span', 'v4.2 PROD', 'text-[9px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono'));
+  headerCard.append(badge);
+  headerCard.append(el('h2', '當沖量化神經網絡與每日自適應遷移學習', 'text-xs font-bold text-white'));
+  headerCard.append(el('p', '高頻微觀訂單流 · 多因子非線性特徵矩陣 · 每日盤後雲端 OOS 增量訓練自我演進', 'text-[10px] text-slate-300 leading-relaxed'));
+  wrap.append(headerCard);
+
+  const card1 = el('article', '', 'border border-slate-200 rounded-lg p-2.5 bg-white space-y-1.5 shadow-2xs');
+  card1.append(el('h3', '🎯 多維動態選股指標 & 微觀結構過濾', 'font-bold text-slate-900 text-xs flex items-center gap-1'));
+  const ul1 = el('ul', '', 'space-y-1 text-[11px] text-slate-600');
+  ul1.innerHTML = `
+    <li><strong class="text-slate-800">全市場流動性閥值過濾：</strong>開盤即時錨定全市場成交額前 15% 活絡池，自動剔除掛單稀疏與高滑點死水股。</li>
+    <li><strong class="text-slate-800">VWAP 瞬時動態偏離矩陣：</strong>即時運算 5 分鐘高頻成交量加權平均價，建立 Z-Score 偏離通道，精確捕捉主力機構吸籌與突破動能。</li>
+    <li><strong class="text-slate-800">Tick 級訂單流失衡偵測：</strong>微觀撮合深度剖析，辨識主動性大單連發與急遽爆量（Volume Spurt），排除洗盤虛單誘多。</li>
+  `;
+  card1.append(ul1);
+  wrap.append(card1);
+
+  const card2 = el('article', '', 'border border-slate-200 rounded-lg p-2.5 bg-white space-y-1.5 shadow-2xs');
+  card2.append(el('h3', '🧠 雙階類神經網絡 & 每日盤後自我演進', 'font-bold text-slate-900 text-xs flex items-center gap-1'));
+  const ul2 = el('ul', '', 'space-y-1 text-[11px] text-slate-600');
+  ul2.innerHTML = `
+    <li><strong class="text-slate-800">非線性多因子特徵工程：</strong>聚合即時波動率、ATR 振幅擠壓 (Volatility Squeeze)、多時框均線發散斜率與動能擴散指標。</li>
+    <li><strong class="text-slate-800">每日雲端 OOS 遷移自學習：</strong>每日 14:00 收盤後，Oracle VM 算力自動提取全市場百萬筆 Tick 撮合數據進行增量微調，動態校準權重閥值，徹底避免傳統靜態指標之鈍化與過擬合。</li>
+    <li><strong class="text-slate-800">自適應市場 Regime 切換：</strong>自動辨識大盤處於「高波動趨勢」、「區間震盪洗盤」或「極端崩跌」，動態切換多空靈敏度。</li>
+  `;
+  card2.append(ul2);
+  wrap.append(card2);
+
+  const card3 = el('article', '', 'border border-slate-200 rounded-lg p-2.5 bg-white space-y-1.5 shadow-2xs');
+  card3.append(el('h3', '🛡️ 毫秒級量化風控 & 尾盤清倉鐵律', 'font-bold text-slate-900 text-xs flex items-center gap-1'));
+  const ul3 = el('ul', '', 'space-y-1 text-[11px] text-slate-600');
+  ul3.innerHTML = `
+    <li><strong class="text-slate-800">自適應 ATR 移動停利：</strong>波段獲利啟動後，止盈防守點自動隨波動度動態階梯式上移，鎖定波段最大化利潤。</li>
+    <li><strong class="text-slate-800">剛性清倉鐵律：</strong>嚴守 -1.5% ~ -2.0% 硬性停損防線，且於 13:15 前無條件強制平倉，落實當沖「零留夜、零跳空風險」原則。</li>
+  `;
+  card3.append(ul3);
+  wrap.append(card3);
+
+  const card4 = el('article', '', 'border border-sky-200 bg-sky-50/60 rounded-lg p-3 space-y-2 shadow-2xs');
+  const portalTitle = el('div', '', 'flex items-center justify-between');
+  portalTitle.append(el('h3', '🐮 打工牛馬量化救贖傳送門', 'font-bold text-sky-950 text-xs'));
+  portalTitle.append(el('span', '上班安心搬磚', 'text-[10px] text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded font-medium'));
+  card4.append(portalTitle);
+  card4.append(el('p', '專為上班打工牛馬量身打造！告別盯盤焦慮，查看完整即時戰情室、歷史訓練日誌與量化回測報表：', 'text-[11px] text-slate-600 leading-relaxed'));
+
+  const linkBtn = el('a', '', 'flex items-center justify-center gap-1.5 w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-bold tracking-wide transition shadow-sm cursor-pointer');
+  linkBtn.href = 'https://jimmyeyes.com/easystock';
+  linkBtn.target = '_blank';
+  linkBtn.rel = 'noopener noreferrer';
+  linkBtn.innerHTML = `<span>🚀 前往 EasyStock 量化中樞 (jimmyeyes.com/easystock)</span> <span class="text-sky-400">↗</span>`;
+  linkBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (chrome.tabs?.create) {
+      chrome.tabs.create({ url: 'https://jimmyeyes.com/easystock' });
+    } else {
+      window.open('https://jimmyeyes.com/easystock', '_blank');
+    }
+  });
+  card4.append(linkBtn);
+  wrap.append(card4);
+
+  list.append(wrap);
+}
+
 function renderStrategyBar() {
   const bar = $('strategy-bar');
-  if (!bar || !view) return;
+  if (!bar || !view || group === 'ai_matrix') {
+    if (bar) bar.classList.add('hidden');
+    return;
+  }
   let targets = [];
   let title = '';
 
@@ -114,6 +205,7 @@ function render() {
   for (const key of GROUPS) $(`toggle-${key}`).checked = view.settings[key];
   if ($('toggle-all-daytrade')) $('toggle-all-daytrade').checked = view.settings?.allDaytradeAlerts !== false;
   if ($('toggle-all-rebound')) $('toggle-all-rebound').checked = view.settings?.allReboundAlerts !== false;
+  applyStealthMode(view.settings?.stealthMode);
   if ($('radio-filter-all') && $('radio-filter-custom')) {
     const isCustom = view.settings?.filterMode === 'custom';
     $('radio-filter-all').checked = !isCustom;
@@ -139,6 +231,10 @@ function render() {
   renderTaiex();
   renderStrategyBar();
   const list = $('stock-list-container'); list.replaceChildren();
+  if (group === 'ai_matrix') {
+    renderAiMatrix(list);
+    return;
+  }
   const rows = view.stocks.filter(s => group === 'all' || s.groups.includes(group));
   if (!rows.length) list.append(el('p', '此群組尚無自選股票，請輸入代號或名稱新增。', 'text-xs text-slate-500 p-3'));
   for (const s of rows) {
@@ -416,7 +512,33 @@ $('btn-checkout-now').addEventListener('click', async () => {
     if (confirm(`即將開啟管理員設定的付款網站：\n${new URL(current.paymentURL).hostname}\n付款不會自動開通，仍須取得授權碼。`)) await chrome.tabs.create({ url: current.paymentURL });
   } catch (e) { status(e.message, true); }
 });
+async function toggleStealthMode() {
+  if (!view) return;
+  const current = !!view.settings?.stealthMode;
+  const next = !current;
+  await act({ type: 'SETTINGS', strategy: 'stealthMode', enabled: next });
+  if (view) {
+    if (!view.settings) view.settings = {};
+    view.settings.stealthMode = next;
+    applyStealthMode(next);
+  }
+  status(next ? '🐮 已切換為牛馬摸魚模式 (低飽和偽裝已啟用)' : '已還原一般彩色看盤模式');
+}
+$('btn-stealth-toggle')?.addEventListener('click', toggleStealthMode);
+$('toggle-stealth')?.addEventListener('change', async e => {
+  await act({ type: 'SETTINGS', strategy: 'stealthMode', enabled: e.target.checked });
+  if (view) {
+    if (!view.settings) view.settings = {};
+    view.settings.stealthMode = e.target.checked;
+    applyStealthMode(e.target.checked);
+  }
+  status(e.target.checked ? '🐮 已切換為牛馬摸魚模式 (低飽和偽裝已啟用)' : '已還原一般彩色看盤模式');
+});
 document.addEventListener('keydown', e => {
+  if ((e.key === 'b' || e.key === 'B') && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) && $('settings-panel')?.inert && $('payment-modal')?.classList.contains('hidden')) {
+    toggleStealthMode();
+    return;
+  }
   if (e.key === 'Escape') { if (!$('payment-modal').classList.contains('hidden')) payment(false); else drawer(false); }
   if (e.key !== 'Tab') return;
   const panel = !$('payment-modal').classList.contains('hidden') ? $('payment-modal') : !$('settings-panel').inert ? $('settings-panel') : null;

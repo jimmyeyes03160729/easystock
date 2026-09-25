@@ -54,6 +54,34 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.equal(messages.at(-1).type, 'ADD_BATCH');
   assert.equal(messages.at(-1).stocks[0].symbol, '2454');
 
+  // Test AI Matrix tab rendering
+  w.document.querySelector('[data-group="ai_matrix"]').click();
+  const listContainer = w.document.getElementById('stock-list-container');
+  assert.match(listContainer.textContent, /當沖量化神經網絡與每日自適應遷移學習/);
+  assert.match(listContainer.textContent, /全市場流動性閥值過濾/);
+  assert.match(listContainer.textContent, /每日雲端 OOS 遷移自學習/);
+  assert.match(listContainer.textContent, /jimmyeyes\.com\/easystock/);
+  assert.equal(stratBar.classList.contains('hidden'), true);
+
+  // Test stealth mode (牛馬上班摸魚模式)
+  const stealthBtn = w.document.getElementById('btn-stealth-toggle');
+  assert.ok(stealthBtn);
+  stealthBtn.click();
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(messages.at(-1).type, 'SETTINGS');
+  assert.equal(messages.at(-1).strategy, 'stealthMode');
+  assert.equal(messages.at(-1).enabled, true);
+  assert.equal(w.document.body.classList.contains('stealth-mode'), true);
+  assert.match(w.document.getElementById('brand-title').textContent, /SysMonitor/);
+  assert.equal(w.document.getElementById('stealth-btn-label').textContent, '搬磚中');
+
+  stealthBtn.click();
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(messages.at(-1).enabled, false);
+  assert.equal(w.document.body.classList.contains('stealth-mode'), false);
+  assert.match(w.document.getElementById('brand-title').textContent, /牛馬自救終端/);
+  assert.equal(w.document.getElementById('stealth-btn-label').textContent, '摸魚');
+
   w.document.getElementById('btn-open-settings').click();
   assert.equal(w.document.getElementById('settings-panel').inert, false);
   w.document.getElementById('btn-test-daytrade-notif').click();
