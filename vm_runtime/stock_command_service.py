@@ -1524,7 +1524,7 @@ def interactive_card_message(
                 "type": "image",
                 "url": url,
                 "size": "full",
-                "aspectRatio": "1:1.18",
+                "aspectRatio": "1:1",
                 "aspectMode": "fit",
                 "backgroundColor": "#FFFFFF",
                 "action": {

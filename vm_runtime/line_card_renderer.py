@@ -175,8 +175,8 @@ def _dt_text(snapshot: dict) -> str:
 
 
 def _new_figure():
-    # 6.4 x 7.6 inches @ 130 dpi = 832 x 988 px (~1:1.18 aspect ratio)
-    fig = plt.figure(figsize=(6.4, 7.6), dpi=130, facecolor=BG)
+    # 6.4 x 6.4 inches @ 130 dpi = 832 x 832 px (1:1 aspect ratio)
+    fig = plt.figure(figsize=(6.4, 6.4), dpi=130, facecolor=BG)
     ax = fig.add_axes([0, 0, 1, 1])
     ax.set_axis_off()
     ax.set_xlim(0, 1)
@@ -207,56 +207,37 @@ def _draw_header(
     timestamp: str,
     is_market: bool = False,
 ) -> str:
-    """Header replicating the reference screenshots in crisp white."""
+    """Header in crisp white with clean stock info and zero decorative fluff."""
     arrow, color, _, _ = _direction(change)
 
-    # 1. Top left branding/friend promo: ⬆ 加好友
-    canvas.text(0.045, 0.965, "⬆ 加好友", transform=canvas.transAxes,
-                fontsize=11.5, fontweight="bold", color=RED, va="center")
-
-    # 2. Top right action tags: [ 加入自選 ] [ 分享此圖 ]
-    if not is_market:
-        _rounded(canvas, (0.640, 0.948), 0.155, 0.034, radius=0.008,
-                 face="#FCE7F3", edge="#F472B6", lw=0.8, zorder=2)
-        canvas.text(0.717, 0.965, "加入自選", transform=canvas.transAxes,
-                    fontsize=8.5, fontweight="bold", color="#DB2777",
-                    ha="center", va="center", zorder=3)
-
-    share_x = 0.812
-    _rounded(canvas, (share_x, 0.948), 0.145, 0.034, radius=0.008,
-             face="#FEF3C7", edge="#F59E0B", lw=0.8, zorder=2)
-    canvas.text(share_x + 0.072, 0.965, "分享此圖", transform=canvas.transAxes,
-                fontsize=8.5, fontweight="bold", color="#B45309",
-                ha="center", va="center", zorder=3)
-
-    # 3. Main Title & Code
-    canvas.text(0.045, 0.908, title, transform=canvas.transAxes,
+    # 1. Main Title & Code
+    canvas.text(0.045, 0.932, title, transform=canvas.transAxes,
                 fontsize=21.0, fontweight="bold", color=TEXT_MAIN, va="center")
     if code:
         title_offset = 0.045 + (len(title) * 0.046)
-        canvas.text(title_offset, 0.904, f"({code})",
+        canvas.text(title_offset, 0.928, f"({code})",
                     transform=canvas.transAxes, fontsize=12.5, fontweight="bold",
                     color=TEXT_MUTED, va="center")
 
-    # 4. Badges: [上市] [電子-半導體] / [上市] [指數]
+    # 2. Badges: [上市] [電子-半導體] / [上市] [指數]
     tags = ["上市", category or ("指數" if is_market else "個股")]
     badge_x = 0.045
     for tag in tags:
         tw = len(tag) * 0.026 + 0.042
-        _rounded(canvas, (badge_x, 0.852), tw, 0.028, radius=0.007,
+        _rounded(canvas, (badge_x, 0.865), tw, 0.030, radius=0.007,
                  face="#F3F4F6", edge="#E5E7EB", lw=0.8, zorder=2)
-        canvas.text(badge_x + tw / 2, 0.866, tag, transform=canvas.transAxes,
-                    fontsize=8.2, color=TEXT_MUTED, ha="center", va="center", zorder=3)
+        canvas.text(badge_x + tw / 2, 0.880, tag, transform=canvas.transAxes,
+                    fontsize=8.5, color=TEXT_MUTED, ha="center", va="center", zorder=3)
         badge_x += tw + 0.015
 
-    # 5. Right side Price & Change
+    # 3. Right side Price & Change
     p_num = _num(price)
     if is_market and p_num is not None:
         p_str = f"{p_num:,.1f}"
     else:
         p_str = _p(price)
 
-    canvas.text(0.480, 0.902, p_str, transform=canvas.transAxes,
+    canvas.text(0.480, 0.924, p_str, transform=canvas.transAxes,
                 fontsize=26.0, fontweight="bold", color=color, va="center")
 
     ch = abs(_num(change, 0.0) or 0.0)
@@ -265,58 +246,17 @@ def _draw_header(
     ch_text = f"{arrow} {sign}{ch:,.2f}"
     rt_text = f"({sign}{rt:.2f}%)"
 
-    canvas.text(0.795, 0.916, ch_text, transform=canvas.transAxes,
+    canvas.text(0.795, 0.938, ch_text, transform=canvas.transAxes,
                 fontsize=11.5, fontweight="bold", color=color, va="center")
-    canvas.text(0.795, 0.888, rt_text, transform=canvas.transAxes,
+    canvas.text(0.795, 0.908, rt_text, transform=canvas.transAxes,
                 fontsize=11.0, fontweight="bold", color=color, va="center")
 
-    # 6. Update timestamp
+    # 4. Update timestamp
     lbl = "指數更新時間" if is_market else "股價更新時間"
-    canvas.text(0.955, 0.856, f"{lbl}: {timestamp}", transform=canvas.transAxes,
-                fontsize=7.8, color=TEXT_LIGHT, ha="right", va="center")
+    canvas.text(0.955, 0.870, f"{lbl}: {timestamp}", transform=canvas.transAxes,
+                fontsize=8.0, color=TEXT_LIGHT, ha="right", va="center")
 
     return color
-
-
-def _draw_bottom_bar(canvas, selected: str):
-    """Draw the bottom interactive options bar [ 即時 ] [ K 線 ] [ 法人 ]."""
-    # Divider line above news
-    canvas.plot([0.045, 0.955], [0.115, 0.115], color=BORDER_LIGHT, lw=0.8, transform=canvas.transAxes)
-
-    # News bar
-    _rounded(canvas, (0.045, 0.068), 0.910, 0.038, radius=0.007,
-             face="#F9FAFB", edge="#E5E7EB", lw=0.7, zorder=2)
-    canvas.text(0.065, 0.087, "news", transform=canvas.transAxes,
-                fontsize=8.5, fontweight="bold", color=TEXT_MUTED, va="center", zorder=3)
-    canvas.text(0.140, 0.087, "EasyStock · 即時量化看盤 · 當沖與法人數據", transform=canvas.transAxes,
-                fontsize=8.0, color=TEXT_MAIN, va="center", zorder=3)
-    canvas.text(0.935, 0.087, ">", transform=canvas.transAxes,
-                fontsize=9.0, color=TEXT_MUTED, ha="center", va="center", zorder=3)
-
-    # Options buttons
-    canvas.text(0.085, 0.032, "選項：", transform=canvas.transAxes,
-                fontsize=9.0, color=TEXT_MUTED, va="center")
-
-    tabs = [("P", "即時"), ("K", "K 線"), ("T", "法人")]
-    btn_x = 0.200
-    btn_w = 0.180
-    btn_h = 0.042
-
-    for key, name in tabs:
-        is_active = (key == selected.upper().strip())
-        if is_active:
-            _rounded(canvas, (btn_x, 0.012), btn_w, btn_h, radius=0.008,
-                     face=BTN_YELLOW_BG, edge=BTN_YELLOW_BORDER, lw=1.2, zorder=3)
-            canvas.text(btn_x + btn_w / 2, 0.033, name, transform=canvas.transAxes,
-                        fontsize=10.0, fontweight="bold", color=TEXT_MAIN,
-                        ha="center", va="center", zorder=4)
-        else:
-            canvas.text(btn_x + btn_w / 2, 0.033, name, transform=canvas.transAxes,
-                        fontsize=9.5, color=TEXT_MUTED, ha="center", va="center", zorder=3)
-            # Vertical separator to the right
-            canvas.plot([btn_x + btn_w, btn_x + btn_w], [0.018, 0.048],
-                        color=BORDER_LIGHT, lw=0.8, transform=canvas.transAxes)
-        btn_x += btn_w + 0.040
 
 
 def _style_chart_white(ax):
@@ -393,8 +333,8 @@ def render_stock_intraday_card(snapshot: dict, rows: list[dict], path: Path) -> 
     # ---------------------------------------------
     # Right Chart Area (x: 0.260 to 0.955)
     # ---------------------------------------------
-    ax = fig.add_axes([0.260, 0.355, 0.695, 0.460])
-    axv = fig.add_axes([0.260, 0.270, 0.695, 0.085], sharex=ax)
+    ax = fig.add_axes([0.260, 0.335, 0.695, 0.485])
+    axv = fig.add_axes([0.260, 0.225, 0.695, 0.110], sharex=ax)
 
     valid = [r for r in rows if r.get("close") is not None]
     if valid:
@@ -472,34 +412,32 @@ def render_stock_intraday_card(snapshot: dict, rows: list[dict], path: Path) -> 
     _style_chart_white(axv)
 
     # ---------------------------------------------
-    # Bottom Stats Bar (y: 0.145 to 0.220)
+    # Bottom Stats (昨量 / 估量 / 均價 / 振幅)
     # ---------------------------------------------
-    stats_y = 0.190
+    stats_y = 0.140
     canvas.text(0.260, stats_y, "昨量", transform=canvas.transAxes,
                 fontsize=9.0, color=TEXT_MUTED, va="center")
-    canvas.text(0.420, stats_y, _lots(snapshot.get("yesterday_volume")), transform=canvas.transAxes,
+    canvas.text(0.480, stats_y, _lots(snapshot.get("yesterday_volume")), transform=canvas.transAxes,
                 fontsize=11.5, fontweight="bold", color=TEXT_MAIN, ha="right", va="center")
 
-    canvas.text(0.580, stats_y, "估量", transform=canvas.transAxes,
+    canvas.text(0.600, stats_y, "估量", transform=canvas.transAxes,
                 fontsize=9.0, color=TEXT_MUTED, va="center")
-    canvas.text(0.740, stats_y, _lots(snapshot.get("estimated_volume")), transform=canvas.transAxes,
+    canvas.text(0.850, stats_y, _lots(snapshot.get("estimated_volume")), transform=canvas.transAxes,
                 fontsize=11.5, fontweight="bold", color=TEXT_MAIN, ha="right", va="center")
 
-    stats_y2 = 0.148
+    stats_y2 = 0.075
     canvas.text(0.260, stats_y2, "均價", transform=canvas.transAxes,
                 fontsize=9.0, color=TEXT_MUTED, va="center")
-    canvas.text(0.420, stats_y2, _p(avg), transform=canvas.transAxes,
+    canvas.text(0.480, stats_y2, _p(avg), transform=canvas.transAxes,
                 fontsize=11.0, fontweight="bold", color=AMBER, ha="right", va="center")
 
     amplitude = None
     if snapshot.get("high") and snapshot.get("low") and ref:
         amplitude = (float(snapshot["high"]) - float(snapshot["low"])) / float(ref) * 100
-    canvas.text(0.580, stats_y2, "振幅", transform=canvas.transAxes,
+    canvas.text(0.600, stats_y2, "振幅", transform=canvas.transAxes,
                 fontsize=9.0, color=TEXT_MUTED, va="center")
-    canvas.text(0.740, stats_y2, f"{amplitude:.2f}%" if amplitude else "--", transform=canvas.transAxes,
+    canvas.text(0.850, stats_y2, f"{amplitude:.2f}%" if amplitude else "--", transform=canvas.transAxes,
                 fontsize=11.0, fontweight="bold", color=TEXT_MAIN, ha="right", va="center")
-
-    _draw_bottom_bar(canvas, "P")
 
     return _save(fig, path)
 
@@ -553,8 +491,8 @@ def render_market_intraday_card(snapshot: dict, rows: list[dict], path: Path) ->
                 ha="center", va="center", zorder=3)
 
     # Right Chart Area
-    ax = fig.add_axes([0.260, 0.355, 0.695, 0.460])
-    axv = fig.add_axes([0.260, 0.270, 0.695, 0.085], sharex=ax)
+    ax = fig.add_axes([0.260, 0.380, 0.695, 0.445])
+    axv = fig.add_axes([0.260, 0.265, 0.695, 0.105], sharex=ax)
 
     valid = [r for r in rows if r.get("close") is not None]
     if valid:
@@ -625,8 +563,8 @@ def render_market_intraday_card(snapshot: dict, rows: list[dict], path: Path) ->
     _style_chart_white(ax)
     _style_chart_white(axv)
 
-    # Bottom Breadth Statistics (centered layout matching screenshot)
-    stats_y1 = 0.228
+    # Bottom Breadth Statistics
+    stats_y1 = 0.185
     canvas.text(0.260, stats_y1, "昨量", transform=canvas.transAxes,
                 fontsize=8.5, color=TEXT_MUTED, va="center")
     canvas.text(0.500, stats_y1, _money_100m(snapshot.get("total_amount")), transform=canvas.transAxes,
@@ -637,7 +575,7 @@ def render_market_intraday_card(snapshot: dict, rows: list[dict], path: Path) ->
     canvas.text(0.850, stats_y1, _money_100m(snapshot.get("total_amount")), transform=canvas.transAxes,
                 fontsize=11.0, fontweight="bold", color=TEXT_MAIN, ha="right", va="center")
 
-    stats_y2 = 0.188
+    stats_y2 = 0.120
     canvas.text(0.260, stats_y2, "上漲家數", transform=canvas.transAxes,
                 fontsize=8.5, color=TEXT_MUTED, va="center")
     canvas.text(0.500, stats_y2, _compact(snapshot.get("up_count", 0)), transform=canvas.transAxes,
@@ -648,7 +586,7 @@ def render_market_intraday_card(snapshot: dict, rows: list[dict], path: Path) ->
     canvas.text(0.850, stats_y2, _compact(snapshot.get("down_count", 0)), transform=canvas.transAxes,
                 fontsize=11.5, fontweight="bold", color=GREEN, ha="right", va="center")
 
-    stats_y3 = 0.148
+    stats_y3 = 0.055
     canvas.text(0.260, stats_y3, "漲停家數", transform=canvas.transAxes,
                 fontsize=8.5, color=TEXT_MUTED, va="center")
     canvas.text(0.500, stats_y3, _compact(snapshot.get("limit_up_count", 0)), transform=canvas.transAxes,
@@ -658,8 +596,6 @@ def render_market_intraday_card(snapshot: dict, rows: list[dict], path: Path) ->
                 fontsize=8.5, color=TEXT_MUTED, va="center")
     canvas.text(0.850, stats_y3, _compact(snapshot.get("limit_down_count", 0)), transform=canvas.transAxes,
                 fontsize=11.5, fontweight="bold", color=GREEN, ha="right", va="center")
-
-    _draw_bottom_bar(canvas, "P")
 
     return _save(fig, path)
 
@@ -735,18 +671,18 @@ def render_k_card(title: str, code: str, rows: list[dict], path: Path, is_market
     ma60 = moving_average(closes, 60)
 
     # 3. MA Indicator Legend Line
-    canvas.text(0.045, 0.760, "日K", transform=canvas.transAxes,
+    canvas.text(0.045, 0.755, "日K", transform=canvas.transAxes,
                 fontsize=9.0, color=TEXT_MUTED, va="center")
-    canvas.text(0.180, 0.760, f"5MA {_p(ma5[-1]) if ma5 else '--'}", transform=canvas.transAxes,
+    canvas.text(0.180, 0.755, f"5MA {_p(ma5[-1]) if ma5 else '--'}", transform=canvas.transAxes,
                 fontsize=9.5, fontweight="bold", color=BLUE, va="center")
-    canvas.text(0.480, 0.760, f"20MA {_p(ma20[-1]) if ma20 else '--'}", transform=canvas.transAxes,
+    canvas.text(0.480, 0.755, f"20MA {_p(ma20[-1]) if ma20 else '--'}", transform=canvas.transAxes,
                 fontsize=9.5, fontweight="bold", color=RED, va="center")
-    canvas.text(0.760, 0.760, f"60MA {_p(ma60[-1]) if ma60 else '--'}", transform=canvas.transAxes,
+    canvas.text(0.760, 0.755, f"60MA {_p(ma60[-1]) if ma60 else '--'}", transform=canvas.transAxes,
                 fontsize=9.5, fontweight="bold", color=AMBER, va="center")
 
-    # 4. Charts: ax (Candlestick, y: 0.280 to 0.730), axv (Volume, y: 0.170 to 0.260)
-    ax = fig.add_axes([0.050, 0.280, 0.880, 0.450])
-    axv = fig.add_axes([0.050, 0.170, 0.880, 0.090], sharex=ax)
+    # 4. Charts: ax (Candlestick, y: 0.220 to 0.720), axv (Volume, y: 0.065 to 0.210)
+    ax = fig.add_axes([0.050, 0.220, 0.880, 0.500])
+    axv = fig.add_axes([0.050, 0.065, 0.880, 0.145], sharex=ax)
 
     all_k_pts = [v for v in highs + lows if v is not None]
     if all_k_pts:
@@ -855,8 +791,6 @@ def render_k_card(title: str, code: str, rows: list[dict], path: Path, is_market
     _style_chart_white(ax)
     _style_chart_white(axv)
 
-    _draw_bottom_bar(canvas, "K")
-
     return _save(fig, path)
 
 
@@ -906,7 +840,7 @@ def _institution_panel_white(fig, canvas, y: float, height: float, title: str,
                 ha="right", va="center", zorder=2)
 
     # Chart area inside panel
-    ax = fig.add_axes([0.080, y + 0.018, 0.840, height - 0.046])
+    ax = fig.add_axes([0.080, y + 0.020, 0.840, height - 0.052])
     colors = [RED if v >= 0 else GREEN for v in vals]
     ax.bar(range(len(vals)), vals, color=colors, width=0.68, alpha=0.85, zorder=3)
     ax.axhline(0, color="#9CA3AF", lw=0.6, ls="--", zorder=2)
@@ -978,11 +912,9 @@ def render_institutional_card(title: str, code: str, snapshot: dict | None,
     if not series:
         raise RuntimeError("三大法人資料不足")
 
-    # 3 Panels: 外資 (0.585), 投信 (0.380), 自營商 (0.175)
-    _institution_panel_white(fig, canvas, 0.585, 0.170, "外資", "持股比", "69.2%", series, "foreign", divisor, suffix)
-    _institution_panel_white(fig, canvas, 0.380, 0.170, "投信", "持股比", "3.64%", series, "trust", divisor, suffix)
-    _institution_panel_white(fig, canvas, 0.175, 0.170, "自營商", "持股比", "1.44%", series, "dealer", divisor, suffix)
-
-    _draw_bottom_bar(canvas, "T")
+    # 3 Panels: 外資 (0.560), 投信 (0.305), 自營商 (0.050)
+    _institution_panel_white(fig, canvas, 0.560, 0.230, "外資", "持股比", "69.2%", series, "foreign", divisor, suffix)
+    _institution_panel_white(fig, canvas, 0.305, 0.230, "投信", "持股比", "3.64%", series, "trust", divisor, suffix)
+    _institution_panel_white(fig, canvas, 0.050, 0.230, "自營商", "持股比", "1.44%", series, "dealer", divisor, suffix)
 
     return _save(fig, path)
