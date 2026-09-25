@@ -411,6 +411,8 @@ async function loadData(force = false) {
             bars = bgDaily.bars;
           }
         }
+      } catch (_) {}
+
       // 若未取得，優先直接調用 Yahoo 2 年日K
       if (!Array.isArray(bars) || !bars.length) {
         try {
