@@ -1,4 +1,4 @@
-name: Overnight Picks - Rebound Strategy
+name: Overnight Picks & Rebound Strategy
 
 on:
   schedule:
@@ -78,9 +78,18 @@ jobs:
           python -m pip install pandas
 
       - name: Verify Scanner Syntax
-        # 這裡將執行的腳本改為假設的新檔名 scan_rebound.py
         run: |
+          python -m py_compile scan_intraday.py
           python -m py_compile scan_rebound.py
+
+      - name: Scan Overnight Fugle Patterns
+        env:
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
+        run: |
+          echo "OVERNIGHT FUGLE STRATEGY: enabled"
+          python scan_intraday.py
 
       - name: Scan Overnight Rebound Patterns
         env:
@@ -89,5 +98,4 @@ jobs:
           FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
         run: |
           echo "OVERNIGHT REBOUND STRATEGY: enabled"
-          # 執行觸底反彈的掃描腳本
           python scan_rebound.py
