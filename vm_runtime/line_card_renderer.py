@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""EasyStock LINE compact card renderer (V4.3.2).
+"""EasyStock LINE compact card renderer (V5.0.0 - Stitch Obsidian Dark).
 
-Changes from V4.3.1:
-- Keep V4.3.1 compact 900x720 layout and button-friendly design.
-- K-line chart uses more of the canvas (less blank space above the plot).
-- K-line highest high and lowest low are annotated directly on the chart.
-- K-line summary bar remains compact.
-- Taiwan market convention: up=red, down=green.
+Google Stitch Dark Obsidian Redesign:
+- Obsidian dark glassmorphism palette (#0B101B / #121A29).
+- Taiwan market convention strictly enforced: UP is Red (#EF4444), DOWN is Green (#10B981).
+- P-card: Intraday smooth glowing curve, VWAP (均價線), high/low pins, time marker, volume bars.
+- K-card: Standard Japanese candlesticks (紅陽線、綠陰線), MA5/MA20/MA60, Volume MA20, KD/RSI indicators.
+- Market-card: TAIEX intraday with Advance/Decline breadth (上漲/下跌/漲停/跌停).
+- T-card: Institutional net buys/sells across Foreign, Investment Trust, and Dealer.
+- 5:4 aspect ratio (900x720 px @ 125 dpi), optimized for mobile LINE chat preview.
 """
 
 from __future__ import annotations
@@ -25,27 +27,19 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, Rectangle, Circle
 from matplotlib.ticker import FuncFormatter
 
-# Try to register Noto CJK on Ubuntu. Noto CJK JP also contains Traditional
-# Chinese glyphs, so it is a safe fallback if TC face discovery is weak.
+# Register Noto Sans CJK on Ubuntu / Linux
 for _font_path in (
-    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Medium.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
 ):
     try:
         if Path(_font_path).exists():
             fm.fontManager.addfont(_font_path)
     except Exception:
         pass
-
-BRAND = "當沖吧！牛馬仔 ｜ EasyStock   By JimmyWei"
-BG = "#f4f7fb"
-CARD = "#ffffff"
-TEXT = "#111827"
-MUTED = "#718096"
-GRID = "#dbe3ee"
-RED = "#e53935"      # 台股上漲
-GREEN = "#0f9d58"    # 台股下跌
-YELLOW = "#f2b705"
 
 
 def _font_family() -> str:
@@ -54,6 +48,7 @@ def _font_family() -> str:
         "Noto Sans CJK JP",
         "Noto Sans TC",
         "Microsoft JhengHei",
+        "PingFang TC",
         "Arial Unicode MS",
         "DejaVu Sans",
     ]
@@ -67,6 +62,41 @@ def _font_family() -> str:
 FONT = _font_family()
 plt.rcParams["font.family"] = FONT
 plt.rcParams["axes.unicode_minus"] = False
+
+# ==========================================
+# Stitch Obsidian Dark Color Palette
+# ==========================================
+BRAND = "當沖吧！牛馬仔 ｜ EasyStock · 智慧量化看板"
+BG = "#0b101b"              # Outer background
+CARD = "#121a29"            # Main container card
+CARD_BORDER = "#1e2a3e"     # Container border
+CARD_INNER = "#172235"      # Metrics row / panels
+CARD_INNER_BORDER = "#223147"
+TEXT = "#f8fafc"            # Bright white text (primary)
+MUTED = "#94a3b8"           # Slate-400 text (secondary)
+DIM = "#64748b"             # Slate-500 text (timestamps, grids)
+GRID = "#182335"            # Subtle grid line color
+CHART_BG = "#0d1422"        # Chart plot background
+CHART_BORDER = "#1e293b"    # Plot border
+
+# Taiwan Stock Market Conventions: 漲紅跌綠
+RED = "#ef4444"             # Taiwan Up / Bullish
+RED_SOFT = "#f87171"
+RED_PILL_BG = "#2b1218"
+RED_PILL_BORDER = "#7f1d1d"
+
+GREEN = "#10b981"           # Taiwan Down / Bearish
+GREEN_SOFT = "#34d399"
+GREEN_PILL_BG = "#0a261d"
+GREEN_PILL_BORDER = "#064e3b"
+
+FLAT = "#94a3b8"            # Neutral / Flat
+FLAT_PILL_BG = "#192231"
+FLAT_PILL_BORDER = "#334155"
+
+GOLD = "#f59e0b"            # VWAP / MA5 / Amber highlight
+CYAN = "#06b6d4"            # MA20 / Volume highlight
+PURPLE = "#a855f7"          # MA60
 
 
 def _num(v: Any, default: float | None = None) -> float | None:
@@ -122,13 +152,13 @@ def _signed(v: Any, decimals: int = 2, suffix: str = "") -> str:
     return f"{sign}{x:,.{decimals}f}{suffix}"
 
 
-def _direction(change: Any) -> tuple[str, str]:
+def _direction(change: Any) -> tuple[str, str, str, str]:
     x = _num(change, 0.0) or 0.0
     if x > 0:
-        return "▲", RED
+        return "▲", RED, RED_PILL_BG, RED_PILL_BORDER
     if x < 0:
-        return "▼", GREEN
-    return "－", MUTED
+        return "▼", GREEN, GREEN_PILL_BG, GREEN_PILL_BORDER
+    return "－", FLAT, FLAT_PILL_BG, FLAT_PILL_BORDER
 
 
 def _dt_text(snapshot: dict) -> str:
@@ -139,7 +169,7 @@ def _dt_text(snapshot: dict) -> str:
 
 
 def _new_figure():
-    # 7.2 x 5.76 @ 125 dpi = 900 x 720 px (5:4)
+    # 7.2 x 5.76 @ 125 dpi = 900 x 720 px (5:4 aspect ratio)
     fig = plt.figure(figsize=(7.2, 5.76), dpi=125, facecolor=BG)
     ax = fig.add_axes([0, 0, 1, 1])
     ax.set_axis_off()
@@ -148,33 +178,19 @@ def _new_figure():
     return fig, ax
 
 
-def _rounded(ax, xy, width, height, radius=0.025, face=CARD, edge="none", lw=1):
+def _rounded(ax, xy, width, height, radius=0.025, face=CARD, edge=CARD_BORDER, lw=1.0):
     p = FancyBboxPatch(
         xy, width, height,
-        boxstyle=f"round,pad=0.006,rounding_size={radius}",
+        boxstyle=f"round,pad=0.005,rounding_size={radius}",
         facecolor=face, edgecolor=edge, linewidth=lw,
-        transform=ax.transAxes,
+        transform=ax.transAxes, zorder=1,
     )
     ax.add_patch(p)
     return p
 
 
-def _candlestick_icon(ax, x, y, size=0.030):
-    """Small icon only; keep title/status text visually dominant."""
-    ax.add_patch(Circle((x, y), size, transform=ax.transAxes,
-                        facecolor="#f0f4fa", edgecolor="none"))
-    xs = [x - size * .33, x, x + size * .33]
-    vals = [(.35, .10, .22), (.55, .14, .32), (.74, .18, .40)]
-    for xx, (hi, lo, body) in zip(xs, vals):
-        ax.plot([xx, xx], [y-size*lo, y+size*hi], transform=ax.transAxes,
-                color=TEXT, lw=.85)
-        ax.add_patch(Rectangle((xx-size*.10, y-size*.02), size*.20, size*body,
-                               transform=ax.transAxes, facecolor=RED,
-                               edgecolor=TEXT, linewidth=.55))
-
-
-def _header_price(
-    ax,
+def _header(
+    canvas,
     *,
     title: str,
     code: str,
@@ -183,45 +199,88 @@ def _header_price(
     change: Any,
     rate: Any,
     timestamp: str,
-):
-    """One compact title row: name/code + price/change + status badge."""
-    arrow, color = _direction(change)
-    _candlestick_icon(ax, 0.066, 0.906, size=.029)
+) -> str:
+    """Obsidian header matching Google Stitch visual hierarchy."""
+    arrow, color, pill_bg, pill_border = _direction(change)
 
-    ax.text(0.108, 0.919, title, transform=ax.transAxes,
-            fontsize=18.5, fontweight="bold", color=TEXT, va="center")
+    # 1. Top left active indicator dot + brand text
+    canvas.add_patch(Circle((0.057, 0.932), 0.0055, transform=canvas.transAxes,
+                            facecolor=GREEN, edgecolor="none", zorder=2))
+    canvas.text(0.068, 0.932, "EasyStock 官方機器人", transform=canvas.transAxes,
+                fontsize=8.5, fontweight="bold", color=MUTED, va="center")
+
+    # 2. Main title & code
+    canvas.text(0.052, 0.888, title, transform=canvas.transAxes,
+                fontsize=19.5, fontweight="bold", color=TEXT, va="center")
     if code:
-        ax.text(0.108, 0.878, code, transform=ax.transAxes,
-                fontsize=10.5, fontweight="bold", color=MUTED, va="center")
+        canvas.text(0.052, 0.852, code, transform=canvas.transAxes,
+                    fontsize=10.0, fontweight="bold", color=MUTED, va="center")
 
-    # Price immediately beside stock/index name instead of a separate large row.
-    ax.text(0.385, 0.911, _p(price), transform=ax.transAxes,
-            fontsize=21.5, fontweight="bold", color=color, va="center")
+    # 3. Price (prominent center-right)
+    canvas.text(0.390, 0.892, _p(price), transform=canvas.transAxes,
+                fontsize=22.5, fontweight="bold", color=color, va="center")
+
+    # 4. Change Pill Badge
     ch = abs(_num(change, 0.0) or 0.0)
-    rt = _num(rate, 0.0) or 0.0
-    ax.text(0.610, 0.911, f"{arrow}{ch:,.2f}  {rt:+.2f}%",
-            transform=ax.transAxes, fontsize=11.5, fontweight="bold",
-            color=color, va="center")
+    rt = abs(_num(rate, 0.0) or 0.0)
+    pill_text = f"{arrow} {ch:,.2f}  ({rt:.2f}%)"
+    _rounded(canvas, (0.595, 0.865), 0.200, 0.055, radius=0.015,
+             face=pill_bg, edge=pill_border, lw=0.9)
+    canvas.text(0.695, 0.892, pill_text, transform=canvas.transAxes,
+                fontsize=10.5, fontweight="bold", color=color,
+                ha="center", va="center")
 
-    # Smaller pill, larger label.
-    _rounded(ax, (0.820, 0.870), 0.135, 0.065, radius=.015, face="#f5f7fb")
-    ax.text(0.8875, 0.903, badge, transform=ax.transAxes,
-            fontsize=11.8, fontweight="bold", color=TEXT,
-            ha="center", va="center")
+    # 5. Right Mode Badge & Timestamp
+    _rounded(canvas, (0.825, 0.875), 0.125, 0.048, radius=0.013,
+             face=CARD_INNER, edge=CARD_INNER_BORDER, lw=0.8)
+    canvas.text(0.8875, 0.899, badge, transform=canvas.transAxes,
+                fontsize=9.2, fontweight="bold", color=TEXT,
+                ha="center", va="center")
 
-    ax.text(0.610, 0.874, timestamp, transform=ax.transAxes,
-            fontsize=8.2, color=MUTED, va="center")
+    canvas.text(0.8875, 0.848, timestamp, transform=canvas.transAxes,
+                fontsize=7.8, color=DIM, ha="center", va="center")
+
     return color
 
 
-def _metric_inline(ax, x, y, label, value, color=TEXT, size=10.3):
-    ax.text(x, y, f"{label} {value}", transform=ax.transAxes,
-            fontsize=size, fontweight="bold", color=color, va="center", ha="left")
+def _hud_metrics(canvas, y: float, height: float, items: list[tuple[str, str, str]]):
+    """Sleek dark HUD metrics bar."""
+    _rounded(canvas, (0.048, y), 0.904, height, radius=0.015,
+             face=CARD_INNER, edge=CARD_INNER_BORDER, lw=0.8)
+    n = max(1, len(items))
+    step = 0.904 / n
+    for i, (label, val, col) in enumerate(items):
+        cx = 0.048 + (i + 0.5) * step
+        canvas.text(cx, y + height * 0.68, label, transform=canvas.transAxes,
+                    fontsize=8.0, fontweight="bold", color=MUTED, ha="center", va="center")
+        canvas.text(cx, y + height * 0.28, str(val), transform=canvas.transAxes,
+                    fontsize=9.8, fontweight="bold", color=col, ha="center", va="center")
 
 
-def _footer(ax):
-    ax.text(0.5, 0.036, BRAND, transform=ax.transAxes,
-            fontsize=7.7, color="#98a2b3", ha="center", va="center")
+def _summary_row(canvas, y: float, height: float, items: list[tuple[str, str, str]]):
+    """Bottom summary bar."""
+    _rounded(canvas, (0.048, y), 0.904, height, radius=0.015,
+             face=CARD_INNER, edge=CARD_INNER_BORDER, lw=0.8)
+    n = max(1, len(items))
+    step = 0.904 / n
+    for i, (label, val, col) in enumerate(items):
+        cx = 0.048 + (i + 0.5) * step
+        canvas.text(cx, y + height * 0.5, f"{label} {val}", transform=canvas.transAxes,
+                    fontsize=9.0, fontweight="bold", color=col, ha="center", va="center")
+
+
+def _footer(canvas):
+    canvas.text(0.5, 0.035, BRAND, transform=canvas.transAxes,
+                fontsize=7.6, color=DIM, ha="center", va="center")
+
+
+def _style_chart(ax):
+    ax.set_facecolor(CHART_BG)
+    ax.grid(True, color=GRID, alpha=0.75, linestyle="-", linewidth=0.55)
+    ax.tick_params(colors=MUTED, labelsize=7.3, length=2, width=0.7)
+    for s in ax.spines.values():
+        s.set_color(CHART_BORDER)
+        s.set_linewidth(0.8)
 
 
 def _save(fig, path: Path):
@@ -231,299 +290,480 @@ def _save(fig, path: Path):
     return path
 
 
-def _style_chart(ax):
-    ax.set_facecolor(CARD)
-    ax.grid(True, color=GRID, alpha=.7, linewidth=.5)
-    ax.tick_params(colors=MUTED, labelsize=7.1, length=2)
-    for s in ax.spines.values():
-        s.set_color(GRID)
+def _annotate_intraday_extremes(ax, xvals, closes):
+    """Annotate single highest and single lowest points with proper alignment."""
+    if not xvals or not closes:
+        return
+
+    hi_idx = max(range(len(closes)), key=lambda i: closes[i])
+    lo_idx = min(range(len(closes)), key=lambda i: closes[i])
+    total = len(xvals)
+
+    # High annotation
+    hx, hy = xvals[hi_idx], closes[hi_idx]
+    ax.scatter([hx], [hy], s=22, color=RED, zorder=7)
+    ha_high = "right" if hi_idx > total * 0.8 else ("left" if hi_idx < total * 0.2 else "center")
+    dx_high = -10 if ha_high == "right" else (10 if ha_high == "left" else 0)
+    ax.annotate(
+        f"高 {_p(hy)}",
+        xy=(hx, hy),
+        xytext=(dx_high, 8),
+        textcoords="offset points",
+        ha=ha_high, va="bottom",
+        fontsize=7.6, fontweight="bold", color=RED,
+        bbox=dict(boxstyle="round,pad=0.22", fc=RED_PILL_BG, ec=RED_PILL_BORDER, lw=0.8, alpha=0.95),
+        zorder=8,
+    )
+
+    # Low annotation
+    lx, ly = xvals[lo_idx], closes[lo_idx]
+    ax.scatter([lx], [ly], s=22, color=GREEN, zorder=7)
+    ha_low = "right" if lo_idx > total * 0.8 else ("left" if lo_idx < total * 0.2 else "center")
+    dx_low = -10 if ha_low == "right" else (10 if ha_low == "left" else 0)
+    ax.annotate(
+        f"低 {_p(ly)}",
+        xy=(lx, ly),
+        xytext=(dx_low, -12),
+        textcoords="offset points",
+        ha=ha_low, va="top",
+        fontsize=7.6, fontweight="bold", color=GREEN,
+        bbox=dict(boxstyle="round,pad=0.22", fc=GREEN_PILL_BG, ec=GREEN_PILL_BORDER, lw=0.8, alpha=0.95),
+        zorder=8,
+    )
 
 
-def _intraday_axes(fig):
-    # 固定交易分鐘軸，不使用 datetime sharex，避免 matplotlib 自動縮放。
-    ax = fig.add_axes([.075, .270, .85, .405])
-    axv = fig.add_axes([.075, .195, .85, .055])
-    return ax, axv
+def _annotate_k_extremes(ax, highs, lows):
+    """Annotate single absolute high and single absolute low on K-line chart."""
+    valid_highs = [(i, v) for i, v in enumerate(highs) if v is not None]
+    valid_lows = [(i, v) for i, v in enumerate(lows) if v is not None]
+    if not valid_highs or not valid_lows:
+        return
+
+    hi_idx, hi_val = max(valid_highs, key=lambda x: x[1])
+    lo_idx, lo_val = min(valid_lows, key=lambda x: x[1])
+    total = max(len(highs), len(lows), 1)
+
+    # High annotation
+    ha_hi = "right" if hi_idx > total * 0.8 else ("left" if hi_idx < total * 0.2 else "center")
+    dx_hi = -10 if ha_hi == "right" else (10 if ha_hi == "left" else 0)
+    ax.scatter([hi_idx], [hi_val], s=20, color=RED, zorder=7)
+    ax.annotate(
+        f"高 {_p(hi_val)}",
+        xy=(hi_idx, hi_val),
+        xytext=(dx_hi, 8),
+        textcoords="offset points",
+        ha=ha_hi, va="bottom",
+        fontsize=7.6, fontweight="bold", color=RED,
+        bbox=dict(boxstyle="round,pad=0.22", fc=RED_PILL_BG, ec=RED_PILL_BORDER, lw=0.8, alpha=0.95),
+        zorder=8,
+    )
+
+    # Low annotation
+    ha_lo = "right" if lo_idx > total * 0.8 else ("left" if lo_idx < total * 0.2 else "center")
+    dx_lo = -10 if ha_lo == "right" else (10 if ha_lo == "left" else 0)
+    ax.scatter([lo_idx], [lo_val], s=20, color=GREEN, zorder=7)
+    ax.annotate(
+        f"低 {_p(lo_val)}",
+        xy=(lo_idx, lo_val),
+        xytext=(dx_lo, -12),
+        textcoords="offset points",
+        ha=ha_lo, va="top",
+        fontsize=7.6, fontweight="bold", color=GREEN,
+        bbox=dict(boxstyle="round,pad=0.22", fc=GREEN_PILL_BG, ec=GREEN_PILL_BORDER, lw=0.8, alpha=0.95),
+        zorder=8,
+    )
 
 
-def _compact_summary_row(canvas, items: list[tuple[str, str, str]]):
-    _rounded(canvas, (.045, .090), .91, .070, radius=.015, face="#f7f9fc")
-    n = max(1, len(items))
-    for i, (label, value, color) in enumerate(items):
-        x = .065 + i * (.87 / n)
-        canvas.text(x, .125, f"{label} {value}", transform=canvas.transAxes,
-                    fontsize=8.9, fontweight="bold", color=color, va="center")
+def _calc_kd(closes: list[float], highs: list[float], lows: list[float], n=9, m1=3, m2=3):
+    if len(closes) < n:
+        return None, None
+    rsv_list = []
+    for i in range(n - 1, len(closes)):
+        sub_h = max(highs[i - n + 1: i + 1])
+        sub_l = min(lows[i - n + 1: i + 1])
+        c = closes[i]
+        rsv = 50.0 if sub_h == sub_l else (c - sub_l) / (sub_h - sub_l) * 100.0
+        rsv_list.append(rsv)
+    k, d = 50.0, 50.0
+    for rsv in rsv_list:
+        k = (1.0 / m1) * rsv + (1.0 - 1.0 / m1) * k
+        d = (1.0 / m2) * k + (1.0 - 1.0 / m2) * d
+    return k, d
 
 
+def _calc_rsi(closes: list[float], period=14):
+    if len(closes) < period + 1:
+        return None
+    gains, losses = [], []
+    for i in range(1, len(closes)):
+        diff = closes[i] - closes[i - 1]
+        if diff >= 0:
+            gains.append(diff)
+            losses.append(0.0)
+        else:
+            gains.append(0.0)
+            losses.append(abs(diff))
+    avg_gain = sum(gains[:period]) / period
+    avg_loss = sum(losses[:period]) / period
+    for i in range(period, len(gains)):
+        avg_gain = (avg_gain * (period - 1) + gains[i]) / period
+        avg_loss = (avg_loss * (period - 1) + losses[i]) / period
+    if avg_loss == 0:
+        return 100.0
+    rs = avg_gain / avg_loss
+    return 100.0 - (100.0 / (1.0 + rs))
+
+
+# ==========================================
+# 1. Stock Intraday Card (P2330)
+# ==========================================
 def render_stock_intraday_card(snapshot: dict, rows: list[dict], path: Path) -> Path:
     fig, canvas = _new_figure()
-    _rounded(canvas, (.018, .018), .964, .964, radius=.026)
+    _rounded(canvas, (0.018, 0.018), 0.964, 0.964, radius=0.026, face=CARD, edge=CARD_BORDER, lw=1.2)
+
     name, code = snapshot.get("name", "股票"), snapshot.get("code", "")
-    color = _header_price(
-        canvas, title=str(name), code=str(code), badge="即時走勢",
-        price=snapshot.get("close"), change=snapshot.get("change_price"),
-        rate=snapshot.get("change_rate"), timestamp=_dt_text(snapshot),
+    color = _header(
+        canvas,
+        title=str(name),
+        code=f"TWSE · P{code}" if code else "TWSE",
+        badge="即時走勢",
+        price=snapshot.get("close"),
+        change=snapshot.get("change_price"),
+        rate=snapshot.get("change_rate"),
+        timestamp=_dt_text(snapshot),
     )
 
     ref = _num(snapshot.get("reference"))
-    # One compact data row only.
-    _metric_inline(canvas, .055, .758, "開", _p(snapshot.get("open")), TEXT)
-    _metric_inline(canvas, .225, .758, "高", _p(snapshot.get("high")), RED)
-    _metric_inline(canvas, .395, .758, "低", _p(snapshot.get("low")), GREEN)
-    _metric_inline(canvas, .565, .758, "均", _p(snapshot.get("average_price")), TEXT)
-    _metric_inline(canvas, .745, .758, "量", _lots(snapshot.get("total_volume")), TEXT, size=9.6)
+    avg = _num(snapshot.get("average_price"))
 
-    ax, axv = _intraday_axes(fig)
+    _hud_metrics(canvas, 0.760, 0.066, [
+        ("開盤", _p(snapshot.get("open")), TEXT),
+        ("最高", _p(snapshot.get("high")), RED),
+        ("最低", _p(snapshot.get("low")), GREEN),
+        ("均價", _p(avg), GOLD),
+        ("總量", _lots(snapshot.get("total_volume")), CYAN),
+    ])
+
+    ax = fig.add_axes([0.058, 0.270, 0.884, 0.440])
+    axv = fig.add_axes([0.058, 0.180, 0.884, 0.075], sharex=ax)
+
     valid = [r for r in rows if r.get("close") is not None]
     if valid:
         times = [r["time"] for r in valid]
         closes = [float(r["close"]) for r in valid]
         vols = [float(r.get("volume") or 0) for r in valid]
 
-        # 固定台股盤中座標：09:00 = 0，13:30 = 270
-        xvals = [
-            (t.hour * 60 + t.minute) - 540
-            for t in times
-        ]
+        xvals = [(t.hour * 60 + t.minute) - 540 for t in times]
+        base = ref if ref is not None else closes[0]
 
-        base = ref or closes[0]
+        # Dynamic Y limits with 8% padding for headroom
+        all_pts = closes + ([base] if base else []) + ([avg] if avg else [])
+        min_p, max_p = min(all_pts), max(all_pts)
+        span = max(max_p - min_p, 1.0)
+        ax.set_ylim(min_p - span * 0.09, max_p + span * 0.09)
 
-        ax.plot(xvals, closes, color=color, lw=1.35)
-        ax.fill_between(xvals, closes, base, where=[c >= base for c in closes], color=RED, alpha=.08, interpolate=True)
-        ax.fill_between(xvals, closes, base, where=[c < base for c in closes], color=GREEN, alpha=.08, interpolate=True)
-        ax.axhline(base, color=MUTED, lw=.65, ls="--")
+        # Reference price horizontal dashed line
+        ax.axhline(base, color=DIM, lw=0.75, ls="--", alpha=0.8, zorder=2)
+
+        # Subtle glow + sharp price line
+        ax.plot(xvals, closes, color=color, lw=3.0, alpha=0.18, zorder=3)
+        ax.plot(xvals, closes, color=color, lw=1.5, zorder=4)
+
+        # Soft shaded area under price
+        ax.fill_between(xvals, closes, base, where=[c >= base for c in closes],
+                        color=RED, alpha=0.12, interpolate=True, zorder=2)
+        ax.fill_between(xvals, closes, base, where=[c < base for c in closes],
+                        color=GREEN, alpha=0.12, interpolate=True, zorder=2)
+
+        # VWAP Golden Line if available
+        if avg:
+            ax.axhline(avg, color=GOLD, lw=0.9, ls=":", alpha=0.85, zorder=3)
+
+        # High/Low Pin Annotations
+        _annotate_intraday_extremes(ax, xvals, closes)
+
+        # Latest price right edge marker
+        last_x, last_c = xvals[-1], closes[-1]
+        ax.scatter([last_x], [last_c], s=26, color=color, edgecolors=TEXT, linewidths=1.0, zorder=7)
+
         ticks = list(range(0, 271, 30))
-
         labels = [
-            "09:00",
-            "09:30",
-            "10:00",
-            "10:30",
-            "11:00",
-            "11:30",
-            "12:00",
-            "12:30",
-            "13:00",
-            "13:30",
+            "09:00", "09:30", "10:00", "10:30", "11:00",
+            "11:30", "12:00", "12:30", "13:00", "13:30",
         ]
-
         ax.set_xlim(0, 270)
         ax.set_xticks(ticks)
-        ax.set_xticklabels(labels)
-
         ax.tick_params(axis="x", labelbottom=False)
 
-        axv.bar(xvals, vols, width=0.8, color=YELLOW, alpha=.82)
+        # Volume bars
+        bar_colors = [RED if c >= base else GREEN for c in closes]
+        axv.bar(xvals, vols, width=0.85, color=bar_colors, alpha=0.85)
         axv.set_xlim(0, 270)
         axv.set_xticks(ticks)
         axv.set_xticklabels(labels)
+        axv.tick_params(axis="y", labelleft=False)
     else:
-        ax.text(.5, .5, "盤中走勢暫無資料", transform=ax.transAxes,
+        ax.text(0.5, 0.5, "盤中走勢暫無資料", transform=ax.transAxes,
                 ha="center", va="center", color=MUTED, fontsize=11)
+
     _style_chart(ax)
     _style_chart(axv)
 
-    if valid:
-        ax.set_xlim(0, 270)
-        axv.set_xlim(0, 270)
-
-    _compact_summary_row(canvas, [
+    _summary_row(canvas, 0.088, 0.065, [
         ("昨量", _lots(snapshot.get("yesterday_volume")), TEXT),
         ("估量", _lots(snapshot.get("estimated_volume")), TEXT),
-        ("參考", _p(ref), TEXT),
+        ("參考", _p(ref), MUTED),
         ("漲跌", _signed(snapshot.get("change_rate"), 2, "%"), color),
     ])
+
     _footer(canvas)
     return _save(fig, path)
 
 
+# ==========================================
+# 2. Market Intraday Card (P大盤)
+# ==========================================
 def render_market_intraday_card(snapshot: dict, rows: list[dict], path: Path) -> Path:
     fig, canvas = _new_figure()
-    _rounded(canvas, (.018, .018), .964, .964, radius=.026)
-    color = _header_price(
-        canvas, title="加權指數", code="TAIEX", badge="大盤走勢",
-        price=snapshot.get("close"), change=snapshot.get("change_price"),
-        rate=snapshot.get("change_rate"), timestamp=_dt_text(snapshot),
-    )
-    ref = _num(snapshot.get("reference"))
-    _metric_inline(canvas, .055, .758, "開", _p(snapshot.get("open")), TEXT)
-    _metric_inline(canvas, .225, .758, "高", _p(snapshot.get("high")), RED)
-    _metric_inline(canvas, .395, .758, "低", _p(snapshot.get("low")), GREEN)
-    _metric_inline(canvas, .565, .758, "參考", _p(ref), TEXT, size=9.8)
-    _metric_inline(canvas, .755, .758, "成交", _money_100m(snapshot.get("total_amount")), TEXT, size=9.2)
+    _rounded(canvas, (0.018, 0.018), 0.964, 0.964, radius=0.026, face=CARD, edge=CARD_BORDER, lw=1.2)
 
-    ax, axv = _intraday_axes(fig)
+    color = _header(
+        canvas,
+        title="加權指數",
+        code="TAIEX · P大盤",
+        badge="大盤走勢",
+        price=snapshot.get("close"),
+        change=snapshot.get("change_price"),
+        rate=snapshot.get("change_rate"),
+        timestamp=_dt_text(snapshot),
+    )
+
+    ref = _num(snapshot.get("reference"))
+
+    _hud_metrics(canvas, 0.760, 0.066, [
+        ("開盤", _p(snapshot.get("open")), TEXT),
+        ("最高", _p(snapshot.get("high")), RED),
+        ("最低", _p(snapshot.get("low")), GREEN),
+        ("昨收", _p(ref), MUTED),
+        ("成交金額", _money_100m(snapshot.get("total_amount")), CYAN),
+    ])
+
+    ax = fig.add_axes([0.058, 0.270, 0.884, 0.440])
+    axv = fig.add_axes([0.058, 0.180, 0.884, 0.075], sharex=ax)
+
     valid = [r for r in rows if r.get("close") is not None]
     if valid:
         times = [r["time"] for r in valid]
         closes = [float(r["close"]) for r in valid]
         vols = [float(r.get("volume") or 0) for r in valid]
 
-        # 固定台股盤中座標：09:00 = 0，13:30 = 270
-        xvals = [
-            (t.hour * 60 + t.minute) - 540
-            for t in times
-        ]
+        xvals = [(t.hour * 60 + t.minute) - 540 for t in times]
+        base = ref if ref is not None else closes[0]
 
-        base = ref or closes[0]
+        all_pts = closes + ([base] if base else [])
+        min_p, max_p = min(all_pts), max(all_pts)
+        span = max(max_p - min_p, 1.0)
+        ax.set_ylim(min_p - span * 0.09, max_p + span * 0.09)
 
-        ax.plot(xvals, closes, color=color, lw=1.35)
-        ax.fill_between(xvals, closes, base, where=[c >= base for c in closes], color=RED, alpha=.08, interpolate=True)
-        ax.fill_between(xvals, closes, base, where=[c < base for c in closes], color=GREEN, alpha=.08, interpolate=True)
-        ax.axhline(base, color=MUTED, lw=.65, ls="--")
+        ax.axhline(base, color=DIM, lw=0.75, ls="--", alpha=0.8, zorder=2)
+        ax.plot(xvals, closes, color=color, lw=3.0, alpha=0.18, zorder=3)
+        ax.plot(xvals, closes, color=color, lw=1.5, zorder=4)
+
+        ax.fill_between(xvals, closes, base, where=[c >= base for c in closes],
+                        color=RED, alpha=0.12, interpolate=True, zorder=2)
+        ax.fill_between(xvals, closes, base, where=[c < base for c in closes],
+                        color=GREEN, alpha=0.12, interpolate=True, zorder=2)
+
+        _annotate_intraday_extremes(ax, xvals, closes)
+
+        last_x, last_c = xvals[-1], closes[-1]
+        ax.scatter([last_x], [last_c], s=26, color=color, edgecolors=TEXT, linewidths=1.0, zorder=7)
+
         ticks = list(range(0, 271, 30))
-
         labels = [
-            "09:00",
-            "09:30",
-            "10:00",
-            "10:30",
-            "11:00",
-            "11:30",
-            "12:00",
-            "12:30",
-            "13:00",
-            "13:30",
+            "09:00", "09:30", "10:00", "10:30", "11:00",
+            "11:30", "12:00", "12:30", "13:00", "13:30",
         ]
-
         ax.set_xlim(0, 270)
         ax.set_xticks(ticks)
-        ax.set_xticklabels(labels)
-
         ax.tick_params(axis="x", labelbottom=False)
 
-        axv.bar(xvals, vols, width=0.8, color=YELLOW, alpha=.82)
+        bar_colors = [RED if c >= base else GREEN for c in closes]
+        axv.bar(xvals, vols, width=0.85, color=bar_colors, alpha=0.85)
         axv.set_xlim(0, 270)
         axv.set_xticks(ticks)
         axv.set_xticklabels(labels)
+        axv.tick_params(axis="y", labelleft=False)
     else:
-        ax.text(.5, .5, "盤中指數走勢暫無資料", transform=ax.transAxes,
+        ax.text(0.5, 0.5, "盤中指數走勢暫無資料", transform=ax.transAxes,
                 ha="center", va="center", color=MUTED, fontsize=11)
+
     _style_chart(ax)
     _style_chart(axv)
 
-    if valid:
-        ax.set_xlim(0, 270)
-        axv.set_xlim(0, 270)
-
-    _compact_summary_row(canvas, [
+    _summary_row(canvas, 0.088, 0.065, [
         ("上漲", _compact(snapshot.get("up_count")), RED),
         ("下跌", _compact(snapshot.get("down_count")), GREEN),
         ("漲停", _compact(snapshot.get("limit_up_count")), RED),
         ("跌停", _compact(snapshot.get("limit_down_count")), GREEN),
     ])
+
     _footer(canvas)
     return _save(fig, path)
 
 
-def _date_labels(rows: list[dict]) -> tuple[list[str], list[int]]:
-    dates = [str(r.get("date") or "") for r in rows]
-    step = max(1, len(dates) // 5)
-    ticks = list(range(0, len(dates), step))
-    if dates and (len(dates)-1) not in ticks:
-        ticks.append(len(dates)-1)
-    return dates, ticks
-
-
-
-
-def _annotate_k_extremes(ax, highs, lows):
-    valid_highs = [(i, v) for i, v in enumerate(highs) if v is not None]
-    valid_lows = [(i, v) for i, v in enumerate(lows) if v is not None]
-    if not valid_highs and not valid_lows:
-        return
-
-    total = max(len(highs), len(lows), 1)
-
-    def _xalign(idx: int):
-        if idx <= total * 0.15:
-            return (18, 'left')
-        if idx >= total * 0.85:
-            return (-18, 'right')
-        return (0, 'center')
-
-    if valid_highs:
-        hi_idx, hi_val = max(valid_highs, key=lambda x: x[1])
-        dx, ha = _xalign(hi_idx)
-        ax.scatter([hi_idx], [hi_val], s=14, color=RED, zorder=6)
-        ax.annotate(
-            f"高 {_p(hi_val)}",
-            xy=(hi_idx, hi_val),
-            xytext=(dx, 14),
-            textcoords='offset points',
-            ha=ha, va='bottom',
-            fontsize=7.6, fontweight='bold', color=RED,
-            arrowprops=dict(arrowstyle='-', color=RED, lw=0.8),
-            bbox=dict(boxstyle='round,pad=0.18', fc='white', ec='none', alpha=0.88),
-            zorder=7,
-        )
-
-    if valid_lows:
-        lo_idx, lo_val = min(valid_lows, key=lambda x: x[1])
-        dx, ha = _xalign(lo_idx)
-        ax.scatter([lo_idx], [lo_val], s=14, color=GREEN, zorder=6)
-        ax.annotate(
-            f"低 {_p(lo_val)}",
-            xy=(lo_idx, lo_val),
-            xytext=(dx, 12),
-            textcoords='offset points',
-            ha=ha, va='bottom',
-            fontsize=7.6, fontweight='bold', color=GREEN,
-            arrowprops=dict(arrowstyle='-', color=GREEN, lw=0.8),
-            bbox=dict(boxstyle='round,pad=0.18', fc='white', ec='none', alpha=0.88),
-            zorder=7,
-        )
-
+# ==========================================
+# 3. K-Line Candlestick Card (K2330 / K大盤)
+# ==========================================
 def render_k_card(title: str, code: str, rows: list[dict], path: Path, is_market=False) -> Path:
     fig, canvas = _new_figure()
-    _rounded(canvas, (.018, .018), .964, .964, radius=.026)
+    _rounded(canvas, (0.018, 0.018), 0.964, 0.964, radius=0.026, face=CARD, edge=CARD_BORDER, lw=1.2)
+
     rows = sorted(rows, key=lambda x: str(x.get("date") or ""))[-60:]
     if not rows:
         raise RuntimeError("K 線資料不足")
+
     last = rows[-1]
     prev = rows[-2].get("close") if len(rows) > 1 else last.get("open")
-    close = _num(last.get("close")); prevf = _num(prev)
+    close = _num(last.get("close"))
+    prevf = _num(prev)
     change = (close - prevf) if close is not None and prevf is not None else 0
     rate = (change / prevf * 100) if prevf else 0
-    color = _header_price(
-        canvas, title=title, code=code, badge="K線",
-        price=close, change=change, rate=rate,
+
+    badge_text = "大盤K線" if is_market else "日K線圖"
+    code_text = "TAIEX · K大盤" if is_market else (f"TWSE · K{code}" if code else "TWSE")
+
+    color = _header(
+        canvas,
+        title=title,
+        code=code_text,
+        badge=badge_text,
+        price=close,
+        change=change,
+        rate=rate,
         timestamp=str(last.get("date") or ""),
     )
 
-    # Enlarge K-line plot area to reduce empty space between the header and chart.
-    ax = fig.add_axes([.060, .232, .88, .500])
-    axv = fig.add_axes([.060, .162, .88, .060], sharex=ax)
     opens = [_num(r.get("open")) for r in rows]
     highs = [_num(r.get("max") if r.get("max") is not None else r.get("high")) for r in rows]
     lows = [_num(r.get("min") if r.get("min") is not None else r.get("low")) for r in rows]
     closes = [_num(r.get("close")) for r in rows]
     vols = [_num(r.get("Trading_Volume") if r.get("Trading_Volume") is not None else r.get("volume"), 0) or 0 for r in rows]
-    for i, (o, h, l, c) in enumerate(zip(opens, highs, lows, closes)):
+
+    def moving_average(values: list[float | None], window: int):
+        out = []
+        for i in range(len(values)):
+            if i + 1 < window:
+                out.append(None)
+            else:
+                sub = [v for v in values[i - window + 1: i + 1] if v is not None]
+                out.append(sum(sub) / len(sub) if len(sub) == window else None)
+        return out
+
+    ma5 = moving_average(closes, 5)
+    ma20 = moving_average(closes, 20)
+    ma60 = moving_average(closes, 60)
+    vol_ma20 = moving_average(vols, 20)
+
+    clean_closes = [c for c in closes if c is not None]
+    clean_highs = [h for h in highs if h is not None]
+    clean_lows = [l for l in lows if l is not None]
+    kd_k, kd_d = _calc_kd(clean_closes, clean_highs, clean_lows)
+    rsi = _calc_rsi(clean_closes)
+
+    _hud_metrics(canvas, 0.760, 0.066, [
+        ("■ MA5", _p(ma5[-1]) if ma5 else "--", GOLD),
+        ("■ MA20", _p(ma20[-1]) if ma20 else "--", CYAN),
+        ("■ MA60", _p(ma60[-1]) if ma60 else "--", PURPLE),
+        ("開盤", _p(last.get("open")), TEXT),
+        ("成交量", _lots(last.get("Trading_Volume") if last.get("Trading_Volume") is not None else last.get("volume")), CYAN),
+    ])
+
+    ax = fig.add_axes([0.058, 0.280, 0.884, 0.435])
+    axv = fig.add_axes([0.058, 0.170, 0.884, 0.095], sharex=ax)
+
+    # Dynamic Y limits with 8% padding
+    all_k_pts = [v for v in highs + lows if v is not None]
+    if all_k_pts:
+        min_k, max_k = min(all_k_pts), max(all_k_pts)
+        span_k = max(max_k - min_k, 1.0)
+        ax.set_ylim(min_k - span_k * 0.08, max_k + span_k * 0.08)
+
+    n_bars = len(rows)
+    for i in range(n_bars):
+        o, h, l, c = opens[i], highs[i], lows[i], closes[i]
         if None in (o, h, l, c):
             continue
-        col = RED if c >= o else GREEN
-        ax.vlines(i, l, h, color=col, linewidth=.72)
-        ax.add_patch(Rectangle((i-.28, min(o,c)), .56, max(abs(c-o), .001), facecolor=col, edgecolor=col, linewidth=.45))
-        axv.bar(i, vols[i], width=.58, color=col, alpha=.72)
-    _style_chart(ax); _style_chart(axv)
-    dates, ticks = _date_labels(rows)
-    ax.tick_params(axis="x", labelbottom=False)
-    axv.set_xticks(ticks)
-    axv.set_xticklabels([dates[i][5:] if len(dates[i]) >= 10 else dates[i] for i in ticks])
-    ax.set_xlim(-1, len(rows))
+        v = vols[i]
+        bar_col = RED if c >= o else GREEN
+
+        ax.vlines(i, l, h, color=bar_col, linewidth=1.1, zorder=3)
+        body_bottom = min(o, c)
+        body_height = max(abs(c - o), 0.001)
+        ax.add_patch(Rectangle(
+            (i - 0.28, body_bottom), 0.56, body_height,
+            facecolor=bar_col, edgecolor=bar_col, linewidth=0.5, zorder=4,
+        ))
+        axv.bar(i, v, width=0.62, color=bar_col, alpha=0.80)
+
+    valid_ma5 = [(i, v) for i, v in enumerate(ma5) if v is not None]
+    valid_ma20 = [(i, v) for i, v in enumerate(ma20) if v is not None]
+    valid_ma60 = [(i, v) for i, v in enumerate(ma60) if v is not None]
+    valid_vol_ma20 = [(i, v) for i, v in enumerate(vol_ma20) if v is not None]
+
+    if valid_ma5:
+        ax.plot([x[0] for x in valid_ma5], [x[1] for x in valid_ma5],
+                color=GOLD, lw=1.25, label="MA5", zorder=5)
+    if valid_ma20:
+        ax.plot([x[0] for x in valid_ma20], [x[1] for x in valid_ma20],
+                color=CYAN, lw=1.25, label="MA20", zorder=5)
+    if valid_ma60:
+        ax.plot([x[0] for x in valid_ma60], [x[1] for x in valid_ma60],
+                color=PURPLE, lw=1.1, label="MA60", zorder=5)
+    if valid_vol_ma20:
+        axv.plot([x[0] for x in valid_vol_ma20], [x[1] for x in valid_vol_ma20],
+                 color=GOLD, lw=0.9, zorder=5)
+
     _annotate_k_extremes(ax, highs, lows)
 
-    _compact_summary_row(canvas, [
-        ("開", _p(last.get("open")), TEXT),
-        ("高", _p(last.get("max") if last.get("max") is not None else last.get("high")), RED),
-        ("低", _p(last.get("min") if last.get("min") is not None else last.get("low")), GREEN),
-        ("收", _p(last.get("close")), color),
+    if close is not None:
+        ax.axhline(close, color=color, lw=0.8, ls="--", alpha=0.7, zorder=2)
+
+    dates = [str(r.get("date") or "") for r in rows]
+    step = max(1, len(dates) // 5)
+    ticks = list(range(0, len(dates), step))
+    if dates and (len(dates) - 1) not in ticks:
+        ticks.append(len(dates) - 1)
+
+    ax.tick_params(axis="x", labelbottom=False)
+    ax.set_xlim(-1, n_bars)
+    axv.set_xlim(-1, n_bars)
+    axv.set_xticks(ticks)
+    axv.set_xticklabels([dates[i][5:] if len(dates[i]) >= 10 else dates[i] for i in ticks])
+    axv.tick_params(axis="y", labelleft=False)
+
+    _style_chart(ax)
+    _style_chart(axv)
+
+    kd_text = f"K {kd_k:.1f} / D {kd_d:.1f}" if kd_k is not None else "--"
+    kd_status = "金叉" if (kd_k is not None and kd_k >= kd_d) else "死叉"
+    kd_color = RED if kd_status == "金叉" else GREEN
+    rsi_text = f"{rsi:.1f}" if rsi is not None else "--"
+
+    _summary_row(canvas, 0.088, 0.065, [
+        ("最高", _p(last.get("max") if last.get("max") is not None else last.get("high")), RED),
+        ("最低", _p(last.get("min") if last.get("min") is not None else last.get("low")), GREEN),
+        ("KD(9,3)", f"{kd_text} ({kd_status})", kd_color),
+        ("RSI(14)", rsi_text, GOLD if (rsi and rsi > 60) else TEXT),
     ])
+
     _footer(canvas)
     return _save(fig, path)
 
 
+# ==========================================
+# 4. Institutional Card (T2330 / T大盤)
+# ==========================================
 def _stock_inst_series(rows: list[dict]) -> list[dict]:
     def net(row, buy_key, sell_key):
         return (_num(row.get(buy_key), 0) or 0) - (_num(row.get(sell_key), 0) or 0)
@@ -531,51 +771,76 @@ def _stock_inst_series(rows: list[dict]) -> list[dict]:
     for r in sorted(rows, key=lambda x: str(x.get("date") or "")):
         out.append({
             "date": str(r.get("date") or ""),
-            "foreign": net(r, "Foreign_Investor_buy", "Foreign_Investor_sell") + net(r, "Foreign_Dealer_Self_buy", "Foreign_Dealer_Self_sell"),
+            "foreign": (net(r, "Foreign_Investor_buy", "Foreign_Investor_sell") +
+                        net(r, "Foreign_Dealer_Self_buy", "Foreign_Dealer_Self_sell")),
             "trust": net(r, "Investment_Trust_buy", "Investment_Trust_sell"),
-            "dealer": net(r, "Dealer_buy", "Dealer_sell") + net(r, "Dealer_self_buy", "Dealer_self_sell") + net(r, "Dealer_Hedging_buy", "Dealer_Hedging_sell"),
+            "dealer": (net(r, "Dealer_buy", "Dealer_sell") +
+                       net(r, "Dealer_self_buy", "Dealer_self_sell") +
+                       net(r, "Dealer_Hedging_buy", "Dealer_Hedging_sell")),
         })
     return out
 
 
-def _institution_panel(fig, canvas, y, height, title, rows, key, unit_divisor, unit_label):
+def _institution_panel(fig, canvas, y: float, height: float, title: str, rows: list[dict],
+                       key: str, unit_divisor: float, unit_label: str):
     vals = [float(r.get(key) or 0) / unit_divisor for r in rows]
     dates = [r.get("date", "") for r in rows]
     latest = vals[-1] if vals else 0
-    color = RED if latest > 0 else GREEN if latest < 0 else MUTED
-    _rounded(canvas, (.045, y), .91, height, radius=.014, face="#fbfcfe", edge="#edf1f7", lw=.7)
-    canvas.text(.065, y+height-.028, title, transform=canvas.transAxes, fontsize=11.7,
-                fontweight="bold", color=TEXT, va="center")
-    canvas.text(.935, y+height-.028, f"{_signed(latest, 1, unit_label)}", transform=canvas.transAxes,
-                fontsize=10.8, fontweight="bold", color=color, ha="right", va="center")
-    ax = fig.add_axes([.09, y+.018, .84, max(.055, height-.060)])
+    color = RED if latest > 0 else (GREEN if latest < 0 else FLAT)
+
+    _rounded(canvas, (0.048, y), 0.904, height, radius=0.015,
+             face=CARD_INNER, edge=CARD_INNER_BORDER, lw=0.8)
+
+    canvas.text(0.068, y + height - 0.026, title, transform=canvas.transAxes,
+                fontsize=11.5, fontweight="bold", color=TEXT, va="center")
+    canvas.text(0.932, y + height - 0.026, _signed(latest, 1, unit_label), transform=canvas.transAxes,
+                fontsize=11.0, fontweight="bold", color=color, ha="right", va="center")
+
+    ax = fig.add_axes([0.088, y + 0.018, 0.840, max(0.055, height - 0.058)])
     colors = [RED if v >= 0 else GREEN for v in vals]
-    ax.bar(range(len(vals)), vals, color=colors, width=.72, alpha=.80)
-    ax.axhline(0, color=MUTED, lw=.55)
+    ax.bar(range(len(vals)), vals, color=colors, width=0.72, alpha=0.82)
+    ax.axhline(0, color=DIM, lw=0.6, ls="--")
     _style_chart(ax)
-    step = max(1, len(vals)//4)
+
+    step = max(1, len(vals) // 4)
     ticks = list(range(0, len(vals), step))
-    if vals and len(vals)-1 not in ticks:
-        ticks.append(len(vals)-1)
+    if vals and len(vals) - 1 not in ticks:
+        ticks.append(len(vals) - 1)
     ax.set_xticks(ticks)
-    ax.set_xticklabels([dates[i][5:] if len(dates[i]) >= 10 else dates[i] for i in ticks], fontsize=6.1)
+    ax.set_xticklabels([dates[i][5:] if len(dates[i]) >= 10 else dates[i] for i in ticks], fontsize=6.5)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}"))
+    ax.tick_params(axis="y", labelsize=6.8, colors=DIM)
 
 
 def render_institutional_card(title: str, code: str, snapshot: dict | None,
                               rows: list[dict], path: Path, market=False) -> Path:
     fig, canvas = _new_figure()
-    _rounded(canvas, (.018, .018), .964, .964, radius=.026)
+    _rounded(canvas, (0.018, 0.018), 0.964, 0.964, radius=0.026, face=CARD, edge=CARD_BORDER, lw=1.2)
+
+    code_text = "TAIEX · T大盤" if market else (f"TWSE · T{code}" if code else "TWSE")
 
     if snapshot:
-        _header_price(
-            canvas, title=title, code=code, badge="三大法人",
-            price=snapshot.get("close"), change=snapshot.get("change_price"),
-            rate=snapshot.get("change_rate"), timestamp=_dt_text(snapshot),
+        _header(
+            canvas,
+            title=title,
+            code=code_text,
+            badge="三大法人",
+            price=snapshot.get("close"),
+            change=snapshot.get("change_price"),
+            rate=snapshot.get("change_rate"),
+            timestamp=_dt_text(snapshot),
         )
     else:
-        _header_price(canvas, title=title, code=code, badge="三大法人",
-                      price=None, change=0, rate=0, timestamp="")
+        _header(
+            canvas,
+            title=title,
+            code=code_text,
+            badge="三大法人",
+            price=None,
+            change=0,
+            rate=0,
+            timestamp="",
+        )
 
     if market:
         series = rows[-60:]
@@ -583,12 +848,13 @@ def render_institutional_card(title: str, code: str, snapshot: dict | None,
     else:
         series = _stock_inst_series(rows)[-60:]
         divisor, suffix = 1000.0, "張"
+
     if not series:
         raise RuntimeError("三大法人資料不足")
 
-    # Three compact panels with minimal dead space.
-    _institution_panel(fig, canvas, .610, .175, "外資", series, "foreign", divisor, suffix)
-    _institution_panel(fig, canvas, .370, .175, "投信", series, "trust", divisor, suffix)
-    _institution_panel(fig, canvas, .130, .175, "自營商", series, "dealer", divisor, suffix)
+    _institution_panel(fig, canvas, 0.610, 0.175, "外資 (Foreign)", series, "foreign", divisor, suffix)
+    _institution_panel(fig, canvas, 0.370, 0.175, "投信 (Investment Trust)", series, "trust", divisor, suffix)
+    _institution_panel(fig, canvas, 0.130, 0.175, "自營商 (Dealer)", series, "dealer", divisor, suffix)
+
     _footer(canvas)
     return _save(fig, path)

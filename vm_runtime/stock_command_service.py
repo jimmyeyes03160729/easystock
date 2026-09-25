@@ -1524,7 +1524,7 @@ def interactive_card_message(
                 "size": "full",
                 "aspectRatio": "5:4",
                 "aspectMode": "fit",
-                "backgroundColor": "#F4F7FB",
+                "backgroundColor": "#0B101B",
                 "action": {
                     "type": "uri",
                     "label": "Yahoo股市",
