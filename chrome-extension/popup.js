@@ -186,7 +186,7 @@ function openChartWindow(s, strategy = '') {
 function openBrokerOrder(symbol, market = 'TW', name = '') {
   const brokerId = view?.settings?.preferredBroker || 'sinopac';
   const broker = getBroker(brokerId);
-  const targetUrl = broker.url(symbol);
+  const targetUrl = typeof broker.url === 'function' ? broker.url(symbol) : '';
 
   // 1. 自動複製股票代號至剪貼簿（雙重保險）
   try {
@@ -195,24 +195,50 @@ function openBrokerOrder(symbol, market = 'TW', name = '') {
     }
   } catch (_) {}
 
-  // 2. 開啟券商官方下單網址（新分頁）
-  if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
-    chrome.tabs.create({ url: targetUrl });
-  } else {
-    window.open(targetUrl, '_blank');
+  // 2. 開啟對應頁面（若有 URL 則開新分頁；純觀察無 URL 則不開新分頁）
+  if (targetUrl) {
+    if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
+      chrome.tabs.create({ url: targetUrl });
+    } else {
+      window.open(targetUrl, '_blank');
+    }
   }
 
-  // 3. 顯示即時 In-App 彈窗與狀態列提示（附帶券商圖示與完整說明）
-  showInAppToast({
-    badgeText: `${broker.icon || '🚀'} ${broker.name}`,
-    badgeColor: broker.badgeColor || 'bg-red-600',
-    titleText: `${symbol} ${name || ''} 捷徑下單跳轉`,
-    bodyText: `已為您自動複製股票代號「${symbol}」，並為您開啟 ${broker.name}（${broker.appDesc || ''}）官方頁面。`,
-    symbol,
-    market,
-    name: name || symbol
-  });
-  status(`已複製代號 ${symbol} 並跳轉至 ${broker.name}`);
+  // 3. 顯示即時 In-App 彈窗與狀態列提示（依模式區分提示文案）
+  if (broker.id === 'observe') {
+    showInAppToast({
+      badgeText: `👀 純觀察模式`,
+      badgeColor: 'bg-slate-700',
+      titleText: `${symbol} ${name || ''} 觀察標的`,
+      bodyText: `已為您自動複製股票代號「${symbol}」。（純觀察模式，不跳轉任何外部網頁）`,
+      symbol,
+      market,
+      name: name || symbol
+    });
+    status(`已複製代號 ${symbol}（純觀察模式）`);
+  } else if (broker.isObserve) {
+    showInAppToast({
+      badgeText: `${broker.icon || '📈'} ${broker.name}`,
+      badgeColor: broker.badgeColor || 'bg-purple-700',
+      titleText: `${symbol} ${name || ''} 看盤分析跳轉`,
+      bodyText: `已為您自動複製股票代號「${symbol}」，並開啟 ${broker.name} 走勢分析頁面。`,
+      symbol,
+      market,
+      name: name || symbol
+    });
+    status(`已複製代號 ${symbol} 並跳轉至 ${broker.name}`);
+  } else {
+    showInAppToast({
+      badgeText: `${broker.icon || '🚀'} ${broker.name}`,
+      badgeColor: broker.badgeColor || 'bg-red-600',
+      titleText: `${symbol} ${name || ''} 捷徑下單跳轉`,
+      bodyText: `已為您自動複製股票代號「${symbol}」，並為您開啟 ${broker.name}（${broker.appDesc || ''}）官方頁面。`,
+      symbol,
+      market,
+      name: name || symbol
+    });
+    status(`已複製代號 ${symbol} 並跳轉至 ${broker.name}`);
+  }
 }
 
 // 平滑 SVG 迷你折線走勢圖 (Sparkline：優先使用真實分時陣列，漲紅跌綠，帶半透明面積漸層)
@@ -698,8 +724,14 @@ function renderDaytrade(list, isCompact) {
     rightData.append(chartBtn);
 
     const broker = getBroker(view.settings?.preferredBroker);
-    const orderBtn = el('button', `${broker.icon || '🚀'} ${broker.shortName}下單 ↗`, `btn-broker-order text-[11px] ${broker.badgeColor || 'bg-red-600'} hover:opacity-90 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0`);
-    orderBtn.title = `點擊複製 ${sym} 並前往 ${broker.name} 下單`;
+    const orderBtnText = broker.id === 'observe'
+      ? '👀 觀察中'
+      : (broker.isObserve ? `${broker.icon || '📈'} ${broker.shortName}看盤 ↗` : `${broker.icon || '🚀'} ${broker.shortName}下單 ↗`);
+    const orderBtnTitle = broker.id === 'observe'
+      ? `點擊複製 ${sym}（純觀察模式，不跳轉網頁）`
+      : (broker.isObserve ? `點擊複製 ${sym} 並前往 ${broker.name} 看盤` : `點擊複製 ${sym} 並前往 ${broker.name} 下單`);
+    const orderBtn = el('button', orderBtnText, `btn-broker-order text-[11px] ${broker.badgeColor || 'bg-red-600'} hover:opacity-90 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0`);
+    orderBtn.title = orderBtnTitle;
     orderBtn.onclick = (e) => {
       e.preventDefault();
       openBrokerOrder(sym, m, name);
@@ -783,8 +815,11 @@ function renderDaytrade(list, isCompact) {
     rightData.append(chartBtn);
 
     const broker = getBroker(view.settings?.preferredBroker);
-    const orderBtn = el('button', `${broker.icon || '🚀'} ${broker.shortName} ↗`, 'btn-broker-order text-[11px] bg-slate-700 hover:bg-slate-800 text-white font-semibold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0');
-    orderBtn.title = `點擊複製 ${sym} 並前往 ${broker.name} 查看`;
+    const orderBtnText = broker.id === 'observe'
+      ? '👀 已觀察'
+      : (broker.isObserve ? `${broker.icon || '📈'} ${broker.shortName} ↗` : `${broker.icon || '🚀'} ${broker.shortName} ↗`);
+    const orderBtn = el('button', orderBtnText, 'btn-broker-order text-[11px] bg-slate-700 hover:bg-slate-800 text-white font-semibold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0');
+    orderBtn.title = broker.id === 'observe' ? `點擊複製 ${sym}（純觀察模式）` : `點擊複製 ${sym} 並前往 ${broker.name} 查看`;
     orderBtn.onclick = (e) => {
       e.preventDefault();
       openBrokerOrder(sym, m, name);
@@ -884,8 +919,14 @@ function renderRebound(list, isCompact) {
     rightPct.append(chartBtn);
 
     const broker = getBroker(view.settings?.preferredBroker);
-    const orderBtn = el('button', `${broker.icon || '🚀'} ${broker.shortName}下單 ↗`, `btn-broker-order text-[11px] ${broker.badgeColor || 'bg-purple-600'} hover:opacity-90 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0`);
-    orderBtn.title = `點擊複製 ${sym} 並前往 ${broker.name} 下單`;
+    const orderBtnText = broker.id === 'observe'
+      ? '👀 觀察中'
+      : (broker.isObserve ? `${broker.icon || '📈'} ${broker.shortName}看盤 ↗` : `${broker.icon || '🚀'} ${broker.shortName}下單 ↗`);
+    const orderBtnTitle = broker.id === 'observe'
+      ? `點擊複製 ${sym}（純觀察模式，不跳轉網頁）`
+      : (broker.isObserve ? `點擊複製 ${sym} 並前往 ${broker.name} 看盤` : `點擊複製 ${sym} 並前往 ${broker.name} 下單`);
+    const orderBtn = el('button', orderBtnText, `btn-broker-order text-[11px] ${broker.badgeColor || 'bg-purple-600'} hover:opacity-90 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0`);
+    orderBtn.title = orderBtnTitle;
     orderBtn.onclick = (e) => {
       e.preventDefault();
       openBrokerOrder(sym, m, name);
@@ -923,36 +964,46 @@ function renderBrokerSelector() {
   if (!container) return;
   container.replaceChildren();
 
-  for (const b of BROKERS) {
-    const isSelected = b.id === currentId;
-    const card = el('button', '', `broker-choice-card text-left p-2 rounded-lg border transition cursor-pointer flex flex-col justify-between ${isSelected ? 'border-sky-500 bg-sky-50/50 ring-1 ring-sky-500 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`);
-    card.setAttribute('type', 'button');
-    card.setAttribute('data-broker-id', b.id);
-    card.title = `切換為 ${b.name}`;
+  const groups = [
+    { title: '👀 觀察看盤偏好（純看盤／不跳券商）', items: BROKERS.filter(b => b.isObserve) },
+    { title: '🚀 券商官方直通下單', items: BROKERS.filter(b => !b.isObserve) }
+  ];
 
-    const top = el('div', '', 'flex items-center justify-between w-full');
-    const left = el('div', '', 'flex items-center gap-1.5 font-bold text-xs text-slate-800');
-    left.append(el('span', b.icon || '🚀', 'text-sm leading-none'));
-    left.append(el('span', b.shortName, 'truncate'));
-    top.append(left);
+  for (const g of groups) {
+    const groupHeader = el('div', g.title, 'col-span-2 text-[10px] font-bold text-slate-500 pt-1 pb-0.5 border-b border-slate-200/60 flex items-center');
+    container.append(groupHeader);
 
-    if (isSelected) {
-      top.append(el('span', '✓', 'text-[11px] font-extrabold text-sky-600 shrink-0'));
-    }
-    card.append(top);
+    for (const b of g.items) {
+      const isSelected = b.id === currentId;
+      const card = el('button', '', `broker-choice-card text-left p-2 rounded-lg border transition cursor-pointer flex flex-col justify-between ${isSelected ? 'border-sky-500 bg-sky-50/50 ring-1 ring-sky-500 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`);
+      card.setAttribute('type', 'button');
+      card.setAttribute('data-broker-id', b.id);
+      card.title = `切換為 ${b.name}`;
 
-    const desc = el('span', b.appDesc || '', `text-[9px] truncate block mt-1 ${isSelected ? 'text-sky-700 font-semibold' : 'text-slate-400'}`);
-    card.append(desc);
+      const top = el('div', '', 'flex items-center justify-between w-full');
+      const left = el('div', '', 'flex items-center gap-1.5 font-bold text-xs text-slate-800');
+      left.append(el('span', b.icon || '🚀', 'text-sm leading-none'));
+      left.append(el('span', b.shortName, 'truncate'));
+      top.append(left);
 
-    card.addEventListener('click', (e) => {
-      e.preventDefault();
-      if (select) {
-        select.value = b.id;
-        select.dispatchEvent(new Event('change'));
+      if (isSelected) {
+        top.append(el('span', '✓', 'text-[11px] font-extrabold text-sky-600 shrink-0'));
       }
-    });
+      card.append(top);
 
-    container.append(card);
+      const desc = el('span', b.appDesc || '', `text-[9px] truncate block mt-1 ${isSelected ? 'text-sky-700 font-semibold' : 'text-slate-400'}`);
+      card.append(desc);
+
+      card.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (select) {
+          select.value = b.id;
+          select.dispatchEvent(new Event('change'));
+        }
+      });
+
+      container.append(card);
+    }
   }
 }
 

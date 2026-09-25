@@ -227,23 +227,26 @@
           </div>
         </div>
 
-        <!-- 常用下單券商捷徑 (支援情境 A 網址直通下單與自動複製股票代號) -->
+        <!-- 交易下單捷徑與觀察看盤偏好 (支援純觀察模式與情境 A 網址直通下單) -->
         <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-2.5">
           <div class="flex items-center justify-between">
             <span class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-              <span>🚀</span> <span>常用下單券商捷徑</span>
+              <span>🚀</span> <span>下單捷徑與觀察看盤偏好</span>
             </span>
             <span id="current-broker-badge" class="text-[10px] text-white bg-red-600 px-2 py-0.5 rounded font-bold shadow-2xs">🔴 永豐金證券</span>
           </div>
-          <p class="text-[10px] text-slate-500">在「當沖」與「觸底反彈」點擊下單時，自動開啟所選券商官方頁面並複製股票代號。</p>
+          <p class="text-[10px] text-slate-500">在「當沖」與「觸底反彈」卡片點擊時，直通券商下單或純看盤觀察（自動複製代號）。</p>
           
-          <!-- 視覺化券商圖示切換清單 -->
+          <!-- 視覺化券商與觀察模式圖示切換清單 -->
           <div id="broker-card-grid" class="grid grid-cols-2 gap-1.5 pt-1">
-            <!-- 由 popup.js 動態渲染券商卡片 -->
+            <!-- 由 popup.js 動態分組渲染觀察與券商卡片 -->
           </div>
 
           <div class="hidden">
             <select id="select-preferred-broker">
+              <option value="observe">純觀察就好 (不跳轉網頁)</option>
+              <option value="yahoo">Yahoo 奇摩股市 (純看盤走勢)</option>
+              <option value="wantgoo">玩股網技術分析 (籌碼線圖)</option>
               <option value="sinopac">永豐金證券 (大戶投)</option>
               <option value="fubon">富邦證券 (e點通)</option>
               <option value="yuanta">元大證券 (投資先生)</option>

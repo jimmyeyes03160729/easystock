@@ -237,6 +237,36 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   await new Promise(r => setTimeout(r, 0));
   assert.match(openedTabs.at(-1).url, /fubon-ebrokerdj\.fbs\.com\.tw\/Z\/ZC\/ZCA\/ZCA\.djhtm\?a=/);
 
+  // 測試切換至「純觀察就好」選項
+  const observeCard = Array.from(brokerCards).find(c => c.getAttribute('data-broker-id') === 'observe');
+  assert.ok(observeCard);
+  observeCard.click();
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(messages.at(-1).strategy, 'preferredBroker');
+  assert.equal(messages.at(-1).value, 'observe');
+  assert.match(w.document.getElementById('current-broker-badge').textContent, /👀\s*純觀察就好/);
+
+  // 當沖按鈕文字變為「👀 觀察中」或「👀 已觀察」，點擊不開分頁（純觀察複製代號）
+  w.document.querySelector('[data-group="daytrade"]').click();
+  const observeDaytradeBtns = w.document.querySelectorAll('#stock-list-container .btn-broker-order');
+  assert.match(observeDaytradeBtns[0].textContent, /👀\s*(觀察中|已觀察)/);
+  const tabsCountBefore = openedTabs.length;
+  observeDaytradeBtns[0].click();
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(openedTabs.length, tabsCountBefore);
+
+  // 測試切換至「Yahoo 奇摩股市」純看盤選項
+  const yahooCard = Array.from(brokerCards).find(c => c.getAttribute('data-broker-id') === 'yahoo');
+  assert.ok(yahooCard);
+  yahooCard.click();
+  await new Promise(r => setTimeout(r, 0));
+  w.document.querySelector('[data-group="rebound"]').click();
+  const yahooBtns = w.document.querySelectorAll('#stock-list-container .btn-broker-order');
+  assert.match(yahooBtns[0].textContent, /📈\s*Yahoo看盤/);
+  yahooBtns[0].click();
+  await new Promise(r => setTimeout(r, 0));
+  assert.match(openedTabs.at(-1).url, /tw\.stock\.yahoo\.com\/quote\//);
+
   w.document.getElementById('btn-close-settings').click();
   assert.equal(w.document.getElementById('settings-panel').inert, true);
   await new Promise(r => setTimeout(r, 200));

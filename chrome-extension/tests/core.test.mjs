@@ -202,7 +202,25 @@ test('calcChangePct calculates percentage from change_pct, change, or previous_c
 });
 
 test('BROKERS definitions, URL generation, and fallback', () => {
-  assert.ok(BROKERS.length >= 6);
+  assert.ok(BROKERS.length >= 9);
+
+  // 測試觀察看盤模式
+  const observe = getBroker('observe');
+  assert.equal(observe.id, 'observe');
+  assert.equal(observe.isObserve, true);
+  assert.equal(observe.url('2330'), '');
+
+  const yahoo = getBroker('yahoo');
+  assert.equal(yahoo.id, 'yahoo');
+  assert.equal(yahoo.isObserve, true);
+  assert.ok(yahoo.url('2330').includes('tw.stock.yahoo.com/quote/2330'));
+
+  const wantgoo = getBroker('wantgoo');
+  assert.equal(wantgoo.id, 'wantgoo');
+  assert.equal(wantgoo.isObserve, true);
+  assert.ok(wantgoo.url('2330').includes('wantgoo.com/stock/2330'));
+
+  // 測試券商直通下單
   const sinopac = getBroker('sinopac');
   assert.equal(sinopac.id, 'sinopac');
   assert.equal(sinopac.icon, '🔴');

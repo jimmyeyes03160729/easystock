@@ -430,7 +430,41 @@ export function matchFilter(price, changePct, settings) {
 
 export const BROKERS = [
   {
+    id: 'observe',
+    category: 'observe',
+    name: '純觀察就好',
+    shortName: '觀察',
+    icon: '👀',
+    badgeColor: 'bg-slate-700',
+    appDesc: '不跳轉網頁 · 僅複製代號',
+    isObserve: true,
+    url: () => ''
+  },
+  {
+    id: 'yahoo',
+    category: 'observe',
+    name: 'Yahoo 奇摩股市',
+    shortName: 'Yahoo',
+    icon: '📈',
+    badgeColor: 'bg-purple-700',
+    appDesc: 'Yahoo個股行情 · 純看盤',
+    isObserve: true,
+    url: sym => `https://tw.stock.yahoo.com/quote/${encodeURIComponent(sym)}`
+  },
+  {
+    id: 'wantgoo',
+    category: 'observe',
+    name: '玩股網技術分析',
+    shortName: '玩股網',
+    icon: '📊',
+    badgeColor: 'bg-amber-700',
+    appDesc: 'WantGoo線圖 · 籌碼觀察',
+    isObserve: true,
+    url: sym => `https://www.wantgoo.com/stock/${encodeURIComponent(sym)}`
+  },
+  {
     id: 'sinopac',
+    category: 'broker',
     name: '永豐金證券',
     shortName: '永豐',
     icon: '🔴',
@@ -440,6 +474,7 @@ export const BROKERS = [
   },
   {
     id: 'fubon',
+    category: 'broker',
     name: '富邦證券',
     shortName: '富邦',
     icon: '🔵',
@@ -449,6 +484,7 @@ export const BROKERS = [
   },
   {
     id: 'yuanta',
+    category: 'broker',
     name: '元大證券',
     shortName: '元大',
     icon: '🟠',
@@ -458,6 +494,7 @@ export const BROKERS = [
   },
   {
     id: 'cathay',
+    category: 'broker',
     name: '國泰證券',
     shortName: '國泰',
     icon: '🟢',
@@ -467,6 +504,7 @@ export const BROKERS = [
   },
   {
     id: 'kgi',
+    category: 'broker',
     name: '凱基證券',
     shortName: '凱基',
     icon: '🟣',
@@ -476,6 +514,7 @@ export const BROKERS = [
   },
   {
     id: 'esun',
+    category: 'broker',
     name: '玉山證券',
     shortName: '玉山',
     icon: '🟩',
@@ -486,7 +525,7 @@ export const BROKERS = [
 ];
 
 export function getBroker(id) {
-  return BROKERS.find(b => b.id === id) || BROKERS[0];
+  return BROKERS.find(b => b.id === id) || BROKERS.find(b => b.id === 'sinopac') || BROKERS[0];
 }
 
 export function defaultState() {
