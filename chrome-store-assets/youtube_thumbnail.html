@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1280, height=720, initial-scale=1.0">
+  <title>YouTube Official Thumbnail</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@800;900&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      width: 1280px;
+      height: 720px;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #050813 !important;
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      color: #fff;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    
+    .bg-grid {
+      background-size: 32px 32px;
+      background-image: 
+        linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+    }
+    .text-glow-yellow {
+      text-shadow: 0 0 35px rgba(251, 191, 36, 0.7), 0 0 70px rgba(251, 191, 36, 0.4);
+    }
+    .text-glow-cyan {
+      text-shadow: 0 0 30px rgba(56, 189, 248, 0.7);
+    }
+    .card-shadow {
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 50px -5px rgba(14, 165, 233, 0.4);
+    }
+  </style>
+</head>
+<body class="bg-grid flex items-center justify-between px-16 py-12 relative bg-[#050813]">
+
+  <!-- Glow Blobs -->
+  <div class="absolute top-10 left-10 w-[500px] h-[500px] bg-sky-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+  <div class="absolute bottom-10 right-20 w-[450px] h-[450px] bg-rose-600/15 rounded-full blur-[120px] pointer-events-none"></div>
+
+  <!-- Left Hero Text Column -->
+  <div class="flex-1 max-w-[620px] z-10 flex flex-col justify-center">
+    
+    <!-- Top Tag -->
+    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/20 border border-amber-400/60 text-amber-300 text-sm font-black tracking-wider uppercase mb-5 backdrop-blur-md self-start">
+      <span class="text-base">🔥</span>
+      <span>上班族必備 · 辦公室看盤神盾</span>
+    </div>
+
+    <!-- Big Bold Hook Title -->
+    <h1 class="text-6xl font-black tracking-tight leading-[1.15] mb-4 text-white">
+      上班想看盤？<br>
+      <span class="text-amber-400 text-glow-yellow">一鍵摸魚偽裝</span>
+    </h1>
+
+    <div class="text-2xl font-bold text-slate-100 leading-snug mb-8">
+      EasyStock · 牛馬自救終端<br>
+      <span class="text-sky-400 text-glow-cyan text-xl">台股即時逐筆 ✕ VWAP突破 ✕ 毫秒桌面推播</span>
+    </div>
+
+    <!-- Key badges -->
+    <div class="flex items-center gap-3">
+      <div class="px-4 py-2 rounded-xl bg-slate-900/90 border border-slate-700 text-sm font-bold text-slate-200 flex items-center gap-2 shadow-lg">
+        <span class="text-amber-400">★★★★★</span>
+        <span>4.9 星好評</span>
+      </div>
+      <div class="px-4 py-2 rounded-xl bg-slate-900/90 border border-slate-700 text-sm font-bold text-sky-400 flex items-center gap-2 shadow-lg">
+        <span>⚡ 毫秒級推播</span>
+      </div>
+      <div class="px-4 py-2 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-sm font-bold text-emerald-300 flex items-center gap-2 shadow-lg">
+        <span>🆓 永久免費</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Floating UI Mockup -->
+  <div class="relative w-[480px] bg-slate-900/95 rounded-2xl border-2 border-sky-400/60 p-6 card-shadow backdrop-blur-2xl z-10">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-400 to-indigo-600 flex items-center justify-center font-black text-white text-base shadow">
+          🐮
+        </div>
+        <div>
+          <div class="text-sm font-black text-white">EasyStock · 牛馬終端</div>
+          <div class="text-[11px] text-emerald-400 font-mono">● 盤中即時跳動 12ms</div>
+        </div>
+      </div>
+      <div class="px-3 py-1 rounded-md bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1 shadow-md">
+        <span>🐷</span> 摸魚中
+      </div>
+    </div>
+
+    <!-- Stock highlight 00878 -->
+    <div class="p-4 rounded-xl bg-slate-950/90 border border-slate-800 flex flex-col gap-2 mb-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-base text-white">00878</span>
+            <span class="text-xs text-slate-300 font-medium">國泰永續高股息</span>
+            <span class="text-[10px] bg-rose-950 text-rose-300 px-1.5 py-0.5 rounded font-bold border border-rose-800">爆量突破</span>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="text-2xl font-black mono text-rose-500">22.45</div>
+          <div class="text-xs font-bold mono text-rose-400">+1.58%</div>
+        </div>
+      </div>
+      <!-- Mini Chart -->
+      <div class="h-16 w-full relative">
+        <svg class="w-full h-full" viewBox="0 0 400 80" preserveAspectRatio="none">
+          <path d="M 0 55 Q 100 50, 200 45 T 400 40" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="3" opacity="0.8" />
+          <path d="M 0 70 Q 100 65, 200 50 T 400 20" fill="none" stroke="#ef4444" stroke-width="3" />
+          <circle cx="395" cy="20" r="5" fill="#ef4444" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- Push Notification Bubble Overlay -->
+    <div class="p-3.5 rounded-xl bg-slate-950 border border-rose-500/80 shadow-2xl flex items-center gap-3">
+      <div class="text-2xl">🚨</div>
+      <div>
+        <div class="text-xs font-bold text-rose-400">均線突破即時推播</div>
+        <div class="text-[11px] text-white font-medium">00878 突破 VWAP 日均線！大單敲進</div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
