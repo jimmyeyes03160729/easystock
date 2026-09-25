@@ -285,12 +285,24 @@ async function loadData(force = false) {
         }
       }
     } else {
-      // 當前為歷史日K模式
+      // 當前為歷史日K模式：優先從背景 Service Worker 獲取最新真實日K (Yahoo Finance API)
       let bars = null;
       try {
-        const klineRes = await fetch(`${FIREBASE_ROOT}/kline/${encodeURIComponent(symbol)}.json`).catch(() => null);
-        if (klineRes && klineRes.ok) bars = await klineRes.json();
+        if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+          const bgDaily = await chrome.runtime.sendMessage({ type: 'FETCH_DAILY', symbol, market });
+          if (bgDaily && Array.isArray(bgDaily.bars) && bgDaily.bars.length > 0) {
+            bars = bgDaily.bars;
+          }
+        }
       } catch (_) {}
+
+      // 若未取得，嘗試 Firebase 歷史封存作為 Fallback
+      if (!Array.isArray(bars) || !bars.length) {
+        try {
+          const klineRes = await fetch(`${FIREBASE_ROOT}/kline/${encodeURIComponent(symbol)}.json`).catch(() => null);
+          if (klineRes && klineRes.ok) bars = await klineRes.json();
+        } catch (_) {}
+      }
 
       if (!Array.isArray(bars) || !bars.length) {
         try {

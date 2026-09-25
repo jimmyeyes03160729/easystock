@@ -183,34 +183,50 @@ function openChartWindow(s, strategy = '') {
   }
 }
 
-// 平滑 SVG 迷你折線走勢圖 (Sparkline，圖片2效果：漲紅跌綠，帶半透明面積漸層)
-function createSparklineSvg(open, high, low, close, prevClose, isUp) {
+// 平滑 SVG 迷你折線走勢圖 (Sparkline：優先使用真實分時陣列，漲紅跌綠，帶半透明面積漸層)
+function createSparklineSvg(open, high, low, close, prevClose, isUp, sparkPoints = null) {
   const w = 56, h = 20;
   const pClose = (finite(close) && close > 0) ? close : 100;
   const pPrev = (finite(prevClose) && prevClose > 0) ? prevClose : pClose;
   const pOpen = (finite(open) && open > 0) ? open : pPrev;
-  const pHigh = (finite(high) && high > 0) ? Math.max(high, pOpen, pClose, pPrev) : Math.max(pOpen, pClose, pPrev) * 1.005;
-  const pLow = (finite(low) && low > 0) ? Math.min(low, pOpen, pClose, pPrev) : Math.min(pOpen, pClose, pPrev) * 0.995;
 
-  const span = Math.max(0.01, pHigh - pLow);
-  const getY = val => Math.max(2, Math.min(h - 2, (h - 2) - ((val - pLow) / span) * (h - 6)));
+  let pts = [];
+  if (Array.isArray(sparkPoints) && sparkPoints.length >= 2) {
+    const minVal = Math.min(...sparkPoints);
+    const maxVal = Math.max(...sparkPoints);
+    const span = Math.max(0.01, maxVal - minVal);
+    const getY = val => Math.max(2, Math.min(h - 2, (h - 2) - ((val - minVal) / span) * (h - 6)));
 
-  const y0 = getY(pOpen);
-  const y1 = getY(isUp ? pOpen - span * 0.15 : pOpen + span * 0.15);
-  const y2 = getY(isUp ? pHigh : pLow);
-  const y3 = getY((pClose + (isUp ? pHigh : pLow)) / 2);
-  const y4 = getY(pClose);
+    const count = sparkPoints.length;
+    pts = sparkPoints.map((val, idx) => {
+      const x = 2 + (idx / (count - 1)) * (w - 4);
+      return { x: Number(x.toFixed(1)), y: Number(getY(val).toFixed(1)) };
+    });
+  } else {
+    // 當無分時陣列時，依真實行情平滑過渡（不偽造假下凹/假上凸）
+    const pHigh = (finite(high) && high > 0) ? Math.max(high, pOpen, pClose, pPrev) : Math.max(pOpen, pClose, pPrev) * 1.002;
+    const pLow = (finite(low) && low > 0) ? Math.min(low, pOpen, pClose, pPrev) : Math.min(pOpen, pClose, pPrev) * 0.998;
+    const span = Math.max(0.01, pHigh - pLow);
+    const getY = val => Math.max(2, Math.min(h - 2, (h - 2) - ((val - pLow) / span) * (h - 6)));
 
-  const pts = [
-    { x: 2, y: y0 },
-    { x: 14, y: y1 },
-    { x: 28, y: y2 },
-    { x: 42, y: y3 },
-    { x: 54, y: y4 }
-  ];
+    const y0 = getY(pOpen);
+    const y1 = getY(isUp ? (pOpen * 0.6 + pHigh * 0.4) : (pOpen * 0.6 + pLow * 0.4));
+    const y2 = getY(isUp ? pHigh : pLow);
+    const y3 = getY(isUp ? (pHigh * 0.5 + pClose * 0.5) : (pLow * 0.5 + pClose * 0.5));
+    const y4 = getY(pClose);
 
-  const pathD = `M ${pts[0].x} ${pts[0].y.toFixed(1)} ` + pts.slice(1).map(p => `L ${p.x} ${p.y.toFixed(1)}`).join(' ');
-  const areaD = `${pathD} L 54 ${h} L 2 ${h} Z`;
+    pts = [
+      { x: 2, y: Number(y0.toFixed(1)) },
+      { x: 15, y: Number(y1.toFixed(1)) },
+      { x: 28, y: Number(y2.toFixed(1)) },
+      { x: 42, y: Number(y3.toFixed(1)) },
+      { x: 54, y: Number(y4.toFixed(1)) }
+    ];
+  }
+
+  const lastPt = pts.at(-1) || { x: 54, y: h / 2 };
+  const pathD = `M ${pts[0].x} ${pts[0].y} ` + pts.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+  const areaD = `${pathD} L ${lastPt.x} ${h} L ${pts[0].x} ${h} Z`;
 
   const strokeColor = isUp ? '#ef4444' : '#22c55e';
   const fillColor = isUp ? 'rgba(239, 68, 68, 0.18)' : 'rgba(34, 197, 94, 0.18)';
@@ -234,8 +250,8 @@ function createSparklineSvg(open, high, low, close, prevClose, isUp) {
   path.setAttribute('stroke-linejoin', 'round');
 
   const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  dot.setAttribute('cx', '54');
-  dot.setAttribute('cy', y4.toFixed(1));
+  dot.setAttribute('cx', String(lastPt.x));
+  dot.setAttribute('cy', String(lastPt.y));
   dot.setAttribute('r', '2');
   dot.setAttribute('fill', strokeColor);
 
@@ -243,12 +259,15 @@ function createSparklineSvg(open, high, low, close, prevClose, isUp) {
   return svg;
 }
 
-// 動態列表高度設定 (圖片1效果：480px ~ 750px，動態顯示 +0px)
+// 動態列表高度設定 (調節視窗高度與緊緻度，動態顯示 +0px)
 function applyWindowHeight(h) {
-  const val = Math.max(480, Math.min(750, Number(h) || 600));
-  document.body.style.height = `${val}px`;
+  const val = Math.max(380, Math.min(750, Number(h) || 600));
+  if (document.body) document.body.style.height = `${val}px`;
   const container = $('popup-container');
-  if (container) container.style.height = `${val}px`;
+  if (container) {
+    container.style.maxHeight = `${val}px`;
+    container.style.height = `${val}px`;
+  }
   const diff = val - 600;
   const diffText = diff >= 0 ? `+${diff}px` : `${diff}px`;
   if ($('window-height-val')) $('window-height-val').textContent = diffText;
@@ -258,7 +277,7 @@ function applyWindowHeight(h) {
   }
 }
 
-// 顯示文字大小設定 (圖片1效果：標準/較大/大 + 預覽盒)
+// 顯示文字大小設定 (標準/較大/大 + 預覽盒，顯著拉開階梯)
 function applyFontSize(size) {
   const validSize = ['standard', 'medium', 'large'].includes(size) ? size : 'standard';
   const list = $('stock-list-container');
@@ -268,10 +287,10 @@ function applyFontSize(size) {
   }
   const preview = $('font-size-preview-box');
   if (preview) {
-    preview.classList.remove('text-[11px]', 'text-[13px]', 'text-[15px]');
+    preview.classList.remove('text-[11px]', 'text-[13.5px]', 'text-[16px]');
     if (validSize === 'standard') preview.classList.add('text-[11px]');
-    else if (validSize === 'medium') preview.classList.add('text-[13px]');
-    else if (validSize === 'large') preview.classList.add('text-[15px]');
+    else if (validSize === 'medium') preview.classList.add('text-[13.5px]');
+    else if (validSize === 'large') preview.classList.add('text-[16px]');
   }
   if ($(`radio-size-${validSize}`)) $(`radio-size-${validSize}`).checked = true;
 }
@@ -430,6 +449,11 @@ function renderWatchlist(list, isCompact, pageSize) {
   const startIdx = (currentWatchlistPage - 1) * pageSize;
   const rows = allRows.slice(startIdx, startIdx + pageSize);
   const showSparkline = view.settings?.showSparkline !== false;
+  const header = $('stock-table-header');
+  if (header) {
+    if (showSparkline) header.classList.remove('no-sparkline');
+    else header.classList.add('no-sparkline');
+  }
 
   for (const s of rows) {
     const q = view.quotes?.[s.symbol], validPrice = finite(q?.price) && q.price > 0;
@@ -486,19 +510,19 @@ function renderWatchlist(list, isCompact, pageSize) {
     col4.append(highSpan, lowSpan);
     card.append(col4);
 
-    // 欄位 5：走勢 (迷你 SVG Sparkline)
+    // 欄位 5：走勢 (迷你 SVG Sparkline，優先傳入真實 spark 陣列)
     const col5 = el('div', '', 'col-sparkline flex items-center justify-center');
     if (showSparkline) {
-      const spark = createSparklineSvg(q?.open, q?.high, q?.low, q?.price, q?.previous_close, isUp);
+      const spark = createSparklineSvg(q?.open, q?.high, q?.low, q?.price, q?.previous_close, isUp, q?.spark);
       col5.append(spark);
     }
     card.append(col5);
 
-    // 欄位 6：時間 (Hover 時顯示刪除按鈕)
+    // 欄位 6：時間 (平時顯示時間，Hover 時切換為紅色刪除按鈕，空間互斥絕不重疊)
     const col6 = el('div', '', 'text-right flex items-center justify-end relative pr-0.5');
     const timeText = q?.time || (q?.updated_at && Number.isFinite(Date.parse(q.updated_at)) ? new Date(q.updated_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false }) : '13:30');
-    const timeSpan = el('span', timeText, 'stock-sub font-mono text-slate-400');
-    const delBtn = el('button', '×', 'row-action-btn absolute right-0 text-slate-400 hover:text-red-600 font-bold text-sm px-1 leading-none cursor-pointer bg-white/95 rounded');
+    const timeSpan = el('span', timeText, 'col-time-text stock-sub font-mono text-slate-400');
+    const delBtn = el('button', '×', 'btn-row-delete text-slate-400 hover:text-red-600 font-bold text-base px-1 leading-none cursor-pointer bg-slate-100 hover:bg-red-50 rounded');
     delBtn.title = `從自選刪除 ${s.symbol}`;
     delBtn.onclick = (e) => {
       e.stopPropagation();
@@ -975,6 +999,14 @@ function drawer(open) {
   $('settings-panel').inert = !open;
   $('settings-panel').setAttribute('aria-hidden', String(!open));
   document.querySelectorAll('header,nav,main,footer').forEach(x => { x.inert = open; });
+  const container = $('popup-container');
+  if (container) {
+    if (open) {
+      container.style.minHeight = '520px';
+    } else {
+      container.style.minHeight = '240px';
+    }
+  }
   (open ? $('btn-close-settings') : $('btn-open-settings')).focus();
 }
 

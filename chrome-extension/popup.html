@@ -90,7 +90,7 @@
     </section>
 
     <!-- 表格表頭 (圖片2排版：個股 | 今價 | 漲跌 | 高 / 低 | 走勢 | 時間) -->
-    <div id="stock-table-header" class="grid grid-cols-[100px_62px_64px_62px_64px_36px] items-center px-3 py-1.5 bg-slate-100/90 border-b border-slate-200 text-[10px] text-slate-500 font-semibold select-none">
+    <div id="stock-table-header" class="stock-table-grid items-center px-3 py-1.5 bg-slate-100/90 border-b border-slate-200 text-[10px] text-slate-500 font-semibold select-none">
       <div class="text-left pl-0.5">個股</div>
       <div class="text-right pr-1">今價</div>
       <div class="text-right pr-1">漲跌</div>
@@ -213,101 +213,99 @@
           </div>
         </div>
 
-        <!-- 系統推播與即時彈窗測試 (重新設計按鈕樣式與刪除 Telegram 格式文字) -->
-        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-          <h3 class="font-bold text-slate-800 mb-1 flex items-center gap-1">
-            <i data-lucide="bell-ring" class="w-3.5 h-3.5 text-sky-600"></i>
-            <span>系統推播與即時彈窗測試</span>
-          </h3>
-          <p class="text-[10px] text-slate-500 mb-2">點擊即時發送原生桌面通知並於上方觸發即時彈窗預覽。</p>
-          <div class="grid grid-cols-3 gap-1.5 mb-1">
-            <button id="btn-test-daytrade-notif" class="py-1.5 px-1 bg-sky-600 hover:bg-sky-700 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center justify-center gap-0.5 cursor-pointer">
-              🚀 買進推播
-            </button>
-            <button id="btn-test-exit-notif" class="py-1.5 px-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center justify-center gap-0.5 cursor-pointer">
-              ✅ 賣出推播
-            </button>
-            <button id="btn-test-rebound-notif" class="py-1.5 px-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center justify-center gap-0.5 cursor-pointer">
-              🛡️ 反彈推播
-            </button>
+        <!-- 系統推播總樞紐框架 (開關設定 + 即時彈窗測試 + 條件式過濾放在同一框架) -->
+        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-2.5">
+          <div class="flex items-center justify-between border-b border-slate-200 pb-1.5">
+            <h3 class="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+              <i data-lucide="bell-ring" class="w-3.5 h-3.5 text-sky-600"></i>
+              <span>系統推播通知中樞</span>
+            </h3>
+            <span id="filter-status-tag" class="text-[10px] text-sky-700 bg-sky-100 px-1.5 py-0.2 rounded font-semibold">全開模式</span>
           </div>
-        </div>
 
-        <!-- 策略開關 -->
-        <div>
-          <h3 class="font-bold text-slate-700 mb-2">推播開關設定</h3>
-          <div class="space-y-2">
-            <label class="flex items-center justify-between">
+          <!-- 1. 推播開關設定 -->
+          <div class="space-y-1.5">
+            <span class="text-[11px] font-bold text-slate-700 block">推播開關設定</span>
+            <label class="flex items-center justify-between cursor-pointer">
               <div>
-                <span class="font-medium text-slate-800">當沖推播提醒</span>
+                <span class="font-medium text-slate-800 text-[11px]">當沖推播提醒</span>
                 <span class="block text-[10px] text-slate-400">當沖進場（買進）與出場（賣出）桌面通知</span>
               </div>
-              <input type="checkbox" id="toggle-daytrade" class="rounded text-slate-900" />
+              <input type="checkbox" id="toggle-daytrade" class="rounded text-slate-900 cursor-pointer" />
             </label>
-            <label class="flex items-center justify-between pl-2 border-l-2 border-sky-200">
+            <label class="flex items-center justify-between pl-2 border-l-2 border-sky-300 cursor-pointer">
               <div>
-                <span>全市場當沖連動</span>
+                <span class="text-slate-700 text-[11px]">全市場當沖連動</span>
                 <span class="block text-[10px] text-slate-400">不限自選清單，自動接收全市場當沖部位</span>
               </div>
-              <input type="checkbox" id="toggle-all-daytrade" class="rounded text-slate-900" />
+              <input type="checkbox" id="toggle-all-daytrade" class="rounded text-slate-900 cursor-pointer" />
             </label>
 
-            <div class="pt-1 border-t border-slate-100"></div>
+            <div class="pt-1 border-t border-slate-200"></div>
 
-            <label class="flex items-center justify-between">
+            <label class="flex items-center justify-between cursor-pointer">
               <div>
-                <span class="font-medium text-slate-800">觸底反彈推播提醒</span>
+                <span class="font-medium text-slate-800 text-[11px]">觸底反彈推播提醒</span>
                 <span class="block text-[10px] text-slate-400">技術面支撐區反彈與量能回升推播</span>
               </div>
-              <input type="checkbox" id="toggle-rebound" class="rounded text-slate-900" />
+              <input type="checkbox" id="toggle-rebound" class="rounded text-slate-900 cursor-pointer" />
             </label>
-            <label class="flex items-center justify-between pl-2 border-l-2 border-purple-200">
+            <label class="flex items-center justify-between pl-2 border-l-2 border-purple-300 cursor-pointer">
               <div>
-                <span>全市場反彈連動</span>
+                <span class="text-slate-700 text-[11px]">全市場反彈連動</span>
                 <span class="block text-[10px] text-slate-400">不限自選清單，自動接收全市場反彈股</span>
               </div>
-              <input type="checkbox" id="toggle-all-rebound" class="rounded text-slate-900" />
+              <input type="checkbox" id="toggle-all-rebound" class="rounded text-slate-900 cursor-pointer" />
             </label>
           </div>
-        </div>
 
-        <!-- 條件式推播過濾 (重新排版，標籤不折行，按鈕深色高對比) -->
-        <div class="border-t border-slate-100 pt-3">
-          <h3 class="font-bold text-slate-800 mb-1 flex items-center justify-between">
-            <span class="flex items-center gap-1">
-              <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-700"></i>
-              <span>條件式推播過濾</span>
-            </span>
-            <span id="filter-status-tag" class="text-[10px] text-sky-700 bg-sky-100 px-1.5 py-0.2 rounded font-medium">全開模式</span>
-          </h3>
-          <p class="text-[10px] text-slate-500 mb-2">可限制推播價格區間與漲幅門檻，或選擇全開。</p>
-          
-          <div class="space-y-2.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+          <!-- 2. 系統推播與即時彈窗測試 (橫向排列，移除勾勾，改為範例) -->
+          <div class="pt-2 border-t border-slate-200 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-slate-700">系統推播與即時彈窗測試</span>
+              <span class="text-[10px] text-slate-400">點擊即時發送</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5">
+              <button id="btn-test-daytrade-notif" class="py-1.5 px-1 bg-sky-600 hover:bg-sky-700 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center justify-center whitespace-nowrap cursor-pointer">
+                🚀 買進範例
+              </button>
+              <button id="btn-test-exit-notif" class="py-1.5 px-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center justify-center whitespace-nowrap cursor-pointer">
+                📉 賣出範例
+              </button>
+              <button id="btn-test-rebound-notif" class="py-1.5 px-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center justify-center whitespace-nowrap cursor-pointer">
+                🛡️ 反彈範例
+              </button>
+            </div>
+          </div>
+
+          <!-- 3. 條件式推播過濾 -->
+          <div class="pt-2 border-t border-slate-200 space-y-2">
+            <span class="text-[11px] font-bold text-slate-700 block">條件式設定</span>
             <div class="flex items-center gap-4 text-xs font-medium">
               <label class="flex items-center gap-1.5 cursor-pointer">
                 <input type="radio" name="filter-mode" id="radio-filter-all" value="all" checked class="accent-slate-900" />
-                <span class="text-slate-800">全開 (全部推播)</span>
+                <span class="text-slate-800 text-[11px]">全開 (全部推播)</span>
               </label>
               <label class="flex items-center gap-1.5 cursor-pointer">
                 <input type="radio" name="filter-mode" id="radio-filter-custom" value="custom" class="accent-slate-900" />
-                <span class="text-slate-800">條件過濾</span>
+                <span class="text-slate-800 text-[11px]">條件過濾</span>
               </label>
             </div>
 
             <div id="custom-filter-fields" class="space-y-2 pt-1 text-xs border-t border-slate-200">
               <div class="flex items-center gap-1.5">
-                <span class="w-18 text-slate-600 font-medium shrink-0">價格區間：</span>
-                <input type="number" id="input-min-price" placeholder="最低價" class="w-18 px-1.5 py-1 bg-white border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:border-slate-600" />
+                <span class="w-18 text-slate-600 font-medium shrink-0 text-[11px]">價格區間：</span>
+                <input type="number" id="input-min-price" placeholder="最低" class="w-18 px-1.5 py-1 bg-white border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:border-slate-600" />
                 <span class="text-slate-400">～</span>
-                <input type="number" id="input-max-price" placeholder="最高價" class="w-18 px-1.5 py-1 bg-white border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:border-slate-600" />
-                <span class="text-slate-500 text-[11px]">元</span>
+                <input type="number" id="input-max-price" placeholder="最高" class="w-18 px-1.5 py-1 bg-white border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:border-slate-600" />
+                <span class="text-slate-500 text-[10px]">元</span>
               </div>
               <div class="flex items-center gap-1.5">
-                <span class="w-18 text-slate-600 font-medium shrink-0">漲幅超過：</span>
+                <span class="w-18 text-slate-600 font-medium shrink-0 text-[11px]">漲幅超過：</span>
                 <input type="number" step="0.1" id="input-min-pct" placeholder="如: 2.0" class="w-20 px-1.5 py-1 bg-white border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:border-slate-600" />
-                <span class="text-slate-500 text-[11px]">% (例如 2% 才推播)</span>
+                <span class="text-slate-500 text-[10px]">% (達門檻才發)</span>
               </div>
-              <button id="btn-save-filter" class="w-full mt-1.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded font-bold text-xs shadow-xs transition cursor-pointer">
+              <button id="btn-save-filter" class="w-full mt-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded font-bold text-xs shadow-xs transition cursor-pointer">
                 儲存條件設定
               </button>
             </div>

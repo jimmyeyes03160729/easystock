@@ -162,6 +162,14 @@ async function feeds(now, forced = false) {
           } catch (_) {}
         }
       }
+      if (st?.stocks?.length) {
+        try {
+          const sparkMap = await fetchStockSparklines(st.stocks);
+          for (const [sym, points] of Object.entries(sparkMap)) {
+            if (quotes[sym]) quotes[sym].spark = points;
+          }
+        } catch (_) {}
+      }
     }
     const value = { at: now, quotes, live, taiex: taiex || cache?.taiex || null };
     await write('feedCache', value);
@@ -540,6 +548,11 @@ export async function handle(message) {
       const mkt = String(message.market || 'TW').toUpperCase();
       return await fetchIntradayData(sym, mkt);
     }
+    case 'FETCH_DAILY': {
+      const sym = String(message.symbol || '').toUpperCase();
+      const mkt = String(message.market || 'TW').toUpperCase();
+      return await fetchDailyData(sym, mkt);
+    }
     default: throw new Error('不支援的操作');
   }
   await write('state', st);
@@ -631,6 +644,112 @@ export async function fetchIntradayData(sym, mkt) {
   } catch (_) {}
 
   return { bars: [], previousClose: null, price: null };
+}
+
+export async function fetchDailyData(sym, mkt) {
+  if (!sym) return { bars: [] };
+  const candidates = [
+    mkt === 'TWO' ? `${sym}.TWO` : `${sym}.TW`,
+    mkt === 'TWO' ? `${sym}.TW` : `${sym}.TWO`
+  ];
+
+  for (const ySym of candidates) {
+    const urls = [
+      `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1d&range=6mo`,
+      `https://query2.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1d&range=6mo`
+    ];
+    for (const url of urls) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 6000);
+      try {
+        const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+        if (!res.ok) continue;
+        const json = await res.json();
+        const result = json?.chart?.result?.[0];
+        if (!result) continue;
+        const timestamps = result.timestamp;
+        const quotes = result.indicators?.quote?.[0];
+        if (!Array.isArray(timestamps) || !quotes) continue;
+
+        const bars = [];
+        let lastValidPrice = null;
+        for (let i = 0; i < timestamps.length; i++) {
+          const ts = timestamps[i];
+          let c = quotes.close?.[i];
+          let o = quotes.open?.[i];
+          let h = quotes.high?.[i];
+          let l = quotes.low?.[i];
+          let v = quotes.volume?.[i] || 0;
+
+          if (!finite(c)) {
+            if (!finite(lastValidPrice) || lastValidPrice <= 0) continue;
+            c = lastValidPrice;
+            o = c; h = c; l = c;
+          } else {
+            lastValidPrice = c;
+          }
+          if (!finite(o)) o = c;
+          if (!finite(h)) h = Math.max(o, c);
+          if (!finite(l)) l = Math.min(o, c);
+
+          const d = new Date(ts * 1000);
+          const dateStr = d.toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+          bars.push({
+            time: dateStr,
+            open: Number(o),
+            high: Number(h),
+            low: Number(l),
+            close: Number(c),
+            volume: Number(v)
+          });
+        }
+        if (bars.length > 0) {
+          return { bars };
+        }
+      } catch (_) {
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+  }
+  return { bars: [] };
+}
+
+export async function fetchStockSparklines(stocks) {
+  if (!Array.isArray(stocks) || !stocks.length) return {};
+  const queryList = stocks.map(s => {
+    const sym = typeof s === 'string' ? s : s.symbol;
+    const m = (typeof s === 'object' && s.market) ? s.market : 'TW';
+    return `${sym}.${m === 'TWO' ? 'TWO' : 'TW'}`;
+  }).slice(0, 30);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${queryList.join(',')}&range=1d&interval=15m`;
+    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+    if (!res.ok) return {};
+    const json = await res.json();
+    const results = json?.spark?.result;
+    if (!Array.isArray(results)) return {};
+    const map = {};
+    for (const item of results) {
+      if (!item?.symbol) continue;
+      const rawSym = item.symbol.split('.')[0].toUpperCase();
+      const closes = item.response?.[0]?.indicators?.quote?.[0]?.close;
+      if (Array.isArray(closes)) {
+        const validPoints = closes.filter(v => typeof v === 'number' && Number.isFinite(v));
+        if (validPoints.length > 0) {
+          map[rawSym] = validPoints;
+        }
+      }
+    }
+    return map;
+  } catch (_) {
+    return {};
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function clicked(id, button = 0) {
