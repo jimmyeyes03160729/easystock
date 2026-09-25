@@ -946,7 +946,6 @@ function renderRebound(list, isCompact) {
 }
 
 function renderBrokerSelector() {
-  const container = $('broker-card-grid');
   const currentId = view?.settings?.preferredBroker || 'sinopac';
   const currentBroker = getBroker(currentId);
 
@@ -961,48 +960,14 @@ function renderBrokerSelector() {
     select.value = currentId;
   }
 
-  if (!container) return;
-  container.replaceChildren();
-
-  const groups = [
-    { title: '👀 觀察看盤偏好（純看盤／不跳券商）', items: BROKERS.filter(b => b.isObserve) },
-    { title: '🚀 券商官方直通下單', items: BROKERS.filter(b => !b.isObserve) }
-  ];
-
-  for (const g of groups) {
-    const groupHeader = el('div', g.title, 'col-span-2 text-[10px] font-bold text-slate-500 pt-1 pb-0.5 border-b border-slate-200/60 flex items-center');
-    container.append(groupHeader);
-
-    for (const b of g.items) {
-      const isSelected = b.id === currentId;
-      const card = el('button', '', `broker-choice-card text-left p-2 rounded-lg border transition cursor-pointer flex flex-col justify-between ${isSelected ? 'border-sky-500 bg-sky-50/50 ring-1 ring-sky-500 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`);
-      card.setAttribute('type', 'button');
-      card.setAttribute('data-broker-id', b.id);
-      card.title = `切換為 ${b.name}`;
-
-      const top = el('div', '', 'flex items-center justify-between w-full');
-      const left = el('div', '', 'flex items-center gap-1.5 font-bold text-xs text-slate-800');
-      left.append(el('span', b.icon || '🚀', 'text-sm leading-none'));
-      left.append(el('span', b.shortName, 'truncate'));
-      top.append(left);
-
-      if (isSelected) {
-        top.append(el('span', '✓', 'text-[11px] font-extrabold text-sky-600 shrink-0'));
-      }
-      card.append(top);
-
-      const desc = el('span', b.appDesc || '', `text-[9px] truncate block mt-1 ${isSelected ? 'text-sky-700 font-semibold' : 'text-slate-400'}`);
-      card.append(desc);
-
-      card.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (select) {
-          select.value = b.id;
-          select.dispatchEvent(new Event('change'));
-        }
-      });
-
-      container.append(card);
+  const hintText = $('broker-hint-text');
+  if (hintText) {
+    if (currentBroker.id === 'observe') {
+      hintText.textContent = '【純觀察模式】：點擊卡片動作按鈕時僅自動複製股票代號至剪貼簿，絕不開啟任何外部網頁。';
+    } else if (currentBroker.isObserve) {
+      hintText.textContent = `【看盤分析】：點擊卡片將自動複製代號，並開啟 ${currentBroker.name}（${currentBroker.appDesc || ''}）行情走勢頁面。`;
+    } else {
+      hintText.textContent = `【官方直通下單】：點擊卡片將自動複製代號，並開啟 ${currentBroker.name}（${currentBroker.appDesc || ''}）官方頁面。`;
     }
   }
 }

@@ -199,11 +199,8 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   const brokerSelect = w.document.getElementById('select-preferred-broker');
   assert.ok(brokerSelect);
   assert.equal(brokerSelect.value, 'sinopac');
-
-  // 驗證視覺化卡片清單已正確渲染
-  const brokerCards = w.document.querySelectorAll('#broker-card-grid .broker-choice-card');
-  assert.ok(brokerCards.length >= 6);
   assert.match(w.document.getElementById('current-broker-badge').textContent, /🔴\s*永豐金證券/);
+  assert.match(w.document.getElementById('broker-hint-text').textContent, /永豐金證券/);
 
   // 切換到當沖頁籤，驗證有下單按鈕且為永豐下單（含專屬紅圈圖示）
   w.document.querySelector('[data-group="daytrade"]').click();
@@ -217,14 +214,14 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.ok(openedTabs.length > 0);
   assert.match(openedTabs.at(-1).url, /sinotrade\.com\.tw\/newweb\/TradingCenter_TWStocks_Stock\/\?code=/);
 
-  // 點擊富邦證券卡片切換
-  const fubonCard = Array.from(brokerCards).find(c => c.getAttribute('data-broker-id') === 'fubon');
-  assert.ok(fubonCard);
-  fubonCard.click();
+  // 使用下拉選單切換至富邦證券
+  brokerSelect.value = 'fubon';
+  brokerSelect.dispatchEvent(new w.Event('change'));
   await new Promise(r => setTimeout(r, 0));
   assert.equal(messages.at(-1).strategy, 'preferredBroker');
   assert.equal(messages.at(-1).value, 'fubon');
   assert.match(w.document.getElementById('current-broker-badge').textContent, /🔵\s*富邦/);
+  assert.match(w.document.getElementById('broker-hint-text').textContent, /富邦證券/);
 
   // 切換到觸底反彈頁籤，驗證按鈕文字變為富邦（含專屬藍圈圖示）
   w.document.querySelector('[data-group="rebound"]').click();
@@ -237,14 +234,14 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   await new Promise(r => setTimeout(r, 0));
   assert.match(openedTabs.at(-1).url, /fubon-ebrokerdj\.fbs\.com\.tw\/Z\/ZC\/ZCA\/ZCA\.djhtm\?a=/);
 
-  // 測試切換至「純觀察就好」選項
-  const observeCard = Array.from(brokerCards).find(c => c.getAttribute('data-broker-id') === 'observe');
-  assert.ok(observeCard);
-  observeCard.click();
+  // 使用下拉選單測試切換至「純觀察就好」選項
+  brokerSelect.value = 'observe';
+  brokerSelect.dispatchEvent(new w.Event('change'));
   await new Promise(r => setTimeout(r, 0));
   assert.equal(messages.at(-1).strategy, 'preferredBroker');
   assert.equal(messages.at(-1).value, 'observe');
   assert.match(w.document.getElementById('current-broker-badge').textContent, /👀\s*純觀察就好/);
+  assert.match(w.document.getElementById('broker-hint-text').textContent, /純觀察模式/);
 
   // 當沖按鈕文字變為「👀 觀察中」或「👀 已觀察」，點擊不開分頁（純觀察複製代號）
   w.document.querySelector('[data-group="daytrade"]').click();
@@ -255,11 +252,15 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   await new Promise(r => setTimeout(r, 0));
   assert.equal(openedTabs.length, tabsCountBefore);
 
-  // 測試切換至「Yahoo 奇摩股市」純看盤選項
-  const yahooCard = Array.from(brokerCards).find(c => c.getAttribute('data-broker-id') === 'yahoo');
-  assert.ok(yahooCard);
-  yahooCard.click();
+  // 使用下拉選單測試切換至「Yahoo 奇摩股市」純看盤選項
+  brokerSelect.value = 'yahoo';
+  brokerSelect.dispatchEvent(new w.Event('change'));
   await new Promise(r => setTimeout(r, 0));
+  assert.equal(messages.at(-1).strategy, 'preferredBroker');
+  assert.equal(messages.at(-1).value, 'yahoo');
+  assert.match(w.document.getElementById('current-broker-badge').textContent, /📈\s*Yahoo/);
+  assert.match(w.document.getElementById('broker-hint-text').textContent, /Yahoo 奇摩股市/);
+
   w.document.querySelector('[data-group="rebound"]').click();
   const yahooBtns = w.document.querySelectorAll('#stock-list-container .btn-broker-order');
   assert.match(yahooBtns[0].textContent, /📈\s*Yahoo看盤/);

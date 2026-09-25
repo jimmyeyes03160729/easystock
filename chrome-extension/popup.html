@@ -228,7 +228,7 @@
         </div>
 
         <!-- 交易下單捷徑與觀察看盤偏好 (支援純觀察模式與情境 A 網址直通下單) -->
-        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-2.5">
+        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-2">
           <div class="flex items-center justify-between">
             <span class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
               <span>🚀</span> <span>下單捷徑與觀察看盤偏好</span>
@@ -237,23 +237,34 @@
           </div>
           <p class="text-[10px] text-slate-500">在「當沖」與「觸底反彈」卡片點擊時，直通券商下單或純看盤觀察（自動複製代號）。</p>
           
-          <!-- 視覺化券商與觀察模式圖示切換清單 -->
-          <div id="broker-card-grid" class="grid grid-cols-2 gap-1.5 pt-1">
-            <!-- 由 popup.js 動態分組渲染觀察與券商卡片 -->
-          </div>
+          <!-- 下拉式選單 (分組呈現觀察看盤與券商直通下單) -->
+          <div class="space-y-1.5 pt-0.5">
+            <div class="relative">
+              <select id="select-preferred-broker" class="w-full bg-white border border-slate-300 rounded-lg pl-3 pr-8 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 shadow-2xs cursor-pointer appearance-none">
+                <optgroup label="👀 觀察看盤偏好（純看盤／不跳券商）">
+                  <option value="observe">👀 純觀察就好（不跳轉網頁 · 僅複製代號）</option>
+                  <option value="yahoo">📈 Yahoo 奇摩股市（個股走勢行情 · 純看盤）</option>
+                  <option value="wantgoo">📊 玩股網 WantGoo（技術線圖 · 籌碼分析）</option>
+                </optgroup>
+                <optgroup label="🚀 券商官方直通下單">
+                  <option value="sinopac">🔴 永豐金證券（大戶投 / 新理財網）</option>
+                  <option value="fubon">🔵 富邦證券（e點通 / MoneyDJ即時）</option>
+                  <option value="yuanta">🟠 元大證券（投資先生 / eYuanta）</option>
+                  <option value="cathay">🟢 國泰證券（數位證券官方平台）</option>
+                  <option value="kgi">🟣 凱基證券（隨身e策略 / 官方交易）</option>
+                  <option value="esun">🟩 玉山證券（A+理財贏家官方平台）</option>
+                </optgroup>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
 
-          <div class="hidden">
-            <select id="select-preferred-broker">
-              <option value="observe">純觀察就好 (不跳轉網頁)</option>
-              <option value="yahoo">Yahoo 奇摩股市 (純看盤走勢)</option>
-              <option value="wantgoo">玩股網技術分析 (籌碼線圖)</option>
-              <option value="sinopac">永豐金證券 (大戶投)</option>
-              <option value="fubon">富邦證券 (e點通)</option>
-              <option value="yuanta">元大證券 (投資先生)</option>
-              <option value="cathay">國泰證券 (數位證券)</option>
-              <option value="kgi">凱基證券 (隨身e策略)</option>
-              <option value="esun">玉山證券 (A+理財贏家)</option>
-            </select>
+            <!-- 即時動態提示盒 -->
+            <div id="broker-hint-box" class="bg-white border border-slate-200/80 rounded-md px-2.5 py-1.5 text-[10px] text-slate-600 flex items-center gap-1.5 shadow-2xs">
+              <span class="text-xs shrink-0">💡</span>
+              <span id="broker-hint-text" class="leading-relaxed">點擊當沖或觸底反彈卡片按鈕，將自動複製股票代號並開啟對應頁面。</span>
+            </div>
           </div>
         </div>
 
