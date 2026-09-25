@@ -33,7 +33,7 @@ function showInAppToast({ badgeText, badgeColor = 'bg-sky-500', titleText, bodyT
 
   if (bEl) {
     bEl.textContent = badgeText;
-    bEl.className = `px-1.5 py-0.5 rounded text-[10px] font-bold text-white shrink-0 ${badgeColor}`;
+    bEl.className = `px-1.5 py-0.5 rounded text-[10px] font-bold text-white shrink-0 whitespace-nowrap ${badgeColor}`;
   }
   if (tEl) tEl.textContent = titleText;
   if (bodyEl) bodyEl.textContent = bodyText;
@@ -49,16 +49,45 @@ function showInAppToast({ badgeText, badgeColor = 'bg-sky-500', titleText, bodyT
     }
   }
 
+  toast.style.zIndex = '99999';
+  toast.style.display = 'block';
   toast.classList.remove('hidden');
   toastTimer = setTimeout(() => {
     toast.classList.add('hidden');
-  }, 7000);
+    toast.style.display = 'none';
+  }, 10000);
 }
 
 $('btn-close-toast')?.addEventListener('click', () => {
-  $('in-app-toast')?.classList.add('hidden');
+  const toast = $('in-app-toast');
+  if (toast) {
+    toast.classList.add('hidden');
+    toast.style.display = 'none';
+  }
   clearTimeout(toastTimer);
 });
+
+// 監聽後台發送的即時訊號廣播，即時在小工具頂部滑出彈窗
+if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+  chrome.runtime.onMessage.addListener(msg => {
+    if (msg?.type === 'LIVE_SIGNAL' && msg.signal) {
+      const s = msg.signal;
+      const isExit = s.action === 'SELL' || s.id?.startsWith('exit:');
+      const isDaytrade = s.strategy === 'daytrade';
+      const isRebound = s.strategy === 'rebound';
+      showInAppToast({
+        badgeText: isExit ? '✅ 當沖出場' : (isRebound ? '🛡️ 觸底反彈' : '🚀 當沖進場'),
+        badgeColor: isExit ? 'bg-emerald-600' : (isRebound ? 'bg-purple-600' : 'bg-sky-600'),
+        titleText: s.title || `${s.symbol} ${s.name || ''}`,
+        bodyText: s.telegramText || `${s.symbol} ${s.name || ''} 現價 ${s.price} 元\n${s.reason || ''}`,
+        symbol: s.symbol,
+        market: s.market || 'TW',
+        name: s.name || s.symbol,
+        strategy: s.strategy || 'daytrade'
+      });
+    }
+  });
+}
 
 function renderTaiex() {
   const tInfo = view?.taiex;
@@ -132,8 +161,8 @@ function applyStealthMode(enabled) {
   const toggleCheckbox = $('toggle-stealth');
   if (toggleCheckbox) toggleCheckbox.checked = !!enabled;
   if (enabled) {
-    if (brand) brand.textContent = 'OA企業門戶 · 每日工時與專案日報審批';
-    if (tag) tag.textContent = '填報中 · 待簽核';
+    if (brand) brand.textContent = 'OA企業門戶 · 專案日報審批';
+    if (tag) tag.textContent = '待簽核';
     if (btnLabel) btnLabel.textContent = '搬磚中';
   } else {
     if (brand) brand.textContent = 'EasyStock · 牛馬自救終端';

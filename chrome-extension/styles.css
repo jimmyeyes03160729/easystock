@@ -3,7 +3,7 @@
 @tailwind utilities;
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-html, body { width: 400px; height: 600px; margin: 0; }
+html, body { width: 440px; height: 600px; margin: 0; }
 button, a, input { outline-offset: 2px; }
 button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid #0284c7; }
 .tab-btn { background: transparent; border: 1px solid transparent; color: #64748b; }
@@ -56,6 +56,40 @@ body.stealth-mode .stock-card {
 }
 .density-compact .stock-card .card-meta {
   font-size: 9px !important;
+}
+
+/* 全面橫向防文字縱向折行與排版加固 */
+.shrink-0 { flex-shrink: 0 !important; }
+.whitespace-nowrap { white-space: nowrap !important; }
+.truncate { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+
+#brand-title {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  min-width: 0 !important;
+  flex: 1 1 auto;
+}
+#brand-tag,
+#btn-stealth-toggle,
+#btn-open-settings,
+#btn-add,
+#group-tabs button,
+#taiex-banner span,
+#strategy-bar button,
+.stock-card .card-price,
+.stock-card .card-badge,
+label,
+button {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+/* 即時通知彈窗最上層懸浮保證 (高於設定抽屜 z-20，絕對可見) */
+#in-app-toast {
+  z-index: 9999 !important;
+  position: absolute !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3) !important;
 }
 
 

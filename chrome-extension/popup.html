@@ -7,38 +7,38 @@
   <link rel="stylesheet" href="assets/popup.css">
 </head>
 <body class="bg-slate-50 font-sans text-slate-800 antialiased selection:bg-slate-200">
-  <div class="w-[400px] max-h-[600px] h-[600px] flex flex-col bg-white border border-slate-200 shadow-xl overflow-hidden relative">
+  <div class="w-[440px] max-h-[600px] h-[600px] flex flex-col bg-white border border-slate-200 shadow-xl overflow-hidden relative">
 
-    <!-- 即時 In-App 推播通知彈窗 (點擊測試或即時訊號直接在小工具內彈出) -->
-    <div id="in-app-toast" class="hidden absolute top-2 left-2 right-2 z-40 bg-slate-900 text-white p-3 rounded-lg shadow-2xl border border-slate-700 transition-all duration-200">
+    <!-- 即時 In-App 推播通知彈窗 (點擊測試或即時訊號直接在小工具內彈出，最上層浮動) -->
+    <div id="in-app-toast" class="hidden absolute top-2 left-2 right-2 z-50 bg-slate-900 text-white p-3 rounded-lg shadow-2xl border border-slate-700 transition-all duration-200" style="z-index: 9999;">
       <div class="flex items-start justify-between gap-2 mb-1.5">
         <div class="flex items-center gap-1.5 min-w-0">
-          <span id="toast-badge" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500 text-white shrink-0">🚀 當沖進場</span>
-          <span id="toast-title" class="font-bold text-xs truncate">2330 台積電</span>
+          <span id="toast-badge" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500 text-white shrink-0 whitespace-nowrap">🚀 當沖進場</span>
+          <span id="toast-title" class="font-bold text-xs truncate whitespace-nowrap">2330 台積電</span>
         </div>
         <button id="btn-close-toast" class="text-slate-400 hover:text-white text-sm px-1 leading-none shrink-0" aria-label="關閉彈窗">×</button>
       </div>
       <div id="toast-body" class="text-[11px] text-slate-300 space-y-0.5 leading-relaxed font-sans max-h-36 overflow-y-auto whitespace-pre-line bg-slate-950/60 p-2 rounded border border-slate-800/80"></div>
       <div class="flex justify-end gap-2 mt-2 pt-1 border-t border-slate-800">
-        <button id="toast-chart-btn" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow-xs transition">查看線圖 ↗</button>
+        <button id="toast-chart-btn" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow-xs transition whitespace-nowrap">查看線圖 ↗</button>
       </div>
     </div>
 
     <!-- 頂部列與搜尋 -->
     <header class="p-3 border-b border-slate-100 bg-white sticky top-0 z-10">
-      <div class="flex items-center justify-between mb-2">
-        <div class="flex items-center gap-1.5 min-w-0">
+      <div class="flex items-center justify-between mb-2 gap-2">
+        <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
           <div id="market-status-dot" class="h-2 w-2 rounded-full bg-slate-400 shrink-0" title="離線 / 休市"></div>
-          <h1 id="brand-title" class="text-xs font-bold tracking-tight text-slate-900 truncate">EasyStock · 牛馬自救終端</h1>
-          <span id="brand-tag" class="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 py-0.2 rounded border border-slate-200 shrink-0">摸魚中</span>
+          <h1 id="brand-title" class="text-xs font-bold tracking-tight text-slate-900 truncate whitespace-nowrap">EasyStock · 牛馬自救終端</h1>
+          <span id="brand-tag" class="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 py-0.2 rounded border border-slate-200 shrink-0 whitespace-nowrap">摸魚中</span>
         </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button id="btn-stealth-toggle" aria-label="切換牛馬上班摸魚偽裝模式" title="一鍵切換牛馬上班摸魚偽裝模式 (快捷鍵 B)" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 flex items-center gap-1 transition">
-            <span>🐮</span> <span id="stealth-btn-label">摸魚</span>
+        <div class="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+          <button id="btn-stealth-toggle" aria-label="切換牛馬上班摸魚偽裝模式" title="一鍵切換牛馬上班摸魚偽裝模式 (快捷鍵 B)" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 flex items-center gap-1 transition shrink-0 whitespace-nowrap">
+            <span>🐮</span> <span id="stealth-btn-label" class="whitespace-nowrap">摸魚</span>
           </button>
-          <button id="btn-open-settings" aria-label="開啟設定" title="開啟設定面板" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-1 shadow-xs transition active:scale-95 cursor-pointer">
-            <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
-            <span>設定</span>
+          <button id="btn-open-settings" aria-label="開啟設定" title="開啟設定面板" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-1 shadow-xs transition active:scale-95 cursor-pointer shrink-0 whitespace-nowrap">
+            <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 shrink-0"></i>
+            <span class="whitespace-nowrap">設定</span>
           </button>
         </div>
       </div>

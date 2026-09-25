@@ -7,7 +7,7 @@ const event = () => { const listeners = []; return { addListener: f => listeners
 let db = {}, calls = [], notifications = [], tabs = [], fail = false, denied = false, failCreate = false;
 let cfg = { schema_version: 1, global_vip_switch: false, vip_keys_hash: [], bounce_strategy_signals: [], daytrade_strategy_signals: [] };
 globalThis.chrome = {
-  runtime: { id: 'test', getURL: path => `chrome-extension://test/${path}`, onMessage: event(), onInstalled: event(), onStartup: event() },
+  runtime: { id: 'test', getURL: path => `chrome-extension://test/${path}`, onMessage: event(), onInstalled: event(), onStartup: event(), sendMessage: async () => {} },
   storage: { local: { get: async key => ({ [key]: structuredClone(db[key]) }), set: async value => Object.assign(db, structuredClone(value)) } },
   alarms: { get: async () => null, create: async () => {}, onAlarm: event() },
   notifications: { getPermissionLevel: async () => denied ? 'denied' : 'granted', create: async (id, options) => { if (failCreate) throw new Error('OS error'); notifications.push({ id, options }); return id; }, clear: async () => true, onClicked: event(), onButtonClicked: event(), onClosed: event() },

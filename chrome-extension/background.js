@@ -345,6 +345,14 @@ async function notify(s, { test = false, vip = false, now = Date.now() } = {}) {
       message,
       buttons: [{ title: '查看線圖' }, { title: '今日忽略' }], priority: 2, silent: false, requireInteraction: true
     });
+    if (typeof chrome.runtime?.sendMessage === 'function') {
+      try {
+        chrome.runtime.sendMessage({
+          type: 'LIVE_SIGNAL',
+          signal: { ...s, telegramText: s.telegramText || defaultMsg, title }
+        }).catch(() => {});
+      } catch { /* ignore if popup is closed */ }
+    }
     return true;
   } catch (e) { await write('ledger', original); throw e; }
 }
