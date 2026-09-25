@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/popup.css">
 </head>
 <body class="bg-slate-50 font-sans text-slate-800 antialiased selection:bg-slate-200">
-  <div id="popup-container" class="w-[440px] flex flex-col bg-white border border-slate-200 shadow-xl overflow-hidden relative" style="height: 600px; min-height: 480px; max-height: 750px;">
+  <div id="popup-container" class="w-[440px] flex flex-col bg-white border border-slate-200 shadow-xl overflow-hidden relative">
 
     <!-- 即時 In-App 推播通知彈窗 (點擊測試或即時訊號直接在小工具內彈出，最上層浮動) -->
     <div id="in-app-toast" class="hidden absolute top-2 left-2 right-2 z-50 bg-slate-900 text-white p-3 rounded-lg shadow-2xl border border-slate-700 transition-all duration-200" style="z-index: 9999;">
@@ -146,43 +146,48 @@
           </h3>
           <p class="text-[10px] text-slate-400">自定義字體大小、視窗高度與走勢圖，上班縮小看盤摸魚不顯眼。</p>
 
-          <!-- 顯示大小 (圖片1效果：標準/較大/大 + 即時預覽框) -->
+          <!-- 顯示大小 (比照截圖：文字提示 + 分段藥丸鈕 + 預覽盒) -->
           <div class="space-y-1.5 pt-1">
-            <div class="flex items-center justify-between">
-              <span class="text-slate-700 font-medium text-[11px]">顯示大小:</span>
-              <div class="flex items-center gap-3 text-xs">
-                <label class="flex items-center gap-1 cursor-pointer">
-                  <input type="radio" name="font-size" id="radio-size-standard" value="standard" checked class="accent-slate-900" />
-                  <span class="text-slate-800">標準</span>
-                </label>
-                <label class="flex items-center gap-1 cursor-pointer">
-                  <input type="radio" name="font-size" id="radio-size-medium" value="medium" class="accent-slate-900" />
-                  <span class="text-slate-800">較大</span>
-                </label>
-                <label class="flex items-center gap-1 cursor-pointer">
-                  <input type="radio" name="font-size" id="radio-size-large" value="large" class="accent-slate-900" />
-                  <span class="text-slate-800">大</span>
-                </label>
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-800 font-bold text-xs">顯示大小</span>
               </div>
+              <span class="block text-[10px] text-slate-400 mt-0.5">調整文字大小；較大字級依內容保留所需欄寬。</span>
             </div>
-            <!-- 即時預覽盒 (圖片1效果) -->
-            <div id="font-size-preview-box" class="bg-white border border-slate-200 rounded px-2.5 py-1.5 text-slate-800 flex items-center justify-between font-mono text-[11px] shadow-2xs">
-              <span class="font-bold">台積電 1000.00</span>
-              <span class="text-red-600 font-semibold">▲+15.00 (+1.52%)</span>
+            <div class="inline-flex rounded-lg border border-slate-300 p-0.5 bg-slate-100/80 gap-1 text-xs">
+              <label class="flex items-center gap-1.5 px-3 py-1 rounded-md cursor-pointer transition has-[:checked]:bg-white has-[:checked]:shadow-xs has-[:checked]:border has-[:checked]:border-slate-200">
+                <input type="radio" name="font-size" id="radio-size-standard" value="standard" checked class="accent-sky-600" />
+                <span class="text-slate-800 font-medium">標準</span>
+              </label>
+              <label class="flex items-center gap-1.5 px-3 py-1 rounded-md cursor-pointer transition has-[:checked]:bg-white has-[:checked]:shadow-xs has-[:checked]:border has-[:checked]:border-slate-200">
+                <input type="radio" name="font-size" id="radio-size-medium" value="medium" class="accent-sky-600" />
+                <span class="text-slate-800 font-medium">較大</span>
+              </label>
+              <label class="flex items-center gap-1.5 px-3 py-1 rounded-md cursor-pointer transition has-[:checked]:bg-white has-[:checked]:shadow-xs has-[:checked]:border has-[:checked]:border-slate-200">
+                <input type="radio" name="font-size" id="radio-size-large" value="large" class="accent-sky-600" />
+                <span class="text-slate-800 font-medium">大</span>
+              </label>
+            </div>
+            <!-- 即時預覽盒 (比照截圖效果：台積電 999999.99 ▲99999.99) -->
+            <div id="font-size-preview-box" class="bg-white border border-slate-200 rounded px-3 py-2 text-slate-800 flex items-center justify-between font-mono text-xs shadow-2xs">
+              <span class="font-bold preview-sym">台積電 999999.99</span>
+              <span class="text-red-600 font-semibold preview-chg">▲99999.99</span>
             </div>
           </div>
 
-          <!-- 列表高度滑桿 (圖片1效果：+0px 滑動增減) -->
-          <div class="space-y-1 pt-2 border-t border-slate-200">
+          <!-- 列表高度滑桿 (比照截圖效果：標題 + 說明 + 預設/+101px/+214px + 左邊預設 右邊較高) -->
+          <div class="space-y-1.5 pt-2 border-t border-slate-200">
             <div class="flex items-center justify-between">
-              <span class="text-slate-700 font-medium text-[11px]">列表高度:</span>
-              <span id="window-height-val" class="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 px-1.5 py-0.2 rounded">+0px</span>
+              <div>
+                <span class="text-slate-800 font-bold text-xs">列表高度</span>
+                <span class="block text-[10px] text-slate-400 mt-0.5">增加可同時顯示的股票筆數。</span>
+              </div>
+              <span id="window-height-val" class="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-2xs">預設</span>
             </div>
-            <input type="range" id="range-window-height" min="480" max="750" step="10" value="600" class="w-full accent-slate-900 cursor-pointer" />
-            <div class="flex justify-between text-[9px] text-slate-400">
-              <span>緊湊 (480px)</span>
-              <span>預設 (600px)</span>
-              <span>拉長 (750px)</span>
+            <input type="range" id="range-window-height" min="480" max="720" step="1" value="480" class="w-full accent-sky-600 cursor-pointer" />
+            <div class="flex justify-between text-[10px] text-slate-400 font-medium">
+              <span>預設</span>
+              <span>較高</span>
             </div>
           </div>
 

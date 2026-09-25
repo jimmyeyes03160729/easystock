@@ -259,25 +259,27 @@ function createSparklineSvg(open, high, low, close, prevClose, isUp, sparkPoints
   return svg;
 }
 
-// 動態列表高度設定 (調節視窗高度與緊緻度，動態顯示 +0px)
+// 動態列表高度設定 (真實改變整體視窗尺寸：同時設定 html, body 與 container，比照截圖：預設 / +101px / +214px)
 function applyWindowHeight(h) {
-  const val = Math.max(380, Math.min(750, Number(h) || 600));
+  const val = Math.max(380, Math.min(750, Number(h) || 480));
+  if (document.documentElement) document.documentElement.style.height = `${val}px`;
   if (document.body) document.body.style.height = `${val}px`;
   const container = $('popup-container');
   if (container) {
-    container.style.maxHeight = `${val}px`;
     container.style.height = `${val}px`;
+    container.style.minHeight = `${val}px`;
+    container.style.maxHeight = `${val}px`;
   }
-  const diff = val - 600;
-  const diffText = diff >= 0 ? `+${diff}px` : `${diff}px`;
-  if ($('window-height-val')) $('window-height-val').textContent = diffText;
-  if ($('density-status-tag')) $('density-status-tag').textContent = diffText;
+  const diff = val - 480;
+  const tagText = diff <= 0 ? '預設' : `+${diff}px`;
+  if ($('window-height-val')) $('window-height-val').textContent = tagText;
+  if ($('density-status-tag')) $('density-status-tag').textContent = tagText;
   if ($('range-window-height') && document.activeElement !== $('range-window-height')) {
     $('range-window-height').value = String(val);
   }
 }
 
-// 顯示文字大小設定 (標準/較大/大 + 預覽盒，顯著拉開階梯)
+// 顯示文字大小設定 (比照截圖：標準 / 較大 / 大，字重與字級即時整體變更)
 function applyFontSize(size) {
   const validSize = ['standard', 'medium', 'large'].includes(size) ? size : 'standard';
   const list = $('stock-list-container');
@@ -287,10 +289,22 @@ function applyFontSize(size) {
   }
   const preview = $('font-size-preview-box');
   if (preview) {
-    preview.classList.remove('text-[11px]', 'text-[13.5px]', 'text-[16px]');
-    if (validSize === 'standard') preview.classList.add('text-[11px]');
-    else if (validSize === 'medium') preview.classList.add('text-[13.5px]');
-    else if (validSize === 'large') preview.classList.add('text-[16px]');
+    preview.classList.remove('text-[11px]', 'text-xs', 'text-sm', 'text-base', 'font-normal', 'font-bold', 'font-extrabold');
+    const symSpan = preview.querySelector('.preview-sym');
+    const chgSpan = preview.querySelector('.preview-chg');
+    if (validSize === 'standard') {
+      preview.classList.add('text-xs');
+      if (symSpan) symSpan.className = 'preview-sym font-semibold text-slate-800';
+      if (chgSpan) chgSpan.className = 'preview-chg text-red-600 font-semibold';
+    } else if (validSize === 'medium') {
+      preview.classList.add('text-sm');
+      if (symSpan) symSpan.className = 'preview-sym font-bold text-slate-900';
+      if (chgSpan) chgSpan.className = 'preview-chg text-red-600 font-bold';
+    } else if (validSize === 'large') {
+      preview.classList.add('text-base');
+      if (symSpan) symSpan.className = 'preview-sym font-extrabold text-slate-900 tracking-tight';
+      if (chgSpan) chgSpan.className = 'preview-chg text-red-600 font-extrabold';
+    }
   }
   if ($(`radio-size-${validSize}`)) $(`radio-size-${validSize}`).checked = true;
 }
@@ -731,8 +745,8 @@ function render() {
   if ($('toggle-all-rebound')) $('toggle-all-rebound').checked = view.settings?.allReboundAlerts !== false;
   applyStealthMode(view.settings?.stealthMode);
 
-  // 視窗高度自定義 (圖片1效果)
-  const windowHeight = Number(view.settings?.windowHeight) || 600;
+  // 視窗高度自定義 (比照截圖：預設 480px)
+  const windowHeight = Number(view.settings?.windowHeight) || 480;
   applyWindowHeight(windowHeight);
 
   // 顯示大小自定義 (圖片1效果)
@@ -999,14 +1013,6 @@ function drawer(open) {
   $('settings-panel').inert = !open;
   $('settings-panel').setAttribute('aria-hidden', String(!open));
   document.querySelectorAll('header,nav,main,footer').forEach(x => { x.inert = open; });
-  const container = $('popup-container');
-  if (container) {
-    if (open) {
-      container.style.minHeight = '520px';
-    } else {
-      container.style.minHeight = '240px';
-    }
-  }
   (open ? $('btn-close-settings') : $('btn-open-settings')).focus();
 }
 

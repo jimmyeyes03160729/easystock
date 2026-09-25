@@ -436,7 +436,7 @@ export function defaultState() {
       cardDensity: 'compact',
       stealthMode: false,
       fontSize: 'standard',
-      windowHeight: 600,
+      windowHeight: 480,
       showSparkline: true
     }, vipHash: '' };
 }

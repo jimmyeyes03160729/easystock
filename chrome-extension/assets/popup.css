@@ -5,8 +5,8 @@
 #brand-title{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;min-width:0!important;flex:1 1 auto}
 #brand-tag,#btn-stealth-toggle,#btn-open-settings,#btn-add,#group-tabs button,#taiex-banner span,#strategy-bar button,.stock-card .card-price,.stock-card .card-badge,label,button{white-space:nowrap!important;flex-shrink:0!important}
 #in-app-toast{z-index:9999!important;position:absolute!important;box-shadow:0 20px 25px -5px rgba(0,0,0,.5),0 10px 10px -5px rgba(0,0,0,.3)!important}
-body, html { width: 440px; min-height: 240px; max-height: 640px; margin: 0; overflow-x: hidden; overflow-y: auto; }
-#popup-container { width: 440px; min-height: 240px; max-height: 640px; }
+body, html { width: 440px; min-width: 440px; max-width: 440px; margin: 0; padding: 0; overflow: hidden; box-sizing: border-box; }
+#popup-container { width: 440px; min-width: 440px; max-width: 440px; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
 .stock-table-grid, #stock-table-header { display: grid !important; grid-template-columns: 100px 62px 64px 62px 64px 36px !important; align-items: center !important; }
 .stock-table-grid.no-sparkline, #stock-table-header.no-sparkline { grid-template-columns: 115px 75px 80px 75px 0px 45px !important; }
 .stock-table-grid.no-sparkline .col-sparkline, #stock-table-header.no-sparkline #col-header-sparkline { display: none !important; }
