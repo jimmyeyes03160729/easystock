@@ -1486,29 +1486,31 @@ def interactive_card_message(
 
     buttons = []
     for kind in ("P", "K", "T"):
-        if kind == selected:
-            continue
         label, command = commands[kind]
-        buttons.append({
+        is_active = (kind == selected)
+        btn_dict = {
             "type": "button",
             "height": "sm",
-            "style": "secondary",
+            "style": "primary" if is_active else "secondary",
             "flex": 3,
             "action": {
                 "type": "message",
                 "label": label,
                 "text": command,
             },
-        })
+        }
+        if is_active:
+            btn_dict["color"] = "#F59E0B"
+        buttons.append(btn_dict)
 
     buttons.append({
         "type": "button",
         "height": "sm",
         "style": "link",
-        "flex": 4,
+        "flex": 3,
         "action": {
             "type": "uri",
-            "label": "EasyStock",
+            "label": "官網",
             "uri": EASYSTOCK_WEB_URL,
         },
     })
@@ -1522,9 +1524,9 @@ def interactive_card_message(
                 "type": "image",
                 "url": url,
                 "size": "full",
-                "aspectRatio": "5:4",
+                "aspectRatio": "1:1.18",
                 "aspectMode": "fit",
-                "backgroundColor": "#0B101B",
+                "backgroundColor": "#FFFFFF",
                 "action": {
                     "type": "uri",
                     "label": "Yahoo股市",
@@ -1536,6 +1538,7 @@ def interactive_card_message(
                 "layout": "horizontal",
                 "spacing": "xs",
                 "paddingAll": "4px",
+                "backgroundColor": "#FFFFFF",
                 "contents": buttons,
             },
         },
