@@ -13,7 +13,7 @@
     rebound.before(layout);layout.append(rebound);
     get('bottom-rebound')?.remove();
     const anchor=document.createElement('span');anchor.id='bottom-rebound';rebound.prepend(anchor);
-    const title=get('reboundTitle');if(title)title.textContent='底部反彈 TOP 3';
+    const title=get('reboundTitle');if(title)title.innerHTML='<span class="h-6 w-6 rounded-md bg-[#1C2B3C] border border-[#232F42] inline-flex items-center justify-center text-[#06B6D4] font-mono text-xs font-bold mr-2 align-middle">02</span><span class="align-middle">底部反彈 TOP 3</span>';
     const watch=get('reboundWatchSection');
     if(watch){
       const details=document.createElement('details'),summary=document.createElement('summary');
