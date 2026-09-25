@@ -13,7 +13,7 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   state.stocks.push({ symbol: '8299', market: 'TWO', name: '<img src=x onerror=alert(1)>', groups: ['rebound'] });
   state.bounce.push({ symbol: '8299', market: 'TWO', name: '群聯', price: 500, reason: '支撐區反彈' });
   w.chrome = { runtime: { sendMessage: async m => { messages.push(m); return { ok: true, value: m.type === 'TEST' ? { sent: true } : structuredClone(state) }; } }, tabs: { create: async () => {} } };
-  for (const key of ['SYMBOL', 'GROUPS', 'finite', 'fresh', 'watchlist', 'chartURL', 'searchStocks', 'searchOnlineStocks', 'calcChangePct', 'fetchStockClosingQuotes']) w[key] = core[key];
+  for (const key of ['SYMBOL', 'GROUPS', 'finite', 'fresh', 'watchlist', 'chartURL', 'searchStocks', 'searchOnlineStocks', 'calcChangePct', 'fetchStockClosingQuotes', 'formatTelegramEntry', 'formatTelegramExit', 'formatTelegramRebound']) w[key] = core[key];
   w.icons = () => {};
   state.taiex = { price: 22800.5, change: 150.2, change_pct: 0.66, otc_price: 270.1, otc_change: 1.2, otc_change_pct: 0.45 };
   await w.eval(`(async()=>{${source.replace(/^import .*;\r?\n/gm, '')}})()`);
@@ -75,7 +75,7 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.equal(messages.at(-1).strategy, 'stealthMode');
   assert.equal(messages.at(-1).enabled, true);
   assert.equal(w.document.body.classList.contains('stealth-mode'), true);
-  assert.match(w.document.getElementById('brand-title').textContent, /SysMonitor/);
+  assert.match(w.document.getElementById('brand-title').textContent, /OA企業門戶/);
   assert.equal(w.document.getElementById('stealth-btn-label').textContent, '搬磚中');
 
   stealthBtn.click();
