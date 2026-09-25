@@ -157,6 +157,8 @@ body.stealth-mode .stock-row:hover {
   width: 0;
   height: 0;
   position: absolute;
+  margin: 0;
+  pointer-events: none;
 }
 .toggle-slider {
   position: absolute;
@@ -186,6 +188,43 @@ body.stealth-mode .stock-row:hover {
 }
 .toggle-switch input:checked + .toggle-slider:before {
   transform: translateX(16px);
+}
+
+/* Stitch 現代滑桿美化樣式 (圓角軌道與高質感白色滑塊) */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 9999px;
+  outline: none;
+  transition: background 0.15s ease;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #0284c7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 5px rgba(2, 132, 199, 0.35);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #0284c7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
 }
 
 /* 水平分段膠囊切換鈕 (Segmented Control) */

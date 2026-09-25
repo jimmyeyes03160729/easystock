@@ -102,10 +102,11 @@ function renderTaiex() {
     if (banner) banner.className = 'flex items-center justify-between px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[11px]';
     return;
   }
-  const isUp = tInfo.change >= 0;
+  const isUp = tInfo.change > 0;
+  const isDown = tInfo.change < 0;
+  const arrow = isUp ? '▲ ' : (isDown ? '▼ ' : '');
   const sign = isUp ? '+' : '';
-  const arrow = isUp ? '▲ ' : '▼ ';
-  const colorClass = isUp ? 'text-red-600' : 'text-emerald-600';
+  const colorClass = isUp ? 'text-red-600' : (isDown ? 'text-emerald-600' : 'text-slate-600');
 
   $('taiex-price').textContent = tInfo.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   $('taiex-price').className = `font-bold ${colorClass}`;
@@ -113,14 +114,15 @@ function renderTaiex() {
   $('taiex-change').className = `font-semibold ${colorClass}`;
 
   if (finite(tInfo.otc_price)) {
-    const otcUp = tInfo.otc_change >= 0;
-    const oSign = otcUp ? '+' : '';
-    const oArrow = otcUp ? '▲ ' : '▼ ';
-    const oColorClass = otcUp ? 'text-red-600' : 'text-emerald-600';
+    const otcUp = tInfo.otc_change > 0;
+    const otcDown = tInfo.otc_change < 0;
+    const oArrow = otcUp ? '▲ ' : (otcDown ? '▼ ' : '');
+    const oSign = otcUp ? '+' : (otcDown ? '-' : '');
+    const oColorClass = otcUp ? 'text-red-600' : (otcDown ? 'text-emerald-600' : 'text-slate-600');
 
     $('otc-price').textContent = tInfo.otc_price.toFixed(2);
     $('otc-price').className = `font-medium ${oColorClass}`;
-    $('otc-change').textContent = `${oArrow}${oSign}${tInfo.otc_change.toFixed(2)}%`;
+    $('otc-change').textContent = `${oArrow}${oSign}${Math.abs(tInfo.otc_change).toFixed(2)}%`;
     $('otc-change').className = `font-medium ${oColorClass}`;
   }
 
@@ -337,7 +339,7 @@ function applyWindowHeight(h) {
   }
 }
 
-// 顯示文字大小設定 (比照截圖：小 / 標準 / 大，字重與字級從小到大階梯顯著清晰)
+// 顯示文字大小設定 (Stitch 設計：小 / 標準 / 大，字重與字級從小到大階梯顯著清晰，支援膠囊按鈕與預覽列)
 function applyFontSize(size) {
   let validSize = size;
   if (size === 'medium') validSize = 'standard';
@@ -348,24 +350,45 @@ function applyFontSize(size) {
     list.classList.add(`size-${validSize}`);
   }
   const preview = $('font-size-preview-box');
+  const tag = $('preview-size-tag');
+  if (tag) {
+    tag.textContent = validSize === 'small' ? '小 (緊湊)' : (validSize === 'large' ? '大 (清晰)' : '標準 (推薦)');
+  }
   if (preview) {
-    preview.classList.remove('text-[11px]', 'text-xs', 'text-sm', 'text-base', 'font-normal', 'font-semibold', 'font-bold', 'font-extrabold');
     const symSpan = preview.querySelector('.preview-sym');
+    const nameSpan = preview.querySelector('.preview-name');
+    const priceSpan = preview.querySelector('.preview-price');
     const chgSpan = preview.querySelector('.preview-chg');
     if (validSize === 'small') {
-      preview.classList.add('text-xs');
-      if (symSpan) symSpan.className = 'preview-sym font-normal text-slate-600';
-      if (chgSpan) chgSpan.className = 'preview-chg text-red-600 font-normal';
+      if (symSpan) symSpan.className = 'preview-sym font-bold font-mono text-sky-600 text-[11px]';
+      if (nameSpan) nameSpan.className = 'preview-name text-slate-700 font-medium text-[10px]';
+      if (priceSpan) priceSpan.className = 'preview-price font-bold font-mono text-red-600 text-[12px]';
+      if (chgSpan) chgSpan.className = 'preview-chg font-mono font-semibold text-red-600 text-[9.5px] bg-red-50 border border-red-100 px-1 py-0.2 rounded';
     } else if (validSize === 'standard') {
-      preview.classList.add('text-sm');
-      if (symSpan) symSpan.className = 'preview-sym font-bold text-slate-800';
-      if (chgSpan) chgSpan.className = 'preview-chg text-red-600 font-bold';
+      if (symSpan) symSpan.className = 'preview-sym font-bold font-mono text-sky-600 text-[12.5px]';
+      if (nameSpan) nameSpan.className = 'preview-name text-slate-700 font-medium text-[11px]';
+      if (priceSpan) priceSpan.className = 'preview-price font-bold font-mono text-red-600 text-[13.5px]';
+      if (chgSpan) chgSpan.className = 'preview-chg font-mono font-semibold text-red-600 text-[10px] bg-red-50 border border-red-100 px-1.5 py-0.5 rounded';
     } else if (validSize === 'large') {
-      preview.classList.add('text-base');
-      if (symSpan) symSpan.className = 'preview-sym font-extrabold text-slate-900 tracking-tight';
-      if (chgSpan) chgSpan.className = 'preview-chg text-red-600 font-extrabold';
+      if (symSpan) symSpan.className = 'preview-sym font-bold font-mono text-sky-600 text-[14.5px]';
+      if (nameSpan) nameSpan.className = 'preview-name text-slate-700 font-medium text-[12px]';
+      if (priceSpan) priceSpan.className = 'preview-price font-bold font-mono text-red-600 text-[15.5px]';
+      if (chgSpan) chgSpan.className = 'preview-chg font-mono font-semibold text-red-600 text-[11px] bg-red-50 border border-red-100 px-1.5 py-0.5 rounded';
     }
   }
+  ['small', 'standard', 'large'].forEach(s => {
+    const radio = $(`radio-size-${s}`);
+    const lbl = radio?.closest('.size-pill-label');
+    if (lbl) {
+      if (s === validSize) {
+        lbl.classList.add('bg-white', 'text-sky-700', 'shadow-xs', 'font-bold');
+        lbl.classList.remove('text-slate-600');
+      } else {
+        lbl.classList.remove('bg-white', 'text-sky-700', 'shadow-xs', 'font-bold');
+        lbl.classList.add('text-slate-600');
+      }
+    }
+  });
   if ($(`radio-size-${validSize}`)) $(`radio-size-${validSize}`).checked = true;
 }
 
@@ -535,10 +558,12 @@ function renderWatchlist(list, isCompact, pageSize) {
     const q = view.quotes?.[s.symbol], validPrice = finite(q?.price) && q.price > 0;
     const changePctVal = calcChangePct(q);
     const validPct = finite(changePctVal);
-    const pct = validPct ? `${changePctVal >= 0 ? '+' : ''}${changePctVal.toFixed(2)}%` : '0.00%';
-    const pctColor = validPct ? (changePctVal >= 0 ? 'text-red-600' : 'text-emerald-600') : 'text-slate-400';
-    const isUp = changePctVal >= 0;
-    const sign = isUp ? '▲+' : '▼-';
+    const isUp = validPct && changePctVal > 0;
+    const isDown = validPct && changePctVal < 0;
+    const arrow = isUp ? '▲ ' : (isDown ? '▼ ' : '');
+    const pctPrefix = isUp ? '+' : (isDown ? '-' : '');
+    const pct = validPct ? `${pctPrefix}${Math.abs(changePctVal).toFixed(2)}%` : '0.00%';
+    const pctColor = validPct ? (isUp ? 'text-red-600' : (isDown ? 'text-emerald-600' : 'text-slate-500')) : 'text-slate-400';
 
     const card = el('article', '', `stock-row stock-card stock-table-grid ${showSparkline ? '' : 'no-sparkline'}`);
 
@@ -564,15 +589,15 @@ function renderWatchlist(list, isCompact, pageSize) {
     col1.append(symLink, nameRow);
     card.append(col1);
 
-    // 欄位 2：今價
+    // 欄位 2：今價 (等寬對齊、大字清晰)
     const col2 = el('div', '', `text-right font-mono font-bold stock-price pr-1 ${validPrice ? pctColor : 'text-slate-400'}`);
     col2.textContent = validPrice ? (q.price >= 1000 ? q.price.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) : q.price.toFixed(2)) : '--';
     card.append(col2);
 
-    // 欄位 3：漲跌 (雙行：上為點數，下為百分比)
+    // 欄位 3：漲跌 (雙行：上為標準箭頭與點數，下為百分比)
     const col3 = el('div', '', 'text-right font-mono flex flex-col justify-center pr-1');
-    const chgVal = finite(q?.change) ? Math.abs(q.change).toFixed(2) : '0.00';
-    const chgSpan = el('span', validPct ? `${sign}${chgVal}` : '--', `stock-sub font-bold leading-tight ${pctColor}`);
+    const chgVal = finite(q?.change) ? Math.abs(q.change).toFixed(2) : (validPct && validPrice ? Math.abs(q.price * changePctVal / 100).toFixed(2) : '0.00');
+    const chgSpan = el('span', validPct ? `${arrow}${chgVal}` : '--', `stock-sub font-bold leading-tight ${pctColor}`);
     const pctSpan = el('span', pct, `stock-sub font-semibold leading-tight ${pctColor}`);
     col3.append(chgSpan, pctSpan);
     card.append(col3);

@@ -182,10 +182,22 @@
                 <span>大</span>
               </label>
             </div>
-            <!-- 即時預覽盒 -->
-            <div id="font-size-preview-box" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 flex items-center justify-between font-mono text-xs shadow-2xs">
-              <span class="font-bold preview-sym text-slate-800">台積電 999999.99</span>
-              <span class="text-red-600 font-semibold preview-chg">▲99999.99</span>
+            <!-- 即時預覽盒 (Stitch 精緻卡片：以台積電為例) -->
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-[10px] text-slate-400">
+                <span>即時排版預覽</span>
+                <span id="preview-size-tag" class="font-mono text-sky-600 font-semibold">標準 (推薦)</span>
+              </div>
+              <div id="font-size-preview-box" class="bg-slate-50 border border-slate-200/90 rounded-lg px-3 py-2 flex items-center justify-between shadow-2xs">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span class="preview-sym font-bold font-mono text-sky-600 text-[12.5px]">2330</span>
+                  <span class="preview-name text-slate-700 font-medium text-[11px]">台積電</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="preview-price font-bold font-mono text-red-600 text-[13.5px]">1,025.0</span>
+                  <span class="preview-chg font-mono font-semibold text-red-600 text-[10px] bg-red-50 border border-red-100 px-1.5 py-0.5 rounded">▲ 25.0 (+2.50%)</span>
+                </div>
+              </div>
             </div>
           </div>
 
