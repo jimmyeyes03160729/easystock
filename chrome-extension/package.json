@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tailwindcss -i styles.css -o assets/popup.css --minify && node build.mjs",
+    "build": "node build.mjs",
+    "package": "node build.mjs && powershell -Command \"Compress-Archive -Path 'dist/production/*' -DestinationPath '../easystock-chrome-extension-v1.0.0.zip' -Force\"",
     "test": "node --test tests/*.test.mjs"
   },
   "devDependencies": { "tailwindcss": "3.4.17" }
