@@ -3,24 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EasyStock 個股即時走勢 / K 線圖</title>
+  <title>EasyStock Pro 個股即時走勢 / K 線終端</title>
   <style>
     :root {
-      --bg: #0b0c10;
-      --panel: #14171f;
-      --surface: #1b202a;
-      --hover: #242a38;
-      --border: #2d3545;
-      --main: #f1f5f9;
-      --sub: #94a3b8;
-      --up: #ef4444;
-      --down: #22c55e;
-      --accent: #f59e0b;
+      --bg: #0a0e19;
+      --panel: #0f131e;
+      --surface: #171b26;
+      --surface-elevated: #1e2332;
+      --hover: #262c3e;
+      --border: #262a35;
+      --border-bright: #313441;
+      --main: #dfe2f2;
+      --sub: #bdc8d1;
+      --muted: #87929a;
+      --up: #f43f5e;
+      --up-glow: rgba(244, 63, 94, 0.25);
+      --down: #10b981;
+      --down-glow: rgba(16, 185, 129, 0.25);
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.35);
+      --gold: #f59e0b;
       --ma5: #f59e0b;
       --ma10: #06b6d4;
       --ma20: #a855f7;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    
     body {
       background: var(--bg);
       color: var(--main);
@@ -31,6 +39,116 @@
       display: flex;
       flex-direction: column;
     }
+
+    /* Tabular mono numerals */
+    .tabular-mono, #txt-price, #txt-diff, .metric-val, .pill-num {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 頂部視窗控制列 (macOS / Terminal Bar) */
+    .terminal-bar {
+      height: 34px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+      font-size: 11px;
+    }
+    .traffic-lights {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .traffic-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .traffic-dot:active { transform: scale(0.92); }
+    .dot-close { background: #ef4444; }
+    .dot-min { background: #f59e0b; }
+    .dot-max { background: #10b981; }
+    .terminal-bar:hover .traffic-dot span { opacity: 1; }
+    .traffic-dot span {
+      opacity: 0;
+      font-size: 8px;
+      font-weight: 800;
+      color: rgba(0,0,0,0.6);
+      line-height: 1;
+    }
+
+    .terminal-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .terminal-brand img {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+    }
+    .terminal-title {
+      font-weight: 600;
+      color: var(--sub);
+      letter-spacing: 0.02em;
+    }
+    .badge-version {
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      font-weight: 600;
+    }
+
+    .terminal-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-icon {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--sub);
+      padding: 4px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    .btn-icon:hover {
+      background: var(--surface-elevated);
+      color: var(--main);
+      border-color: var(--border);
+    }
+    .btn-icon svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+    .btn-spin svg {
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-spin.spinning svg {
+      transform: rotate(360deg);
+    }
+
+    /* 主行情看板區 */
     header {
       background: var(--panel);
       border-bottom: 1px solid var(--border);
@@ -38,25 +156,35 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 16px;
       flex-shrink: 0;
+      flex-wrap: wrap;
     }
     .stock-info {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
       flex-wrap: wrap;
     }
-    .stock-title {
-      font-size: 18px;
-      font-weight: 700;
+    .stock-title-group {
       display: flex;
-      align-items: center;
-      gap: 6px;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .stock-symbol {
+      font-size: 24px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+    }
+    .stock-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--main);
     }
     .badge {
       font-size: 11px;
-      padding: 2px 6px;
+      padding: 2px 7px;
       border-radius: 4px;
       font-weight: 600;
       background: var(--surface);
@@ -64,34 +192,73 @@
       border: 1px solid var(--border);
     }
     .badge-strategy {
-      background: rgba(245, 158, 11, 0.15);
-      color: var(--accent);
-      border-color: rgba(245, 158, 11, 0.3);
+      background: rgba(245, 158, 11, 0.12);
+      color: #fbbf24;
+      border-color: rgba(245, 158, 11, 0.35);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.15);
     }
+
     .price-box {
       display: flex;
       align-items: baseline;
       gap: 8px;
+      padding-left: 12px;
+      border-left: 1px solid var(--border);
     }
     .price-main {
-      font-size: 22px;
+      font-size: 26px;
       font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .currency-tag {
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 500;
     }
     .price-diff {
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
     }
-    .market-up { color: var(--up); }
-    .market-down { color: var(--down); }
-    .market-flat { color: var(--sub); }
+
+    /* 台灣股市配色 (紅漲綠跌) */
+    .market-up {
+      color: var(--up) !important;
+    }
+    .price-diff.market-up {
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      box-shadow: 0 0 10px var(--up-glow);
+    }
+    .market-down {
+      color: var(--down) !important;
+    }
+    .price-diff.market-down {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      box-shadow: 0 0 10px var(--down-glow);
+    }
+    .market-flat {
+      color: var(--sub) !important;
+    }
+    .price-diff.market-flat {
+      background: rgba(148, 163, 184, 0.1);
+      border: 1px solid var(--border);
+    }
+
     .actions {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
+    /* 週期膠囊切換列 (Segmented Pill Switcher) */
     .period-tabs {
       display: inline-flex;
-      background: var(--surface);
+      background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 2px;
@@ -101,75 +268,104 @@
       background: transparent;
       border: none;
       color: var(--sub);
-      padding: 4px 10px;
+      padding: 4px 12px;
       border-radius: 4px;
       font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
     }
     .btn-period:hover {
       color: var(--main);
+      background: rgba(255,255,255,0.03);
     }
     .btn-period.active {
-      background: var(--hover);
-      color: #38bdf8;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      background: var(--surface-elevated);
+      color: var(--accent);
+      border-bottom: 2px solid var(--accent);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.5);
     }
-    button, a.btn {
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+      animation: pulseDot 2s infinite ease-in-out;
+    }
+
+    /* 一般按鈕與外連 */
+    button.btn-action, a.btn {
       background: var(--surface);
       border: 1px solid var(--border);
       color: var(--main);
-      padding: 5px 10px;
+      padding: 5px 12px;
       border-radius: 6px;
       font-size: 12px;
       text-decoration: none;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      transition: background 0.15s, border-color 0.15s;
+      gap: 5px;
+      font-weight: 500;
+      transition: all 0.15s;
     }
-    button:hover, a.btn:hover {
-      background: var(--hover);
-      border-color: var(--sub);
+    button.btn-action:hover, a.btn:hover {
+      background: var(--surface-elevated);
+      border-color: var(--border-bright);
+      color: var(--accent);
     }
-    /* 指標數據欄 */
+
+    /* 指標數據 Ribbon 欄 */
     .bar-metrics {
-      background: var(--panel);
+      background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 6px 16px;
+      padding: 5px 16px;
       display: flex;
       align-items: center;
-      gap: 16px;
-      font-size: 12px;
-      color: var(--sub);
+      gap: 14px;
+      font-size: 11px;
+      color: var(--muted);
       flex-shrink: 0;
       overflow-x: auto;
       white-space: nowrap;
       scrollbar-width: none;
-      -ms-overflow-style: none;
     }
-    .bar-metrics::-webkit-scrollbar {
-      display: none;
-      width: 0;
-      height: 0;
+    .bar-metrics::-webkit-scrollbar { display: none; }
+    .metric-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
-    .metric-item { display: inline-flex; gap: 4px; }
-    .metric-val { color: var(--main); font-weight: 600; }
+    .metric-val {
+      color: var(--main);
+      font-weight: 600;
+    }
     .legend {
       display: inline-flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       margin-left: auto;
       font-size: 11px;
     }
-    .legend-item { display: inline-flex; align-items: center; gap: 4px; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .dot {
+      width: 8px;
+      height: 3px;
+      border-radius: 2px;
+    }
     .dot-ma5 { background: var(--ma5); }
     .dot-ma10 { background: var(--ma10); }
     .dot-ma20 { background: var(--ma20); }
-    .dot-vwap { background: #38bdf8; }
+    .dot-vwap { background: var(--accent); }
+
     /* 圖表容器 */
     #chart-wrap {
       flex: 1;
@@ -177,7 +373,7 @@
       width: 100%;
       height: 100%;
       background: var(--bg);
-      cursor: grab;
+      cursor: crosshair;
     }
     #chart-wrap.dragging {
       cursor: grabbing;
@@ -187,24 +383,87 @@
       width: 100%;
       height: 100%;
     }
+
+    /* 背景浮水印 */
+    .chart-watermark {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      font-size: 54px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      color: rgba(255, 255, 255, 0.025);
+      pointer-events: none;
+      user-select: none;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* 懸浮 Tooltip 卡片 */
+    #chart-tooltip {
+      position: absolute;
+      pointer-events: none;
+      z-index: 20;
+      background: rgba(15, 19, 30, 0.94);
+      border: 1px solid var(--border-bright);
+      border-radius: 8px;
+      padding: 8px 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8), 0 0 15px rgba(56, 189, 248, 0.1);
+      backdrop-filter: blur(8px);
+      min-width: 160px;
+      font-size: 11px;
+      display: none;
+      transition: opacity 0.1s ease-out;
+    }
+    .tooltip-header {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 3px;
+    }
+    .tooltip-label { color: var(--muted); }
+    .tooltip-val { color: var(--main); font-weight: 600; }
+
+    /* 載入中遮罩 */
     #loading-mask {
       position: absolute;
       inset: 0;
-      background: rgba(11, 12, 16, 0.75);
-      backdrop-filter: blur(2px);
+      background: rgba(10, 14, 25, 0.75);
+      backdrop-filter: blur(4px);
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 12px;
       font-size: 13px;
+      font-weight: 500;
       color: var(--sub);
-      z-index: 10;
+      z-index: 30;
+      transition: opacity 0.2s;
     }
     #loading-mask.hidden { display: none; }
-    /* 底部面板 */
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(56, 189, 248, 0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* 底部狀態面板 */
     footer {
       background: var(--panel);
       border-top: 1px solid var(--border);
-      padding: 8px 16px;
+      padding: 6px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -212,33 +471,96 @@
       color: var(--sub);
       flex-shrink: 0;
     }
-    .footer-left { display: flex; align-items: center; gap: 12px; }
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-pulse {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 6px #10b981;
+      animation: pulseDot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    .footer-shortcuts {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+    .shortcut-tag {
+      cursor: default;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
+  <!-- 頂部視窗控制條 (Obsidian Terminal Window Bar) -->
+  <div class="terminal-bar">
+    <div class="traffic-lights">
+      <button class="traffic-dot dot-close" id="btn-window-close" title="關閉視窗 (ESC)"><span>✕</span></button>
+      <button class="traffic-dot dot-min" id="btn-window-min" title="重置視野 (空白鍵)"><span>−</span></button>
+      <button class="traffic-dot dot-max" id="btn-window-fullscreen" title="全螢幕切換 (F11)"><span>+</span></button>
+    </div>
+    <div class="terminal-brand">
+      <img src="assets/icon16.png" alt="EasyStock" onerror="this.style.display='none'" />
+      <span class="terminal-title">EasyStock Pro Chart Terminal</span>
+      <span class="badge-version">v2.4 (Antigravity)</span>
+    </div>
+    <div class="terminal-actions">
+      <button class="btn-icon btn-spin" id="btn-refresh" title="重新整理走勢圖 (Space)">
+        <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+      </button>
+      <a id="btn-yahoo" class="btn-icon" target="_blank" rel="noopener noreferrer" title="外部 Yahoo 奇摩股市 ↗">
+        <svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- 主行情看板區 -->
   <header>
     <div class="stock-info">
-      <div class="stock-title">
-        <span id="txt-symbol">--</span>
-        <span id="txt-name">載入中</span>
+      <div class="stock-title-group">
+        <span id="txt-symbol" class="stock-symbol">--</span>
+        <span id="txt-name" class="stock-name">載入中</span>
         <span id="badge-market" class="badge">上市</span>
         <span id="badge-strategy" class="badge badge-strategy">策略標的</span>
       </div>
       <div class="price-box">
         <span id="txt-price" class="price-main">--</span>
+        <span class="currency-tag">TWD</span>
         <span id="txt-diff" class="price-diff">--</span>
       </div>
     </div>
     <div class="actions">
       <div class="period-tabs">
-        <button id="tab-intraday" class="btn-period active" title="盤中即時當日分時 (1分K走勢)">當日分時</button>
-        <button id="tab-daily" class="btn-period" title="歷史日 K 線圖">歷史日 K</button>
+        <button id="tab-intraday" class="btn-period active" title="盤中即時當日分時 (1分K走勢)">
+          <span class="live-dot"></span>
+          <span>當日分時</span>
+        </button>
+        <button id="tab-daily" class="btn-period" title="歷史日 K 線圖">
+          <span>歷史日 K</span>
+        </button>
       </div>
-      <button id="btn-refresh" title="重新整理走勢圖">重新整理</button>
-      <a id="btn-yahoo" class="btn" target="_blank" rel="noopener noreferrer">外部 Yahoo 股市 ↗</a>
     </div>
   </header>
 
+  <!-- 指標數據條 (OHLCV Ribbon) -->
   <div class="bar-metrics" id="bar-metrics">
     <div class="metric-item">時間/日期：<span id="m-date" class="metric-val">--</span></div>
     <div class="metric-item">開：<span id="m-open" class="metric-val">--</span></div>
@@ -254,17 +576,60 @@
     </div>
   </div>
 
+  <!-- 圖表畫布容器 -->
   <div id="chart-wrap">
+    <div class="chart-watermark">EASYSTOCK</div>
     <canvas id="kline-canvas"></canvas>
-    <div id="loading-mask">載入即時走勢中…</div>
+    
+    <!-- 懸浮 Tooltip 卡片 -->
+    <div id="chart-tooltip">
+      <div class="tooltip-header">
+        <span id="tip-date">--</span>
+        <span id="tip-badge" style="color:var(--accent); font-weight:700;">即時點位</span>
+      </div>
+      <div class="tooltip-row">
+        <span class="tooltip-label">分時價格</span>
+        <span class="tooltip-val" id="tip-price">--</span>
+      </div>
+      <div class="tooltip-row">
+        <span class="tooltip-label">漲跌點幅</span>
+        <span class="tooltip-val" id="tip-pct">--</span>
+      </div>
+      <div class="tooltip-row">
+        <span class="tooltip-label">單根成交</span>
+        <span class="tooltip-val" id="tip-vol">--</span>
+      </div>
+      <div class="tooltip-row" id="tip-vwap-row">
+        <span class="tooltip-label">均價 VWAP</span>
+        <span class="tooltip-val" id="tip-vwap" style="color:var(--accent);">--</span>
+      </div>
+    </div>
+
+    <!-- 載入中遮罩 -->
+    <div id="loading-mask">
+      <div class="spinner"></div>
+      <div>載入即時走勢中…</div>
+    </div>
   </div>
 
+  <!-- 底部狀態面板 -->
   <footer>
     <div class="footer-left">
-      <span id="txt-status-desc">狀態：連線中</span>
+      <div class="status-indicator">
+        <span class="status-pulse"></span>
+        <span id="txt-status-desc">狀態：連線中</span>
+      </div>
       <span id="txt-signal-note"></span>
     </div>
-    <div>EasyStock 獨立視窗 · 支援滑鼠按住拖曳平移 (Pan) 與滾輪縮放 (Zoom)</div>
+    <div class="footer-shortcuts">
+      <span class="shortcut-tag" title="使用滑鼠滾輪進行畫面縮放">滾輪縮放</span>
+      <span>•</span>
+      <span class="shortcut-tag" title="滑鼠按住畫布左右平移歷史">拖曳平移</span>
+      <span>•</span>
+      <span class="shortcut-tag" title="空白鍵重置並重新整理">空白鍵刷新</span>
+      <span>•</span>
+      <span class="shortcut-tag" title="ESC 關閉獨立視窗">ESC 關閉</span>
+    </div>
   </footer>
 
   <script src="chart.js" type="module"></script>

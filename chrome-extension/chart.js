@@ -88,7 +88,50 @@ tabDaily.addEventListener('click', () => {
   loadData();
 });
 
-document.getElementById('btn-refresh').addEventListener('click', () => loadData(true));
+// 頂部視窗控制與重新整理動效
+const refreshBtn = document.getElementById('btn-refresh');
+if (refreshBtn) {
+  refreshBtn.addEventListener('click', () => {
+    refreshBtn.classList.add('spinning');
+    loadData(true);
+    setTimeout(() => refreshBtn.classList.remove('spinning'), 700);
+  });
+}
+
+const btnWinClose = document.getElementById('btn-window-close');
+if (btnWinClose) btnWinClose.addEventListener('click', () => window.close());
+
+const btnWinMin = document.getElementById('btn-window-min');
+if (btnWinMin) {
+  btnWinMin.addEventListener('click', () => {
+    viewBarsCount = (currentMode === 'intraday' ? 270 : 60);
+    viewOffset = 0;
+    draw();
+  });
+}
+
+const btnWinFs = document.getElementById('btn-window-fullscreen');
+if (btnWinFs) {
+  btnWinFs.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  });
+}
+
+// 快捷鍵監聽 (ESC 關閉, Space 重新整理)
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    window.close();
+  } else if (e.code === 'Space' && (e.target === document.body || e.target === wrap)) {
+    e.preventDefault();
+    if (refreshBtn) refreshBtn.classList.add('spinning');
+    loadData(true);
+    setTimeout(() => { if (refreshBtn) refreshBtn.classList.remove('spinning'); }, 700);
+  }
+});
 
 // 計算均線 MA
 function calculateMA(bars, period) {
@@ -388,7 +431,7 @@ function renderInfo() {
   const pct = currentStockInfo.change_pct;
 
   pEl.textContent = finite(p) ? p.toFixed(2) : '--';
-  const sign = pct > 0 ? '+' : '';
+  const sign = pct > 0 ? '▲ +' : (pct < 0 ? '▼ ' : '');
   dEl.textContent = finite(pct) ? `${sign}${pct.toFixed(2)}%` : '--';
 
   const cls = pct > 0 ? 'market-up' : (pct < 0 ? 'market-down' : 'market-flat');
@@ -416,6 +459,50 @@ function renderInfo() {
   }
 }
 
+// 動態更新懸浮 Tooltip 卡片
+function updateTooltip(cur, curX, curY, plotWidth, height, isIntraday) {
+  const tooltipEl = document.getElementById('chart-tooltip');
+  if (!tooltipEl) return;
+  if (!cur) {
+    tooltipEl.style.display = 'none';
+    return;
+  }
+  tooltipEl.style.display = 'block';
+
+  let diffPct = 0;
+  if (isIntraday) {
+    diffPct = previousClose ? ((cur.close - previousClose) / previousClose) * 100 : 0;
+  } else {
+    diffPct = cur.open > 0 ? ((cur.close - cur.open) / cur.open) * 100 : 0;
+  }
+  const pSign = diffPct > 0 ? '▲ +' : (diffPct < 0 ? '▼ ' : '');
+  const colorCls = diffPct > 0 ? 'var(--up)' : (diffPct < 0 ? 'var(--down)' : 'var(--main)');
+
+  setText('tip-date', cur.time || '--');
+  setText('tip-price', cur.close.toFixed(2));
+  setText('tip-pct', `${pSign}${diffPct.toFixed(2)}%`);
+  setElemColor('tip-pct', colorCls);
+  setText('tip-vol', `${Math.floor(cur.volume)} 張`);
+
+  const vwapRow = document.getElementById('tip-vwap-row');
+  if (cur.vwap && isIntraday) {
+    if (vwapRow) vwapRow.style.display = 'flex';
+    setText('tip-vwap', cur.vwap.toFixed(2));
+  } else {
+    if (vwapRow) vwapRow.style.display = 'none';
+  }
+
+  const tipWidth = 160;
+  const tipHeight = 110;
+  let left = curX + 16;
+  if (left + tipWidth > plotWidth) {
+    left = Math.max(10, curX - tipWidth - 16);
+  }
+  let top = Math.max(10, Math.min(curY - 30, height - tipHeight - 30));
+  tooltipEl.style.left = `${left}px`;
+  tooltipEl.style.top = `${top}px`;
+}
+
 // 總繪製進入點
 function draw() {
   const dpr = window.devicePixelRatio || 1;
@@ -432,7 +519,7 @@ function draw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
 
-  ctx.fillStyle = '#0b0c10';
+  ctx.fillStyle = '#0a0e19';
   ctx.fillRect(0, 0, width, height);
 
   if (currentMode === 'intraday') {
@@ -510,9 +597,9 @@ function drawIntraday(width, height) {
   const getVolY = v => Math.floor(height - paddingBottom - (maxVol > 0 ? (v / maxVol) * volHeight : 0));
 
   // 繪製水平網格線與 Y 軸價格刻度
-  ctx.strokeStyle = '#1b202a';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
   ctx.lineWidth = 1;
-  ctx.font = '11px sans-serif';
+  ctx.font = '10px "JetBrains Mono", monospace, sans-serif';
   ctx.textAlign = 'left';
 
   const gridSteps = 4;
@@ -526,7 +613,7 @@ function drawIntraday(width, height) {
 
     const diffPct = previousClose ? ((p - previousClose) / previousClose) * 100 : 0;
     const sign = diffPct > 0.001 ? '+' : '';
-    const colorCls = diffPct > 0.001 ? '#ef4444' : (diffPct < -0.001 ? '#22c55e' : '#94a3b8');
+    const colorCls = diffPct > 0.001 ? '#f43f5e' : (diffPct < -0.001 ? '#10b981' : '#87929a');
     ctx.fillStyle = colorCls;
     ctx.fillText(`${p.toFixed(2)} (${sign}${diffPct.toFixed(1)}%)`, plotWidth + 4, y + 4);
   }
@@ -534,7 +621,7 @@ function drawIntraday(width, height) {
   // 繪製昨收基準虛線 (嚴格位於畫布中軸線)
   if (previousClose && previousClose >= minPrice && previousClose <= maxPrice) {
     const prevY = getY(previousClose);
-    ctx.strokeStyle = '#475569';
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.7)';
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
     ctx.moveTo(0, prevY);
@@ -542,44 +629,54 @@ function drawIntraday(width, height) {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = '#f59e0b';
     ctx.fillText(`昨收 ${previousClose.toFixed(2)}`, plotWidth + 4, prevY - 4);
   }
 
   // 副圖分隔線
-  ctx.strokeStyle = '#1e2430';
+  ctx.strokeStyle = '#262a35';
   ctx.beginPath();
   ctx.moveTo(0, volTop);
   ctx.lineTo(plotWidth, volTop);
   ctx.stroke();
-  ctx.fillStyle = '#64748b';
+  ctx.fillStyle = '#87929a';
   ctx.fillText(`量: ${Math.floor(maxVol)}`, plotWidth + 4, volTop + 12);
 
-  // 判斷當日漲跌主色
-  const lastClose = visible.at(-1)?.close || previousClose || 0;
-  const isUp = previousClose ? (lastClose >= previousClose) : true;
-  const mainLineColor = isUp ? '#ef4444' : '#22c55e';
-  const fillColorTop = isUp ? 'rgba(239, 68, 68, 0.25)' : 'rgba(34, 197, 94, 0.25)';
-
-  // 繪製走勢折線與漸層面積
+  // 繪製走勢折線與漸層光暈面積 (TradingView / Bloomberg 黑曜石電光青藍)
   ctx.beginPath();
   ctx.moveTo(getX(0), getY(visible[0].close));
   for (let i = 1; i < visibleCount; i++) {
     ctx.lineTo(getX(i), getY(visible[i].close));
   }
-  ctx.strokeStyle = mainLineColor;
-  ctx.lineWidth = 1.8;
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2.0;
   ctx.stroke();
 
-  // 漸層填充
+  // 漸層光暈填充
   ctx.lineTo(getX(visibleCount - 1), mainHeight);
   ctx.lineTo(getX(0), mainHeight);
   ctx.closePath();
   const grad = ctx.createLinearGradient(0, 0, 0, mainHeight);
-  grad.addColorStop(0, fillColorTop);
-  grad.addColorStop(1, 'rgba(11, 12, 16, 0)');
+  grad.addColorStop(0, 'rgba(56, 189, 248, 0.28)');
+  grad.addColorStop(0.5, 'rgba(56, 189, 248, 0.08)');
+  grad.addColorStop(1, 'rgba(10, 14, 25, 0)');
   ctx.fillStyle = grad;
   ctx.fill();
+
+  // 繪製最新即時點脈衝光輝 (Live Tick Pin)
+  if (visibleCount > 0) {
+    const lastX = getX(visibleCount - 1);
+    const lastY = getY(visible[visibleCount - 1].close);
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 7.5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.3)';
+    ctx.fill();
+  }
 
   // 繪製均價線 (VWAP)
   ctx.beginPath();
@@ -593,23 +690,25 @@ function drawIntraday(width, height) {
     }
   }
   ctx.strokeStyle = '#38bdf8';
+  ctx.setLineDash([4, 3]);
   ctx.lineWidth = 1.2;
   ctx.stroke();
+  ctx.setLineDash([]);
 
-  // 繪製成交量柱
-  const volBarWidth = Math.max(1, Math.floor(barStep * 0.7));
+  // 繪製成交量柱 (台股紅漲綠跌規則)
+  const volBarWidth = Math.max(1, Math.floor(barStep * 0.72));
   for (let i = 0; i < visibleCount; i++) {
     const b = visible[i];
     const x = getX(i);
     const vY = getVolY(b.volume);
     const vH = Math.max(1, height - paddingBottom - vY);
     const barUp = previousClose ? b.close >= previousClose : true;
-    ctx.fillStyle = barUp ? 'rgba(239, 68, 68, 0.6)' : 'rgba(34, 197, 94, 0.6)';
+    ctx.fillStyle = barUp ? 'rgba(244, 63, 94, 0.75)' : 'rgba(16, 185, 129, 0.75)';
     ctx.fillRect(Math.floor(x - volBarWidth / 2), vY, volBarWidth, vH);
   }
 
   // 繪製 X 軸時間標籤
-  ctx.fillStyle = '#64748b';
+  ctx.fillStyle = '#87929a';
   ctx.textAlign = 'center';
   const labelInterval = Math.max(1, Math.floor(visibleCount / 6));
   for (let i = 0; i < visibleCount; i += labelInterval) {
@@ -622,13 +721,13 @@ function drawIntraday(width, height) {
     ctx.fillText(lastB.time || '', getX(visibleCount - 1), height - 6);
   }
 
-  // 十字游標
+  // 十字游標與 Tooltip 連動
   if (hoverIndex >= 0 && hoverIndex < visibleCount) {
     const cur = visible[hoverIndex];
     const curX = getX(hoverIndex);
     const curY = getY(cur.close);
 
-    ctx.strokeStyle = '#94a3b8';
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 1;
 
@@ -654,10 +753,14 @@ function drawIntraday(width, height) {
     const diffPct = previousClose ? ((cur.close - previousClose) / previousClose) * 100 : 0;
     const pSign = diffPct > 0 ? '+' : '';
     setText('m-pct', `${pSign}${diffPct.toFixed(2)}%`);
-    setElemColor('m-pct', diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9'));
+    setElemColor('m-pct', diffPct > 0 ? 'var(--up)' : (diffPct < 0 ? 'var(--down)' : 'var(--main)'));
     setText('m-vol', String(Math.floor(cur.volume)));
     setText('m-vwap', cur.vwap ? cur.vwap.toFixed(2) : '--');
+
+    // 連動懸浮 Tooltip
+    updateTooltip(cur, curX, curY, plotWidth, height, true);
   } else {
+    updateTooltip(null);
     // 預設顯示最後一筆
     const last = visible[visibleCount - 1];
     if (last) {
@@ -670,7 +773,7 @@ function drawIntraday(width, height) {
       const diffPct = previousClose ? ((last.close - previousClose) / previousClose) * 100 : 0;
       const pSign = diffPct > 0 ? '+' : '';
       setText('m-pct', `${pSign}${diffPct.toFixed(2)}%`);
-      setElemColor('m-pct', diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9'));
+      setElemColor('m-pct', diffPct > 0 ? 'var(--up)' : (diffPct < 0 ? 'var(--down)' : 'var(--main)'));
       setText('m-vol', String(Math.floor(last.volume)));
       setText('m-vwap', last.vwap ? last.vwap.toFixed(2) : '--');
     }
@@ -732,10 +835,10 @@ function drawDaily(width, height) {
   const getVolY = v => Math.floor(height - paddingBottom - (maxVol > 0 ? (v / maxVol) * volHeight : 0));
 
   // 水平格線
-  ctx.strokeStyle = '#1b202a';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
   ctx.lineWidth = 1;
-  ctx.fillStyle = '#64748b';
-  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#87929a';
+  ctx.font = '10px "JetBrains Mono", monospace, sans-serif';
   ctx.textAlign = 'left';
 
   const gridSteps = 5;
@@ -750,13 +853,14 @@ function drawDaily(width, height) {
   }
 
   // 副圖線
+  ctx.strokeStyle = '#262a35';
   ctx.beginPath();
   ctx.moveTo(0, volTop);
   ctx.lineTo(plotWidth, volTop);
   ctx.stroke();
   ctx.fillText(`量: ${Math.floor(maxVol)}`, plotWidth + 6, volTop + 12);
 
-  // 繪製 K 棒
+  // 繪製 K 棒 (台股紅漲綠跌規則)
   for (let i = 0; i < visibleCount; i++) {
     const b = visible[i];
     const x = getX(i);
@@ -766,7 +870,7 @@ function drawDaily(width, height) {
     const lowY = getY(b.low);
 
     const isUp = b.close >= b.open;
-    const color = isUp ? '#ef4444' : '#22c55e';
+    const color = isUp ? '#f43f5e' : '#10b981';
 
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
@@ -785,7 +889,7 @@ function drawDaily(width, height) {
     // 成交量柱
     const vY = getVolY(b.volume);
     const vH = Math.max(1, height - paddingBottom - vY);
-    ctx.fillStyle = isUp ? 'rgba(239, 68, 68, 0.65)' : 'rgba(34, 197, 94, 0.65)';
+    ctx.fillStyle = isUp ? 'rgba(244, 63, 94, 0.7)' : 'rgba(16, 185, 129, 0.7)';
     ctx.fillRect(Math.floor(x - barWidth / 2), vY, barWidth, vH);
   }
 
@@ -811,7 +915,7 @@ function drawDaily(width, height) {
   drawLine(vMA20, '#a855f7');
 
   // X 軸標籤
-  ctx.fillStyle = '#64748b';
+  ctx.fillStyle = '#87929a';
   ctx.textAlign = 'center';
   const labelInterval = Math.max(1, Math.floor(visibleCount / 6));
   for (let i = 0; i < visibleCount; i += labelInterval) {
@@ -821,13 +925,13 @@ function drawDaily(width, height) {
     ctx.fillText(label, x, height - 6);
   }
 
-  // 十字游標
+  // 十字游標與 Tooltip 連動
   if (hoverIndex >= 0 && hoverIndex < visibleCount) {
     const cur = visible[hoverIndex];
     const curX = getX(hoverIndex);
     const curY = getY(cur.close);
 
-    ctx.strokeStyle = '#94a3b8';
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 1;
 
@@ -853,13 +957,17 @@ function drawDaily(width, height) {
     const diffPct = prevClose > 0 ? ((cur.close - prevClose) / prevClose) * 100 : 0;
     const pSign = diffPct > 0 ? '+' : '';
     setText('m-pct', `${pSign}${diffPct.toFixed(2)}%`);
-    setElemColor('m-pct', diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9'));
+    setElemColor('m-pct', diffPct > 0 ? 'var(--up)' : (diffPct < 0 ? 'var(--down)' : 'var(--main)'));
     setText('m-vol', String(Math.floor(cur.volume)));
 
     setText('m-ma5', vMA5[hoverIndex] ? vMA5[hoverIndex].toFixed(2) : '--');
     setText('m-ma10', vMA10[hoverIndex] ? vMA10[hoverIndex].toFixed(2) : '--');
     setText('m-ma20', vMA20[hoverIndex] ? vMA20[hoverIndex].toFixed(2) : '--');
+
+    // 連動懸浮 Tooltip
+    updateTooltip(cur, curX, curY, plotWidth, height, false);
   } else {
+    updateTooltip(null);
     const last = visible[visibleCount - 1];
     if (last) {
       setText('m-date', last.time || '--');
@@ -872,7 +980,7 @@ function drawDaily(width, height) {
       const diffPct = prevClose > 0 ? ((last.close - prevClose) / prevClose) * 100 : 0;
       const pSign = diffPct > 0 ? '+' : '';
       setText('m-pct', `${pSign}${diffPct.toFixed(2)}%`);
-      setElemColor('m-pct', diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9'));
+      setElemColor('m-pct', diffPct > 0 ? 'var(--up)' : (diffPct < 0 ? 'var(--down)' : 'var(--main)'));
       setText('m-vol', String(Math.floor(last.volume)));
 
       setText('m-ma5', vMA5[visibleCount - 1] ? vMA5[visibleCount - 1].toFixed(2) : '--');
@@ -942,6 +1050,7 @@ window.addEventListener('mouseup', () => {
 });
 
 wrap.addEventListener('mouseleave', () => {
+  updateTooltip(null);
   if (hoverIndex !== -1) {
     hoverIndex = -1;
     draw();
