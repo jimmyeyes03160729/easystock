@@ -42,3 +42,20 @@ body.stealth-mode .stock-card {
   margin-bottom: 0.375rem;
 }
 
+/* 摸魚緊湊高密度樣式 */
+.density-compact .stock-card {
+  padding: 0.375rem 0.5rem !important;
+  margin-bottom: 0.25rem !important;
+  gap: 0.25rem !important;
+}
+.density-compact .stock-card h2 {
+  font-size: 11px !important;
+}
+.density-compact .stock-card .card-price {
+  font-size: 13px !important;
+}
+.density-compact .stock-card .card-meta {
+  font-size: 9px !important;
+}
+
+

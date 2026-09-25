@@ -2,13 +2,15 @@ import { SYMBOL, GROUPS, finite, fresh, watchlist, chartURL, searchStocks, searc
 import { icons } from './icons.js';
 
 const $ = id => document.getElementById(id);
-let view, group = 'all', pending = false;
+let view, group = 'watchlist', pending = false;
 let searchDebounce = null;
 let enriching = false;
-const label = { daytrade: '當沖監控', rebound: '觸底反彈' };
+const label = { daytrade: '當沖', rebound: '觸底反彈', watchlist: '自選' };
+
 function el(tag, text, className = '') {
   const node = document.createElement(tag); node.textContent = text; node.className = className; return node;
 }
+
 function status(text, error = false) {
   $('update-timestamp').textContent = text;
   $('update-timestamp').title = text;
@@ -16,6 +18,7 @@ function status(text, error = false) {
   $('action-message').textContent = text;
   $('action-message').classList.toggle('text-red-600', error);
 }
+
 function renderTaiex() {
   const tInfo = view?.taiex;
   const banner = $('taiex-banner');
@@ -60,11 +63,13 @@ function renderTaiex() {
     };
   }
 }
+
 async function send(message) {
   const response = await chrome.runtime.sendMessage(message);
   if (!response?.ok) throw new Error(response?.error || '背景服務沒有回應，請重新載入擴充功能');
   return response.value;
 }
+
 async function act(message, success = '') {
   if (pending) return;
   pending = true; document.body.setAttribute('aria-busy', 'true');
@@ -76,6 +81,7 @@ async function act(message, success = '') {
   } catch (e) { status(e.message, true); }
   finally { pending = false; document.body.removeAttribute('aria-busy'); }
 }
+
 function applyStealthMode(enabled) {
   document.body.classList.toggle('stealth-mode', !!enabled);
   const brand = $('brand-title');
@@ -91,6 +97,17 @@ function applyStealthMode(enabled) {
     if (brand) brand.textContent = 'EasyStock · 牛馬自救終端';
     if (tag) tag.textContent = '摸魚中';
     if (btnLabel) btnLabel.textContent = '摸魚';
+  }
+}
+
+function openChartWindow(s, strategy = '') {
+  const winUrl = chrome.runtime.getURL(`chart.html?symbol=${encodeURIComponent(s.symbol)}&market=${encodeURIComponent(s.market)}&name=${encodeURIComponent(s.name || s.symbol)}&strategy=${encodeURIComponent(strategy)}`);
+  if (chrome.windows && typeof chrome.windows.create === 'function') {
+    chrome.windows.create({ url: winUrl, type: 'popup', width: 960, height: 680, focused: true }).catch(() => {
+      chrome.tabs.create({ url: winUrl });
+    });
+  } else {
+    chrome.tabs.create({ url: winUrl });
   }
 }
 
@@ -166,7 +183,7 @@ function renderAiMatrix(list) {
 
 function renderStrategyBar() {
   const bar = $('strategy-bar');
-  if (!bar || !view || group === 'ai_matrix') {
+  if (!bar || !view || group === 'ai_matrix' || group === 'watchlist') {
     if (bar) bar.classList.add('hidden');
     return;
   }
@@ -181,7 +198,7 @@ function renderStrategyBar() {
         const sym = String(p.symbol);
         const s = view.stocks.find(x => x.symbol === sym);
         const m = s?.market || ((sym.length === 4 && (sym.startsWith('5') || sym.startsWith('6') || sym.startsWith('8'))) ? 'TWO' : 'TW');
-        return { symbol: sym, market: m, name: p.name || s?.name || sym, groups: ['daytrade'] };
+        return { symbol: sym, market: m, name: p.name || s?.name || sym, groups: ['watchlist'] };
       });
     }
   } else if (group === 'rebound') {
@@ -190,7 +207,7 @@ function renderStrategyBar() {
       symbol: b.symbol,
       market: b.market,
       name: b.name || b.symbol,
-      groups: ['rebound']
+      groups: ['watchlist']
     }));
   }
 
@@ -222,14 +239,278 @@ function renderStrategyBar() {
     };
   }
 }
+
+// 渲染自選看股清單 (單純看股，徹底拔除當沖/反彈勾選方塊)
+function renderWatchlist(list, isCompact) {
+  const rows = view.stocks || [];
+  if (!rows.length) {
+    list.append(el('p', '目前尚無自選股票，請於上方輸入代號或名稱新增。', 'text-xs text-slate-500 p-3'));
+    return;
+  }
+
+  for (const s of rows) {
+    const q = view.quotes?.[s.symbol], validPrice = finite(q?.price) && q.price > 0;
+    const changePctVal = calcChangePct(q);
+    const validPct = finite(changePctVal);
+    const pct = validPct ? `${changePctVal >= 0 ? '+' : ''}${changePctVal.toFixed(2)}%` : '0.00% (結盤)';
+    const pctColor = validPct ? (changePctVal >= 0 ? 'text-red-600' : 'text-emerald-600') : 'text-slate-400';
+
+    const card = el('article', '', `stock-card border border-slate-200 rounded-lg ${isCompact ? 'p-2' : 'p-3'} bg-white space-y-1.5 shadow-2xs hover:border-slate-300 transition`);
+
+    // 頂部列：代號 名稱 市場 系統訊號標籤 刪除
+    const top = el('div', '', 'flex items-center justify-between gap-1');
+    const headLine = el('div', '', 'flex items-center gap-1.5 flex-wrap min-w-0');
+    headLine.append(el('h2', `${s.symbol} ${s.name}`, 'text-xs font-bold text-slate-900 truncate'));
+    headLine.append(el('span', s.market === 'TWO' ? '上櫃' : '上市', 'text-[9px] text-slate-400 bg-slate-100 px-1 py-0.2 rounded shrink-0'));
+
+    // 系統狀態提示標籤 (由系統模型決定，非自選勾選)
+    const activePos = view.live?.open_positions?.[s.symbol];
+    if (activePos && activePos.status === 'OPEN') {
+      headLine.append(el('span', '⚡ 系統當沖中', 'px-1.5 py-0.2 bg-sky-100 text-sky-800 font-semibold rounded text-[9px] shrink-0'));
+    }
+    const isReboundTarget = view.bounce?.some(b => b.symbol === s.symbol);
+    if (isReboundTarget) {
+      headLine.append(el('span', '🛡️ 反彈觀察', 'px-1.5 py-0.2 bg-purple-100 text-purple-800 font-semibold rounded text-[9px] shrink-0'));
+    }
+
+    const remove = el('button', '×', 'text-slate-400 hover:text-red-600 px-1 font-bold text-sm leading-none shrink-0');
+    remove.title = `從自選刪除 ${s.symbol}`;
+    remove.setAttribute('aria-label', remove.title);
+    remove.addEventListener('click', () => act({ type: 'DELETE', symbol: s.symbol }, `已刪除自選股票 ${s.symbol}`));
+
+    top.append(headLine, remove);
+    card.append(top);
+
+    // 價格列
+    const priceRow = el('div', '', 'flex items-center justify-between');
+    const leftPrice = el('div', '', 'flex items-baseline gap-2');
+    leftPrice.append(el('strong', validPrice ? `${q.price.toFixed(2)}` : '尚無報價', `card-price ${isCompact ? 'text-base' : 'text-lg'} font-bold text-slate-900`));
+    if (validPrice) leftPrice.append(el('span', '元', 'text-[10px] text-slate-400 font-normal'));
+    if (finite(q?.volume) && q.volume > 0) {
+      leftPrice.append(el('span', `量 ${q.volume.toLocaleString()} 張`, 'card-meta text-[10px] text-slate-400 ml-1'));
+    }
+    priceRow.append(leftPrice);
+
+    const rightPct = el('div', '', 'flex items-center gap-2');
+    rightPct.append(el('span', pct, `text-xs font-bold ${pctColor}`));
+
+    const chartBtn = el('a', '線圖 ↗', 'text-[11px] text-sky-700 cursor-pointer font-medium hover:underline shrink-0');
+    chartBtn.href = chartURL(s);
+    chartBtn.target = '_blank';
+    chartBtn.rel = 'noopener noreferrer';
+    chartBtn.addEventListener('click', e => {
+      e.preventDefault();
+      openChartWindow(s, activePos ? 'daytrade' : (isReboundTarget ? 'rebound' : ''));
+    });
+    rightPct.append(chartBtn);
+
+    priceRow.append(rightPct);
+    card.append(priceRow);
+
+    // 非緊湊模式下顯示行情更新時間
+    if (!isCompact) {
+      const when = q?.updated_at && Number.isFinite(Date.parse(q.updated_at)) ? new Date(q.updated_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '無資料';
+      card.append(el('p', `${view.vm ? 'VM 示例 · ' : ''}${validPrice && fresh(q.updated_at, Date.now()) ? '最新行情' : '最後結盤'} ${when}`, 'card-meta text-[10px] text-slate-400'));
+    }
+
+    list.append(card);
+  }
+}
+
+// 渲染系統當沖持倉部位 (獨立策略區塊)
+function renderDaytrade(list, isCompact) {
+  const pos = view.live?.open_positions;
+  const openPositions = pos && typeof pos === 'object' ? Object.values(pos).filter(p => p?.status === 'OPEN') : [];
+
+  if (!openPositions.length) {
+    const emptyBox = el('div', '', 'p-4 text-center space-y-1 bg-white border border-slate-200 rounded-lg');
+    emptyBox.append(el('div', '🎯', 'text-2xl mb-1'));
+    emptyBox.append(el('h3', '目前系統尚無當沖開倉部位', 'text-xs font-bold text-slate-700'));
+    emptyBox.append(el('p', '量化神經網絡持續微觀掃描全市場訂單流，爆量突破時將自動發送買進訊號推播。', 'text-[11px] text-slate-400 leading-relaxed'));
+    list.append(emptyBox);
+    return;
+  }
+
+  const existingSymbols = new Set(view.stocks.map(x => x.symbol));
+
+  for (const p of openPositions) {
+    const sym = String(p.symbol);
+    const s = view.stocks.find(x => x.symbol === sym);
+    const m = s?.market || ((sym.length === 4 && (sym.startsWith('5') || sym.startsWith('6') || sym.startsWith('8'))) ? 'TWO' : 'TW');
+    const name = p.name || s?.name || sym;
+
+    const q = view.quotes?.[sym];
+    const curPrice = (q && finite(q.price) && q.price > 0) ? q.price : (finite(p.price) ? p.price : (finite(p.entry_price) ? p.entry_price : 0));
+    const entryPrice = finite(p.entry_price) ? p.entry_price : curPrice;
+    const pnlPct = entryPrice > 0 ? ((curPrice - entryPrice) / entryPrice) * 100 : (finite(p.pnl_pct) ? p.pnl_pct : 0);
+    const isUp = pnlPct >= 0;
+    const sign = isUp ? '+' : '';
+    const pnlColor = isUp ? 'text-red-600' : 'text-emerald-600';
+
+    const card = el('article', '', `stock-card border border-sky-200 bg-sky-50/30 rounded-lg ${isCompact ? 'p-2' : 'p-3'} space-y-1.5 shadow-2xs`);
+
+    // 標題列
+    const top = el('div', '', 'flex items-center justify-between gap-1');
+    const leftTitle = el('div', '', 'flex items-center gap-1.5 min-w-0');
+    leftTitle.append(el('h2', `${sym} ${name}`, 'text-xs font-bold text-slate-900 truncate'));
+    leftTitle.append(el('span', '持倉中', 'text-[9px] bg-sky-600 text-white font-bold px-1.5 py-0.2 rounded shrink-0'));
+    if (p.entry_score) {
+      leftTitle.append(el('span', `分: ${p.entry_score}`, 'text-[9px] bg-sky-100 text-sky-800 px-1 py-0.2 rounded font-mono shrink-0'));
+    }
+    top.append(leftTitle);
+
+    // 加入自選按鈕
+    const inWatch = existingSymbols.has(sym);
+    if (inWatch) {
+      top.append(el('span', '✓ 已在自選', 'text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0'));
+    } else {
+      const addBtn = el('button', '＋加入自選', 'text-[10px] font-semibold text-sky-600 hover:text-sky-800 bg-white hover:bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded shrink-0 transition');
+      addBtn.addEventListener('click', async () => {
+        await act({ type: 'ADD', stock: { symbol: sym, market: m, name, groups: ['watchlist'] } }, `已將 ${sym} ${name} 加入自選`);
+      });
+      top.append(addBtn);
+    }
+    card.append(top);
+
+    // 數據列：進場價、市價、損益
+    const dataRow = el('div', '', 'flex items-center justify-between text-xs');
+    const leftData = el('div', '', 'flex items-baseline gap-2');
+    leftData.append(el('span', `成本 ${entryPrice.toFixed(2)}`, 'text-slate-500 text-[11px]'));
+    leftData.append(el('strong', `現價 ${curPrice.toFixed(2)}`, 'font-bold text-slate-900'));
+    dataRow.append(leftData);
+
+    const rightData = el('div', '', 'flex items-center gap-2');
+    rightData.append(el('span', `${sign}${pnlPct.toFixed(2)}%`, `font-bold ${pnlColor}`));
+
+    const chartBtn = el('a', '線圖 ↗', 'text-[11px] text-sky-700 cursor-pointer font-medium hover:underline shrink-0');
+    chartBtn.href = chartURL({ symbol: sym, market: m });
+    chartBtn.target = '_blank';
+    chartBtn.rel = 'noopener noreferrer';
+    chartBtn.addEventListener('click', e => {
+      e.preventDefault();
+      openChartWindow({ symbol: sym, market: m, name }, 'daytrade');
+    });
+    rightData.append(chartBtn);
+
+    dataRow.append(rightData);
+    card.append(dataRow);
+
+    // 進場理由
+    const reasons = Array.isArray(p.entry_reasons) ? p.entry_reasons.join(' · ') : (p.reason || '動能突破');
+    if (reasons) {
+      card.append(el('p', `💡 ${reasons}`, 'text-[10px] text-slate-500 truncate'));
+    }
+
+    list.append(card);
+  }
+}
+
+// 渲染系統觸底反彈清單 (獨立策略區塊)
+function renderRebound(list, isCompact) {
+  const bounceList = view.bounce || [];
+  if (!bounceList.length) {
+    const emptyBox = el('div', '', 'p-4 text-center space-y-1 bg-white border border-slate-200 rounded-lg');
+    emptyBox.append(el('div', '🛡️', 'text-2xl mb-1'));
+    emptyBox.append(el('h3', '目前無觸底反彈觀察標的', 'text-xs font-bold text-slate-700'));
+    emptyBox.append(el('p', '系統後台定時掃描技術面支撐區、量能回升與超跌指標，出現訊號將自動推播。', 'text-[11px] text-slate-400 leading-relaxed'));
+    list.append(emptyBox);
+    return;
+  }
+
+  const existingSymbols = new Set(view.stocks.map(x => x.symbol));
+
+  for (const b of bounceList) {
+    const sym = b.symbol;
+    const name = b.name || sym;
+    const m = b.market || 'TW';
+    const q = view.quotes?.[sym];
+    const price = (q && finite(q.price) && q.price > 0) ? q.price : (finite(b.price) ? b.price : 0);
+    const changePctVal = calcChangePct(q) ?? b.change_pct;
+    const validPct = finite(changePctVal);
+    const pct = validPct ? `${changePctVal >= 0 ? '+' : ''}${changePctVal.toFixed(2)}%` : '-';
+    const pctColor = validPct ? (changePctVal >= 0 ? 'text-red-600' : 'text-emerald-600') : 'text-slate-400';
+
+    const card = el('article', '', `stock-card border border-purple-200 bg-purple-50/20 rounded-lg ${isCompact ? 'p-2' : 'p-3'} space-y-1.5 shadow-2xs`);
+
+    // 標題列
+    const top = el('div', '', 'flex items-center justify-between gap-1');
+    const leftTitle = el('div', '', 'flex items-center gap-1.5 min-w-0');
+    leftTitle.append(el('h2', `${sym} ${name}`, 'text-xs font-bold text-slate-900 truncate'));
+    leftTitle.append(el('span', m === 'TWO' ? '上櫃' : '上市', 'text-[9px] text-slate-400 bg-slate-100 px-1 py-0.2 rounded shrink-0'));
+    leftTitle.append(el('span', '反彈觀察', 'text-[9px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.2 rounded shrink-0'));
+    top.append(leftTitle);
+
+    const inWatch = existingSymbols.has(sym);
+    if (inWatch) {
+      top.append(el('span', '✓ 已在自選', 'text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0'));
+    } else {
+      const addBtn = el('button', '＋加入自選', 'text-[10px] font-semibold text-purple-600 hover:text-purple-800 bg-white hover:bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded shrink-0 transition');
+      addBtn.addEventListener('click', async () => {
+        await act({ type: 'ADD', stock: { symbol: sym, market: m, name, groups: ['watchlist'] } }, `已將 ${sym} ${name} 加入自選`);
+      });
+      top.append(addBtn);
+    }
+    card.append(top);
+
+    // 價格與漲跌
+    const priceRow = el('div', '', 'flex items-center justify-between');
+    const leftPrice = el('div', '', 'flex items-baseline gap-2');
+    leftPrice.append(el('strong', price > 0 ? `${price.toFixed(2)} 元` : '尚無報價', 'font-bold text-slate-900 text-sm'));
+    priceRow.append(leftPrice);
+
+    const rightPct = el('div', '', 'flex items-center gap-2');
+    rightPct.append(el('span', pct, `text-xs font-bold ${pctColor}`));
+
+    const chartBtn = el('a', '線圖 ↗', 'text-[11px] text-sky-700 cursor-pointer font-medium hover:underline shrink-0');
+    chartBtn.href = chartURL({ symbol: sym, market: m });
+    chartBtn.target = '_blank';
+    chartBtn.rel = 'noopener noreferrer';
+    chartBtn.addEventListener('click', e => {
+      e.preventDefault();
+      openChartWindow({ symbol: sym, market: m, name }, 'rebound');
+    });
+    rightPct.append(chartBtn);
+
+    priceRow.append(rightPct);
+    card.append(priceRow);
+
+    // 反彈理由
+    if (b.reason) {
+      card.append(el('p', `🛡️ ${b.reason}`, 'text-[10px] text-purple-700 bg-purple-50/80 px-1.5 py-0.5 rounded truncate'));
+    }
+
+    list.append(card);
+  }
+}
+
 function render() {
-  $('vip-status-badge').classList.toggle('hidden', !view.vip);
   $('market-status-dot').className = `h-2 w-2 rounded-full ${view.marketOpen && !view.error ? 'bg-emerald-500' : 'bg-slate-400'}`;
   $('market-status-dot').title = view.vm ? 'VM 隔離示例；不自動交易推播' : view.marketOpen ? '盤中排程；報價時間請看個股' : '休市／非盤中時段';
-  for (const key of GROUPS) $(`toggle-${key}`).checked = view.settings[key];
+  for (const key of GROUPS) {
+    if ($(`toggle-${key}`)) $(`toggle-${key}`).checked = view.settings[key];
+  }
   if ($('toggle-all-daytrade')) $('toggle-all-daytrade').checked = view.settings?.allDaytradeAlerts !== false;
   if ($('toggle-all-rebound')) $('toggle-all-rebound').checked = view.settings?.allReboundAlerts !== false;
   applyStealthMode(view.settings?.stealthMode);
+
+  // 摸魚排版與每頁筆數同步
+  const pageSize = Number(view.settings?.pageSize) || 5;
+  const cardDensity = view.settings?.cardDensity || 'compact';
+  const isCompact = cardDensity === 'compact';
+
+  if ($('range-page-size')) {
+    $('range-page-size').value = pageSize;
+    if ($('range-page-size-val')) $('range-page-size-val').textContent = String(pageSize);
+  }
+  if ($('radio-density-normal') && $('radio-density-compact')) {
+    $('radio-density-normal').checked = !isCompact;
+    $('radio-density-compact').checked = isCompact;
+  }
+  if ($('density-status-tag')) {
+    $('density-status-tag').textContent = `一頁 ${pageSize} 筆 (${isCompact ? '緊湊' : '標準'})`;
+  }
+
+  // 條件式推播過濾
   if ($('radio-filter-all') && $('radio-filter-custom')) {
     const isCustom = view.settings?.filterMode === 'custom';
     $('radio-filter-all').checked = !isCustom;
@@ -248,91 +529,43 @@ function render() {
       $('filter-status-tag').className = `text-[10px] px-1 rounded ${isCustom ? 'text-amber-600 bg-amber-50' : 'text-sky-600 bg-sky-50'}`;
     }
   }
+
+  // Tabs 切換高亮
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.setAttribute('aria-selected', String(b.dataset.group === group));
     b.classList.toggle('tab-active', b.dataset.group === group);
   });
+
   renderTaiex();
   renderStrategyBar();
-  const list = $('stock-list-container'); list.replaceChildren();
+
+  const list = $('stock-list-container');
+  list.replaceChildren();
+  list.classList.toggle('density-compact', isCompact);
+
   if (group === 'ai_matrix') {
     renderAiMatrix(list);
     return;
   }
-  const rows = view.stocks.filter(s => group === 'all' || s.groups.includes(group));
-  if (!rows.length) list.append(el('p', '此群組尚無自選股票，請輸入代號或名稱新增。', 'text-xs text-slate-500 p-3'));
-  for (const s of rows) {
-    const q = view.quotes?.[s.symbol], validPrice = finite(q?.price) && q.price > 0;
-    const card = el('article', '', 'stock-card border border-slate-200 rounded-lg p-3 bg-white space-y-2');
-    const top = el('div', '', 'flex items-start justify-between gap-2');
-    const title = el('div', '', 'min-w-0 flex-1');
-    const headLine = el('div', '', 'flex items-center gap-1.5 flex-wrap');
-    headLine.append(el('h2', `${s.symbol} ${s.name}`, 'text-xs font-bold text-slate-900 break-words'));
-    const activePos = view.live?.open_positions?.[s.symbol];
-    if (activePos && activePos.status === 'OPEN') {
-      headLine.append(el('span', `⚡ 當沖持倉 (成本 ${activePos.entry_price ? activePos.entry_price.toFixed(2) : '-'})`, 'px-1.5 py-0.2 bg-sky-100 text-sky-800 font-semibold rounded text-[10px]'));
-    }
-    title.append(headLine);
-    title.append(el('p', `${s.market === 'TWO' ? '上櫃' : '上市'} · ${s.groups.map(g => label[g]).join(' / ')}`, 'text-[10px] text-slate-400 mt-1'));
-    const remove = el('button', '×', 'text-slate-400 hover:text-red-600 px-1');
-    remove.title = `刪除 ${s.symbol}`; remove.setAttribute('aria-label', remove.title);
-    remove.addEventListener('click', () => act({ type: 'DELETE', symbol: s.symbol }, '已刪除自選股票'));
-    top.append(title, remove); card.append(top);
-
-    const price = el('div', '', 'flex items-center justify-between');
-    const leftPrice = el('div', '', 'flex items-baseline gap-2');
-    leftPrice.append(el('strong', validPrice ? `${q.price.toFixed(2)} 元` : '尚無報價', 'text-lg font-bold text-slate-900'));
-    if (finite(q?.volume) && q.volume > 0) {
-      leftPrice.append(el('span', `量 ${q.volume.toLocaleString()} 張`, 'text-[10px] text-slate-400'));
-    }
-    price.append(leftPrice);
-
-    const changePctVal = calcChangePct(q);
-    const validPct = finite(changePctVal);
-    const pct = validPct ? `${changePctVal >= 0 ? '+' : ''}${changePctVal.toFixed(2)}%` : '0.00% (結盤)';
-    const pctColor = validPct ? (changePctVal >= 0 ? 'text-red-600' : 'text-emerald-600') : 'text-slate-400';
-    price.append(el('span', pct, `text-xs font-semibold ${pctColor}`));
-    card.append(price);
-
-    const when = q?.updated_at && Number.isFinite(Date.parse(q.updated_at)) ? new Date(q.updated_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '無資料';
-    card.append(el('p', `${view.vm ? 'VM 示例 · ' : ''}${validPrice && fresh(q.updated_at, Date.now()) ? '報價' : '非即時'} ${when}`, 'text-[10px] text-slate-400'));
-
-    const bottom = el('div', '', 'flex items-center justify-between gap-2');
-    const groups = el('div', '', 'flex gap-2 text-[10px] text-slate-500');
-    for (const g of GROUPS) {
-      const item = el('label', '', 'flex items-center gap-1');
-      const check = document.createElement('input'); check.type = 'checkbox'; check.checked = s.groups.includes(g);
-      check.addEventListener('change', async () => {
-        await act({ type: 'GROUP', symbol: s.symbol, group: g, enabled: check.checked }); render();
-      });
-      item.append(check, document.createTextNode(label[g])); groups.append(item);
-    }
-    const chart = el('a', '線圖 ↗', 'text-[11px] text-sky-700 cursor-pointer font-medium hover:underline');
-    chart.href = chartURL(s); chart.target = '_blank'; chart.rel = 'noopener noreferrer';
-    chart.addEventListener('click', async e => {
-      if (chrome.windows && typeof chrome.windows.create === 'function') {
-        e.preventDefault();
-        const winUrl = chrome.runtime.getURL(`chart.html?symbol=${encodeURIComponent(s.symbol)}&market=${encodeURIComponent(s.market)}&name=${encodeURIComponent(s.name)}`);
-        try {
-          await chrome.windows.create({ url: winUrl, type: 'popup', width: 960, height: 680, focused: true });
-        } catch {
-          await chrome.tabs.create({ url: winUrl });
-        }
-      }
-    });
-    bottom.append(groups, chart); card.append(bottom);
-
-    const bounce = view.bounce?.find(x => x.symbol === s.symbol && x.market === s.market);
-    if (bounce) card.append(el('p', `🛡️ 反彈觀察：${bounce.reason}`, 'text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded'));
-    list.append(card);
+  if (group === 'daytrade') {
+    renderDaytrade(list, isCompact);
+    return;
   }
+  if (group === 'rebound') {
+    renderRebound(list, isCompact);
+    return;
+  }
+  // 預設為 'watchlist' 自選看股
+  renderWatchlist(list, isCompact);
+
   const stamp = view.updatedAt ? new Date(view.updatedAt).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '尚未更新';
-  status(view.error || `${view.vm ? 'VM 隔離測試' : view.marketOpen ? '盤中' : '休市'} · ${stamp} · ${view.vip ? 'VIP' : `今日 ${view.used}/3`}`, !!view.error);
-  $('vip-msg').textContent = view.vip ? 'VIP 已開通；每次配置更新重新檢查授權。' : view.vm ? 'VM 測試碼：VIP888（不適用正式版）' : '正式授權碼請向管理員取得；不會保存明文。';
+  status(view.error || `${view.vm ? 'VM 隔離測試' : view.marketOpen ? '盤中' : '休市'} · ${stamp}`, !!view.error);
+
   if (!view.vm && view.stocks?.length) {
     enrichMissingQuotes();
   }
 }
+
 async function enrichMissingQuotes() {
   if (!view || enriching || view.vm) return;
   const missing = view.stocks.filter(s => {
@@ -362,6 +595,7 @@ async function enrichMissingQuotes() {
   } catch (_) {}
   finally { enriching = false; }
 }
+
 function renderSuggestionItems(list) {
   const box = $('search-suggestions');
   if (!box || !view) return;
@@ -384,12 +618,12 @@ function renderSuggestionItems(list) {
     if (isAdded) {
       row.append(el('span', '已在自選', 'text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0'));
     } else {
-      const addBtn = el('button', '＋加入', 'text-[11px] font-medium text-sky-600 hover:text-sky-800 shrink-0 px-1.5 py-0.5 bg-sky-50 hover:bg-sky-100 rounded');
+      const addBtn = el('button', '＋加入自選', 'text-[11px] font-medium text-sky-600 hover:text-sky-800 shrink-0 px-1.5 py-0.5 bg-sky-50 hover:bg-sky-100 rounded');
       addBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         box.classList.add('hidden');
         $('input-search').value = '';
-        await act({ type: 'ADD', stock: { symbol: item.symbol, market: item.market, name: item.name, groups: [group === 'rebound' ? 'rebound' : 'daytrade'] } }, `已新增 ${item.symbol} ${item.name}`);
+        await act({ type: 'ADD', stock: { symbol: item.symbol, market: item.market, name: item.name, groups: ['watchlist'] } }, `已新增 ${item.symbol} ${item.name} 至自選`);
       });
       row.append(addBtn);
     }
@@ -398,12 +632,13 @@ function renderSuggestionItems(list) {
       box.classList.add('hidden');
       $('input-search').value = '';
       if (!isAdded) {
-        await act({ type: 'ADD', stock: { symbol: item.symbol, market: item.market, name: item.name, groups: [group === 'rebound' ? 'rebound' : 'daytrade'] } }, `已新增 ${item.symbol} ${item.name}`);
+        await act({ type: 'ADD', stock: { symbol: item.symbol, market: item.market, name: item.name, groups: ['watchlist'] } }, `已新增 ${item.symbol} ${item.name} 至自選`);
       }
     });
     box.append(row);
   }
 }
+
 function updateSuggestions() {
   const box = $('search-suggestions');
   if (!box || !view) return;
@@ -427,6 +662,7 @@ function updateSuggestions() {
     }
   }, 180);
 }
+
 async function add() {
   if (!view) return;
   const input = $('input-search').value.trim();
@@ -466,11 +702,12 @@ async function add() {
       symbol,
       market,
       name: name || symbol,
-      groups: [group === 'rebound' ? 'rebound' : 'daytrade']
+      groups: ['watchlist']
     }
   }, `已新增 ${symbol} ${name || ''} 至自選`);
   if (result) $('input-search').value = '';
 }
+
 function drawer(open) {
   $('settings-panel').classList.toggle('translate-x-full', !open);
   $('settings-panel').inert = !open;
@@ -478,11 +715,7 @@ function drawer(open) {
   document.querySelectorAll('header,nav,main,footer').forEach(x => { x.inert = open; });
   (open ? $('btn-close-settings') : $('btn-open-settings')).focus();
 }
-function payment(open) {
-  $('payment-modal').classList.toggle('hidden', !open);
-  document.querySelectorAll('header,nav,main,footer').forEach(x => { x.inert = open || !$('settings-panel').classList.contains('translate-x-full'); });
-  if (open) $('btn-close-payment').focus(); else $('btn-upgrade').focus();
-}
+
 $('btn-open-settings').addEventListener('click', () => drawer(true));
 $('btn-close-settings').addEventListener('click', () => drawer(false));
 $('btn-add').addEventListener('click', add);
@@ -501,18 +734,56 @@ $('group-tabs').addEventListener('click', e => {
   if (button && view) { group = button.dataset.group; render(); }
 });
 $('btn-refresh').addEventListener('click', () => act({ type: 'SNAPSHOT', refresh: true }));
-for (const strategy of GROUPS) {
-  $(`toggle-${strategy}`).addEventListener('change', async e => {
+
+for (const strategy of ['daytrade', 'rebound']) {
+  $(`toggle-${strategy}`)?.addEventListener('change', async e => {
     await act({ type: 'SETTINGS', strategy, enabled: e.target.checked }); if (view) render();
   });
-  $(`btn-test-${strategy}-notif`).addEventListener('click', () => act({ type: 'TEST', strategy }, '測試通知已交給 Chrome；音效由 VM 系統設定決定'));
+  $(`btn-test-${strategy}-notif`)?.addEventListener('click', () => act({ type: 'TEST', strategy }, '測試通知已交給 Chrome；音效由 VM 系統設定決定'));
 }
+
 $('toggle-all-daytrade')?.addEventListener('change', async e => {
   await act({ type: 'SETTINGS', strategy: 'allDaytradeAlerts', enabled: e.target.checked }); if (view) render();
 });
 $('toggle-all-rebound')?.addEventListener('change', async e => {
   await act({ type: 'SETTINGS', strategy: 'allReboundAlerts', enabled: e.target.checked }); if (view) render();
 });
+
+// 摸魚排版與卡片自定義監聽
+$('range-page-size')?.addEventListener('input', e => {
+  if ($('range-page-size-val')) $('range-page-size-val').textContent = e.target.value;
+});
+$('range-page-size')?.addEventListener('change', async e => {
+  const val = Number(e.target.value);
+  await act({ type: 'SETTINGS', strategy: 'pageSize', value: val });
+  if (view) {
+    if (!view.settings) view.settings = {};
+    view.settings.pageSize = val;
+    render();
+  }
+});
+$('radio-density-normal')?.addEventListener('change', async e => {
+  if (e.target.checked) {
+    await act({ type: 'SETTINGS', strategy: 'cardDensity', value: 'normal' });
+    if (view) {
+      if (!view.settings) view.settings = {};
+      view.settings.cardDensity = 'normal';
+      render();
+    }
+  }
+});
+$('radio-density-compact')?.addEventListener('change', async e => {
+  if (e.target.checked) {
+    await act({ type: 'SETTINGS', strategy: 'cardDensity', value: 'compact' });
+    if (view) {
+      if (!view.settings) view.settings = {};
+      view.settings.cardDensity = 'compact';
+      render();
+    }
+  }
+});
+
+// 條件式過濾監聽
 $('radio-filter-all')?.addEventListener('change', async e => {
   if (e.target.checked) {
     await act({ type: 'SETTINGS', strategy: 'filterMode', value: 'all' });
@@ -536,18 +807,16 @@ $('btn-save-filter')?.addEventListener('click', async () => {
   status('條件過濾設定已儲存');
   if (view) render();
 });
+
 $('btn-test-exit-notif')?.addEventListener('click', () => act({ type: 'TEST', action: 'SELL' }, '測試賣出通知已交給 Chrome；音效由 VM 系統設定決定'));
-$('btn-activate-vip').addEventListener('click', async () => {
-  const key = $('input-vip-key').value; $('input-vip-key').value = '';
-  await act({ type: 'VIP', key }, 'VIP 已開通');
-});
-$('input-vip-key').type = 'password'; $('input-vip-key').maxLength = 128;
+
+// 自選名單備份與還原
 $('btn-export-stocks').addEventListener('click', () => {
   if (!view) return;
   const blob = new Blob([JSON.stringify({ version: 1, stocks: view.stocks }, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob), link = document.createElement('a');
   link.href = url; link.download = 'easystock-watchlist.json'; link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000); status('已匯出自選名單（不含 VIP 與個人金鑰）');
+  setTimeout(() => URL.revokeObjectURL(url), 1000); status('已匯出自選名單');
 });
 $('btn-import-stocks').addEventListener('click', () => $('file-import').click());
 $('file-import').addEventListener('change', async e => {
@@ -562,15 +831,7 @@ $('file-import').addEventListener('change', async e => {
     await act({ type: 'IMPORT', stocks }, '自選名單匯入完成');
   } catch (err) { status(err.message, true); }
 });
-$('btn-upgrade').addEventListener('click', () => payment(true));
-$('btn-close-payment').addEventListener('click', () => payment(false));
-$('btn-checkout-now').addEventListener('click', async () => {
-  try {
-    const current = await send({ type: 'SNAPSHOT' });
-    if (!current.paymentURL) { payment(false); drawer(true); status('管理員尚未設定付款通道；測試碼僅限 VM 版。', true); return; }
-    if (confirm(`即將開啟管理員設定的付款網站：\n${new URL(current.paymentURL).hostname}\n付款不會自動開通，仍須取得授權碼。`)) await chrome.tabs.create({ url: current.paymentURL });
-  } catch (e) { status(e.message, true); }
-});
+
 async function toggleStealthMode() {
   if (!view) return;
   const current = !!view.settings?.stealthMode;
@@ -593,19 +854,22 @@ $('toggle-stealth')?.addEventListener('change', async e => {
   }
   status(e.target.checked ? '🐮 已切換為牛馬摸魚模式 (低飽和偽裝已啟用)' : '已還原一般彩色看盤模式');
 });
+
 document.addEventListener('keydown', e => {
-  if ((e.key === 'b' || e.key === 'B') && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) && $('settings-panel')?.inert && $('payment-modal')?.classList.contains('hidden')) {
+  if ((e.key === 'b' || e.key === 'B') && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) && $('settings-panel')?.inert) {
     toggleStealthMode();
     return;
   }
-  if (e.key === 'Escape') { if (!$('payment-modal').classList.contains('hidden')) payment(false); else drawer(false); }
+  if (e.key === 'Escape') { drawer(false); }
   if (e.key !== 'Tab') return;
-  const panel = !$('payment-modal').classList.contains('hidden') ? $('payment-modal') : !$('settings-panel').inert ? $('settings-panel') : null;
+  const panel = !$('settings-panel').inert ? $('settings-panel') : null;
   if (!panel) return;
   const nodes = [...panel.querySelectorAll('button,input,a')].filter(x => !x.disabled && x.type !== 'file');
   const first = nodes[0], last = nodes.at(-1);
   if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
   if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
 });
-icons(); $('settings-panel').inert = true;
+
+icons();
+$('settings-panel').inert = true;
 await act({ type: 'SNAPSHOT', refresh: true });

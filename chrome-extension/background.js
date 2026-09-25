@@ -475,7 +475,7 @@ export async function handle(message) {
       break;
     }
     case 'SETTINGS': {
-      const allowed = [...GROUPS, 'allDaytradeAlerts', 'allReboundAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'stealthMode'];
+      const allowed = [...GROUPS, 'allDaytradeAlerts', 'allReboundAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'stealthMode', 'pageSize', 'cardDensity'];
       if (!allowed.includes(message.strategy)) throw new Error('開關格式不正確');
       st.settings[message.strategy] = message.enabled !== undefined ? message.enabled : message.value;
       break;

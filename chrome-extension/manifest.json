@@ -9,7 +9,9 @@
     "https://raw.githubusercontent.com/jimmyeyes03160729/easystock/*",
     "https://easystock-c237a-default-rtdb.firebaseio.com/*",
     "https://mis.twse.com.tw/*",
-    "https://tw.stock.yahoo.com/*"
+    "https://tw.stock.yahoo.com/*",
+    "https://query1.finance.yahoo.com/*",
+    "https://query2.finance.yahoo.com/*"
   ],
   "background": { "service_worker": "background.js", "type": "module" },
   "action": { "default_popup": "popup.html", "default_title": "EasyStock 台股策略監控" },

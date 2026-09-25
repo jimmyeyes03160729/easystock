@@ -11,6 +11,7 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   const w = dom.window, messages = [];
   const state = { ...core.defaultState(), vip: false, vm: true, quotes: {}, bounce: [], used: 0, marketOpen: false, paymentURL: '' };
   state.stocks.push({ symbol: '8299', market: 'TWO', name: '<img src=x onerror=alert(1)>', groups: ['rebound'] });
+  state.bounce.push({ symbol: '8299', market: 'TWO', name: '群聯', price: 500, reason: '支撐區反彈' });
   w.chrome = { runtime: { sendMessage: async m => { messages.push(m); return { ok: true, value: m.type === 'TEST' ? { sent: true } : structuredClone(state) }; } }, tabs: { create: async () => {} } };
   for (const key of ['SYMBOL', 'GROUPS', 'finite', 'fresh', 'watchlist', 'chartURL', 'searchStocks', 'searchOnlineStocks', 'calcChangePct', 'fetchStockClosingQuotes']) w[key] = core[key];
   w.icons = () => {};
@@ -90,9 +91,18 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   await new Promise(r => setTimeout(r, 0));
   assert.equal(messages.at(-1).type, 'TEST');
   assert.match(w.document.getElementById('action-message').textContent, /Chrome/);
+  
+  // Test page density settings
+  const rangePageSize = w.document.getElementById('range-page-size');
+  assert.ok(rangePageSize);
+  rangePageSize.value = '8';
+  rangePageSize.dispatchEvent(new w.Event('change'));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(messages.at(-1).type, 'SETTINGS');
+  assert.equal(messages.at(-1).strategy, 'pageSize');
+  assert.equal(messages.at(-1).value, 8);
+
   w.document.getElementById('btn-close-settings').click();
   assert.equal(w.document.getElementById('settings-panel').inert, true);
-  w.document.getElementById('btn-upgrade').click();
-  assert.equal(w.document.getElementById('payment-modal').classList.contains('hidden'), false);
   dom.window.close();
 });

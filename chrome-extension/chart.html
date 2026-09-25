@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EasyStock 個股即時 K 線圖</title>
+  <title>EasyStock 個股即時走勢 / K 線圖</title>
   <style>
     :root {
       --bg: #0b0c10;
@@ -89,6 +89,33 @@
       align-items: center;
       gap: 8px;
     }
+    .period-tabs {
+      display: inline-flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .btn-period {
+      background: transparent;
+      border: none;
+      color: var(--sub);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-period:hover {
+      color: var(--main);
+    }
+    .btn-period.active {
+      background: var(--hover);
+      color: #38bdf8;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
     button, a.btn {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -107,7 +134,7 @@
       background: var(--hover);
       border-color: var(--sub);
     }
-    /* K棒狀態與十字游標數據欄 */
+    /* 指標數據欄 */
     .bar-metrics {
       background: var(--panel);
       border-bottom: 1px solid var(--border);
@@ -135,6 +162,7 @@
     .dot-ma5 { background: var(--ma5); }
     .dot-ma10 { background: var(--ma10); }
     .dot-ma20 { background: var(--ma20); }
+    .dot-vwap { background: #38bdf8; }
     /* 圖表容器 */
     #chart-wrap {
       flex: 1;
@@ -142,6 +170,10 @@
       width: 100%;
       height: 100%;
       background: var(--bg);
+      cursor: grab;
+    }
+    #chart-wrap.dragging {
+      cursor: grabbing;
     }
     canvas {
       display: block;
@@ -161,7 +193,7 @@
       z-index: 10;
     }
     #loading-mask.hidden { display: none; }
-    /* 當沖 / 策略即時面板 */
+    /* 底部面板 */
     footer {
       background: var(--panel);
       border-top: 1px solid var(--border);
@@ -191,20 +223,24 @@
       </div>
     </div>
     <div class="actions">
-      <button id="btn-refresh" title="重新整理線圖">重新整理</button>
+      <div class="period-tabs">
+        <button id="tab-intraday" class="btn-period active" title="盤中即時當日分時 (1分K走勢)">當日分時</button>
+        <button id="tab-daily" class="btn-period" title="歷史日 K 線圖">歷史日 K</button>
+      </div>
+      <button id="btn-refresh" title="重新整理走勢圖">重新整理</button>
       <a id="btn-yahoo" class="btn" target="_blank" rel="noopener noreferrer">外部 Yahoo 股市 ↗</a>
     </div>
   </header>
 
   <div class="bar-metrics" id="bar-metrics">
-    <div class="metric-item">日期：<span id="m-date" class="metric-val">--</span></div>
+    <div class="metric-item">時間/日期：<span id="m-date" class="metric-val">--</span></div>
     <div class="metric-item">開：<span id="m-open" class="metric-val">--</span></div>
     <div class="metric-item">高：<span id="m-high" class="metric-val">--</span></div>
     <div class="metric-item">低：<span id="m-low" class="metric-val">--</span></div>
-    <div class="metric-item">收：<span id="m-close" class="metric-val">--</span></div>
+    <div class="metric-item">收/現：<span id="m-close" class="metric-val">--</span></div>
     <div class="metric-item">幅：<span id="m-pct" class="metric-val">--</span></div>
     <div class="metric-item">量：<span id="m-vol" class="metric-val">--</span></div>
-    <div class="legend">
+    <div class="legend" id="chart-legend">
       <span class="legend-item"><span class="dot dot-ma5"></span>MA5: <span id="m-ma5" class="metric-val">--</span></span>
       <span class="legend-item"><span class="dot dot-ma10"></span>MA10: <span id="m-ma10" class="metric-val">--</span></span>
       <span class="legend-item"><span class="dot dot-ma20"></span>MA20: <span id="m-ma20" class="metric-val">--</span></span>
@@ -213,7 +249,7 @@
 
   <div id="chart-wrap">
     <canvas id="kline-canvas"></canvas>
-    <div id="loading-mask">載入 K 線中…</div>
+    <div id="loading-mask">載入即時走勢中…</div>
   </div>
 
   <footer>
@@ -221,7 +257,7 @@
       <span id="txt-status-desc">狀態：連線中</span>
       <span id="txt-signal-note"></span>
     </div>
-    <div>EasyStock 獨立線圖視窗 · 支援滑鼠滾輪縮放與移動查看</div>
+    <div>EasyStock 獨立視窗 · 支援滑鼠按住拖曳平移 (Pan) 與滾輪縮放 (Zoom)</div>
   </footer>
 
   <script src="chart.js" type="module"></script>

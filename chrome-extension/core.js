@@ -1,7 +1,7 @@
 export const TTL = 5 * 60 * 1000;
 export const COOLDOWN = 30 * 60 * 1000;
 export const SYMBOL = /^\d{4,6}[A-Z]?$/;
-export const GROUPS = ['daytrade', 'rebound'];
+export const GROUPS = ['daytrade', 'rebound', 'watchlist'];
 export const plain = v => !!v && typeof v === 'object' && !Array.isArray(v);
 export const finite = v => typeof v === 'number' && Number.isFinite(v);
 
@@ -413,7 +413,7 @@ export function matchFilter(price, changePct, settings) {
 }
 
 export function defaultState() {
-  return { version: 1, stocks: [stock({ symbol: '2330', name: '台積電', market: 'TW', groups: ['daytrade'] })],
+  return { version: 1, stocks: [stock({ symbol: '2330', name: '台積電', market: 'TW', groups: ['watchlist'] })],
     settings: {
       daytrade: true,
       rebound: true,
@@ -423,6 +423,8 @@ export function defaultState() {
       minPrice: null,
       maxPrice: null,
       minChangePct: null,
+      pageSize: 5,
+      cardDensity: 'compact',
       stealthMode: false
     }, vipHash: '' };
 }

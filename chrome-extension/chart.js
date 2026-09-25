@@ -12,11 +12,22 @@ const ctx = canvas.getContext('2d');
 const wrap = document.getElementById('chart-wrap');
 const loadingMask = document.getElementById('loading-mask');
 
-let klineData = [];
-let hoverIndex = -1;
+let currentMode = 'intraday'; // 'intraday' (當日分時 1分K) 或 'daily' (歷史日K)
+let intradayData = [];
+let dailyData = [];
+let previousClose = null;
 let currentStockInfo = { price: 0, change_pct: 0, vwap: null, reason: '' };
 
-// 初始化頂部基本資訊
+// 視野與拖曳縮放狀態
+let viewBarsCount = 80;
+let viewOffset = 0; // 0 表示停留在最新資料，> 0 表示向左平移查看歷史
+let isDragging = false;
+let dragStartX = 0;
+let dragStartOffset = 0;
+let hoverIndex = -1;
+let autoRefreshTimer = null;
+
+// 初始化頂部資訊
 document.getElementById('txt-symbol').textContent = symbol;
 document.getElementById('txt-name').textContent = stockName;
 document.getElementById('badge-market').textContent = market === 'TWO' ? '上櫃' : '上市';
@@ -31,9 +42,35 @@ if (strategyType) {
 const yahooBtn = document.getElementById('btn-yahoo');
 yahooBtn.href = chartURL({ symbol, market });
 
+// 模式切換按鈕監聽
+const tabIntraday = document.getElementById('tab-intraday');
+const tabDaily = document.getElementById('tab-daily');
+
+tabIntraday.addEventListener('click', () => {
+  if (currentMode === 'intraday') return;
+  currentMode = 'intraday';
+  tabIntraday.classList.add('active');
+  tabDaily.classList.remove('active');
+  viewBarsCount = 120;
+  viewOffset = 0;
+  hoverIndex = -1;
+  loadData();
+});
+
+tabDaily.addEventListener('click', () => {
+  if (currentMode === 'daily') return;
+  currentMode = 'daily';
+  tabDaily.classList.add('active');
+  tabIntraday.classList.remove('active');
+  viewBarsCount = 60;
+  viewOffset = 0;
+  hoverIndex = -1;
+  loadData();
+});
+
 document.getElementById('btn-refresh').addEventListener('click', () => loadData(true));
 
-// 計算移動平均線
+// 計算均線 MA
 function calculateMA(bars, period) {
   const result = [];
   for (let i = 0; i < bars.length; i++) {
@@ -48,8 +85,41 @@ function calculateMA(bars, period) {
   return result;
 }
 
-// 產生模擬資料 (VM 或無網路時 fallback)
-function generateMockKlines(basePrice = 1000) {
+// 產生模擬當日 1分K 分時資料 (VM 或無網路 fallback)
+function generateMockIntraday(base = 1000) {
+  const list = [];
+  let cur = base;
+  previousClose = Math.round((base * 0.99) * 100) / 100;
+  let cumAmount = 0;
+  let cumVol = 0;
+  const startMinute = 9 * 60; // 09:00
+  const endMinute = 13 * 60 + 30; // 13:30
+
+  for (let m = startMinute; m <= endMinute; m++) {
+    const hh = String(Math.floor(m / 60)).padStart(2, '0');
+    const mm = String(m % 60).padStart(2, '0');
+    const change = (Math.random() - 0.48) * (base * 0.003);
+    cur = Math.round((cur + change) * 100) / 100;
+    const vol = Math.floor(20 + Math.random() * 150);
+    cumAmount += cur * vol;
+    cumVol += vol;
+    const vwap = Math.round((cumAmount / cumVol) * 100) / 100;
+
+    list.push({
+      time: `${hh}:${mm}`,
+      open: cur,
+      high: Math.round((cur + Math.random() * 1.5) * 100) / 100,
+      low: Math.round((cur - Math.random() * 1.5) * 100) / 100,
+      close: cur,
+      volume: vol,
+      vwap
+    });
+  }
+  return list;
+}
+
+// 產生模擬歷史日K資料
+function generateMockDaily(basePrice = 1000) {
   const bars = [];
   let cur = basePrice;
   const now = new Date();
@@ -69,97 +139,174 @@ function generateMockKlines(basePrice = 1000) {
   return bars;
 }
 
-// 從 Firebase RTDB 載入真實 K 線與當沖狀態
+// 抓取 Yahoo 當日 1分K 走勢 API
+async function fetchYahooIntraday() {
+  const ySym = market === 'TWO' ? `${symbol}.TWO` : `${symbol}.TW`;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1m&range=1d`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  try {
+    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const result = json?.chart?.result?.[0];
+    if (!result) throw new Error('查無當日分時數據');
+
+    const meta = result.meta;
+    previousClose = finite(meta?.previousClose) ? meta.previousClose : (finite(meta?.chartPreviousClose) ? meta.chartPreviousClose : null);
+
+    const timestamps = result.timestamp;
+    const quotes = result.indicators?.quote?.[0];
+    if (!Array.isArray(timestamps) || !quotes) throw new Error('分時數據格式不符');
+
+    const bars = [];
+    let cumAmount = 0;
+    let cumVol = 0;
+    let lastValidPrice = previousClose || 0;
+
+    for (let i = 0; i < timestamps.length; i++) {
+      const ts = timestamps[i];
+      let o = quotes.open?.[i];
+      let h = quotes.high?.[i];
+      let l = quotes.low?.[i];
+      let c = quotes.close?.[i];
+      let v = quotes.volume?.[i] || 0;
+
+      if (!finite(c)) {
+        if (!finite(lastValidPrice) || lastValidPrice <= 0) continue;
+        c = lastValidPrice;
+        o = c; h = c; l = c;
+      } else {
+        lastValidPrice = c;
+      }
+      if (!finite(o)) o = c;
+      if (!finite(h)) h = Math.max(o, c);
+      if (!finite(l)) l = Math.min(o, c);
+
+      cumAmount += c * v;
+      cumVol += v;
+      const vwap = cumVol > 0 ? cumAmount / cumVol : c;
+
+      // 轉換台北時間 HH:mm
+      const d = new Date(ts * 1000);
+      const timeStr = d.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+
+      bars.push({
+        time: timeStr,
+        open: Number(o),
+        high: Number(h),
+        low: Number(l),
+        close: Number(c),
+        volume: Number(v),
+        vwap: Number(vwap)
+      });
+    }
+
+    if (!previousClose && bars.length > 0) {
+      previousClose = bars[0].open;
+    }
+
+    return bars;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// 載入資料
 async function loadData(force = false) {
   loadingMask.classList.remove('hidden');
   document.getElementById('txt-status-desc').textContent = '資料載入中…';
 
   try {
     if (VM_MODE) {
-      klineData = generateMockKlines(1000);
-      currentStockInfo = { price: 1000, change_pct: 1.25, vwap: 996.5, reason: 'VM 隔離示例數據' };
+      if (currentMode === 'intraday') {
+        intradayData = generateMockIntraday(1000);
+        currentStockInfo = { price: 1000, change_pct: 1.25, vwap: 996.5, reason: 'VM 隔離示例數據' };
+      } else {
+        dailyData = generateMockDaily(1000);
+        currentStockInfo = { price: 1000, change_pct: 1.25, vwap: null, reason: 'VM 隔離示例歷史日K' };
+      }
       renderInfo();
       draw();
       document.getElementById('txt-status-desc').textContent = '狀態：VM 示例離線資料';
       return;
     }
 
-    // 平行抓取 kline 與 intraday_live
-    const [klineRes, liveRes] = await Promise.all([
-      fetch(`${FIREBASE_ROOT}/kline/${encodeURIComponent(symbol)}.json`).catch(() => null),
-      fetch(`${FIREBASE_ROOT}/intraday_live.json`).catch(() => null)
-    ]);
-
-    let bars = null;
-    if (klineRes && klineRes.ok) {
-      bars = await klineRes.json();
-    }
-
-    if (!Array.isArray(bars) || !bars.length) {
-      // 嘗試從 releases 抓取
+    // 當前為當日分時模式
+    if (currentMode === 'intraday') {
       try {
-        const activeRes = await fetch(`${FIREBASE_ROOT}/active_release.json`);
-        const releaseId = await activeRes.json();
-        if (releaseId) {
-          const relKlineRes = await fetch(`${FIREBASE_ROOT}/releases/${releaseId}/kline/${encodeURIComponent(symbol)}.json`);
-          if (relKlineRes.ok) bars = await relKlineRes.json();
+        intradayData = await fetchYahooIntraday();
+      } catch (err) {
+        console.warn('Yahoo 1分K 抓取失敗，回退至備用走勢:', err);
+        if (!intradayData.length) intradayData = generateMockIntraday(1000);
+      }
+
+      if (intradayData.length > 0) {
+        const last = intradayData.at(-1);
+        currentStockInfo.price = last.close;
+        if (previousClose && previousClose > 0) {
+          currentStockInfo.change_pct = ((last.close - previousClose) / previousClose) * 100;
         }
-      } catch (_) {}
-    }
-
-    if (Array.isArray(bars) && bars.length) {
-      klineData = bars.map(b => ({
-        time: b.time || b.date,
-        open: Number(b.open),
-        high: Number(b.high),
-        low: Number(b.low),
-        close: Number(b.close),
-        volume: Number(b.volume || b.amount || 0)
-      })).filter(b => finite(b.open) && finite(b.close) && b.time);
-    } else {
-      klineData = generateMockKlines(100);
-    }
-
-    // 處理即時狀態
-    if (liveRes && liveRes.ok) {
-      const live = await liveRes.json();
-      const openPos = live?.open_positions?.[symbol];
-      const closedTrades = live?.closed_trades;
-      const closedTrade = Array.isArray(closedTrades)
-        ? closedTrades.find(t => t?.symbol === symbol)
-        : (closedTrades?.[symbol] || null);
-
-      if (openPos && openPos.status === 'OPEN') {
-        currentStockInfo.price = openPos.entry_price || klineData.at(-1)?.close || 0;
-        currentStockInfo.change_pct = openPos.pnl_pct || 0;
-        currentStockInfo.vwap = openPos.entry_vwap || null;
-        currentStockInfo.reason = Array.isArray(openPos.entry_reasons) ? openPos.entry_reasons.join('、') : (openPos.reason || '當沖進場持倉中');
-        if (openPos.name) stockName = openPos.name;
-      } else if (closedTrade) {
-        currentStockInfo.price = closedTrade.exit_price || klineData.at(-1)?.close || 0;
-        currentStockInfo.change_pct = closedTrade.pnl_pct || 0;
-        currentStockInfo.reason = `已出場：${closedTrade.exit_reason || '平倉'} (報酬: ${closedTrade.pnl_pct > 0 ? '+' : ''}${Number(closedTrade.pnl_pct).toFixed(2)}%)`;
-        if (closedTrade.name) stockName = closedTrade.name;
-      } else {
-        const last = klineData.at(-1);
-        const prev = klineData.at(-2);
-        currentStockInfo.price = last ? last.close : 0;
-        currentStockInfo.change_pct = (last && prev && prev.close > 0) ? ((last.close - prev.close) / prev.close) * 100 : 0;
-        currentStockInfo.reason = '無當沖持倉';
+        currentStockInfo.vwap = last.vwap || null;
       }
     } else {
-      const last = klineData.at(-1);
-      const prev = klineData.at(-2);
-      currentStockInfo.price = last ? last.close : 0;
-      currentStockInfo.change_pct = (last && prev && prev.close > 0) ? ((last.close - prev.close) / prev.close) * 100 : 0;
+      // 當前為歷史日K模式
+      let bars = null;
+      try {
+        const klineRes = await fetch(`${FIREBASE_ROOT}/kline/${encodeURIComponent(symbol)}.json`).catch(() => null);
+        if (klineRes && klineRes.ok) bars = await klineRes.json();
+      } catch (_) {}
+
+      if (!Array.isArray(bars) || !bars.length) {
+        try {
+          const activeRes = await fetch(`${FIREBASE_ROOT}/active_release.json`);
+          const releaseId = await activeRes.json();
+          if (releaseId) {
+            const relKlineRes = await fetch(`${FIREBASE_ROOT}/releases/${releaseId}/kline/${encodeURIComponent(symbol)}.json`);
+            if (relKlineRes.ok) bars = await relKlineRes.json();
+          }
+        } catch (_) {}
+      }
+
+      if (Array.isArray(bars) && bars.length) {
+        dailyData = bars.map(b => ({
+          time: b.time || b.date,
+          open: Number(b.open),
+          high: Number(b.high),
+          low: Number(b.low),
+          close: Number(b.close),
+          volume: Number(b.volume || b.amount || 0)
+        })).filter(b => finite(b.open) && finite(b.close) && b.time);
+      } else {
+        dailyData = generateMockDaily(1000);
+      }
+
+      if (dailyData.length > 0) {
+        const last = dailyData.at(-1);
+        const prev = dailyData.at(-2);
+        currentStockInfo.price = last.close;
+        currentStockInfo.change_pct = (prev && prev.close > 0) ? ((last.close - prev.close) / prev.close) * 100 : 0;
+      }
     }
+
+    // 檢查當沖/反彈即時持倉資訊
+    try {
+      const liveRes = await fetch(`${FIREBASE_ROOT}/intraday_live.json`).catch(() => null);
+      if (liveRes && liveRes.ok) {
+        const live = await liveRes.json();
+        const openPos = live?.open_positions?.[symbol];
+        if (openPos && openPos.status === 'OPEN') {
+          currentStockInfo.reason = Array.isArray(openPos.entry_reasons) ? openPos.entry_reasons.join('、') : (openPos.reason || '當沖進場持倉中');
+          if (openPos.name) stockName = openPos.name;
+        }
+      }
+    } catch (_) {}
 
     renderInfo();
     draw();
-    document.getElementById('txt-status-desc').textContent = `資料更新：${new Date().toLocaleTimeString('zh-TW', { hour12: false })}`;
+    document.getElementById('txt-status-desc').textContent = `更新時間：${new Date().toLocaleTimeString('zh-TW', { hour12: false })}`;
   } catch (err) {
-    document.getElementById('txt-status-desc').textContent = `連線提示：${err.message || '使用暫存資料'}`;
-    if (!klineData.length) klineData = generateMockKlines(100);
+    document.getElementById('txt-status-desc').textContent = `連線提示：${err.message || '暫存中'}`;
     draw();
   } finally {
     loadingMask.classList.add('hidden');
@@ -185,15 +332,30 @@ function renderInfo() {
   let note = currentStockInfo.reason ? `訊號：${currentStockInfo.reason}` : '';
   if (currentStockInfo.vwap) note += ` ｜ VWAP: ${Number(currentStockInfo.vwap).toFixed(2)}`;
   noteEl.textContent = note;
+
+  // 更新圖例標籤
+  const legend = document.getElementById('chart-legend');
+  if (currentMode === 'intraday') {
+    legend.innerHTML = `
+      <span class="legend-item"><span class="dot dot-vwap"></span>VWAP 均價: <span id="m-vwap" class="metric-val">--</span></span>
+      <span class="legend-item" style="color:#64748b">--- 昨收: <span id="m-prev" class="metric-val">${previousClose ? previousClose.toFixed(2) : '--'}</span></span>
+    `;
+  } else {
+    legend.innerHTML = `
+      <span class="legend-item"><span class="dot dot-ma5"></span>MA5: <span id="m-ma5" class="metric-val">--</span></span>
+      <span class="legend-item"><span class="dot dot-ma10"></span>MA10: <span id="m-ma10" class="metric-val">--</span></span>
+      <span class="legend-item"><span class="dot dot-ma20"></span>MA20: <span id="m-ma20" class="metric-val">--</span></span>
+    `;
+  }
 }
 
-// 繪製 K 線圖 Canvas
+// 總繪製進入點
 function draw() {
   const dpr = window.devicePixelRatio || 1;
   const width = wrap.clientWidth;
   const height = wrap.clientHeight;
 
-  if (width <= 0 || height <= 0 || !klineData.length) return;
+  if (width <= 0 || height <= 0) return;
 
   canvas.width = width * dpr;
   canvas.height = height * dpr;
@@ -203,40 +365,270 @@ function draw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
 
-  // 繪製背景
   ctx.fillStyle = '#0b0c10';
   ctx.fillRect(0, 0, width, height);
 
-  // 計算版面
-  const paddingRight = 65; // Y軸價格標籤空間
-  const paddingBottom = 24; // X軸時間標籤空間
+  if (currentMode === 'intraday') {
+    drawIntraday(width, height);
+  } else {
+    drawDaily(width, height);
+  }
+}
+
+// 繪製當日分時走勢圖 (折線 + 漸層面積 + 均價線 + 昨收線)
+function drawIntraday(width, height) {
+  const data = intradayData;
+  if (!data || !data.length) return;
+
+  const paddingRight = 65;
+  const paddingBottom = 24;
+  const plotWidth = width - paddingRight;
   const mainHeight = Math.floor((height - paddingBottom) * 0.72);
   const volTop = mainHeight + 10;
   const volHeight = height - paddingBottom - volTop;
+
+  // 計算可見範圍 (支援拖曳平移與滾輪縮放)
+  const total = data.length;
+  const n = Math.min(total, Math.max(15, viewBarsCount));
+  const maxOffset = Math.max(0, total - n);
+  viewOffset = Math.min(Math.max(0, viewOffset), maxOffset);
+
+  const startIdx = Math.max(0, total - n - viewOffset);
+  const endIdx = startIdx + n;
+  const visible = data.slice(startIdx, endIdx);
+  const visibleCount = visible.length;
+  if (!visibleCount) return;
+
+  // 計算最高價、最低價、最大成交量
+  let minPrice = previousClose || visible[0].close;
+  let maxPrice = previousClose || visible[0].close;
+  let maxVol = 1;
+
+  for (let i = 0; i < visibleCount; i++) {
+    const b = visible[i];
+    if (b.high > maxPrice) maxPrice = b.high;
+    if (b.low < minPrice) minPrice = b.low;
+    if (b.close > maxPrice) maxPrice = b.close;
+    if (b.close < minPrice) minPrice = b.close;
+    if (b.vwap && b.vwap > maxPrice) maxPrice = b.vwap;
+    if (b.vwap && b.vwap < minPrice) minPrice = b.vwap;
+    if (b.volume > maxVol) maxVol = b.volume;
+  }
+
+  // 昨收線盡量置於中間或有充足上下邊距
+  const priceMargin = Math.max((maxPrice - minPrice) * 0.12, 0.5);
+  minPrice -= priceMargin;
+  maxPrice += priceMargin;
+  const priceRange = maxPrice - minPrice;
+
+  // 座標映射
+  const barStep = plotWidth / (visibleCount - 1 || 1);
+  const getX = i => i * barStep;
+  const getY = p => Math.floor(mainHeight - ((p - minPrice) / priceRange) * mainHeight);
+  const getVolY = v => Math.floor(height - paddingBottom - (maxVol > 0 ? (v / maxVol) * volHeight : 0));
+
+  // 繪製水平網格線與 Y 軸價格刻度
+  ctx.strokeStyle = '#1b202a';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#64748b';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'left';
+
+  const gridSteps = 4;
+  for (let s = 0; s <= gridSteps; s++) {
+    const p = minPrice + (priceRange * s) / gridSteps;
+    const y = getY(p);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(plotWidth, y);
+    ctx.stroke();
+
+    const diffPct = previousClose ? ((p - previousClose) / previousClose) * 100 : 0;
+    const sign = diffPct >= 0 ? '+' : '';
+    ctx.fillText(`${p.toFixed(2)} (${sign}${diffPct.toFixed(1)}%)`, plotWidth + 4, y + 4);
+  }
+
+  // 繪製昨收基準虛線
+  if (previousClose && previousClose >= minPrice && previousClose <= maxPrice) {
+    const prevY = getY(previousClose);
+    ctx.strokeStyle = '#475569';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(0, prevY);
+    ctx.lineTo(plotWidth, prevY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`昨收 ${previousClose.toFixed(2)}`, plotWidth + 4, prevY + 4);
+  }
+
+  // 副圖分隔線
+  ctx.strokeStyle = '#1e2430';
+  ctx.beginPath();
+  ctx.moveTo(0, volTop);
+  ctx.lineTo(plotWidth, volTop);
+  ctx.stroke();
+  ctx.fillStyle = '#64748b';
+  ctx.fillText(`量: ${Math.floor(maxVol)}`, plotWidth + 4, volTop + 12);
+
+  // 判斷當日漲跌主色
+  const lastClose = visible.at(-1)?.close || previousClose || 0;
+  const isUp = previousClose ? (lastClose >= previousClose) : true;
+  const mainLineColor = isUp ? '#ef4444' : '#22c55e';
+  const fillColorTop = isUp ? 'rgba(239, 68, 68, 0.25)' : 'rgba(34, 197, 94, 0.25)';
+
+  // 繪製走勢折線與漸層面積
+  ctx.beginPath();
+  ctx.moveTo(getX(0), getY(visible[0].close));
+  for (let i = 1; i < visibleCount; i++) {
+    ctx.lineTo(getX(i), getY(visible[i].close));
+  }
+  ctx.strokeStyle = mainLineColor;
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  // 漸層填充
+  ctx.lineTo(getX(visibleCount - 1), mainHeight);
+  ctx.lineTo(getX(0), mainHeight);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, 0, 0, mainHeight);
+  grad.addColorStop(0, fillColorTop);
+  grad.addColorStop(1, 'rgba(11, 12, 16, 0)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // 繪製均價線 (VWAP)
+  ctx.beginPath();
+  let vwapStarted = false;
+  for (let i = 0; i < visibleCount; i++) {
+    if (visible[i].vwap) {
+      const vx = getX(i);
+      const vy = getY(visible[i].vwap);
+      if (!vwapStarted) { ctx.moveTo(vx, vy); vwapStarted = true; }
+      else { ctx.lineTo(vx, vy); }
+    }
+  }
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  // 繪製成交量柱
+  const volBarWidth = Math.max(1, Math.floor(barStep * 0.7));
+  for (let i = 0; i < visibleCount; i++) {
+    const b = visible[i];
+    const x = getX(i);
+    const vY = getVolY(b.volume);
+    const vH = Math.max(1, height - paddingBottom - vY);
+    const barUp = previousClose ? b.close >= previousClose : true;
+    ctx.fillStyle = barUp ? 'rgba(239, 68, 68, 0.6)' : 'rgba(34, 197, 94, 0.6)';
+    ctx.fillRect(Math.floor(x - volBarWidth / 2), vY, volBarWidth, vH);
+  }
+
+  // 繪製 X 軸時間標籤
+  ctx.fillStyle = '#64748b';
+  ctx.textAlign = 'center';
+  const labelInterval = Math.max(1, Math.floor(visibleCount / 6));
+  for (let i = 0; i < visibleCount; i += labelInterval) {
+    const b = visible[i];
+    const x = getX(i);
+    ctx.fillText(b.time || '', x, height - 6);
+  }
+
+  // 十字游標
+  if (hoverIndex >= 0 && hoverIndex < visibleCount) {
+    const cur = visible[hoverIndex];
+    const curX = getX(hoverIndex);
+    const curY = getY(cur.close);
+
+    ctx.strokeStyle = '#94a3b8';
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    ctx.moveTo(curX, 0);
+    ctx.lineTo(curX, height - paddingBottom);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, curY);
+    ctx.lineTo(plotWidth, curY);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+
+    // 更新指標列文字
+    document.getElementById('m-date').textContent = cur.time || '--';
+    document.getElementById('m-open').textContent = cur.open.toFixed(2);
+    document.getElementById('m-high').textContent = cur.high.toFixed(2);
+    document.getElementById('m-low').textContent = cur.low.toFixed(2);
+    document.getElementById('m-close').textContent = cur.close.toFixed(2);
+
+    const diffPct = previousClose ? ((cur.close - previousClose) / previousClose) * 100 : 0;
+    const pSign = diffPct > 0 ? '+' : '';
+    document.getElementById('m-pct').textContent = `${pSign}${diffPct.toFixed(2)}%`;
+    document.getElementById('m-pct').style.color = diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9');
+    document.getElementById('m-vol').textContent = Math.floor(cur.volume);
+
+    const vwapEl = document.getElementById('m-vwap');
+    if (vwapEl) vwapEl.textContent = cur.vwap ? cur.vwap.toFixed(2) : '--';
+  } else {
+    // 預設顯示最後一筆
+    const last = visible[visibleCount - 1];
+    if (last) {
+      document.getElementById('m-date').textContent = last.time || '--';
+      document.getElementById('m-open').textContent = last.open.toFixed(2);
+      document.getElementById('m-high').textContent = last.high.toFixed(2);
+      document.getElementById('m-low').textContent = last.low.toFixed(2);
+      document.getElementById('m-close').textContent = last.close.toFixed(2);
+
+      const diffPct = previousClose ? ((last.close - previousClose) / previousClose) * 100 : 0;
+      const pSign = diffPct > 0 ? '+' : '';
+      document.getElementById('m-pct').textContent = `${pSign}${diffPct.toFixed(2)}%`;
+      document.getElementById('m-pct').style.color = diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9');
+      document.getElementById('m-vol').textContent = Math.floor(last.volume);
+
+      const vwapEl = document.getElementById('m-vwap');
+      if (vwapEl) vwapEl.textContent = last.vwap ? last.vwap.toFixed(2) : '--';
+    }
+  }
+}
+
+// 繪製歷史日 K 線圖 (K棒 + MA5/10/20 + 成交量)
+function drawDaily(width, height) {
+  const data = dailyData;
+  if (!data || !data.length) return;
+
+  const paddingRight = 65;
+  const paddingBottom = 24;
   const plotWidth = width - paddingRight;
+  const mainHeight = Math.floor((height - paddingBottom) * 0.72);
+  const volTop = mainHeight + 10;
+  const volHeight = height - paddingBottom - volTop;
 
-  // 均線計算
-  const ma5 = calculateMA(klineData, 5);
-  const ma10 = calculateMA(klineData, 10);
-  const ma20 = calculateMA(klineData, 20);
+  const ma5 = calculateMA(data, 5);
+  const ma10 = calculateMA(data, 10);
+  const ma20 = calculateMA(data, 20);
 
-  // 取得可見範圍 (預設最新 80 根，或全部)
-  const maxBars = 90;
-  const sliceStart = Math.max(0, klineData.length - maxBars);
-  const visible = klineData.slice(sliceStart);
-  const vMA5 = ma5.slice(sliceStart);
-  const vMA10 = ma10.slice(sliceStart);
-  const vMA20 = ma20.slice(sliceStart);
+  const total = data.length;
+  const n = Math.min(total, Math.max(15, viewBarsCount));
+  const maxOffset = Math.max(0, total - n);
+  viewOffset = Math.min(Math.max(0, viewOffset), maxOffset);
 
-  const n = visible.length;
-  if (!n) return;
+  const startIdx = Math.max(0, total - n - viewOffset);
+  const endIdx = startIdx + n;
+  const visible = data.slice(startIdx, endIdx);
+  const vMA5 = ma5.slice(startIdx, endIdx);
+  const vMA10 = ma10.slice(startIdx, endIdx);
+  const vMA20 = ma20.slice(startIdx, endIdx);
+  const visibleCount = visible.length;
+  if (!visibleCount) return;
 
-  // 計算價格最高、最低
   let minPrice = Infinity;
   let maxPrice = -Infinity;
-  let maxVol = 0;
+  let maxVol = 1;
 
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < visibleCount; i++) {
     const b = visible[i];
     if (b.low < minPrice) minPrice = b.low;
     if (b.high > maxPrice) maxPrice = b.high;
@@ -245,20 +637,18 @@ function draw() {
     if (vMA5[i] && vMA5[i] > maxPrice) maxPrice = vMA5[i];
   }
 
-  // 預留上下邊距
   const priceMargin = (maxPrice - minPrice) * 0.08 || 1;
   minPrice -= priceMargin;
   maxPrice += priceMargin;
   const priceRange = maxPrice - minPrice;
 
-  // 座標轉換函式
-  const barWidth = Math.max(2, Math.floor((plotWidth / n) * 0.75));
-  const barStep = plotWidth / n;
+  const barStep = plotWidth / visibleCount;
+  const barWidth = Math.max(2, Math.floor(barStep * 0.75));
   const getX = i => Math.floor(i * barStep + barStep / 2);
-  const getY = price => Math.floor(mainHeight - ((price - minPrice) / priceRange) * mainHeight);
-  const getVolY = vol => Math.floor(height - paddingBottom - (maxVol > 0 ? (vol / maxVol) * volHeight : 0));
+  const getY = p => Math.floor(mainHeight - ((p - minPrice) / priceRange) * mainHeight);
+  const getVolY = v => Math.floor(height - paddingBottom - (maxVol > 0 ? (v / maxVol) * volHeight : 0));
 
-  // 繪製水平網格線與 Y 軸刻度
+  // 水平格線
   ctx.strokeStyle = '#1b202a';
   ctx.lineWidth = 1;
   ctx.fillStyle = '#64748b';
@@ -273,21 +663,18 @@ function draw() {
     ctx.moveTo(0, y);
     ctx.lineTo(plotWidth, y);
     ctx.stroke();
-
     ctx.fillText(p.toFixed(2), plotWidth + 6, y + 4);
   }
 
-  // 副圖網格線
+  // 副圖線
   ctx.beginPath();
   ctx.moveTo(0, volTop);
   ctx.lineTo(plotWidth, volTop);
   ctx.stroke();
-
-  // 繪製成交量最大值標記
   ctx.fillText(`量: ${Math.floor(maxVol)}`, plotWidth + 6, volTop + 12);
 
-  // 繪製 K 棒與成交量
-  for (let i = 0; i < n; i++) {
+  // 繪製 K 棒
+  for (let i = 0; i < visibleCount; i++) {
     const b = visible[i];
     const x = getX(i);
     const openY = getY(b.open);
@@ -319,13 +706,13 @@ function draw() {
     ctx.fillRect(Math.floor(x - barWidth / 2), vY, barWidth, vH);
   }
 
-  // 繪製均線函式
+  // 均線
   function drawLine(arr, color) {
     ctx.strokeStyle = color;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     let started = false;
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < visibleCount; i++) {
       const v = arr[i];
       if (v === null) continue;
       const x = getX(i);
@@ -340,19 +727,19 @@ function draw() {
   drawLine(vMA10, '#06b6d4');
   drawLine(vMA20, '#a855f7');
 
-  // 繪製 X 軸時間標籤
+  // X 軸標籤
   ctx.fillStyle = '#64748b';
   ctx.textAlign = 'center';
-  const labelInterval = Math.max(1, Math.floor(n / 6));
-  for (let i = 0; i < n; i += labelInterval) {
+  const labelInterval = Math.max(1, Math.floor(visibleCount / 6));
+  for (let i = 0; i < visibleCount; i += labelInterval) {
     const b = visible[i];
     const x = getX(i);
     const label = b.time ? b.time.slice(5) : '';
     ctx.fillText(label, x, height - 6);
   }
 
-  // 十字游標與懸浮指標更新
-  if (hoverIndex >= 0 && hoverIndex < n) {
+  // 十字游標
+  if (hoverIndex >= 0 && hoverIndex < visibleCount) {
     const cur = visible[hoverIndex];
     const curX = getX(hoverIndex);
     const curY = getY(cur.close);
@@ -361,13 +748,11 @@ function draw() {
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 1;
 
-    // 垂直線
     ctx.beginPath();
     ctx.moveTo(curX, 0);
     ctx.lineTo(curX, height - paddingBottom);
     ctx.stroke();
 
-    // 水平線
     ctx.beginPath();
     ctx.moveTo(0, curY);
     ctx.lineTo(plotWidth, curY);
@@ -375,12 +760,12 @@ function draw() {
 
     ctx.setLineDash([]);
 
-    // 更新指標列文字
     document.getElementById('m-date').textContent = cur.time || '--';
     document.getElementById('m-open').textContent = cur.open.toFixed(2);
     document.getElementById('m-high').textContent = cur.high.toFixed(2);
     document.getElementById('m-low').textContent = cur.low.toFixed(2);
     document.getElementById('m-close').textContent = cur.close.toFixed(2);
+
     const prevClose = hoverIndex > 0 ? visible[hoverIndex - 1].close : cur.open;
     const diffPct = prevClose > 0 ? ((cur.close - prevClose) / prevClose) * 100 : 0;
     const pSign = diffPct > 0 ? '+' : '';
@@ -392,45 +777,71 @@ function draw() {
     document.getElementById('m-ma10').textContent = vMA10[hoverIndex] ? vMA10[hoverIndex].toFixed(2) : '--';
     document.getElementById('m-ma20').textContent = vMA20[hoverIndex] ? vMA20[hoverIndex].toFixed(2) : '--';
   } else {
-    // 預設顯示最後一根
-    const last = visible[n - 1];
+    const last = visible[visibleCount - 1];
     if (last) {
       document.getElementById('m-date').textContent = last.time || '--';
       document.getElementById('m-open').textContent = last.open.toFixed(2);
       document.getElementById('m-high').textContent = last.high.toFixed(2);
       document.getElementById('m-low').textContent = last.low.toFixed(2);
       document.getElementById('m-close').textContent = last.close.toFixed(2);
-      const prevClose = n > 1 ? visible[n - 2].close : last.open;
+
+      const prevClose = visibleCount > 1 ? visible[visibleCount - 2].close : last.open;
       const diffPct = prevClose > 0 ? ((last.close - prevClose) / prevClose) * 100 : 0;
       const pSign = diffPct > 0 ? '+' : '';
       document.getElementById('m-pct').textContent = `${pSign}${diffPct.toFixed(2)}%`;
       document.getElementById('m-pct').style.color = diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9');
       document.getElementById('m-vol').textContent = Math.floor(last.volume);
 
-      document.getElementById('m-ma5').textContent = vMA5[n - 1] ? vMA5[n - 1].toFixed(2) : '--';
-      document.getElementById('m-ma10').textContent = vMA10[n - 1] ? vMA10[n - 1].toFixed(2) : '--';
-      document.getElementById('m-ma20').textContent = vMA20[n - 1] ? vMA20[n - 1].toFixed(2) : '--';
+      document.getElementById('m-ma5').textContent = vMA5[visibleCount - 1] ? vMA5[visibleCount - 1].toFixed(2) : '--';
+      document.getElementById('m-ma10').textContent = vMA10[visibleCount - 1] ? vMA10[visibleCount - 1].toFixed(2) : '--';
+      document.getElementById('m-ma20').textContent = vMA20[visibleCount - 1] ? vMA20[visibleCount - 1].toFixed(2) : '--';
     }
   }
 }
 
-// 滑鼠互動
-wrap.addEventListener('mousemove', e => {
+// 滑鼠互動：拖曳平移 (Drag to pan)、滾輪縮放 (Zoom) 與十字游標
+wrap.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  isDragging = true;
+  dragStartX = e.clientX;
+  dragStartOffset = viewOffset;
+  wrap.classList.add('dragging');
+});
+
+window.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
   const paddingRight = 65;
   const plotWidth = wrap.clientWidth - paddingRight;
 
-  const maxBars = 90;
-  const sliceStart = Math.max(0, klineData.length - maxBars);
-  const n = klineData.slice(sliceStart).length;
+  if (isDragging) {
+    const dx = e.clientX - dragStartX;
+    const currentData = currentMode === 'intraday' ? intradayData : dailyData;
+    const total = currentData.length;
+    const n = Math.min(total, Math.max(15, viewBarsCount));
+    const maxOffset = Math.max(0, total - n);
+    const barStep = plotWidth / (n || 1);
+    const shiftBars = Math.round(dx / barStep);
+
+    // 往右拉是看過去的歷史 (offset 增加)；往左拉是看最新資料 (offset 減少)
+    viewOffset = Math.min(maxOffset, Math.max(0, dragStartOffset + shiftBars));
+    draw();
+    return;
+  }
+
+  // 懸浮十字游標計算
+  const x = e.clientX - rect.left;
+  const currentData = currentMode === 'intraday' ? intradayData : dailyData;
+  const total = currentData.length;
+  const n = Math.min(total, Math.max(15, viewBarsCount));
 
   if (x >= 0 && x <= plotWidth && n > 0) {
-    const barStep = plotWidth / n;
+    const barStep = plotWidth / (n || 1);
     const idx = Math.floor(x / barStep);
     if (idx >= 0 && idx < n) {
-      hoverIndex = idx;
-      draw();
+      if (hoverIndex !== idx) {
+        hoverIndex = idx;
+        draw();
+      }
       return;
     }
   }
@@ -440,13 +851,45 @@ wrap.addEventListener('mousemove', e => {
   }
 });
 
-wrap.addEventListener('mouseleave', () => {
-  hoverIndex = -1;
-  draw();
+window.addEventListener('mouseup', () => {
+  if (isDragging) {
+    isDragging = false;
+    wrap.classList.remove('dragging');
+  }
 });
+
+wrap.addEventListener('mouseleave', () => {
+  if (hoverIndex !== -1) {
+    hoverIndex = -1;
+    draw();
+  }
+});
+
+// 滑鼠滾輪縮放 (Zoom)
+wrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  const zoomIn = e.deltaY < 0;
+  const step = 8;
+  const currentData = currentMode === 'intraday' ? intradayData : dailyData;
+  const maxBars = Math.max(30, currentData.length);
+
+  if (zoomIn) {
+    viewBarsCount = Math.max(15, viewBarsCount - step);
+  } else {
+    viewBarsCount = Math.min(maxBars, viewBarsCount + step);
+  }
+  draw();
+}, { passive: false });
 
 window.addEventListener('resize', () => {
   draw();
 });
+
+// 自動排程更新（盤中每 30 秒自動刷新分時）
+autoRefreshTimer = setInterval(() => {
+  if (currentMode === 'intraday') {
+    loadData(false);
+  }
+}, 30000);
 
 loadData();
