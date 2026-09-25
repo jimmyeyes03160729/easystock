@@ -479,8 +479,8 @@ export const BROKERS = [
     shortName: '富邦',
     icon: '🔵',
     badgeColor: 'bg-sky-600',
-    appDesc: 'e點通 / MoneyDJ即時',
-    url: sym => `https://fubon-ebrokerdj.fbs.com.tw/Z/ZC/ZCA/ZCA.djhtm?a=${encodeURIComponent(sym)}`
+    appDesc: '官方平台 / e點通',
+    url: sym => `https://www.fbs.com.tw/`
   },
   {
     id: 'yuanta',

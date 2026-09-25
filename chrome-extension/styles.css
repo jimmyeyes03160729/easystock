@@ -110,37 +110,92 @@ body.stealth-mode .stock-row:hover {
   justify-content: center;
 }
 
-/* 顯示大小三檔樣式 (小 / 標準 / 大，層次從小到大顯著清晰拉開) */
-.size-small .stock-row {
-  padding-top: 0.25rem !important;
-  padding-bottom: 0.25rem !important;
-}
-.size-small .stock-sym { font-size: 11px; }
-.size-small .stock-name { font-size: 10px; }
-.size-small .stock-price { font-size: 12.5px; }
-.size-small .stock-sub { font-size: 9px; }
+/* ==========================================================================
+   全介面字級連動系統 (小 / 標準 / 大) - 依 Stitch 規範連同整個介面文字等比縮放
+   即使放大到最大模式 (Large)，亦保有 440px 容器內的黃金比例排版，絕不折行溢出
+   ========================================================================== */
 
+/* ----------------- 1. 小字模式 (.size-small) - 緊湊摸魚極致版 ----------------- */
+.size-small #brand-title { font-size: 11px !important; }
+.size-small #brand-tag { font-size: 8.5px !important; }
+.size-small #btn-stealth-toggle,
+.size-small #btn-open-settings { font-size: 9.5px !important; padding: 2px 5px !important; }
+.size-small #input-search { font-size: 11px !important; padding-top: 3px !important; padding-bottom: 3px !important; }
+.size-small #btn-add { font-size: 11px !important; height: 26px !important; padding-left: 6px !important; padding-right: 6px !important; }
+.size-small #taiex-banner { font-size: 10px !important; padding-top: 4px !important; padding-bottom: 4px !important; }
+.size-small #taiex-price { font-size: 11.5px !important; }
+.size-small #taiex-change { font-size: 10px !important; }
+.size-small #otc-container { font-size: 9.5px !important; }
+.size-small #group-tabs button { font-size: 11px !important; padding: 3px 6px !important; }
+.size-small #stock-table-header { font-size: 9.5px !important; padding-top: 3px !important; padding-bottom: 3px !important; }
+.size-small .stock-row { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+.size-small .stock-sym { font-size: 11px !important; }
+.size-small .stock-name { font-size: 10px !important; }
+.size-small .stock-price { font-size: 12.5px !important; }
+.size-small .stock-sub { font-size: 9px !important; }
+.size-small .col-time-text { font-size: 9px !important; }
+.size-small footer { font-size: 10px !important; padding-top: 5px !important; padding-bottom: 5px !important; }
+.size-small #disclaimer-bar { font-size: 9px !important; }
+
+/* ----------------- 2. 標準模式 (.size-standard / .size-medium) - 精緻平衡 ----------------- */
+.size-standard #brand-title,
+.size-medium #brand-title { font-size: 12px !important; }
+.size-standard #input-search,
+.size-medium #input-search { font-size: 12px !important; }
+.size-standard #btn-add,
+.size-medium #btn-add { font-size: 12px !important; height: 28px !important; }
+.size-standard #taiex-banner,
+.size-medium #taiex-banner { font-size: 11px !important; }
+.size-standard #taiex-price,
+.size-medium #taiex-price { font-size: 12px !important; }
+.size-standard #taiex-change,
+.size-medium #taiex-change { font-size: 11px !important; }
+.size-standard #group-tabs button,
+.size-medium #group-tabs button { font-size: 12px !important; padding: 4px 8px !important; }
+.size-standard #stock-table-header,
+.size-medium #stock-table-header { font-size: 10.5px !important; }
 .size-standard .stock-row,
-.size-medium .stock-row {
-  padding-top: 0.45rem !important;
-  padding-bottom: 0.45rem !important;
-}
+.size-medium .stock-row { padding-top: 0.45rem !important; padding-bottom: 0.45rem !important; }
 .size-standard .stock-sym,
-.size-medium .stock-sym { font-size: 13px; font-weight: 700; }
+.size-medium .stock-sym { font-size: 13px !important; font-weight: 700 !important; }
 .size-standard .stock-name,
-.size-medium .stock-name { font-size: 11px; }
-.size-standard .stock-price { font-size: 14px; font-weight: 700; }
+.size-medium .stock-name { font-size: 11px !important; }
+.size-standard .stock-price,
+.size-medium .stock-price { font-size: 14px !important; font-weight: 700 !important; }
 .size-standard .stock-sub,
-.size-medium .stock-sub { font-size: 10.5px; }
+.size-medium .stock-sub { font-size: 10.5px !important; }
+.size-standard .col-time-text,
+.size-medium .col-time-text { font-size: 10.5px !important; }
+.size-standard footer,
+.size-medium footer { font-size: 11px !important; }
+.size-standard #disclaimer-bar,
+.size-medium #disclaimer-bar { font-size: 10px !important; }
 
-.size-large .stock-row {
-  padding-top: 0.7rem !important;
-  padding-bottom: 0.7rem !important;
-}
-.size-large .stock-sym { font-size: 15px; font-weight: 700; }
-.size-large .stock-name { font-size: 12.5px; }
-.size-large .stock-price { font-size: 17px; font-weight: 700; }
-.size-large .stock-sub { font-size: 11.5px; }
+/* ----------------- 3. 大字模式 (.size-large) - 清晰醒目、嚴密防破版 ----------------- */
+.size-large #brand-title { font-size: 13.5px !important; font-weight: 800 !important; }
+.size-large #brand-tag { font-size: 10px !important; }
+.size-large #btn-stealth-toggle,
+.size-large #btn-open-settings { font-size: 11.5px !important; padding: 2px 7px !important; }
+.size-large #input-search { font-size: 13px !important; padding-top: 4px !important; padding-bottom: 4px !important; }
+.size-large #btn-add { font-size: 12.5px !important; height: 30px !important; padding-left: 10px !important; padding-right: 10px !important; }
+.size-large #taiex-banner { font-size: 12px !important; padding-top: 6px !important; padding-bottom: 6px !important; }
+.size-large #taiex-price { font-size: 13.5px !important; font-weight: 800 !important; }
+.size-large #taiex-change { font-size: 11.5px !important; }
+.size-large #otc-container { font-size: 11px !important; }
+.size-large #group-tabs button { font-size: 12.5px !important; padding: 4px 7px !important; font-weight: 600 !important; }
+.size-large #stock-table-header { font-size: 11px !important; padding-top: 6px !important; padding-bottom: 6px !important; }
+.size-large .stock-row { padding-top: 0.65rem !important; padding-bottom: 0.65rem !important; }
+.size-large .stock-sym { font-size: 14.5px !important; font-weight: 800 !important; }
+.size-large .stock-name { font-size: 12px !important; font-weight: 600 !important; }
+.size-large .stock-price { font-size: 16px !important; font-weight: 800 !important; }
+.size-large .stock-sub { font-size: 11.5px !important; }
+.size-large .col-time-text { font-size: 11.5px !important; }
+.size-large footer { font-size: 12px !important; padding-top: 7px !important; padding-bottom: 7px !important; }
+.size-large #disclaimer-bar { font-size: 10.5px !important; padding-top: 5px !important; padding-bottom: 5px !important; }
+.size-large #settings-panel h2 { font-size: 13.5px !important; }
+.size-large #settings-panel h3 { font-size: 13px !important; }
+.size-large #settings-panel select { font-size: 12.5px !important; }
+.size-large #settings-panel .test-btn { font-size: 12px !important; padding-top: 7px !important; padding-bottom: 7px !important; }
 
 /* iOS 風格平滑切換開關 (Stitch Design) */
 .toggle-switch {

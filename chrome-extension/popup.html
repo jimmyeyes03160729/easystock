@@ -123,6 +123,11 @@
       </div>
     </footer>
 
+    <!-- 法規免責聲明警語列 (Stitch 極簡風格) -->
+    <div id="disclaimer-bar" class="px-3 py-1 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 text-center leading-tight select-none">
+      <span>⚖️ 免責聲明：本工具報價與訊號僅供量化模擬研究，非投資建議，投資請自負盈虧</span>
+    </div>
+
     <!-- 設定面板 (Drawer) - Stitch 現代極簡設計 (Raycast / Apple Settings 風格) -->
     <div id="settings-panel" role="dialog" aria-label="擴充功能設定" aria-hidden="true" class="absolute inset-0 bg-slate-50 z-20 transform translate-x-full transition-transform duration-200 flex flex-col">
       <div class="px-3.5 py-2.5 border-b border-slate-200/80 flex items-center justify-between bg-white shrink-0 shadow-2xs">
@@ -267,7 +272,7 @@
                 </optgroup>
                 <optgroup label="🚀 券商官方直通下單">
                   <option value="sinopac">🔴 永豐金證券（大戶投 / 新理財網）</option>
-                  <option value="fubon">🔵 富邦證券（e點通 / MoneyDJ即時）</option>
+                  <option value="fubon">🔵 富邦證券（官方平台 / e點通）</option>
                   <option value="yuanta">🟠 元大證券（投資先生 / eYuanta）</option>
                   <option value="cathay">🟢 國泰證券（數位證券官方平台）</option>
                   <option value="kgi">🟣 凱基證券（隨身e策略 / 官方交易）</option>
@@ -425,6 +430,19 @@
             <button id="btn-export-stocks" class="flex-1 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 font-medium text-slate-700 transition">匯出 JSON</button>
             <button id="btn-import-stocks" class="flex-1 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 font-medium text-slate-700 transition">匯入 JSON</button>
             <input type="file" id="file-import" class="hidden" accept=".json" />
+          </div>
+        </div>
+
+        <!-- 官方免責聲明與風險告知卡片 (Stitch 規範) -->
+        <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-2">
+          <div class="flex items-center gap-1.5 border-b border-slate-100 pb-1.5">
+            <span class="text-xs">⚖️</span>
+            <h3 class="font-bold text-slate-800 text-xs">免責聲明與風險告知 (Disclaimer)</h3>
+          </div>
+          <div class="text-[10px] text-slate-500 leading-relaxed space-y-1.5">
+            <p>1. <strong>非投資分析或買賣推介</strong>：本小工具所提供之所有即時行情、走勢圖表、策略演算法（包含當沖突破與觸底反彈模型）及券商官方平台跳轉連結，純屬個人量化技術研究與模擬看盤輔助，非屬任何形式之證券投資顧問分析、推介或下單委託建議。</p>
+            <p>2. <strong>獨立判斷與自負盈虧</strong>：金融市場波動劇烈，歷史行情與演算法不保證未來獲利。實際委託下單由使用者於券商官方平台獨立登入進行，使用者應審慎評估個人財務能力與投資風險，並自負一切盈虧，本工具不承擔任何投資損益或衍生法律責任。</p>
+            <p>3. <strong>模擬交易與無託管</strong>：本工具嚴格遵循無營業行為與無託管原則，不儲存、不經手任何券商帳號密碼、API 金鑰或委託憑證。</p>
           </div>
         </div>
       </div>

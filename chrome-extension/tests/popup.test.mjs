@@ -232,7 +232,7 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   // 點擊反彈的下單按鈕
   reboundOrderBtns[0].click();
   await new Promise(r => setTimeout(r, 0));
-  assert.match(openedTabs.at(-1).url, /fubon-ebrokerdj\.fbs\.com\.tw\/Z\/ZC\/ZCA\/ZCA\.djhtm\?a=/);
+  assert.match(openedTabs.at(-1).url, /fbs\.com\.tw/);
 
   // 使用下拉選單測試切換至「純觀察就好」選項
   brokerSelect.value = 'observe';

@@ -344,11 +344,13 @@ function applyFontSize(size) {
   let validSize = size;
   if (size === 'medium') validSize = 'standard';
   if (!['small', 'standard', 'large'].includes(validSize)) validSize = 'standard';
-  const list = $('stock-list-container');
-  if (list) {
-    list.classList.remove('size-small', 'size-standard', 'size-medium', 'size-large');
-    list.classList.add(`size-${validSize}`);
-  }
+  
+  // 全域套用字級模式 (body, popup-container, stock-list-container, settings-panel)
+  const targets = [document.documentElement, document.body, $('popup-container'), $('stock-list-container'), $('settings-panel')].filter(Boolean);
+  targets.forEach(el => {
+    el.classList.remove('size-small', 'size-standard', 'size-medium', 'size-large');
+    el.classList.add(`size-${validSize}`);
+  });
   const preview = $('font-size-preview-box');
   const tag = $('preview-size-tag');
   if (tag) {

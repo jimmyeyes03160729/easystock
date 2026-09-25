@@ -229,7 +229,7 @@ test('BROKERS definitions, URL generation, and fallback', () => {
   const fubon = getBroker('fubon');
   assert.equal(fubon.id, 'fubon');
   assert.equal(fubon.icon, '🔵');
-  assert.ok(fubon.url('2454').includes('ZCA.djhtm?a=2454'));
+  assert.ok(fubon.url('2454').includes('fbs.com.tw'));
 
   const yuanta = getBroker('yuanta');
   assert.equal(yuanta.id, 'yuanta');
