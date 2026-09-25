@@ -36,16 +36,27 @@ let dragStartOffset = 0;
 let hoverIndex = -1;
 let autoRefreshTimer = null;
 
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+function setElemColor(id, color) {
+  const el = document.getElementById(id);
+  if (el) el.style.color = color;
+}
+
 // 初始化頂部資訊
-document.getElementById('txt-symbol').textContent = symbol;
-document.getElementById('txt-name').textContent = stockName;
-document.getElementById('badge-market').textContent = market === 'TWO' ? '上櫃' : '上市';
-if (strategyType) {
-  const stBadge = document.getElementById('badge-strategy');
-  stBadge.textContent = strategyType === 'daytrade' ? '當沖策略' : (strategyType === 'rebound' ? '觸底反彈' : strategyType);
-  stBadge.style.display = 'inline-block';
-} else {
-  document.getElementById('badge-strategy').style.display = 'none';
+setText('txt-symbol', symbol);
+setText('txt-name', stockName);
+setText('badge-market', market === 'TWO' ? '上櫃' : '上市');
+const stBadge = document.getElementById('badge-strategy');
+if (stBadge) {
+  if (strategyType) {
+    stBadge.textContent = strategyType === 'daytrade' ? '當沖策略' : (strategyType === 'rebound' ? '觸底反彈' : strategyType);
+    stBadge.style.display = 'inline-block';
+  } else {
+    stBadge.style.display = 'none';
+  }
 }
 
 const yahooBtn = document.getElementById('btn-yahoo');
@@ -251,7 +262,11 @@ async function loadData(force = false) {
       if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
         try {
           const resp = await chrome.runtime.sendMessage({ type: 'FETCH_INTRADAY', symbol, market });
-          if (resp?.ok && resp.value) fetched = resp.value;
+          if (resp && Array.isArray(resp.bars) && resp.bars.length > 0) {
+            fetched = resp;
+          } else if (resp?.value && Array.isArray(resp.value.bars)) {
+            fetched = resp.value;
+          }
         } catch (_) {}
       }
       if (!fetched || !fetched.bars || !fetched.bars.length) {
@@ -606,38 +621,34 @@ function drawIntraday(width, height) {
     ctx.setLineDash([]);
 
     // 更新指標列文字
-    document.getElementById('m-date').textContent = cur.time || '--';
-    document.getElementById('m-open').textContent = cur.open.toFixed(2);
-    document.getElementById('m-high').textContent = cur.high.toFixed(2);
-    document.getElementById('m-low').textContent = cur.low.toFixed(2);
-    document.getElementById('m-close').textContent = cur.close.toFixed(2);
+    setText('m-date', cur.time || '--');
+    setText('m-open', cur.open.toFixed(2));
+    setText('m-high', cur.high.toFixed(2));
+    setText('m-low', cur.low.toFixed(2));
+    setText('m-close', cur.close.toFixed(2));
 
     const diffPct = previousClose ? ((cur.close - previousClose) / previousClose) * 100 : 0;
     const pSign = diffPct > 0 ? '+' : '';
-    document.getElementById('m-pct').textContent = `${pSign}${diffPct.toFixed(2)}%`;
-    document.getElementById('m-pct').style.color = diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9');
-    document.getElementById('m-vol').textContent = Math.floor(cur.volume);
-
-    const vwapEl = document.getElementById('m-vwap');
-    if (vwapEl) vwapEl.textContent = cur.vwap ? cur.vwap.toFixed(2) : '--';
+    setText('m-pct', `${pSign}${diffPct.toFixed(2)}%`);
+    setElemColor('m-pct', diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9'));
+    setText('m-vol', String(Math.floor(cur.volume)));
+    setText('m-vwap', cur.vwap ? cur.vwap.toFixed(2) : '--');
   } else {
     // 預設顯示最後一筆
     const last = visible[visibleCount - 1];
     if (last) {
-      document.getElementById('m-date').textContent = last.time || '--';
-      document.getElementById('m-open').textContent = last.open.toFixed(2);
-      document.getElementById('m-high').textContent = last.high.toFixed(2);
-      document.getElementById('m-low').textContent = last.low.toFixed(2);
-      document.getElementById('m-close').textContent = last.close.toFixed(2);
+      setText('m-date', last.time || '--');
+      setText('m-open', last.open.toFixed(2));
+      setText('m-high', last.high.toFixed(2));
+      setText('m-low', last.low.toFixed(2));
+      setText('m-close', last.close.toFixed(2));
 
       const diffPct = previousClose ? ((last.close - previousClose) / previousClose) * 100 : 0;
       const pSign = diffPct > 0 ? '+' : '';
-      document.getElementById('m-pct').textContent = `${pSign}${diffPct.toFixed(2)}%`;
-      document.getElementById('m-pct').style.color = diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9');
-      document.getElementById('m-vol').textContent = Math.floor(last.volume);
-
-      const vwapEl = document.getElementById('m-vwap');
-      if (vwapEl) vwapEl.textContent = last.vwap ? last.vwap.toFixed(2) : '--';
+      setText('m-pct', `${pSign}${diffPct.toFixed(2)}%`);
+      setElemColor('m-pct', diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9'));
+      setText('m-vol', String(Math.floor(last.volume)));
+      setText('m-vwap', last.vwap ? last.vwap.toFixed(2) : '--');
     }
   }
 }
@@ -808,41 +819,41 @@ function drawDaily(width, height) {
 
     ctx.setLineDash([]);
 
-    document.getElementById('m-date').textContent = cur.time || '--';
-    document.getElementById('m-open').textContent = cur.open.toFixed(2);
-    document.getElementById('m-high').textContent = cur.high.toFixed(2);
-    document.getElementById('m-low').textContent = cur.low.toFixed(2);
-    document.getElementById('m-close').textContent = cur.close.toFixed(2);
+    setText('m-date', cur.time || '--');
+    setText('m-open', cur.open.toFixed(2));
+    setText('m-high', cur.high.toFixed(2));
+    setText('m-low', cur.low.toFixed(2));
+    setText('m-close', cur.close.toFixed(2));
 
     const prevClose = hoverIndex > 0 ? visible[hoverIndex - 1].close : cur.open;
     const diffPct = prevClose > 0 ? ((cur.close - prevClose) / prevClose) * 100 : 0;
     const pSign = diffPct > 0 ? '+' : '';
-    document.getElementById('m-pct').textContent = `${pSign}${diffPct.toFixed(2)}%`;
-    document.getElementById('m-pct').style.color = diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9');
-    document.getElementById('m-vol').textContent = Math.floor(cur.volume);
+    setText('m-pct', `${pSign}${diffPct.toFixed(2)}%`);
+    setElemColor('m-pct', diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9'));
+    setText('m-vol', String(Math.floor(cur.volume)));
 
-    document.getElementById('m-ma5').textContent = vMA5[hoverIndex] ? vMA5[hoverIndex].toFixed(2) : '--';
-    document.getElementById('m-ma10').textContent = vMA10[hoverIndex] ? vMA10[hoverIndex].toFixed(2) : '--';
-    document.getElementById('m-ma20').textContent = vMA20[hoverIndex] ? vMA20[hoverIndex].toFixed(2) : '--';
+    setText('m-ma5', vMA5[hoverIndex] ? vMA5[hoverIndex].toFixed(2) : '--');
+    setText('m-ma10', vMA10[hoverIndex] ? vMA10[hoverIndex].toFixed(2) : '--');
+    setText('m-ma20', vMA20[hoverIndex] ? vMA20[hoverIndex].toFixed(2) : '--');
   } else {
     const last = visible[visibleCount - 1];
     if (last) {
-      document.getElementById('m-date').textContent = last.time || '--';
-      document.getElementById('m-open').textContent = last.open.toFixed(2);
-      document.getElementById('m-high').textContent = last.high.toFixed(2);
-      document.getElementById('m-low').textContent = last.low.toFixed(2);
-      document.getElementById('m-close').textContent = last.close.toFixed(2);
+      setText('m-date', last.time || '--');
+      setText('m-open', last.open.toFixed(2));
+      setText('m-high', last.high.toFixed(2));
+      setText('m-low', last.low.toFixed(2));
+      setText('m-close', last.close.toFixed(2));
 
       const prevClose = visibleCount > 1 ? visible[visibleCount - 2].close : last.open;
       const diffPct = prevClose > 0 ? ((last.close - prevClose) / prevClose) * 100 : 0;
       const pSign = diffPct > 0 ? '+' : '';
-      document.getElementById('m-pct').textContent = `${pSign}${diffPct.toFixed(2)}%`;
-      document.getElementById('m-pct').style.color = diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9');
-      document.getElementById('m-vol').textContent = Math.floor(last.volume);
+      setText('m-pct', `${pSign}${diffPct.toFixed(2)}%`);
+      setElemColor('m-pct', diffPct > 0 ? '#ef4444' : (diffPct < 0 ? '#22c55e' : '#f1f5f9'));
+      setText('m-vol', String(Math.floor(last.volume)));
 
-      document.getElementById('m-ma5').textContent = vMA5[visibleCount - 1] ? vMA5[visibleCount - 1].toFixed(2) : '--';
-      document.getElementById('m-ma10').textContent = vMA10[visibleCount - 1] ? vMA10[visibleCount - 1].toFixed(2) : '--';
-      document.getElementById('m-ma20').textContent = vMA20[visibleCount - 1] ? vMA20[visibleCount - 1].toFixed(2) : '--';
+      setText('m-ma5', vMA5[visibleCount - 1] ? vMA5[visibleCount - 1].toFixed(2) : '--');
+      setText('m-ma10', vMA10[visibleCount - 1] ? vMA10[visibleCount - 1].toFixed(2) : '--');
+      setText('m-ma20', vMA20[visibleCount - 1] ? vMA20[visibleCount - 1].toFixed(2) : '--');
     }
   }
 }
