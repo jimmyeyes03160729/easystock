@@ -1,10 +1,15 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-TW" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="當沖吧！牛馬仔 當沖吧！牛馬仔 - 台股量化觀察儀表板" />
-  <title>當沖吧！牛馬仔 當沖吧！牛馬仔</title>
+  <meta name="description" content="當沖吧！牛馬仔 - 工位摸魚看盤室 · OFFICE WORKER QUANT LAB" />
+  <title>當沖吧！牛馬仔 · 工位摸魚看盤室</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
@@ -15,11 +20,12 @@
     catch (_) { document.documentElement.dataset.theme = 'dark'; }
   </script>
   <style>
-    :root { color-scheme:dark; --bg:#0b0c10; --panel:#14171f; --surface:#1b202a; --hover:#242a38; --border:#2d3545; --main:#f1f5f9; --sub:#94a3b8; --inverse:#0b0c10; --up:#ef4444; --down:#22c55e; --accent:#f59e0b; }
-    :root[data-theme="light"] { color-scheme:light; --bg:#f3f3f1; --panel:#ffffff; --surface:#f5f5f3; --hover:#eaeae7; --border:#ccccca; --main:#171717; --sub:#595959; --inverse:#ffffff; --up:#b91c32; --down:#137342; }
+    :root { color-scheme:dark; --bg:#0B0F17; --panel:#131A26; --surface:#1A2234; --hover:#262C3E; --border:#232F42; --border-bright:#313441; --main:#F1F5F9; --sub:#94A3B8; --muted:#64748B; --inverse:#0B0F17; --up:#EF4444; --down:#10B981; --accent:#F59E0B; --radar:#06B6D4; }
+    :root[data-theme="light"] { color-scheme:light; --bg:#f3f3f1; --panel:#ffffff; --surface:#f5f5f3; --hover:#eaeae7; --border:#ccccca; --border-bright:#b8b8b6; --main:#171717; --sub:#595959; --muted:#737373; --inverse:#ffffff; --up:#b91c32; --down:#137342; --accent:#d97706; --radar:#0284c7; }
     * { box-sizing:border-box; }
-    html { scroll-behavior:smooth; scroll-padding-top:90px; }
-    body { margin:0; background:var(--bg); color:var(--main); font-family:Inter,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; line-height:1.65; -webkit-font-smoothing:antialiased; }
+    html { scroll-behavior:smooth; scroll-padding-top:100px; }
+    body { margin:0; background:var(--bg); color:var(--main); font-family:Inter,"Space Grotesk","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; line-height:1.65; -webkit-font-smoothing:antialiased; }
+    body.grayscale { filter: grayscale(1) contrast(0.85); }
     .panel { background:var(--panel); border:1px solid var(--border); }
     .surface { background:var(--surface); }
     .text-main,.metric-good,.metric-warn,.metric-bad { color:var(--main); }
@@ -28,480 +34,529 @@
     .market-down { color:var(--down); }
     .market-flat { color:var(--sub); }
     .muted-border { border-color:var(--border); }
-    .btn { background:var(--surface); border:1px solid var(--border); color:var(--main); transition:background .15s,border-color .15s; }
+    .btn { background:var(--surface); border:1px solid var(--border); color:var(--main); transition:background .15s,border-color .15s,transform .1s; }
     button,a,input,select { -webkit-tap-highlight-color:transparent; }
-    button,select { min-height:38px; cursor:pointer; }
+    button,select { min-height:36px; cursor:pointer; }
     button:hover,.btn:hover { background:var(--hover); }
     :focus-visible { outline:2px solid var(--main)!important; outline-offset:4px; }
     input { color:var(--main); min-height:30px; }
-    input::placeholder { color:var(--sub); opacity:1; }
+    input::placeholder { color:var(--muted); opacity:1; }
     select,option { background:var(--panel); color:var(--main); }
-    .workspace { width:min(1440px,100%); margin:0 auto; padding:0 36px 32px; }
-    .topbar { min-height:84px; display:flex; align-items:center; justify-content:space-between; gap:20px; border-bottom:1px solid var(--border); }
+    .workspace { width:min(1440px,100%); margin:0 auto; padding:80px 36px 32px; }
+    .topbar { min-height:80px; display:flex; align-items:center; justify-content:space-between; gap:20px; border-bottom:1px solid var(--border); }
     .brand { display:flex; align-items:center; gap:13px; text-decoration:none; color:var(--main); }
-    .brand-mark { display:grid; place-items:center; width:40px; height:40px; background:var(--main); color:var(--inverse); font-size:23px; font-weight:900; }
-    .brand strong { display:block; font-size:17px; letter-spacing:.12em; }
-    .brand small { display:block; color:var(--sub); font-size:9px; letter-spacing:.2em; }
+    .brand-mark { display:grid; place-items:center; width:44px; height:44px; background:var(--main); color:var(--inverse); font-size:22px; font-weight:900; border-radius:10px; }
+    .brand strong { display:block; font-size:18px; letter-spacing:.08em; }
+    .brand small { display:block; color:var(--muted); font-size:9px; letter-spacing:.15em; font-family:"JetBrains Mono",monospace; }
     .topbar-right { display:flex; gap:12px; align-items:center; }
-    .market-tag { font-size:11px; letter-spacing:.12em; color:var(--sub); }
-    .intro { display:flex; justify-content:space-between; gap:24px; align-items:flex-end; padding:34px 0 25px; }
-    .eyebrow { color:var(--accent); font-size:10px; letter-spacing:.22em; font-weight:700; text-transform:uppercase; }
+    .market-tag { font-size:11px; letter-spacing:.12em; color:var(--muted); font-family:"JetBrains Mono",monospace; }
+    .intro { display:flex; justify-content:space-between; gap:24px; align-items:flex-end; padding:28px 0 22px; }
+    .eyebrow { color:var(--accent); font-size:10px; letter-spacing:.22em; font-weight:700; text-transform:uppercase; font-family:"JetBrains Mono",monospace; }
     .intro h1 { margin:6px 0 9px; font-size:clamp(28px,3.1vw,42px); line-height:1.25; font-weight:800; letter-spacing:-.035em; }
     .intro p { color:var(--sub); font-size:13px; }
-    .intro-status { text-align:right; max-width:370px; }
-    .intro-status .btn { margin-bottom:10px; padding:8px 16px; border-radius:6px; font-size:12px; }
-    .section-nav { display:flex; gap:28px; border-bottom:1px solid var(--border); margin-bottom:24px; overflow-x:auto; }
-    .section-nav a { color:var(--sub); white-space:nowrap; padding:14px 0; font-size:13px; text-decoration:none; }
-    .section-nav a:first-child { color:var(--main); border-bottom:2px solid var(--main); font-weight:700; }
+    .intro-status { text-align:right; max-width:400px; }
+    .intro-status .btn { margin-bottom:10px; padding:7px 15px; border-radius:8px; font-size:12px; }
+    .section-nav { display:flex; gap:24px; border-bottom:1px solid var(--border); margin-bottom:24px; overflow-x:auto; }
+    .section-nav a { color:var(--sub); white-space:nowrap; padding:12px 0; font-size:13px; text-decoration:none; font-weight:600; }
+    .section-nav a:first-child { color:var(--main); border-bottom:2px solid var(--accent); font-weight:700; }
     .section-nav a:hover { color:var(--main); }
-    .system-header { border-radius:10px; overflow:hidden; margin-bottom:20px; }
-    .system-stats { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); }
-    .system-stats > div { border:0; border-right:1px solid var(--border); border-radius:0; padding:16px; }
-    .system-stats > div:last-child { border-right:0; }
-    .system-stats [id] { font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; }
-    .filter-panel { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px; padding:18px 0 22px; }
+    .system-header { border-radius:12px; overflow:hidden; margin-bottom:20px; background:transparent; border:0; }
+    .system-stats { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:10px; }
+    .system-stats > div { border:1px solid var(--border); border-radius:10px; padding:12px 14px; background:var(--panel); }
+    .system-stats [id] { font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; font-family:"JetBrains Mono",monospace; }
+    .filter-panel { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px; padding:14px 18px; border-radius:12px; }
     .filter-panel > div:first-child { font-size:12px; }
     .filter-title { font-size:13px; font-weight:700; margin-bottom:3px; }
     .filter-panel > div:last-child { gap:7px; justify-content:flex-start; }
     .filter-panel input { width:76px; }
     .filter-panel button { padding:6px 11px; font-size:12px; }
-    .filter-panel button[aria-pressed="true"] { background:var(--main); color:var(--inverse); border-color:var(--main); }
-    .section-heading { display:flex; align-items:center; justify-content:space-between; gap:15px; margin:7px 0 14px; }
+    .filter-panel button[aria-pressed="true"] { background:var(--accent); color:var(--inverse); border-color:var(--accent); font-weight:700; }
+    .section-heading { display:flex; align-items:center; justify-content:space-between; gap:15px; margin:10px 0 14px; }
     .section-heading h2 { font-size:18px; font-weight:750; letter-spacing:-.02em; }
-    .section-heading span { color:var(--sub); font-size:11px; }
+    .section-heading span { color:var(--muted); font-size:11px; font-family:"JetBrains Mono",monospace; }
     .overview-grid { display:grid; grid-template-columns:minmax(220px,1fr) minmax(0,3fr); gap:18px; margin-bottom:26px; }
-    .workspace section.panel,.overview-grid > .panel,.strategy-grid > .panel { border-radius:10px; padding:22px; }
+    .workspace section.panel,.overview-grid > .panel,.strategy-grid > .panel { border-radius:12px; padding:20px; }
     .overview-grid h2 { font-size:17px; }
-    #marketSignalCard { border-top:3px solid var(--main); display:flex; flex-direction:column; justify-content:space-between; }
+    #marketSignalCard { border-top:3px solid var(--accent); display:flex; flex-direction:column; justify-content:space-between; }
     #marketSignalText { font-size:27px; letter-spacing:-.04em; }
     #marketSignalDot { background:var(--main); flex-shrink:0; }
     #marketSignalAdvice { border:0; border-top:1px solid var(--border); border-radius:0; padding:14px 0 0; line-height:1.8; }
     [onclick*="openStockDetail"] { transition:background .15s,border-color .15s; }
-    [onclick*="openStockDetail"]:hover { border-color:var(--main); background:var(--hover); }
+    [onclick*="openStockDetail"]:hover { border-color:var(--accent); background:var(--hover); }
     .strategy-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-bottom:18px; }
     .strategy-grid > .panel > div:first-child .font-bold { font-size:16px; }
-    .strategy-grid [onclick*="openStockDetail"] { padding:16px; margin-top:10px; border-radius:7px; }
+    .strategy-grid [onclick*="openStockDetail"] { padding:16px; margin-top:10px; border-radius:8px; }
     .workspace [class~="text-[8px]"],.workspace [class~="text-[9px]"],.modal-wide [class~="text-[8px]"],.modal-wide [class~="text-[9px]"] { font-size:11px; }
     [class~="text-[10px]"],[class~="text-[11px]"] { font-size:12px; }
-    .disclaimer { margin-top:28px; padding:22px 0!important; background:transparent; border:0; border-top:1px solid var(--border); border-radius:0!important; line-height:1.9; }
-    .footer-line { display:flex; justify-content:space-between; gap:12px; font-size:10px; letter-spacing:.15em; color:var(--sub); padding-top:14px; }
-    .modal-wide { box-shadow:0 24px 100px #0006; }
-    .score-ring { background:conic-gradient(from 180deg,var(--main) 0 var(--score),var(--border) var(--score) 100%); }
+    .disclaimer { margin-top:28px; padding:20px!important; background:var(--panel); border:1px solid var(--border); border-radius:12px!important; line-height:1.8; }
+    .footer-line { display:flex; justify-content:space-between; gap:12px; font-size:11px; letter-spacing:.08em; color:var(--muted); padding-top:16px; font-family:"JetBrains Mono",monospace; }
+    .modal-wide { box-shadow:0 24px 100px #000a; }
+    .score-ring { background:conic-gradient(from 180deg,var(--accent) 0 var(--score),var(--border) var(--score) 100%); }
     ::-webkit-scrollbar { width:6px; height:6px; }
     ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
-    @media(max-width:1100px) { .system-stats { grid-template-columns:repeat(4,minmax(0,1fr)); } .system-stats > div:nth-child(-n+4) { border-bottom:1px solid var(--border); } .system-stats > div:nth-child(4n) { border-right:0; } .overview-grid { grid-template-columns:1fr; } #marketSignalCard { gap:12px; } }
-    @media(max-width:640px) { .workspace { padding:0 16px 24px; } .topbar { min-height:76px; gap:8px; } .brand strong { font-size:14px; } .brand small { font-size:7px; } .market-tag { display:none; } .intro { display:block; padding:26px 0 12px; } .intro-status { text-align:left; max-width:none; margin-top:18px; } .intro-status .btn { float:right; margin-left:12px; } .section-nav { gap:24px; } .system-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .system-stats > div { padding:12px; border-bottom:1px solid var(--border); } .system-stats > div:nth-child(2n) { border-right:0; } .system-stats > div:nth-last-child(-n+2) { border-bottom:0; } .strategy-grid { grid-template-columns:1fr; } .workspace section.panel,.overview-grid > .panel,.strategy-grid > .panel { padding:17px; } .section-heading { align-items:flex-start; } .section-heading span { text-align:right; } .modal-wide { max-height:96dvh; } .footer-line { flex-wrap:wrap; } }
+    @media(max-width:1100px) { .system-stats { grid-template-columns:repeat(4,minmax(0,1fr)); } .overview-grid { grid-template-columns:1fr; } #marketSignalCard { gap:12px; } }
+    @media(max-width:900px) { .rebound-grid { grid-template-columns:1fr!important; } }
+    @media(max-width:640px) { .workspace { padding:70px 16px 24px; } .topbar { min-height:72px; gap:8px; } .brand strong { font-size:15px; } .brand small { font-size:7px; } .market-tag { display:none; } .intro { display:block; padding:20px 0 12px; } .intro-status { text-align:left; max-width:none; margin-top:16px; } .intro-status .btn { float:right; margin-left:10px; } .section-nav { gap:18px; } .system-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .strategy-grid { grid-template-columns:1fr; } .workspace section.panel,.overview-grid > .panel,.strategy-grid > .panel { padding:16px; } .section-heading { align-items:flex-start; } .section-heading span { text-align:right; } .modal-wide { max-height:96dvh; } .footer-line { flex-wrap:wrap; } }
     @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } * { transition:none!important; } }
   
-:root{--shift-ink:#f4f4f4}body{background:var(--bg)}.brand-mark{font-size:16px;line-height:1.05;width:48px;height:48px;border-radius:0;transform:rotate(-4deg);border:2px solid var(--main);display:flex;flex-direction:column;justify-content:center}.brand strong{font-size:23px;letter-spacing:-.04em}.brand small{letter-spacing:.16em}.intro{padding-top:30px}.intro h1{font-weight:950;letter-spacing:-.055em;font-size:clamp(28px,4vw,44px)}.intro p{font-size:14px}.section-nav{border-top:2px solid var(--main);border-bottom:1px solid var(--border);overflow-x:auto;white-space:nowrap;padding:14px 0;gap:24px}.panel{box-shadow:none!important}.section-heading h2{font-weight:900}.section-heading span{letter-spacing:.04em}.topbar{border-bottom-style:dashed}.share-btn{font-size:12px!important;padding:6px 10px!important;margin-left:8px;white-space:nowrap}.learning-panel{margin:22px 0;padding:24px!important;border:2px solid var(--main)!important;border-radius:0!important}.learning-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:22px}.learning-head h2{font-size:25px;font-weight:900;margin-top:4px}.phase-badge{padding:8px 12px;border:1px solid var(--main);font-size:13px;font-weight:700}.learning-numbers{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px dashed var(--border);border-bottom:1px dashed var(--border)}.learning-numbers>div{padding:20px 14px;border-right:1px dashed var(--border)}.learning-numbers>div:last-child{border:0}.learning-numbers span,.learning-numbers small{display:block;color:var(--sub);font-size:12px}.learning-numbers strong{display:block;font-size:34px;line-height:1.5;font-variant-numeric:tabular-nums;letter-spacing:-.04em}.learning-bottom{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding-top:20px;font-size:14px}.learning-bottom p{font-size:12px;color:var(--sub);margin:6px 0}.learning-panel progress{width:100%;height:7px;accent-color:var(--main)}.learning-panel details{border-top:1px dashed var(--border);margin-top:20px;padding-top:14px;font-size:12px;color:var(--sub)}.learning-panel summary{cursor:pointer;color:var(--main)}#moduleShareDialog{width:min(680px,calc(100vw - 32px));max-height:90dvh;padding:22px;color:var(--main);background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:auto}#moduleShareDialog::backdrop{background:#000a}#moduleShareDialog img{width:100%;height:auto;margin:16px 0}#moduleShareDialog button{padding:9px 14px}#moduleShareDialog button:disabled{opacity:.5}@media(max-width:640px){.brand strong{font-size:19px}.learning-numbers{grid-template-columns:1fr 1fr}.learning-numbers>div:nth-child(2){border-right:0}.learning-numbers>div:nth-child(-n+2){border-bottom:1px dashed var(--border)}.learning-bottom{grid-template-columns:1fr}.learning-head{align-items:flex-start;flex-direction:column}.learning-panel{padding:17px!important}.share-btn{margin:6px 0 0}.learning-numbers strong{font-size:30px}}
+:root{--shift-ink:#f4f4f4}
+.brand strong{font-size:20px;letter-spacing:-.02em}
+.intro{padding-top:24px}
+.intro h1{font-weight:900;letter-spacing:-.04em;font-size:clamp(28px,3.6vw,42px)}
+.panel{box-shadow:none!important}
+.share-btn{font-size:11px!important;padding:4px 8px!important;margin-left:8px;white-space:nowrap;border-radius:6px;}
+.learning-panel{margin:22px 0;padding:22px!important;border:1px solid var(--border)!important;border-radius:12px!important;background:var(--panel);}
+.learning-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:20px}
+.learning-head h2{font-size:22px;font-weight:800;margin-top:4px}
+.phase-badge{padding:6px 12px;border:1px solid var(--border-bright);background:var(--surface);color:var(--accent);font-size:12px;font-weight:700;border-radius:8px;}
+.learning-numbers{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:18px;}
+.learning-numbers>div{padding:14px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;}
+.learning-numbers span,.learning-numbers small{display:block;color:var(--muted);font-size:11px}
+.learning-numbers strong{display:block;font-size:26px;line-height:1.4;font-variant-numeric:tabular-nums;letter-spacing:-.03em;font-family:"JetBrains Mono",monospace;}
+.learning-bottom{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding-top:16px;border-top:1px solid var(--border);font-size:13px}
+.learning-bottom>div{padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;}
+.learning-bottom p{font-size:12px;color:var(--sub);margin:6px 0}
+.learning-panel progress{width:100%;height:8px;accent-color:var(--accent);border-radius:4px;overflow:hidden;}
+.learning-panel details{border-top:1px solid var(--border);margin-top:18px;padding-top:14px;font-size:12px;color:var(--sub)}
+.learning-panel summary{cursor:pointer;color:var(--main);font-weight:600;}
+#moduleShareDialog{width:min(680px,calc(100vw - 32px));max-height:90dvh;padding:22px;color:var(--main);background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:auto}
+#moduleShareDialog::backdrop{background:#000a}
+#moduleShareDialog img{width:100%;height:auto;margin:16px 0;border-radius:8px;}
+#moduleShareDialog button{padding:8px 14px;border-radius:6px;}
+@media(max-width:850px){.learning-numbers{grid-template-columns:repeat(3,minmax(0,1fr));}.learning-bottom{grid-template-columns:1fr;}}
+@media(max-width:550px){.learning-numbers{grid-template-columns:repeat(2,minmax(0,1fr));}}
 
-.recommendation-section{margin-bottom:30px}.ranked-heading{padding-top:18px;border-top:1px solid var(--border)}.section-number{font-size:13px!important;letter-spacing:.12em!important;margin-right:10px}.rebound-module{padding:24px;margin-bottom:36px}.rebound-module-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.rebound-module h2{font-size:23px;font-weight:850}.rebound-module p{font-size:12px;line-height:1.8;margin:8px 0}.rebound-rule-note{display:inline-block;border:1px solid var(--border);padding:6px 10px;font-size:11px;margin-top:15px}.rebound-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}.rebound-card{border:1px solid var(--border);padding:18px;border-radius:8px;min-width:0}.rebound-card-head{display:flex;justify-content:space-between;gap:10px;font-size:11px}.rebound-rank{font-weight:800}.rebound-card h3{font-size:18px;margin:14px 0 8px;font-weight:750}.rebound-price{font-size:26px}.rebound-levels{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;padding:14px 0;border-top:1px dashed var(--border);border-bottom:1px dashed var(--border);margin:14px 0}.rebound-levels dt{color:var(--sub)}.rebound-levels dd{text-align:right;font-variant-numeric:tabular-nums}.rebound-warning,.rebound-pass{padding:8px;border:1px solid var(--border)}.rebound-card details,.rebound-method{font-size:12px;line-height:1.8;margin:14px 0}.rebound-card summary,.rebound-method summary{cursor:pointer}.rebound-method{border-top:1px solid var(--border);padding-top:14px}#reboundWatchSection{margin-top:26px}#reboundWatchSection>h3{font-weight:800}.market-context{margin-bottom:24px}.recommendation-section .panel{padding:22px}#intradayPickList,#overnightPickList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}#intradayPickList>div:only-child,#overnightPickList>div:only-child{grid-column:1/-1}@media(max-width:800px){.rebound-grid,#intradayPickList,#overnightPickList{grid-template-columns:1fr}.rebound-module-head{flex-direction:column}.rebound-module{padding:17px}}
+.recommendation-section{margin-bottom:30px}
+.ranked-heading{padding-top:18px;border-top:1px solid var(--border)}
+.section-number{font-size:12px!important;letter-spacing:.08em!important;margin-right:8px;padding:2px 7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:"JetBrains Mono",monospace;}
+.rebound-module{padding:22px;margin-bottom:30px;background:var(--panel);border:1px solid var(--border);border-radius:12px;}
+.rebound-module-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.rebound-module h2{font-size:22px;font-weight:800}
+.rebound-module p{font-size:12px;line-height:1.7;margin:6px 0}
+.rebound-rule-note{display:inline-block;border:1px solid var(--border-bright);background:var(--surface);padding:4px 10px;font-size:11px;border-radius:6px;color:var(--accent);font-family:"JetBrains Mono",monospace;}
+.rebound-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}
+.rebound-card{border:1px solid var(--border);background:var(--surface);padding:16px;border-radius:10px;min-width:0;transition:border-color .15s;}
+.rebound-card:hover{border-color:var(--border-bright);}
+.rebound-card-head{display:flex;justify-content:space-between;gap:10px;font-size:11px}
+.rebound-rank{font-weight:800}
+.rebound-card h3{font-size:17px;margin:12px 0 6px;font-weight:750}
+.rebound-price{font-size:24px;font-family:"JetBrains Mono",monospace;}
+.rebound-levels{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;padding:12px 0;border-top:1px dashed var(--border);border-bottom:1px dashed var(--border);margin:12px 0}
+.rebound-levels dt{color:var(--muted)}
+.rebound-levels dd{text-align:right;font-variant-numeric:tabular-nums;font-family:"JetBrains Mono",monospace;}
+.rebound-warning,.rebound-pass{padding:7px;border:1px solid var(--border);border-radius:6px;}
+.rebound-card details,.rebound-method{font-size:12px;line-height:1.7;margin:12px 0}
+.rebound-card summary,.rebound-method summary{cursor:pointer}
+.rebound-method{border-top:1px solid var(--border);padding-top:14px}
+#reboundWatchSection{margin-top:24px}
+#reboundWatchSection>h3{font-weight:800}
+.market-context{margin-bottom:24px}
+.recommendation-section .panel{padding:20px;border-radius:12px;}
+#intradayPickList,#overnightPickList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#intradayPickList>div:only-child,#overnightPickList>div:only-child{grid-column:1/-1}
+@media(max-width:800px){.rebound-grid,#intradayPickList,#overnightPickList{grid-template-columns:1fr;}.rebound-module-head{flex-direction:column;}}
+body.boss-mode{filter:grayscale(100%) contrast(85%) brightness(95%);transition:filter .3s ease;}
 </style>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 fill=%27%23111%27/%3E%3Ctext x=%2716%27 y=%2724%27 text-anchor=%27middle%27 fill=%27white%27 font-size=%2724%27%3E牛%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 fill=%27%230B0F17%27/%3E%3Ctext x=%2716%27 y=%2724%27 text-anchor=%27middle%27 fill=%27%23F59E0B%27 font-size=%2722%27 font-weight=%27bold%27%3E牛%3C/text%3E%3C/svg%3E">
 </head>
 
 <body class="min-h-screen font-sans">
 
+  <!-- =====================================================
+       STITCH FIXED GLASSMORPHIC HEADER
+       ===================================================== -->
+  <header class="fixed top-0 left-0 right-0 z-50 bg-[#0B0F17]/90 backdrop-blur-xl border-b border-[#232F42] shadow-[0_1px_8px_rgba(0,0,0,0.3)]">
+    <div class="h-20 max-w-[1440px] mx-auto px-4 md:px-8 flex items-center justify-between gap-4">
+      <a class="flex items-center gap-3 text-decoration-none group" href="#dashboard" aria-label="當沖吧！牛馬仔首頁">
+        <img src="chrome-extension/assets/icon48.png" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 fill=%27%230B0F17%27/%3E%3Ctext x=%2716%27 y=%2724%27 text-anchor=%27middle%27 fill=%27%23F59E0B%27 font-size=%2722%27 font-weight=%27bold%27%3E牛%3C/text%3E%3C/svg%3E'" alt="Logo" class="w-12 h-12 rounded-xl object-contain shadow-md" />
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2">
+            <strong class="text-xl font-bold tracking-tight text-[#F1F5F9]">當沖吧！牛馬仔</strong>
+            <span class="px-1.5 py-0.5 rounded bg-[#1C2B3C] text-[#F59E0B] font-mono text-[10px] font-semibold border border-[#F59E0B]/30">v2.6 摸魚版</span>
+          </div>
+          <small class="text-[#64748B] text-[10px] tracking-wider font-mono">OFFICE WORKER QUANT LAB · 工號 9527 出勤看盤</small>
+        </div>
+      </a>
+
+      <div class="hidden xl:flex items-center gap-3">
+        <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-[#1A2234] border border-[#232F42]">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span class="font-mono text-xs text-[#F1F5F9]">TWSE / TPEx 工位摸魚看盤中</span>
+        </div>
+        <button type="button" onclick="fetchMarketData()" class="btn flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#122131] hover:bg-[#1C2B3C] text-[#F59E0B] border border-[#232F42] text-xs font-semibold">
+          <span class="material-symbols-outlined text-[15px]">sync</span>
+          <span>↻ 更新市場資料</span>
+        </button>
+      </div>
+
+      <nav class="hidden lg:flex items-center gap-1 bg-[#131A26] p-1 rounded-xl border border-[#232F42] text-xs font-semibold section-nav" style="border-bottom:none; margin-bottom:0; padding:4px;" aria-label="首頁區域">
+        <a href="#intraday-strategies" class="px-3 py-1.5 rounded-lg text-[#F1F5F9] hover:bg-[#1C2B3C] transition-colors">01 盤中摸魚</a>
+        <a href="#bottom-rebound" class="px-3 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors">02 底部抄底</a>
+        <a href="#learningSection" class="px-3 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors">03 牛馬 AI 加班進修</a>
+        <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener" class="px-3 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors flex items-center gap-1">社畜後台 ↗</a>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-xl bg-[#0D1C2D] border border-[#232F42]">
+          <span class="material-symbols-outlined text-[#F59E0B] text-[18px]">coffee</span>
+          <div class="flex flex-col text-left">
+            <span class="font-mono text-xs text-[#F1F5F9] leading-none">工位摸魚工程師</span>
+            <span class="text-[9px] text-[#64748B] leading-tight font-mono">9527 · 在線</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
 <main class="workspace" id="dashboard">
 
   <!-- =====================================================
-       HEADER
+       HERO & BOSS KEY CONTROLS
        ===================================================== -->
-
-  <div class="topbar">
-    <a class="brand" href="#dashboard" aria-label="當沖吧！牛馬仔首頁">
-      <span class="brand-mark" aria-hidden="true">牛<br>馬</span>
-      <span>
-        <strong>當沖吧！牛馬仔</strong>
-        <small>OFFICE WORKER QUANT LAB · 工號 9527 出勤看盤</small>
-      </span>
-    </a>
-    <div class="topbar-right">
-      <span class="market-tag">TWSE / TPEx</span>
-      <span class="text-xs px-2.5 py-1 rounded border muted-border text-sub bg-surface flex items-center gap-1.5 font-mono">
-        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        工位摸魚看盤中
-      </span>
-      <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener" class="btn text-xs px-2.5 py-1 rounded">社畜後台 ↗</a>
-    </div>
-  </div>
   <div class="intro">
     <div>
-      <div class="eyebrow">工位摸魚 · 社畜自救看盤室</div>
-      <h1>上班很累，看盤要清楚。</h1>
-      <p>有訊號偷摸魚，沒訊號專心裝忙。今日當沖機會、防守底線與下班進修進度，一眼看完。</p>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="px-2 py-0.5 rounded bg-[#1C2B3C] text-[#F59E0B] font-mono text-[10px] uppercase font-bold tracking-wider">工位摸魚 · 社畜自救看盤室</span>
+        <span class="text-[#64748B] text-[10px] font-mono">/ TERMINAL_HUD_ONLINE</span>
+      </div>
+      <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-[#F1F5F9] mt-2 mb-2">上班很累，看盤要清楚。</h1>
+      <p class="text-[#94A3B8] text-sm max-w-2xl leading-relaxed">有訊號偷摸魚，沒訊號專心裝忙。今日當沖機會、防守底線與下班進修進度，一眼看完。</p>
     </div>
-    <div class="intro-status">
-      <button type="button" onclick="fetchMarketData()" class="btn">↻ 更新市場資料</button>
+    <div class="intro-status flex flex-col items-end gap-2">
+      <div class="flex items-center gap-2 flex-wrap justify-end">
+        <button type="button" id="bossKeyBtn" class="btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1C2B3C] hover:bg-[#273647] text-[#F1F5F9] border border-[#232F42] text-xs font-semibold transition-all">
+          <span class="material-symbols-outlined text-[16px] text-[#06B6D4]">visibility_off</span>
+          <span>老闆鍵 · 偽裝成 Excel</span>
+        </button>
+        <button type="button" onclick="fetchMarketData()" class="btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F59E0B] hover:brightness-110 text-[#0B0F17] font-bold text-xs transition-all shadow-md">
+          <span class="material-symbols-outlined text-[16px]">sync</span>
+          <span>↻ 同步最新分時數據</span>
+        </button>
+      </div>
       <div id="dataStatusText" class="text-sub text-[11px] font-mono" role="status">正在從 Firebase 載入市場資料…</div>
     </div>
   </div>
-  <nav class="section-nav" aria-label="首頁區域">
+
+  <nav class="section-nav lg:hidden" aria-label="首頁行動區域">
     <a href="#intraday-strategies">01 盤中摸魚</a>
     <a href="#bottom-rebound">02 底部抄底</a>
     <a href="#learningSection">03 牛馬 AI 加班進修</a>
     <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener">社畜後台 ↗</a>
   </nav>
-  <header class="system-header panel" aria-label="資料狀態">
-    <!-- =====================================================
-         SYSTEM STATUS
-         ===================================================== -->
-
-    <div class="system-stats">
-
-      <div class="rounded-xl border muted-border p-2.5">
-        <div class="text-[10px] text-sub">
-          熱門股票池
-        </div>
-
-        <div id="metaStocks"
-             class="text-lg font-bold text-main mt-1">
-          載入中…
-        </div>
-      </div>
-
-
-      <div class="rounded-xl border muted-border p-2.5">
-
-        <div class="text-[10px] text-sub">
-          資料日期
-        </div>
-
-        <div id="metaDate"
-             class="text-sm font-bold text-main mt-2">
-          載入中…
-        </div>
-
-      </div>
-
-
-      <div class="rounded-xl border muted-border p-2.5">
-
-        <div class="text-[10px] text-sub">
-          隔日衝最後掃描
-        </div>
-
-        <div id="metaScanTime"
-             class="text-sm font-bold text-main mt-2">
-          --
-        </div>
-
-      </div>
-
-
-      <div class="rounded-xl border muted-border p-2.5">
-
-        <div class="text-[10px] text-sub">
-          網頁讀取
-        </div>
-
-        <div id="metaRefreshTime"
-             class="text-sm font-bold text-main mt-2">
-          --
-        </div>
-
-      </div>
-
-
-
-      <div class="rounded-xl border muted-border p-2.5">
-
-        <div class="text-[10px] text-sub">
-          模型資料完整度
-        </div>
-
-        <div id="metaQuality"
-             class="text-lg font-bold text-main mt-1">
-          --
-        </div>
-
-      </div>
-
-
-      <div class="rounded-xl border muted-border p-2.5">
-
-        <div class="text-[10px] text-sub">
-          回測訊號數
-        </div>
-
-        <div id="metaSignals"
-             class="text-lg font-bold text-main mt-1">
-          --
-        </div>
-
-      </div>
-
-
-      <div class="rounded-xl border muted-border p-2.5">
-
-        <div class="text-[10px] text-sub">
-          掃描模式
-        </div>
-
-        <div id="metaSession"
-             class="text-sm font-bold text-main mt-2">
-          --
-        </div>
-
-      </div>
-
-
-      <div class="rounded-xl border muted-border p-2.5">
-
-        <div class="text-[10px] text-sub">
-          今日當沖模組
-        </div>
-
-        <div id="metaDaytradeModel"
-             class="text-sm font-bold text-main mt-2"
-             title="今日牛馬 AI 實盤當沖學習版本">
-          載入中…
-        </div>
-
-        <div id="metaTracking"
-             class="text-[9px] text-sub mt-1">
-          啟用
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <!-- =====================================================
-         FILTERS
-         ===================================================== -->
-
-  </header>
-    <div class="filter-panel" role="region" aria-label="股票篩選">
-
-      <div class="text-sub font-mono">
-
-        <div class="filter-title">篩選觀察標的</div>股票池：
-        <span class="text-main">
-          TWSE+TPEx 成交金額前 500 檔普通股
-        </span>
-
-      </div>
-
-
-      <div class="flex flex-wrap gap-1.5 items-center justify-end">
-
-        <button
-          data-price="" aria-pressed="true" onclick="setQuickPrice(null)"
-          class="btn px-2 py-1 rounded-lg text-[10px]">
-          不限
-        </button>
-
-        <button
-          data-price="50" aria-pressed="false" onclick="setQuickPrice(50)"
-          class="btn px-2 py-1 rounded-lg text-[10px]">
-          50以下
-        </button>
-
-        <button
-          data-price="100" aria-pressed="false" onclick="setQuickPrice(100)"
-          class="btn px-2 py-1 rounded-lg text-[10px]">
-          100以下
-        </button>
-
-        <button
-          data-price="200" aria-pressed="false" onclick="setQuickPrice(200)"
-          class="btn px-2 py-1 rounded-lg text-[10px]">
-          200以下
-        </button>
-
-
-        <div class="flex items-center gap-1 rounded-lg border muted-border px-2 py-1">
-
-          <span class="text-[10px] text-sub">
-            價格
-          </span>
-
-          <input
-            aria-label="最低股價" id="priceMin"
-            type="number"
-            min="0"
-            step="1"
-            placeholder="最低"
-            oninput="setPriceRange()"
-            class="w-14 bg-transparent text-xs text-main outline-none text-right"
-          />
-
-          <span class="text-[10px] text-sub">
-            ～
-          </span>
-
-          <input
-            aria-label="最高股價" id="priceMax"
-            type="number"
-            min="0"
-            step="1"
-            placeholder="最高"
-            oninput="setPriceRange()"
-            class="w-14 bg-transparent text-xs text-main outline-none text-right"
-          />
-
-        </div>
-
-
-        <div
-          class="flex items-center gap-1 rounded-lg border muted-border px-2 py-1"
-          title="以一張約1000股估算，不影響零股交易">
-
-          <span class="text-[10px] text-sub">
-            單張預算
-          </span>
-
-          <input
-            aria-label="單張預算" id="budgetInput"
-            type="number"
-            min="0"
-            step="10000"
-            placeholder="不限"
-            oninput="setBudget()"
-            class="w-20 bg-transparent text-xs text-main outline-none text-right"
-          />
-
-        </div>
-
-
-        <select aria-label="顯示標的數量"
-          onchange="setDisplayLimit(Number(this.value))"
-          class="panel rounded-lg px-2 py-1.5 text-xs text-main">
-
-          <option value="5">
-            Top 5
-          </option>
-
-          <option value="10">
-            Top 10
-          </option>
-
-        </select>
-
-      </div>
-
-    </div>
-
-
 
   <!-- =====================================================
-       MARKET + TOP PICKS
+       8-METRIC PULSE STREAM BAR
        ===================================================== -->
+  <header class="system-header panel" aria-label="資料狀態">
+    <div class="system-stats grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2.5">
 
-<div class="section-heading ranked-heading" id="intraday-strategies"><h2><span class="section-number">01</span> 盤中摸魚 · AI 模擬當沖</h2><span>工位自救・虛擬交易</span></div><section class="recommendation-section"><div id="daytradeModule" class="panel rounded-2xl p-3">
-
-      <div
-        class="flex items-center justify-between border-b muted-border pb-2 flex-wrap gap-2">
-
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-xs text-main">AI 模擬當沖</span>
-          <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('daytradeModule','AI 模擬當沖')">分享圖片 ↗</button>
+      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
+        <div class="flex items-center justify-between text-[11px] text-[#64748B] font-medium">
+          <span>熱門股票池</span>
+          <span class="text-[#06B6D4] font-mono text-[10px]">TWSE+TPEx</span>
         </div>
-
-        <div class="flex items-center gap-2">
-          <span
-            id="intradayModelBadge"
-            class="text-[10px] font-semibold px-2 py-0.5 rounded border border-main text-main bg-main/5"
-            title="當沖學習模組版本與訓練基準日">
-            當沖模型：載入中…
-          </span>
-          <span
-            id="intradayStamp"
-            class="text-[9px] text-main">
-            等待盤中掃描
-          </span>
+        <div id="metaStocks" class="text-xl font-bold font-mono text-[#F1F5F9] mt-1">
+          載入中…
         </div>
-
+        <span class="text-[10px] text-[#64748B]">成交額 TOP 500</span>
       </div>
 
-      <div class="text-[10px] text-sub mt-2">
-        永豐 Shioaji 行情 → 瞬間量能雷達 → 11 項特徵 → 歷史 AI 模型判斷模擬進場；
-        模擬本金由後台設定・非真實委託。09:30 摸魚開工進場 ➔ 12:30 停新單等外送 ➔ 12:55 準時平倉收工。
-        AI 模擬版已接線，盤中端到端與真實委託隔離；無今日快照時代表市場休息或尚未出單。
+      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
+        <span class="text-[11px] text-[#64748B] font-medium">資料日期</span>
+        <div id="metaDate" class="text-sm font-bold font-mono text-[#F1F5F9] mt-1">
+          載入中…
+        </div>
+        <span class="text-[10px] text-[#64748B]">後端即時同步</span>
       </div>
 
-      <div
-        id="intradayPickList"
-        class="mt-2">
-
-        <div class="text-xs text-sub text-center py-8">
-          等待 AI 模擬當沖資料（尚無當日有效快照）…
+      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
+        <span class="text-[11px] text-[#64748B] font-medium">隔日衝最後掃描</span>
+        <div id="metaScanTime" class="text-sm font-bold font-mono text-[#F1F5F9] mt-1">
+          --
         </div>
-
+        <span class="text-[10px] text-[#64748B]">尾盤量能優先</span>
       </div>
 
-    </div></section><div class="section-heading ranked-heading" id="overnight-strategies"><h2><span class="section-number">02</span> 隔日衝 TOP 3</h2><span>尾盤觀察・隔日策略</span></div><section class="recommendation-section"><div id="overnightModule" class="panel rounded-2xl p-3">
-
-      <div
-        class="flex items-center justify-between border-b muted-border pb-2">
-
-        <div class="font-bold text-xs text-main">
-          隔日衝 TOP 3 <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('overnightModule','隔日衝 TOP 3')">分享圖片 ↗</button>
+      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
+        <span class="text-[11px] text-[#64748B] font-medium">網頁讀取</span>
+        <div id="metaRefreshTime" class="text-sm font-bold font-mono text-[#F1F5F9] mt-1">
+          --
         </div>
-
-        <span
-          id="overnightStamp"
-          class="text-[9px] text-main">
-          尾盤優先
+        <span class="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 延遲 24ms
         </span>
-
       </div>
 
-      <div class="text-[10px] text-sub mt-2">
-        13:00後依最近30分鐘、15分K及量價篩選；跌破VWAP、過度追價或資料過期直接排除。收盤版僅供研究。
-      </div>
-
-      <p id="overnightHealth" class="text-sub text-xs mt-3" role="status">正在確認隔日衝資料來源…</p>
-      <div
-        id="overnightPickList"
-        class="space-y-1.5 mt-2">
-
-        <div class="text-xs text-sub text-center py-8">
-          等待線型交叉掃描…
+      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
+        <span class="text-[11px] text-[#64748B] font-medium">模型資料完整度</span>
+        <div id="metaQuality" class="text-xl font-bold font-mono text-[#F59E0B] mt-1">
+          --
         </div>
-
+        <span class="text-[10px] text-[#64748B]">特徵完備度評估</span>
       </div>
 
-    </div></section><div class="section-heading ranked-heading" id="bottom-rebound"><h2><span class="section-number">02</span> 底部反彈 TOP 3</h2><span>接近支撐・等待止跌</span></div><section id="reboundModule" class="panel rebound-module" aria-labelledby="reboundTitle">
-<div class="rebound-module-head"><div><h2 id="reboundTitle">有支撐，也要等站穩。</h2><p class="text-sub">多次回測支撐與壓力，確認止跌後再檢查基本面。可能持有數日，不是當沖訊號。</p></div><button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('reboundModule','底部反彈 TOP 3')">分享圖片 ↗</button></div>
-<p id="activeFilterLabel" class="text-sub">全部價格</p>
-<div class="rebound-rule-note">規則試行 · 尚無驗證勝率 · 資料不足不列入推薦</div>
-<p id="reboundStatus" role="status" aria-live="polite">等待日線資料…</p>
-<p id="reboundProgress" class="text-sub"></p>
-<div id="reboundPicks" class="rebound-grid"></div>
-<div id="reboundWatchSection" hidden><h3>型態符合，基本面待確認</h3><p class="text-sub">以下是技術觀察名單，尚未列入推薦 TOP 3。</p><div id="reboundWatch" class="rebound-grid"></div></div>
-<details class="rebound-method"><summary>篩選方式與本次檢查結果</summary><p>使用 Firebase 同一版本最近 90～252 根日 K，支撐與壓力至少觸及兩次、相隔至少 7 個交易日、首末跨度至少 14 日。區間至少 10%，價格位於底部 35% 且距支撐不超過 10%，近 8 日需回測支撐。近 3 日突破昨高並守穩者優先；連兩日收高、收紅且收在當日上緣者列為「初步止跌」。今日不可明顯破近期低點。</p><p>扣除假設來回成本 0.6% 後，價格空間／失效風險至少 1.5 倍。這是規則試行，並非已驗證模型或勝率；跳空與滑價可能使實際損失超過失效價。</p><p>基本面初篩：單月營收年增不低於 −20%、EPS 與營業利益率為正、負債比低於 70%。仍要求官方來源、近期取得日期與營收月份；缺財報季度標籤不單獨淘汰，FCF 僅供輔助。金融業不適用。缺必要資料只列觀察名單；單月數據不等於長期營運正常。股票池與價格篩選會影響名單，不保證每天滿三檔。</p><p id="reboundDiagnostics">等待檢查結果。</p><button id="reboundRetry" class="btn" type="button">重新檢查</button></details>
-</section><section class="panel learning-panel" id="learningSection" aria-labelledby="learningTitle">
-  <div class="learning-head"><div><div class="eyebrow">收盤加班進修 / DRONE SURVIVAL LOG</div><h2 id="learningTitle">牛馬 AI 加班進修打卡室</h2><p class="text-sub text-xs mt-1">白天當沖被修理，晚上留下來加班看盤；不求暴富，只求換個便當與湊齊離職自由金。</p></div><span id="learningPhase" class="phase-badge" role="status">等待學習資料</span></div>
-  <div class="learning-numbers">
-    <div><span>累積血汗進修日</span><strong id="learnDays">—</strong><small>同一交易日只計一次</small></div>
-    <div><span>今日摸魚推薦</span><strong id="learnStocks">—</strong><small>當沖引擎觸發推薦檔數</small></div>
-    <div><span>盤中盯盤記錄</span><strong id="learnObserved">—</strong><small>主力急漲急跌留痕檔數</small></div>
-    <div><span>收盤復盤學會</span><strong id="learnLearned">—</strong><small>完整有效標記的不重複股票</small></div>
-    <div><span>有效自救樣本</span><strong id="learnSamples">—</strong><small>含進場急漲、停損出場特徵</small></div>
-    <div><span>行情報價收集</span><strong id="learnCoverage">—</strong><small id="learnCoverageNote">等待收盤報告</small></div>
+      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
+        <span class="text-[11px] text-[#64748B] font-medium">回測訊號數</span>
+        <div id="metaSignals" class="text-xl font-bold font-mono text-[#F1F5F9] mt-1">
+          --
+        </div>
+        <span class="text-[10px] text-[#64748B]">十年間歷史樣本</span>
+      </div>
+
+      <div class="rounded-xl border border-[#232F42] p-3 bg-[#131A26] flex flex-col justify-between shadow-sm">
+        <span class="text-[11px] text-[#64748B] font-medium">掃描模式</span>
+        <div id="metaSession" class="text-sm font-bold font-mono text-[#06B6D4] mt-1">
+          --
+        </div>
+        <span class="text-[10px] text-[#64748B]">僅供量化研究</span>
+      </div>
+
+      <div class="rounded-xl border border-emerald-500/30 p-3 bg-[#131A26] flex flex-col justify-between shadow-sm ring-1 ring-emerald-500/20">
+        <div class="flex items-center justify-between text-[11px] text-emerald-400 font-semibold">
+          <span>今日當沖模組</span>
+          <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+        </div>
+        <div id="metaDaytradeModel" class="text-sm font-bold font-mono text-[#F1F5F9] mt-1" title="今日牛馬 AI 實盤當沖學習版本">
+          載入中…
+        </div>
+        <div id="metaTracking" class="text-[10px] text-[#64748B] font-mono">
+          盤前待命中
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- =====================================================
+       RADAR FILTER TOOLBAR
+       ===================================================== -->
+  <div class="filter-panel bg-[#131A26] border border-[#232F42] p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-sm mb-6" role="region" aria-label="股票篩選">
+    <div class="flex items-center gap-2 flex-wrap">
+      <div class="flex items-center gap-1 text-[#64748B] font-mono text-xs">
+        <span class="material-symbols-outlined text-[16px] text-[#F59E0B]">filter_alt</span>
+        <span class="font-semibold text-[#F1F5F9]">單張預算快選:</span>
+      </div>
+      <button data-price="" aria-pressed="true" onclick="setQuickPrice(null)" class="btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#F59E0B] text-[#0B0F17] border-0 shadow-sm">不限</button>
+      <button data-price="50" aria-pressed="false" onclick="setQuickPrice(50)" class="btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">50以下</button>
+      <button data-price="100" aria-pressed="false" onclick="setQuickPrice(100)" class="btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">100以下</button>
+      <button data-price="200" aria-pressed="false" onclick="setQuickPrice(200)" class="btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">200以下</button>
+      <div class="hidden sm:flex items-center gap-1 bg-[#0D1C2D] border border-[#232F42] px-2 py-1 rounded-lg text-xs">
+        <span class="text-[10px] text-[#64748B]">價格:</span>
+        <input aria-label="最低股價" id="priceMin" type="number" min="0" step="1" placeholder="最低" oninput="setPriceRange()" class="w-12 bg-transparent text-xs text-[#F1F5F9] outline-none text-center font-mono" />
+        <span class="text-[#64748B]">～</span>
+        <input aria-label="最高股價" id="priceMax" type="number" min="0" step="1" placeholder="最高" oninput="setPriceRange()" class="w-12 bg-transparent text-xs text-[#F1F5F9] outline-none text-center font-mono" />
+      </div>
+      <div class="hidden md:flex items-center gap-1 bg-[#0D1C2D] border border-[#232F42] px-2 py-1 rounded-lg text-xs" title="以一張約1000股估算，不影響零股交易">
+        <span class="text-[10px] text-[#64748B]">單張預算:</span>
+        <input aria-label="單張預算" id="budgetInput" type="number" min="0" step="10000" placeholder="不限" oninput="setBudget()" class="w-16 bg-transparent text-xs text-[#F1F5F9] outline-none text-right font-mono" />
+      </div>
+    </div>
+    <div class="flex items-center gap-2 self-end lg:self-center">
+      <span class="text-[#64748B] text-xs">顯示排行:</span>
+      <select aria-label="顯示標的數量" onchange="setDisplayLimit(Number(this.value))" class="bg-[#0D1C2D] border border-[#232F42] rounded-lg px-2.5 py-1 text-xs text-[#F1F5F9] outline-none font-mono">
+        <option value="5">Top 5</option>
+        <option value="10">Top 10</option>
+      </select>
+    </div>
   </div>
-  <div class="learning-bottom"><div><b id="learnModel">當沖模型：載入中…</b><p id="learnTraining">離職自救進修進度（目標 101 個交易日）</p><progress id="learnProgress" max="101" value="0" aria-label="同設定有效學習日進度"></progress></div><div><b id="learnAI">今日檢討週報：待確認</b><p id="learnUpdated">尚未收到更新</p><p id="learnError" role="status"></p></div></div>
-  <details><summary>💡 為什麼牛馬 AI 每天都要進修？</summary><p>盤中先記錄資料，收盤後建立標記與 AI 分析；達到訓練門檻仍需驗證。只有當沖引擎確認載入的版本，才算已套用。AI 復盤完成不代表勝率提高。</p><p id="learnLastReport"></p></details>
-</section>
+
+  <!-- =====================================================
+       01 盤中摸魚 · AI 模擬當沖
+       ===================================================== -->
+  <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]" id="intraday-strategies">
+    <div class="flex items-center gap-2">
+      <span class="h-7 w-7 rounded-lg bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#F59E0B] font-mono text-xs font-bold">01</span>
+      <h2 class="text-xl font-bold tracking-tight text-[#F1F5F9]">盤中摸魚 · AI 模擬當沖</h2>
+      <span class="px-2 py-0.5 rounded-full bg-[#1C2B3C] text-[#06B6D4] font-mono text-[10px] border border-[#06B6D4]/30">工位自救 · 虛擬交易</span>
+    </div>
+    <span class="text-xs text-[#64748B]">永豐 Shioaji 行情 ➔ 量能雷達 ➔ 11項特徵 ➔ AI 模型判斷</span>
+  </div>
+
+  <section class="recommendation-section mb-8">
+    <div id="daytradeModule" class="bg-[#131A26] border border-[#232F42] rounded-2xl p-4 shadow-sm">
+      <div class="flex items-center justify-between border-b border-[#232F42] pb-3 flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-sm text-[#F1F5F9]">AI 模擬當沖標的</span>
+          <span id="intradayModelBadge" class="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 font-mono">當沖模型: 載入中…</span>
+          <span id="intradayStamp" class="text-[10px] text-[#64748B] font-mono">等待盤中掃描</span>
+        </div>
+        <button class="btn share-btn flex items-center gap-1 px-2.5 py-1 rounded bg-[#1C2B3C] hover:bg-[#273647] text-[#F1F5F9] text-xs" type="button" data-share-ignore onclick="prepareModuleShare('daytradeModule','AI 模擬當沖')">
+          <span class="material-symbols-outlined text-[13px]">share</span> 分享圖片 ↗
+        </button>
+      </div>
+
+      <!-- 四步節奏條 (Execution Rhythm Bar) -->
+      <div class="my-3 py-2 px-3 rounded-lg bg-[#0D1C2D] border border-[#232F42]/60 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] text-[#64748B]">
+        <div class="flex items-center gap-1.5"><span class="text-[#06B6D4] font-bold">09:30</span><span>開工摸魚進場</span></div>
+        <span class="text-[#232F42]">➔</span>
+        <div class="flex items-center gap-1.5"><span class="text-[#F59E0B] font-bold">12:30</span><span>停止新單 · 等待午餐外送</span></div>
+        <span class="text-[#232F42]">➔</span>
+        <div class="flex items-center gap-1.5"><span class="text-[#EF4444] font-bold">12:55</span><span>強制平倉收工 · 遠離盤面</span></div>
+        <span class="text-[#232F42]">➔</span>
+        <div class="flex items-center gap-1.5"><span class="text-[#F1F5F9] font-bold">13:00</span><span>收盤總結與反省</span></div>
+      </div>
+
+      <div id="intradayPickList" class="mt-3">
+        <div class="text-xs text-[#64748B] text-center py-8 font-mono">等待 AI 模擬當沖資料（尚無當日有效快照）…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================
+       隔日衝 TOP 3 (保留 DOM 相容性)
+       ===================================================== -->
+  <div class="section-heading ranked-heading" id="overnight-strategies" style="display:none;">
+    <h2><span class="section-number">02</span> 隔日衝 TOP 3</h2><span>尾盤觀察・隔日策略</span>
+  </div>
+  <section class="recommendation-section" style="display:none;">
+    <div id="overnightModule" class="panel rounded-2xl p-3">
+      <div class="flex items-center justify-between border-b muted-border pb-2">
+        <div class="font-bold text-xs text-main">隔日衝 TOP 3 <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('overnightModule','隔日衝 TOP 3')">分享圖片 ↗</button></div>
+        <span id="overnightStamp" class="text-[9px] text-main">尾盤優先</span>
+      </div>
+      <p id="overnightHealth" class="text-sub text-xs mt-3" role="status">正在確認隔日衝資料來源…</p>
+      <div id="overnightPickList" class="space-y-1.5 mt-2">
+        <div class="text-xs text-sub text-center py-8">等待線型交叉掃描…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================
+       02 底部反彈 TOP 3
+       ===================================================== -->
+  <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]" id="bottom-rebound">
+    <div class="flex items-center gap-2">
+      <span class="h-7 w-7 rounded-lg bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#06B6D4] font-mono text-xs font-bold">02</span>
+      <h2 class="text-xl font-bold tracking-tight text-[#F1F5F9]">底部反彈 TOP 3 · 接近支撐・等待止跌</h2>
+    </div>
+    <span class="text-xs text-[#64748B]">波段觀察 · 多次回測支撐確認</span>
+  </div>
+
+  <section id="reboundModule" class="panel rebound-module bg-[#131A26] border border-[#232F42] rounded-2xl p-4 shadow-sm mb-8" aria-labelledby="reboundTitle">
+    <div class="rebound-module-head flex items-start justify-between gap-4 border-b border-[#232F42] pb-3">
+      <div>
+        <h2 id="reboundTitle" class="text-lg font-bold text-[#F1F5F9]">有支撐，也要等站穩。</h2>
+        <p class="text-xs text-[#64748B] mt-1">多次回測支撐與壓力，確認止跌後再檢查基本面。可能持有數日，不是當沖訊號。</p>
+      </div>
+      <button class="btn share-btn flex items-center gap-1 px-2.5 py-1 rounded bg-[#1C2B3C] hover:bg-[#273647] text-[#F1F5F9] text-xs flex-shrink-0" type="button" data-share-ignore onclick="prepareModuleShare('reboundModule','底部反彈 TOP 3')">
+        <span class="material-symbols-outlined text-[13px]">share</span> 分享圖片 ↗
+      </button>
+    </div>
+    <div class="flex items-center justify-between flex-wrap gap-2 my-2.5 font-mono text-[11px]">
+      <p id="activeFilterLabel" class="text-[#64748B]">全部價格</p>
+      <div class="rebound-rule-note px-2 py-0.5 rounded bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30">規則試行 · 尚無驗證勝率 · 資料不足不列入推薦</div>
+    </div>
+    <p id="reboundStatus" role="status" aria-live="polite" class="text-xs text-[#64748B] font-mono">等待日線資料…</p>
+    <p id="reboundProgress" class="text-xs text-[#64748B] font-mono"></p>
+    <div id="reboundPicks" class="rebound-grid mt-3"></div>
+    <div id="reboundWatchSection" hidden class="mt-4 pt-3 border-t border-[#232F42]">
+      <h3 class="text-sm font-bold text-[#F1F5F9] mb-1">型態符合，基本面待確認</h3>
+      <p class="text-xs text-[#64748B] mb-2">以下是技術觀察名單，尚未列入推薦 TOP 3。</p>
+      <div id="reboundWatch" class="rebound-grid"></div>
+    </div>
+    <details class="rebound-method mt-3 p-3 rounded-lg bg-[#0D1C2D] border border-[#232F42]/60 text-xs text-[#64748B] leading-relaxed">
+      <summary class="cursor-pointer font-bold text-[#F1F5F9] hover:text-[#06B6D4] flex items-center gap-1">
+        <span class="material-symbols-outlined text-[16px] text-[#F59E0B]">analytics</span>
+        <span>篩選方式與本次檢查結果</span>
+      </summary>
+      <p class="mt-2">使用 Firebase 同一版本最近 90～252 根日 K，支撐與壓力至少觸及兩次、相隔至少 7 個交易日、首末跨度至少 14 日。區間至少 10%，價格位於底部 35% 且距支撐不超過 10%，近 8 日需回測支撐。近 3 日突破昨高並守穩者優先；連兩日收高、收紅且收在當日上緣者列為「初步止跌」。今日不可明顯破近期低點。</p>
+      <p class="mt-1">扣除假設來回成本 0.6% 後，價格空間／失效風險至少 1.5 倍。基本面初篩：單月營收年增不低於 −20%、EPS 與營業利益率為正、負債比低於 70%。</p>
+      <p id="reboundDiagnostics" class="mt-2 text-[#06B6D4] font-mono">等待檢查結果。</p>
+      <button id="reboundRetry" class="btn mt-2 px-3 py-1 rounded bg-[#1C2B3C] text-xs font-semibold text-[#F1F5F9]" type="button">重新檢查</button>
+    </details>
+  </section>
+
+  <!-- =====================================================
+       03 牛馬 AI 加班進修打卡室
+       ===================================================== -->
+  <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]">
+    <div class="flex items-center gap-2">
+      <span class="h-7 w-7 rounded-lg bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#F59E0B] font-mono text-xs font-bold">03</span>
+      <h2 class="text-xl font-bold tracking-tight text-[#F1F5F9] flex items-center gap-1.5"><span>☕</span><span>牛馬 AI 加班進修打卡室</span></h2>
+    </div>
+    <span class="text-xs text-[#64748B]">收盤加班進修 / DRONE SURVIVAL LOG</span>
+  </div>
+
+  <section class="panel learning-panel bg-[#131A26] border border-[#232F42] rounded-2xl p-4 shadow-sm mb-8" id="learningSection" aria-labelledby="learningTitle">
+    <div class="learning-head flex items-start justify-between gap-4 border-b border-[#232F42] pb-3">
+      <div>
+        <div class="eyebrow text-[#F59E0B] text-[10px] font-bold tracking-wider font-mono">收盤加班進修 / DRONE SURVIVAL LOG</div>
+        <h2 id="learningTitle" class="text-lg font-bold text-[#F1F5F9] mt-0.5">白天當沖被修理，晚上留下來加班看盤</h2>
+        <p class="text-[#64748B] text-xs mt-1">不求暴富，只求換個便當與湊齊離職自由金。</p>
+      </div>
+      <span id="learningPhase" class="phase-badge px-2.5 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 font-mono text-xs font-bold" role="status">等待學習資料</span>
+    </div>
+    
+    <div class="learning-numbers grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 my-4">
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-2.5 rounded-xl">
+        <span class="text-[11px] text-[#64748B] block">累積血汗進修日</span>
+        <strong id="learnDays" class="text-2xl font-bold font-mono text-[#F59E0B] block my-0.5">—</strong>
+        <small class="text-[9px] text-[#64748B] block">同一交易日只計一次</small>
+      </div>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-2.5 rounded-xl">
+        <span class="text-[11px] text-[#64748B] block">今日摸魚推薦</span>
+        <strong id="learnStocks" class="text-2xl font-bold font-mono text-[#F1F5F9] block my-0.5">—</strong>
+        <small class="text-[9px] text-[#64748B] block">當沖引擎觸發推薦檔數</small>
+      </div>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-2.5 rounded-xl">
+        <span class="text-[11px] text-[#64748B] block">盤中盯盤記錄</span>
+        <strong id="learnObserved" class="text-2xl font-bold font-mono text-[#F1F5F9] block my-0.5">—</strong>
+        <small class="text-[9px] text-[#64748B] block">主力急漲急跌留痕檔數</small>
+      </div>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-2.5 rounded-xl">
+        <span class="text-[11px] text-[#64748B] block">收盤復盤學會</span>
+        <strong id="learnLearned" class="text-2xl font-bold font-mono text-[#06B6D4] block my-0.5">—</strong>
+        <small class="text-[9px] text-[#64748B] block">完整有效標記的不重複股票</small>
+      </div>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-2.5 rounded-xl">
+        <span class="text-[11px] text-[#64748B] block">有效自救樣本</span>
+        <strong id="learnSamples" class="text-2xl font-bold font-mono text-[#F1F5F9] block my-0.5">—</strong>
+        <small class="text-[9px] text-[#64748B] block">含進場急漲、停損出場特徵</small>
+      </div>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-2.5 rounded-xl">
+        <span class="text-[11px] text-[#64748B] block">行情報價收集</span>
+        <strong id="learnCoverage" class="text-2xl font-bold font-mono text-emerald-400 block my-0.5">—</strong>
+        <small id="learnCoverageNote" class="text-[9px] text-[#64748B] block">等待收盤報告</small>
+      </div>
+    </div>
+
+    <div class="learning-bottom grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-[#232F42]">
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3 rounded-xl">
+        <b id="learnModel" class="text-sm font-bold text-[#F1F5F9] block">當沖模型：載入中…</b>
+        <p id="learnTraining" class="text-xs text-[#64748B] my-1 font-mono">離職自救進修進度（目標 101 個交易日）</p>
+        <progress id="learnProgress" max="101" value="0" aria-label="同設定有效學習日進度" class="w-full h-2 rounded-full overflow-hidden accent-[#F59E0B]"></progress>
+      </div>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3 rounded-xl">
+        <b id="learnAI" class="text-sm font-bold text-[#F1F5F9] block">今日檢討週報：待確認</b>
+        <p id="learnUpdated" class="text-xs text-[#64748B] my-1 font-mono">尚未收到更新</p>
+        <p id="learnError" role="status" class="text-xs text-[#EF4444] font-mono"></p>
+      </div>
+    </div>
+
+    <details class="mt-3 p-3 rounded-lg bg-[#0D1C2D] border border-[#232F42]/60 text-xs text-[#64748B]">
+      <summary class="cursor-pointer font-bold text-[#F1F5F9] hover:text-[#F59E0B]">💡 為什麼牛馬 AI 每天都要進修？</summary>
+      <p class="mt-1 leading-relaxed">盤中先記錄資料，收盤後建立標記與 AI 分析；達到訓練門檻仍需驗證。只有當沖引擎確認載入的版本，才算已套用。AI 復盤完成不代表勝率提高。</p>
+      <p id="learnLastReport" class="mt-1 font-mono text-[#06B6D4]"></p>
+    </details>
+  </section>
 
   <!-- =====================================================
        DISCLAIMER
        ===================================================== -->
-
-  <section
-    class="disclaimer text-[10px] text-sub leading-relaxed">
-
+  <section class="disclaimer text-[11px] text-[#64748B] leading-relaxed p-4 rounded-xl bg-[#0B0F17] border border-[#232F42] my-6">
+    <div class="font-bold text-[#F1F5F9] mb-1 flex items-center gap-1.5">
+      <span class="material-symbols-outlined text-[15px] text-[#F59E0B]">gavel</span>
+      <span>社畜看盤免責條款 & 量化隔離說明</span>
+    </div>
     本頁為量化資料整理與研究工具，不構成投資建議。
     首頁「底部反彈」是試行規則排序，不代表保證獲利；
     遇到紅燈市場可直接選擇觀望。
-
     資料核心為 TWSE / TPEx 官方公開資料；
     永豐 Shioaji 負責即時當沖行情，
     Fugle 暫時保留歷史研究與隔日衝資料。
-
     AI 模擬當沖以 Oracle VM 發布的有效快照為準；模型分數非勝率，亦不代表真實成交：
     09:30 開始允許進場，
     12:30 停止新進場，
@@ -509,7 +564,16 @@
     13:00 後不再產生當沖進場訊號。
   </section>
 
-<footer class="footer-line"><span>當沖吧！牛馬仔 / 當沖吧！牛馬仔</span><span>牛馬下班，風險不加班。</span></footer>
+  <footer class="footer-line flex flex-wrap items-center justify-between gap-3 text-xs text-[#64748B] py-4 border-t border-[#232F42] font-mono">
+    <span>當沖吧！牛馬仔 QUANT LAB · TERMINAL BUILD 2026.09</span>
+    <span class="flex items-center gap-2">
+      <span class="flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>API LATENCY 24ms</span>
+      <span>•</span>
+      <span>TWSE / TPEx REALTIME STREAM</span>
+      <span>•</span>
+      <span class="text-[#F1F5F9]">牛馬下班，風險不加班。</span>
+    </span>
+  </footer>
 </main>
 
 
@@ -4673,12 +4737,25 @@
     refreshLiveData();
     setInterval(refreshDailyAndOvernight, 60000);
 
-    // Shioaji / AI 即時節點：
-    // 每 5 秒只抓 live 節點。
-    setInterval(
-      refreshLiveData,
-      5000
-    );
+    // Shioaji / AI 即時節點：每 5 秒只抓 live 節點。
+    setInterval(refreshLiveData, 5000);
+
+    // Boss Key 偽裝老闆鍵監聽
+    const bossBtn = document.getElementById('bossKeyBtn');
+    if (bossBtn) {
+      bossBtn.addEventListener('click', () => {
+        const isBoss = document.body.classList.toggle('boss-mode');
+        const icon = bossBtn.querySelector('.material-symbols-outlined');
+        const label = bossBtn.querySelector('span:last-child');
+        if (isBoss) {
+          if (icon) icon.textContent = 'visibility';
+          if (label) label.textContent = '恢復看盤 · 退出偽裝';
+        } else {
+          if (icon) icon.textContent = 'visibility_off';
+          if (label) label.textContent = '老闆鍵 · 偽裝成 Excel';
+        }
+      });
+    }
   }
 
   window.onload = boot;
