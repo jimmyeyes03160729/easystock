@@ -6,6 +6,25 @@ from unittest.mock import patch,Mock
 import daily_history as h
 
 class Tests(unittest.TestCase):
+    def test_frozen_pool_supports_100_unique_symbols(self):
+        symbols=[str(1000+i) for i in range(100)]
+        plan={'symbols':symbols,'dates':['2026-09-01']}
+        self.assertEqual(h.validate_plan(plan)['symbols'],symbols)
+        for invalid in (symbols+['2000'],symbols[:-1]+[symbols[0]],['ETF']):
+            with self.assertRaises(ValueError):
+                h.validate_plan(dict(plan,symbols=invalid))
+
+    def test_progress_uses_actual_pool_size_without_resetting_archives(self):
+        with tempfile.TemporaryDirectory() as folder,patch.object(h,'DATA',Path(folder)):
+            plan={'dates':['2026-09-01'],'symbols':[str(1000+i) for i in range(100)]}
+            cached=Path(folder)/'raw/2026-09-01/1000.json.gz'
+            cached.parent.mkdir(parents=True);cached.write_bytes(b'keep-existing-archive')
+            result=h.summarize(plan,'test')
+            self.assertEqual(result['symbol_count'],100)
+            self.assertEqual(result['target_stock_days'],100)
+            self.assertEqual(result['archived_stock_days'],1)
+            self.assertEqual(cached.read_bytes(),b'keep-existing-archive')
+
     def test_window_every_day_taipei(self):
         for day in (15,19,20):
             for hour,expected in [(8,False),(13,False),(14,True),(21,True),(22,False)]:

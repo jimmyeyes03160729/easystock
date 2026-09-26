@@ -18,6 +18,7 @@ TPE = timezone(timedelta(hours=8))
 DATA = Path('/home/ubuntu/easystock-history-data')
 LIVE = Path('/home/ubuntu/easystock')
 MB = 1024 * 1024
+MAX_HISTORY_SYMBOLS = 100
 TICK_FIELDS = ('ts', 'close', 'volume', 'tick_type', 'bid_price', 'ask_price')
 BAR_FIELDS = ('ts', 'Open', 'High', 'Low', 'Close', 'Volume', 'Amount')
 
@@ -194,7 +195,7 @@ def main():
         if now.weekday()<5 and clock(8)<=now.time().replace(tzinfo=None)<clock(14):
             raise SystemExit('Run after 14:00 Taiwan time')
         symbols=list(dict.fromkeys(args.symbols.split(',')))
-        if not 1<=len(symbols)<=55 or any(not re.fullmatch(r'\d{4}',s) for s in symbols):p.error('1..55 four-digit symbols')
+        if not 1<=len(symbols)<=MAX_HISTORY_SYMBOLS or any(not re.fullmatch(r'\d{4}',s) for s in symbols):p.error(f'1..{MAX_HISTORY_SYMBOLS} four-digit symbols')
         if plan.exists():
             spec=load(plan)
             if symbols!=spec['symbols'] or args.days!=spec['days'] or (args.end and args.end!=spec['end']):

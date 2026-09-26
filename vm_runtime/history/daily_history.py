@@ -37,7 +37,7 @@ def next_window(plan):
 def validate_plan(plan):
     symbols=plan.get('symbols',[]);dates=plan.get('dates',[])
     import re
-    if not symbols or len(symbols)>55 or len(set(symbols))!=len(symbols) or any(not re.fullmatch(r'\d{4}',s) for s in symbols):
+    if not symbols or len(symbols)>core.MAX_HISTORY_SYMBOLS or len(set(symbols))!=len(symbols) or any(not re.fullmatch(r'\d{4}',s) for s in symbols):
         raise ValueError('invalid_symbols')
     if not dates or dates!=sorted(set(dates)):raise ValueError('invalid_dates')
     if any(date.fromisoformat(d)<FLOOR for d in dates):raise ValueError('invalid_history_boundary')
@@ -67,7 +67,8 @@ def summarize(plan,reason,usage=None):
         'calendar_complete':plan.get('calendar_before')==str(FLOOR),
         'coverage_complete':False,'unavailable_before':str(FLOOR),
         'schedule':'每日 14:00–22:00（Asia/Taipei）','model_applied':False,
-        'scope':'Frozen current 55-stock pool, not whole-market history; pre-listing and missing data remain gaps.',
+        'symbol_count':len(plan['symbols']),
+        'scope':f"Frozen current {len(plan['symbols'])}-stock pool, not whole-market history; pre-listing and missing data remain gaps.",
         'updated_at':datetime.now(core.TPE).isoformat()}
     if usage is not None:
         status['remaining_mb']=round(int(usage.remaining_bytes)/core.MB,1)
