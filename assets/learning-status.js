@@ -70,7 +70,7 @@
       </div>
       <details>
         <summary>💡 為什麼牛馬 AI 每天都要進修？</summary>
-        <p>盤中即時記錄每一檔急漲特徵，收盤後標記勝率與停損停利。當沖模型隔天開盤會載入最新驗證版本，讓每一次被修理的經驗都轉化為防守武器。AI 復盤完成不代表勝率必然提高，但能防範盲目追高。</p>
+        <p>盤中記錄觀察樣本與進出場，收盤後建立研究標籤。訓練成果先列為候選模型，通過驗證並明確設定後才可用於進場；不會每天自動替換模型。文字復盤完成也不等於模型已更新。</p>
         <p id="learnLastReport"></p>
       </details>
     </article>
@@ -134,26 +134,15 @@
     put('learnCoverageNote',sessionDate?`盤中盯盤 ${fmt(session.observed_stocks)} 檔 · ${session.report_status==='partial'?'部分完成':session.report_status==='ready'?'復盤完成':'等待完整報告'}`:'等待最近交易日資料');
     const app=s.model_application||{};
     const pl=s.paper_learning?.training||{};
-    const trainedDate=pl.trained_through||(app.model_version?.match(/\d{4}-\d{2}-\d{2}/)?.[0]);
-    if(trainedDate){
-      window.__LATEST_LEARNING_DATE=trainedDate;
-      const topBadge=document.getElementById('intradayModelBadge');
-      if(topBadge){
-        topBadge.textContent=`當沖模組：${trainedDate}`;
-        topBadge.title=`模型版本: ${app.model_version||pl.version||trainedDate}${pl.train_samples?` · 樣本數: ${fmt(pl.train_samples)} 筆`:''}`;
-      }
-      const metaModel=document.getElementById('metaDaytradeModel');
-      if(metaModel){
-        metaModel.textContent=`${trainedDate}`;
-        metaModel.title=`牛馬 AI 實盤當沖模組基準日: ${trainedDate}`;
-      }
-    }
-    const modelText = trainedDate
-      ? `當沖模型：採用 ${trainedDate} 學習版本${pl.train_samples ? `（${fmt(pl.train_samples)} 筆樣本）` : ''}`
-      : ({applied:`當沖模型：已載入${app.model_version||''}`,experimental_paper:`當沖模型：AI 模擬已載入`,not_applied:'當沖模型：尚未套用學習成果'}[app.status]||'當沖模型：執行版本待確認');
+    const trainedDate=pl.trained_through||tr.trained_through;
+    // Training dates and version-name dates are not deployment evidence.
+    const modelText = !fresh ? '當沖模型：狀態過期，待確認'
+      : app.entry_mode==='rules' || app.status==='not_applied'
+        ? '當沖模型：尚未套用學習成果'
+        : '當沖模型：待核對盤中載入與推論紀錄';
     put('learnModel',modelText);
     const cycleText={waiting_for_history:'等待 6,600 個有效股票日',waiting_for_archive_lock:'等待歷史下載／實驗釋放資料鎖',building_history_seed:'建立固定歷史種子中',training:'模型訓練與向前驗證中',completed:'本次模型週期完成',blocked:'候選未通過安全條件',paused_for_market_hours:'盤中暫停，避免影響當沖'}[app.cycle_state]||'等待模型週期';
-    const trainDetail=pl.forward_samples!=null?`每日實盤累積：${fmt(pl.forward_samples)} 筆新樣本 · 資料基準日 ${trainedDate||'待確認'}`:`每日資料：同設定 ${fmt(tot.training_days)} 日、${fmt(tot.training_samples)} 筆`;
+    const trainDetail=pl.forward_samples!=null?`每日觀察累積：${fmt(pl.forward_samples)} 筆新樣本 · 訓練截止日 ${trainedDate||'待確認'}（不代表已部署）`:`每日資料：同設定 ${fmt(tot.training_days)} 日、${fmt(tot.training_samples)} 筆`;
     put('learnTraining',`${trainDetail} · 歷史特訓：${cycleText}`);
     get('learnProgress').value=Math.min(101,tot.training_days||0);
     put('learnAI',`今日檢討週報：${({ok:'完成',failed:'失敗',skipped:'尚未執行'})[session?.ai_status]||'等待資料'}`);

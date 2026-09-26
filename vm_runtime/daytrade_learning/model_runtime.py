@@ -1,5 +1,6 @@
 """Pinned, approved research model inference. Never auto-promotes a candidate."""
 import json
+import hashlib
 import math
 import os
 from pathlib import Path
@@ -38,6 +39,7 @@ def live_features(*, price, previous_close, now_ts, ticks=None, radar=None):
 class DaytradeModel:
     def __init__(self, path=None):
         self.artifact = None
+        self.artifact_sha256 = None
         self.model_version = MODEL_RUNTIME_VERSION
         self.threshold = None
         self.reason = 'no_approved_model'
@@ -45,7 +47,8 @@ class DaytradeModel:
         if not path:
             return
         try:
-            a = json.loads(Path(path).read_text())
+            raw = Path(path).read_bytes()
+            a = json.loads(raw)
             if not isinstance(a, dict):
                 raise ValueError('invalid_model_object')
             if a.get('deployment_allowed') is not True or a.get('approved') is not True:
@@ -64,6 +67,7 @@ class DaytradeModel:
             if not 0 <= threshold <= 1 or not a.get('version'):
                 raise ValueError('invalid_model_metadata')
             self.artifact, self.threshold = a, threshold
+            self.artifact_sha256 = hashlib.sha256(raw).hexdigest()
             self.model_version, self.reason = str(a['version']), 'approved_model_loaded'
         except (OSError, ValueError, TypeError, KeyError) as exc:
             self.reason = 'invalid_or_unapproved_model:' + type(exc).__name__
@@ -72,6 +76,7 @@ class DaytradeModel:
         result = dict(active=self.artifact is not None, evaluated=False,
                       approved=self.artifact is not None, accepted=False, probability=None,
                       threshold=self.threshold, model_version=self.model_version, reason=self.reason)
+        result['artifact_sha256'] = self.artifact_sha256
         if self.artifact is None:
             return result
         try:

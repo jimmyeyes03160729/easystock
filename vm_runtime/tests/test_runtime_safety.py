@@ -206,6 +206,20 @@ class EngineTests(unittest.TestCase):
         self.engine.learning.entry.assert_called_once()
         self.engine.store.write_entry.assert_called_once()
         self.ns['push_line_text'].assert_called_once()
+        position=self.engine.learning.entry.call_args.args[0]['position']
+        self.assertEqual(position['decision_mode'],'rules')
+        self.assertIsNone(position['model_version'])
+
+    def test_model_fill_records_actual_model_evidence(self):
+        self.engine.entry_mode='model'
+        self.engine.daytrade_model=Mock(evaluate=Mock(return_value=dict(active=True,evaluated=True,
+            approved=True,accepted=True,probability=.8,threshold=.6,model_version='fixture',artifact_sha256='test-hash')))
+        self.manager.before_open.return_value=dict(status='bought',shares=1000,trade_id='test')
+        self.run_engine()
+        position=self.engine.learning.entry.call_args.args[0]['position']
+        self.assertEqual(position['decision_mode'],'model')
+        self.assertEqual(position['model_artifact_sha256'],'test-hash')
+        self.assertEqual(position['model_score'],.8)
 
 class PublicFeedTests(unittest.TestCase):
     def test_wallet_balances_and_sizes_stay_private(self):
@@ -219,6 +233,16 @@ class PublicFeedTests(unittest.TestCase):
 
 
 class DeploymentTests(unittest.TestCase):
+    def test_daily_limit_uses_actual_runtime_configuration(self):
+        tree = ast.parse((ROOT/'intraday_live.py').read_text())
+        assignment = next(n for n in tree.body if isinstance(n,ast.Assign)
+                          and any(isinstance(t,ast.Name) and t.id=='MAX_DAILY_ENTRIES' for t in n.targets))
+        code = compile(ast.Module(body=[assignment],type_ignores=[]),'<limit>','exec')
+        for configured, expected in [('999',5),('5',5),('3',3),('0',1)]:
+            with patch.dict(os.environ,{'LIVE_MAX_DAILY_ENTRIES':configured}):
+                ns={'os':os};exec(code,ns)
+                self.assertEqual(ns['MAX_DAILY_ENTRIES'],expected)
+
     def test_tracked_vm_entrypoint_matches_runtime(self):
         """A VM pull must not leave the scheduled root entrypoint on old code."""
         repo = ROOT.parent

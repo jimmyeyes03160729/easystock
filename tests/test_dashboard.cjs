@@ -34,6 +34,12 @@ run(main);w.onload=null;
   run(`INTRADAY_LIVE={last_update_at:taiwanDay()+'T13:00:00+08:00',session:'closed'};`);
   assert.equal(run(`liveDataState(Date.parse(taiwanDay()+'T20:00:00+08:00')).label`),'當沖已結束');
 
+  // A date embedded in an old model name is not deployment evidence.
+  run(`INTRADAY_LIVE={model_status:{version:'paper-adaptive-2026-09-10-old'}};renderLiveIntraday();`);
+  assert(w.document.getElementById('intradayModelBadge').textContent.includes('模式待確認'));
+  run(`INTRADAY_LIVE.config={entry_mode:'rules',model_ready:false};renderLiveIntraday();`);
+  assert(w.document.getElementById('intradayModelBadge').textContent.includes('規則模式'));
+
   // Daily source remains independently refreshable when overnight is inaccessible.
   run(`META={release_id:'old'};globalThis.reloadCount=0;fetchMarketData=async()=>{reloadCount++;};`);
   w.fetch=async url=>{if(url.includes('intraday_picks'))throw Error('denied');return {ok:true,json:async()=>'new'};};
@@ -48,10 +54,17 @@ run(main);w.onload=null;
 
   // Full DOM composition in production order, without a monkey-patched renderer.
   const renderer=run('renderLinePickList');
-  w.fetch=async()=>({ok:true,json:async()=>null});
+  w.fetch=async url=>({ok:true,json:async()=>url.includes('daytrade_learning_status')?{
+    schema_version:1,updated_at:new Date().toISOString(),phase:'idle',
+    model_application:{status:'not_applied',model_version:'paper-adaptive-2026-09-10-old'},
+    paper_learning:{training:{trained_through:'2026-09-10',train_samples:100}}
+  }:null});
   for(const file of ['learning-status.js','rebound-engine.js','rebound-ui.js','dashboard-layout.js'])
     run(fs.readFileSync(path.join(__dirname,'../assets',file),'utf8'));
   await new Promise(resolve=>setImmediate(resolve));
+  assert(w.document.getElementById('learnModel').textContent.includes('尚未套用'));
+  assert(!w.document.getElementById('learnModel').textContent.includes('採用'));
+  assert(w.document.getElementById('intradayModelBadge').textContent.includes('規則模式'));
   assert.equal(run('renderLinePickList'),renderer);
   assert(!w.document.getElementById('overnightModule'));
   assert(w.document.getElementById('reboundLayout').contains(w.document.getElementById('reboundModule')));

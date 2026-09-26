@@ -371,10 +371,10 @@ RADAR_MAX_WARM_QUERIES = max(
     ),
 )
 
-# 使用者要求：每天最多只產生 3 檔當沖 ENTRY。
+# 每日最多 5 檔，可由環境設定更低上限。
 paper_wallet = PaperWallet()
 
-MAX_DAILY_ENTRIES = 999
+MAX_DAILY_ENTRIES = max(1, min(5, int(os.environ.get('LIVE_MAX_DAILY_ENTRIES', '5'))))
 
 FIREBASE_PRICE_UPDATE_SECONDS = max(
     1.0,
@@ -2779,6 +2779,9 @@ class IntradayLiveEngine:
         self.entry_mode = os.environ.get('LIVE_ENTRY_MODE', 'rules')
         if self.entry_mode not in {'rules', 'model'}:
             raise ValueError('LIVE_ENTRY_MODE must be rules or model')
+        print(f"[MODEL_BOOT] mode={self.entry_mode} ready={self.daytrade_model.artifact is not None} "
+              f"version={self.daytrade_model.model_version} sha256={self.daytrade_model.artifact_sha256} "
+              f"threshold={self.daytrade_model.threshold} learning={self.learning.enabled}")
         self._market_checked_at = 0.0
         self.market_valid_until = 0.0
         self.market_risk = {'valid': False, 'reason': 'not_checked'}
@@ -2866,6 +2869,7 @@ class IntradayLiveEngine:
                 "entry_mode": self.entry_mode,
                 "model_version": self.daytrade_model.model_version,
                 "model_ready": self.daytrade_model.artifact is not None,
+                "model_artifact_sha256": self.daytrade_model.artifact_sha256,
                 "learning_enabled": self.learning.enabled,
                 "exit_mode": self.manager.exit_mode,
                 "candidate_mode":
@@ -4185,7 +4189,19 @@ class IntradayLiveEngine:
                     )
             return
 
+        # Persist the actual decision source with the filled ENTRY, never infer it
+        # later from a training date or the status panel's latest model name.
+        used_model = self.entry_mode == 'model'
+        event['position'].update({
+            'decision_mode': self.entry_mode,
+            'model_version': model_decision.get('model_version') if used_model else None,
+            'model_artifact_sha256': model_decision.get('artifact_sha256') if used_model else None,
+            'model_score': model_decision.get('probability') if used_model else None,
+            'model_threshold': model_decision.get('threshold') if used_model else None,
+        })
         self.learning.entry(event)
+        print(f"[ENTRY_DECISION] mode={self.entry_mode} "
+              f"version={event['position']['model_version']} sha256={event['position']['model_artifact_sha256']}")
 
         try:
             self.store.write_entry(
@@ -4882,7 +4898,7 @@ class IntradayLiveEngine:
     def run(self) -> None:
         print("======================================")
         print("Easystock Shioaji Intraday Live V5")
-        print("Instant Volume Surge Radar / Max 3")
+        print(f"Instant Volume Surge Radar / Max {MAX_DAILY_ENTRIES}")
         print("======================================")
         print(
             "UNIVERSE 09:00~12:30 | "

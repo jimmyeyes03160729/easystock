@@ -77,7 +77,7 @@ class Recorder:
 
     def entry(self, event):
         p=event.get('position',{})
-        self.submit('entry',{k:p.get(k) for k in ('symbol','name','trade_id','execution_kind','shares','entry_time','entry_price','entry_score','stop_price','take_profit_price')})
+        self.submit('entry',{k:p.get(k) for k in ('symbol','name','trade_id','execution_kind','shares','entry_time','entry_price','entry_score','stop_price','take_profit_price','decision_mode','model_version','model_artifact_sha256','model_score','model_threshold')})
 
     def exit(self, event):
         p=event.get('trade',{})
