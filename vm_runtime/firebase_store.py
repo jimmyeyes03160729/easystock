@@ -71,6 +71,12 @@ SERVICE_ACCOUNT_JSON = (
 # JSON / Firebase 安全格式
 # =========================================================
 
+def public_trade(record):
+    """Publish strategy prices/status, never private wallet balances or sizes."""
+    return {key: value for key, value in record.items()
+            if key not in {'shares', 'settlement', 'start_balance', 'end_balance', 'current_capital'}}
+
+
 def safe_value(value):
 
     if isinstance(
@@ -347,7 +353,7 @@ class FirebaseStore:
 
 
         payload = {
-            **position,
+            **public_trade(position),
 
             "status":
                 "OPEN",
@@ -506,7 +512,7 @@ class FirebaseStore:
 
 
         payload = {
-            **trade,
+            **public_trade(trade),
 
             "trade_id":
                 trade_id,

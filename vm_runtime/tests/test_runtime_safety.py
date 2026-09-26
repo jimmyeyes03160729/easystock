@@ -207,4 +207,15 @@ class EngineTests(unittest.TestCase):
         self.engine.store.write_entry.assert_called_once()
         self.ns['push_line_text'].assert_called_once()
 
+class PublicFeedTests(unittest.TestCase):
+    def test_wallet_balances_and_sizes_stay_private(self):
+        tree=ast.parse((ROOT/'firebase_store.py').read_text())
+        fn=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='public_trade')
+        ns={};exec(compile(ast.Module(body=[fn],type_ignores=[]),'<public>','exec'),ns)
+        private=dict(symbol='TEST',entry_price=100,shares=1000,settlement={'end_balance':123456},trade_id='abc')
+        public=ns['public_trade'](private)
+        self.assertEqual(public,dict(symbol='TEST',entry_price=100,trade_id='abc'))
+        self.assertIn('settlement',private)
+
+
 if __name__=='__main__':unittest.main()
