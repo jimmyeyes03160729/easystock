@@ -18,7 +18,7 @@ def main():
     parser.add_argument('--send',action='store_true')
     args=parser.parse_args()
     now=datetime.now(TPE);day=now.date().isoformat()
-    if args.send and (now.weekday()>=5 or not time(13,35)<=now.time().replace(tzinfo=None)<=time(20,30)):
+    if args.send and (now.weekday()>=5 or not time(13,25)<=now.time().replace(tzinfo=None)<=time(20,30)):
         print('Outside scheduled summary window; skipped');return
     DATA.mkdir(parents=True,exist_ok=True,mode=0o700)
     with open(DATA/'summary.lock','a') as lock:
@@ -30,15 +30,18 @@ def main():
         if not text:print('No current-day report');return
         if not args.send:print(text);return
         import requests
-        from line_bot import access_token
+        from line_bot import access_token, default_target
         from line_group_manager import get_active_groups
-        from line_policy import push_allowed
-        groups=[gid for gid in get_active_groups() if push_allowed(gid,'other')]
-        if not groups:print('No active LINE groups');return
+        targets = set(get_active_groups())
+        user_tgt = default_target()
+        if user_tgt:
+            targets.add(user_tgt)
+        if not targets:
+            print('No active LINE targets');return
         token=access_token()
         if not token:raise RuntimeError('LINE token missing')
         failures=0;sent=0
-        for gid in sorted(set(groups)):
+        for gid in sorted(targets):
             tag=hashlib.sha256(gid.encode()).hexdigest()[:20]
             path=DATA/'summary-delivery'/(day+'-'+tag+'.json')
             record=json.loads(path.read_text()) if path.exists() else {'text':text,'retry_key':str(uuid.uuid4()),'sent':False}
@@ -54,10 +57,14 @@ def main():
                 accepted=200<=response.status_code<300 or (response.status_code==409 and bool(response.headers.get('x-line-accepted-request-id')))
                 if accepted:
                     record['sent']=True;save(path,record);sent+=1
-                else:failures+=1
-            except requests.RequestException:failures+=1
+                else:
+                    failures+=1
+                    print(f"[WARN] LINE push to {gid[:8]} failed HTTP {response.status_code}: {response.text[:200]}")
+            except requests.RequestException as exc:
+                failures+=1
+                print(f"[ERROR] LINE push to {gid[:8]} exception: {exc}")
         print(f'Summary requests accepted: {sent}; failed: {failures}')
-        if failures:raise SystemExit(1)
+        if failures and not sent:raise SystemExit(1)
 
 
 if __name__=='__main__':main()

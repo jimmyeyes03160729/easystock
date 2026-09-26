@@ -41,7 +41,17 @@ UPDATE_TEXT="""🆕 當沖吧！牛馬仔｜EasyStock LINE Hub V5.2
 
 輸入「指令」查看全部功能。"""
 
-NOTIFY_INFO_TEXT='🔔 當沖吧！牛馬仔｜LINE 自動通知\n\n08:35\u3000AI 開盤前市場快報\n08:50\u3000盤中服務排程啟動\n09:00\u3000量能雷達開始\n09:30\u3000允許產生當沖進場訊號\n12:30\u3000停止新進場\n12:55\u3000追蹤部位強制結束\n13:00\u3000當日盤中服務結束\n\n盤中符合策略條件時：\n• 進場訊號 → LINE 通知\n• 出場訊號 → LINE 通知\n• 這是訊號 / 追蹤系統，不會自動送真實券商委託\n\n輸入「早報」看最新早報\n輸入「當沖」看最新盤中狀態'
+NOTIFY_INFO_TEXT = """🔔 當沖吧！牛馬仔｜LINE 自動通知
+
+【自動推播規則】
+目前已全面關閉所有早報與盤中逐筆通知。
+每日僅保留一則自動推播：
+• 13:30 當沖結盤總結（今日買進部位、各別損益 %、總勝率）
+
+【手動即時查詢】
+輸入「當沖」：隨時查閱今日當沖結盤與部位
+輸入「早報」：隨時查閱開盤前 AI 市場快報
+輸入「P2330」：隨時查閱即時蘋果風走勢圖卡"""
 def _db_module():
     import firebase_admin
     from firebase_admin import db
@@ -121,54 +131,80 @@ def latest_premarket_text():
         f"⚠️ 風險：{risk_text}",
     ])
 
-def latest_daytrade_text():
+def latest_daytrade_text(target_date: str | None = None):
     from datetime import datetime, timezone, timedelta
     import math
-    today = datetime.now(timezone(timedelta(hours=8))).date().isoformat()
+    today = target_date or datetime.now(timezone(timedelta(hours=8))).date().isoformat()
     try:
         root = _read('/market_data/intraday_live')
     except Exception:
-        return ""
-    if not isinstance(root, dict) or root.get('scan_date') != today:
-        return ""
-    def same_day(row):
+        root = {}
+
+    closed = []
+    opens = []
+
+    if isinstance(root, dict) and root.get('scan_date') == today:
+        def same_day(row):
+            try:
+                value = datetime.fromisoformat(str(row.get('entry_time', '')).replace('Z', '+00:00'))
+                if value.tzinfo is None:
+                    value = value.replace(tzinfo=timezone(timedelta(hours=8)))
+                return value.astimezone(timezone(timedelta(hours=8))).date().isoformat() == today
+            except (TypeError, ValueError):
+                return False
+        closed = [r for r in _rows(root.get('closed_trades')) if same_day(r) and str(r.get('status','')).upper() == 'CLOSED']
+        opens = [r for r in _rows(root.get('open_positions')) if same_day(r)]
+
+    # 若 Firebase 尚無或已清除，嘗試自本地學習日誌中讀取
+    if not closed and not opens:
         try:
-            value = datetime.fromisoformat(str(row.get('entry_time', '')).replace('Z', '+00:00'))
-            if value.tzinfo is None:
-                value = value.replace(tzinfo=timezone(timedelta(hours=8)))
-            return value.astimezone(timezone(timedelta(hours=8))).date().isoformat() == today
-        except (TypeError, ValueError):
-            return False
-    closed = [r for r in _rows(root.get('closed_trades')) if same_day(r) and str(r.get('status','')).upper() == 'CLOSED']
-    opens = [r for r in _rows(root.get('open_positions')) if same_day(r)]
+            from daytrade_learning.runtime import DATA
+            jpath = DATA / f"journal-{today}.jsonl"
+            if jpath.exists():
+                import json
+                with open(jpath, encoding="utf-8") as f:
+                    for line in f:
+                        if not line.strip(): continue
+                        try:
+                            rec = json.loads(line)
+                            if rec.get("kind") == "exit" and isinstance(rec.get("data"), dict):
+                                closed.append(rec["data"])
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
     values = []
-    lines = [f"⚡ 當沖吧！牛馬仔｜當沖訊號追蹤 {today}", ""]
-    for row in sorted(closed, key=lambda r:str(r.get('entry_time',''))):
-        raw = row.get('pnl_pct')
-        if raw is None:
-            raw = row.get('return_pct')
-        pnl = _num(raw)
-        if pnl is not None and not math.isfinite(pnl):
-            pnl = None
-        name = str(row.get('name') or row.get('symbol') or '--')
-        if pnl is None:
-            lines.append(f"⚪ {name} 已結束，損益缺值")
-        else:
-            values.append(pnl)
-            icon = '🔴' if pnl > 0 else '🟢' if pnl < 0 else '⚪'
-            lines.append(f"{icon} {name} {pnl:+.2f}%")
+    lines = [f"📊 EasyStock｜13:30 當沖結盤總結", f"📅 日期：{today}", ""]
+    if closed:
+        lines.append("【今日當沖部位與損益】")
+        for row in sorted(closed, key=lambda r:str(r.get('entry_time',''))):
+            raw = row.get('pnl_pct')
+            if raw is None:
+                raw = row.get('return_pct')
+            pnl = _num(raw)
+            if pnl is not None and not math.isfinite(pnl):
+                pnl = None
+            name = str(row.get('name') or row.get('symbol') or '--')
+            sym = str(row.get('symbol') or '')
+            sym_tag = f" ({sym})" if sym and sym != name else ""
+            if pnl is None:
+                lines.append(f"⚪ {name}{sym_tag} 已結束，損益缺值")
+            else:
+                values.append(pnl)
+                icon = '🔴' if pnl > 0 else '🟢' if pnl < 0 else '⚪'
+                lines.append(f"{icon} {name}{sym_tag} {pnl:+.2f}%")
+
     lines += ["", f"推薦 {len(closed)+len(opens)} 筆｜已結束 {len(closed)} 筆｜追蹤中 {len(opens)} 筆"]
     if values:
         wins = sum(v > 0 for v in values)
-        lines += [f"已結束訊號勝率：{wins/len(values)*100:.1f}%（{wins}/{len(values)}）",
-                  f"已結束訊號平均報酬：{sum(values)/len(values):+.2f}%"]
+        lines += [
+            f"🎯 總勝率：{wins/len(values)*100:.1f}%（{wins}/{len(values)}）",
+            f"📈 平均報酬：{sum(values)/len(values):+.2f}%"
+        ]
     elif not closed and not opens:
-        lines.append("今日無推薦紀錄。")
+        lines.append("今日無推薦或當沖交易紀錄。")
     else:
         lines.append("尚無可計算的已結束損益。")
-    if len(values) < len(closed):
-        lines.append(f"損益缺值 {len(closed)-len(values)} 筆，未納入勝率。")
-    if opens:
-        lines.append("追蹤中部位未納入勝率；收盤後仍存在時請檢查結算。")
-    lines.append("以上為訊號模擬追蹤，未扣成本；非券商實際成交或帳戶總報酬。")
+
     return "\n".join(lines)
