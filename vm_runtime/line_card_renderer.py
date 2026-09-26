@@ -442,6 +442,168 @@ def render_stock_intraday_card(snapshot: dict, rows: list[dict], path: Path) -> 
     return _save(fig, path)
 
 
+def render_stock_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Path:
+    """Pure sparkline intraday chart (no duplicate header/text) for the Stitch hybrid Flex layout."""
+    fig = plt.figure(figsize=(4.8, 2.7), dpi=130, facecolor=BG)
+    ax = fig.add_axes([0.04, 0.32, 0.80, 0.64])
+    axv = fig.add_axes([0.04, 0.08, 0.80, 0.22], sharex=ax)
+
+    ref = _num(snapshot.get("reference"))
+    avg = _num(snapshot.get("average_price"))
+    valid = [r for r in rows if r.get("close") is not None]
+    if valid:
+        times = [r["time"] for r in valid]
+        closes = [float(r["close"]) for r in valid]
+        vols = [float(r.get("volume") or 0) for r in valid]
+
+        xvals = [(t.hour * 60 + t.minute) - 540 for t in times]
+        base = ref if ref is not None else closes[0]
+
+        all_pts = closes + ([base] if base else []) + ([avg] if avg else [])
+        min_p, max_p = min(all_pts), max(all_pts)
+        max_diff = max(abs(max_p - base), abs(base - min_p), 1.0)
+        ax.set_ylim(base - max_diff * 1.15, base + max_diff * 1.15)
+
+        # Baseline
+        ax.axhline(base, color="#9CA3AF", lw=0.8, ls="--", alpha=0.9, zorder=2)
+
+        # Filled area
+        ax.fill_between(xvals, closes, base, where=[c >= base for c in closes],
+                        color=RED, alpha=0.14, interpolate=True, zorder=2)
+        ax.fill_between(xvals, closes, base, where=[c < base for c in closes],
+                        color=GREEN, alpha=0.14, interpolate=True, zorder=2)
+
+        curve_color = GREEN if closes[-1] < base else RED
+        ax.plot(xvals, closes, color=curve_color, lw=1.6, zorder=4)
+
+        if avg:
+            ax.axhline(avg, color=AMBER, lw=0.8, ls=":", alpha=0.85, zorder=3)
+
+        hi_idx = max(range(len(closes)), key=lambda i: closes[i])
+        lo_idx = min(range(len(closes)), key=lambda i: closes[i])
+        hx, hy = xvals[hi_idx], closes[hi_idx]
+        lx, ly = xvals[lo_idx], closes[lo_idx]
+
+        ax.scatter([hx], [hy], s=16, color=RED, zorder=5)
+        ax.text(hx, hy + (max_diff * 0.05), f"{hy:.2f}", color=RED,
+                fontsize=7.2, fontweight="bold", ha="center", va="bottom", zorder=6)
+
+        ax.scatter([lx], [ly], s=16, color=GREEN, zorder=5)
+        ax.text(lx, ly - (max_diff * 0.05), f"{ly:.2f}", color=GREEN,
+                fontsize=7.2, fontweight="bold", ha="center", va="top", zorder=6)
+
+        ax.scatter([xvals[-1]], [closes[-1]], s=24, color=curve_color,
+                   edgecolors="#FFFFFF", linewidths=1.2, zorder=7)
+
+        ticks = [0, 60, 120, 180, 240, 270]
+        labels = ["09:00", "10:00", "11:00", "12:00", "13:00", ""]
+        ax.set_xlim(0, 270)
+        ax.set_xticks(ticks)
+        ax.tick_params(axis="x", labelbottom=False)
+
+        # Right Y-axis
+        y_ticks = ax.get_yticks()
+        ax_r = ax.twinx()
+        ax_r.set_ylim(ax.get_ylim())
+        r_labels = [f"{(y - base) / base * 100:+.1f}%" if base else "" for y in y_ticks]
+        ax_r.set_yticks(y_ticks)
+        ax_r.set_yticklabels(r_labels, fontsize=6.8)
+        ax_r.tick_params(colors=TEXT_MUTED, length=2, width=0.6)
+        for s in ax_r.spines.values():
+            s.set_visible(False)
+
+        # Volume bars in warm amber
+        axv.bar(xvals, vols, width=0.9, color="#F59E0B", alpha=0.85)
+        axv.set_xlim(0, 270)
+        axv.set_xticks(ticks)
+        axv.set_xticklabels(labels, fontsize=7.0)
+        axv.tick_params(axis="y", labelleft=False)
+    else:
+        ax.text(0.5, 0.5, "暫無分時走勢", transform=ax.transAxes,
+                ha="center", va="center", color=TEXT_MUTED, fontsize=10)
+
+    _style_chart_white(ax)
+    _style_chart_white(axv)
+    return _save(fig, path)
+
+
+def render_market_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Path:
+    """Pure sparkline intraday chart for market index."""
+    fig = plt.figure(figsize=(4.8, 2.7), dpi=130, facecolor=BG)
+    ax = fig.add_axes([0.04, 0.32, 0.80, 0.64])
+    axv = fig.add_axes([0.04, 0.08, 0.80, 0.22], sharex=ax)
+
+    ref = _num(snapshot.get("reference"))
+    valid = [r for r in rows if r.get("close") is not None]
+    if valid:
+        times = [r["time"] for r in valid]
+        closes = [float(r["close"]) for r in valid]
+        vols = [float(r.get("volume") or 0) for r in valid]
+
+        xvals = [(t.hour * 60 + t.minute) - 540 for t in times]
+        base = ref if ref is not None else closes[0]
+
+        all_pts = closes + ([base] if base else [])
+        min_p, max_p = min(all_pts), max(all_pts)
+        max_diff = max(abs(max_p - base), abs(base - min_p), 10.0)
+        ax.set_ylim(base - max_diff * 1.15, base + max_diff * 1.15)
+
+        ax.axhline(base, color="#9CA3AF", lw=0.8, ls="--", alpha=0.9, zorder=2)
+
+        ax.fill_between(xvals, closes, base, where=[c >= base for c in closes],
+                        color=RED, alpha=0.14, interpolate=True, zorder=2)
+        ax.fill_between(xvals, closes, base, where=[c < base for c in closes],
+                        color=GREEN, alpha=0.14, interpolate=True, zorder=2)
+
+        curve_color = GREEN if closes[-1] < base else RED
+        ax.plot(xvals, closes, color=curve_color, lw=1.6, zorder=4)
+
+        hi_idx = max(range(len(closes)), key=lambda i: closes[i])
+        lo_idx = min(range(len(closes)), key=lambda i: closes[i])
+        hx, hy = xvals[hi_idx], closes[hi_idx]
+        lx, ly = xvals[lo_idx], closes[lo_idx]
+
+        ax.scatter([hx], [hy], s=16, color=RED, zorder=5)
+        ax.text(hx, hy + (max_diff * 0.05), f"{hy:,.1f}", color=RED,
+                fontsize=7.2, fontweight="bold", ha="center", va="bottom", zorder=6)
+
+        ax.scatter([lx], [ly], s=16, color=GREEN, zorder=5)
+        ax.text(lx, ly - (max_diff * 0.05), f"{ly:,.1f}", color=GREEN,
+                fontsize=7.2, fontweight="bold", ha="center", va="top", zorder=6)
+
+        ax.scatter([xvals[-1]], [closes[-1]], s=24, color=curve_color,
+                   edgecolors="#FFFFFF", linewidths=1.2, zorder=7)
+
+        ticks = [0, 60, 120, 180, 240, 270]
+        labels = ["09:00", "10:00", "11:00", "12:00", "13:00", ""]
+        ax.set_xlim(0, 270)
+        ax.set_xticks(ticks)
+        ax.tick_params(axis="x", labelbottom=False)
+
+        y_ticks = ax.get_yticks()
+        ax_r = ax.twinx()
+        ax_r.set_ylim(ax.get_ylim())
+        r_labels = [f"{(y - base) / base * 100:+.1f}%" if base else "" for y in y_ticks]
+        ax_r.set_yticks(y_ticks)
+        ax_r.set_yticklabels(r_labels, fontsize=6.8)
+        ax_r.tick_params(colors=TEXT_MUTED, length=2, width=0.6)
+        for s in ax_r.spines.values():
+            s.set_visible(False)
+
+        axv.bar(xvals, vols, width=0.9, color="#F59E0B", alpha=0.85)
+        axv.set_xlim(0, 270)
+        axv.set_xticks(ticks)
+        axv.set_xticklabels(labels, fontsize=7.0)
+        axv.tick_params(axis="y", labelleft=False)
+    else:
+        ax.text(0.5, 0.5, "暫無大盤走勢", transform=ax.transAxes,
+                ha="center", va="center", color=TEXT_MUTED, fontsize=10)
+
+    _style_chart_white(ax)
+    _style_chart_white(axv)
+    return _save(fig, path)
+
+
 # ==========================================
 # 2. Market Intraday Card (P大盤)
 # ==========================================

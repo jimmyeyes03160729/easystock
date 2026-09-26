@@ -49,6 +49,8 @@ from line_card_renderer import (
     render_market_intraday_card,
     render_k_card,
     render_institutional_card,
+    render_stock_sparkline,
+    render_market_sparkline,
 )
 
 TPE = timezone(timedelta(hours=8))
@@ -1453,6 +1455,45 @@ def yahoo_quote_url(target: str, market: bool = False) -> str:
     return f"https://tw.stock.yahoo.com/quote/{code}"
 
 
+def _format_compact_volume(vol: float | None, is_market: bool = False) -> str:
+    if vol is None:
+        return "--"
+    if is_market:
+        yi = vol / 100_000_000.0
+        return f"{int(round(yi)):,}億"
+    v = float(vol)
+    if v >= 10000:
+        return f"{v/1000.0:.1f}k張"
+    return f"{int(round(v)):,}張"
+
+
+def _build_nav_pill(label: str, action_data: dict, is_active: bool) -> dict:
+    bg_color = "#F59E0B" if is_active else "#F3F4F6"
+    text_color = "#FFFFFF" if is_active else "#374151"
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "flex": 1,
+        "cornerRadius": "6px",
+        "paddingTop": "6px",
+        "paddingBottom": "6px",
+        "paddingStart": "2px",
+        "paddingEnd": "2px",
+        "backgroundColor": bg_color,
+        "action": action_data,
+        "contents": [
+            {
+                "type": "text",
+                "text": label,
+                "size": "xxs",
+                "align": "center",
+                "weight": "bold",
+                "color": text_color,
+            }
+        ],
+    }
+
+
 def interactive_card_message(
     url: str,
     *,
@@ -1460,60 +1501,268 @@ def interactive_card_message(
     target: str,
     selected: str,
     market: bool = False,
+    snapshot: dict | None = None,
 ) -> dict:
-    """Wrap the compact PNG in LINE Flex with real clickable actions.
+    """Wrap stock/market chart in a modern Apple-styled LINE Flex card.
 
-    V4.3 behavior:
-    - Tapping the chart/image opens the matching Yahoo Taiwan quote page.
-    - The EasyStock button still opens the user's EasyStock website.
-    - P/K/T buttons stay as LINE message actions.
+    - P (Real-time): Hybrid Flex card. Header, price HUD, change badges, and navigation
+      are native LINE text/box components. ONLY the sparkline curve is an image.
+    - K (K-line) / T (Institutions): 1:1 rich chart with identical slender bottom tabs.
+    - Slender pills use box actions with xxs font, ensuring all 6 buttons fit
+      elegantly on mobile screens without truncation.
     """
     selected = selected.upper().strip()
+
     if market:
-        commands = {
-            "P": ("即時", "P大盤"),
-            "K": ("K線", "K大盤"),
-            "T": ("法人", "T大盤"),
-        }
+        buttons = [
+            _build_nav_pill("P即時", {"type": "message", "label": "P即時", "text": "P大盤"}, selected == "P"),
+            _build_nav_pill("K線", {"type": "message", "label": "K線", "text": "K大盤"}, selected == "K"),
+            _build_nav_pill("T法人", {"type": "message", "label": "T法人", "text": "T大盤"}, selected == "T"),
+            _build_nav_pill("官網", {"type": "uri", "label": "官網", "uri": EASYSTOCK_WEB_URL}, False),
+        ]
         alt_target = "大盤"
     else:
-        commands = {
-            "P": ("即時", f"P{target}"),
-            "K": ("K線", f"K{target}"),
-            "T": ("法人", f"T{target}"),
-        }
+        buttons = [
+            _build_nav_pill("P即時", {"type": "message", "label": "P即時", "text": f"P{target}"}, selected == "P"),
+            _build_nav_pill("K線", {"type": "message", "label": "K線", "text": f"K{target}"}, selected == "K"),
+            _build_nav_pill("T法人", {"type": "message", "label": "T法人", "text": f"T{target}"}, selected == "T"),
+            _build_nav_pill("EPS", {"type": "message", "label": "EPS", "text": f"#{target}"}, False),
+            _build_nav_pill("F營收", {"type": "uri", "label": "F營收", "uri": f"https://tw.stock.yahoo.com/quote/{target}/revenue"}, False),
+            _build_nav_pill("D股利", {"type": "message", "label": "D股利", "text": f"D{target}"}, selected == "D"),
+        ]
         alt_target = target
 
-    buttons = []
-    for kind in ("P", "K", "T"):
-        label, command = commands[kind]
-        is_active = (kind == selected)
-        btn_dict = {
-            "type": "button",
-            "height": "sm",
-            "style": "primary" if is_active else "secondary",
-            "flex": 3,
-            "action": {
-                "type": "message",
-                "label": label,
-                "text": command,
-            },
-        }
-        if is_active:
-            btn_dict["color"] = "#F59E0B"
-        buttons.append(btn_dict)
+    footer_box = {
+        "type": "box",
+        "layout": "horizontal",
+        "spacing": "xs",
+        "paddingAll": "8px",
+        "backgroundColor": "#FFFFFF",
+        "contents": buttons,
+    }
 
-    buttons.append({
-        "type": "button",
-        "height": "sm",
-        "style": "link",
-        "flex": 3,
-        "action": {
-            "type": "uri",
-            "label": "官網",
-            "uri": EASYSTOCK_WEB_URL,
-        },
-    })
+    if selected == "P" and snapshot:
+        close = _num(snapshot.get("close"))
+        ref = _num(snapshot.get("reference"))
+        change = _num(snapshot.get("change_price"))
+        rate = _num(snapshot.get("change_rate"))
+        if change is None and close is not None and ref is not None:
+            change = close - ref
+        if rate is None and close is not None and ref not in (None, 0):
+            rate = (close / ref - 1.0) * 100.0
+
+        if change is not None and change > 0:
+            price_color = "#DC2626"
+            pill_bg = "#FEE2E2"
+            pill_text_color = "#DC2626"
+            change_str = f"▲ +{change:.2f} (+{rate:.2f}%)" if rate is not None else f"▲ +{change:.2f}"
+            share_change = f"+{change:.2f} (+{rate:.2f}%)" if rate is not None else f"+{change:.2f}"
+        elif change is not None and change < 0:
+            price_color = "#16A34A"
+            pill_bg = "#DCFCE7"
+            pill_text_color = "#16A34A"
+            change_str = f"▼ {change:.2f} ({rate:.2f}%)" if rate is not None else f"▼ {change:.2f}"
+            share_change = f"{change:.2f} ({rate:.2f}%)" if rate is not None else f"{change:.2f}"
+        else:
+            price_color = "#111827"
+            pill_bg = "#F3F4F6"
+            pill_text_color = "#4B5563"
+            change_str = "- 0.00 (0.00%)"
+            share_change = "0.00 (0.00%)"
+
+        price_display = _format_price(close)
+
+        if market:
+            raw_share = f"台股加權指數 最新報價：{price_display} ({share_change}) 來自 EasyStock\n{EASYSTOCK_WEB_URL}"
+        else:
+            raw_share = f"{title} ({target}) 最新報價：{price_display} ({share_change}) 來自 EasyStock\n{EASYSTOCK_WEB_URL}"
+        share_url = f"https://line.me/R/share?text={quote(raw_share)}"
+
+        ts = snapshot.get("ts") or snapshot.get("timestamp") or snapshot.get("datetime")
+        ts_str = ""
+        if ts:
+            ts_str = str(ts)[11:19] if len(str(ts)) >= 19 else str(ts)
+        category = "指數" if market else (str(snapshot.get("exchange") or "上市") + " · " + target + ".TW")
+        sub_info = f"{category} · {ts_str}" if ts_str else category
+
+        open_val = _format_price(_num(snapshot.get("open")))
+        high_val = _format_price(_num(snapshot.get("high")))
+        low_val = _format_price(_num(snapshot.get("low")))
+        ref_val = _format_price(ref)
+        vol_val = _format_compact_volume(_num(snapshot.get("total_amount") if market else snapshot.get("total_volume")), is_market=market)
+
+        def _metric_box(lbl: str, val: str, c: str) -> dict:
+            return {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "none",
+                "contents": [
+                    {"type": "text", "text": lbl, "size": "xxs", "color": "#9CA3AF"},
+                    {"type": "text", "text": val, "size": "xs", "weight": "bold", "color": c},
+                ],
+            }
+
+        bubble = {
+            "type": "bubble",
+            "header": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "xs",
+                "paddingBottom": "none",
+                "backgroundColor": "#FFFFFF",
+                "contents": [
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "alignItems": "center",
+                        "contents": [
+                            {"type": "text", "text": title, "size": "xl", "weight": "bold", "color": "#111827", "flex": 0},
+                            {
+                                "type": "box",
+                                "layout": "vertical",
+                                "flex": 0,
+                                "margin": "sm",
+                                "backgroundColor": "#F3F4F6",
+                                "cornerRadius": "4px",
+                                "paddingStart": "6px",
+                                "paddingEnd": "6px",
+                                "paddingTop": "2px",
+                                "paddingBottom": "2px",
+                                "contents": [
+                                    {"type": "text", "text": target, "size": "xxs", "weight": "bold", "color": "#4B5563"}
+                                ],
+                            },
+                            {"type": "box", "layout": "vertical", "flex": 1, "contents": []},
+                            {
+                                "type": "box",
+                                "layout": "horizontal",
+                                "flex": 0,
+                                "backgroundColor": "#F3F4F6",
+                                "cornerRadius": "12px",
+                                "paddingStart": "8px",
+                                "paddingEnd": "8px",
+                                "paddingTop": "3px",
+                                "paddingBottom": "3px",
+                                "action": {
+                                    "type": "uri",
+                                    "label": "分享",
+                                    "uri": share_url,
+                                },
+                                "contents": [
+                                    {"type": "text", "text": "分享 ↗", "size": "xxs", "weight": "bold", "color": "#6B7280"}
+                                ],
+                            },
+                        ],
+                    },
+                    {"type": "text", "text": sub_info, "size": "xxs", "color": "#9CA3AF"},
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "spacing": "md",
+                        "alignItems": "center",
+                        "margin": "sm",
+                        "contents": [
+                            {"type": "text", "text": price_display, "size": "xxl", "weight": "bold", "color": price_color, "flex": 0},
+                            {
+                                "type": "box",
+                                "layout": "horizontal",
+                                "flex": 0,
+                                "backgroundColor": pill_bg,
+                                "cornerRadius": "4px",
+                                "paddingStart": "6px",
+                                "paddingEnd": "6px",
+                                "paddingTop": "3px",
+                                "paddingBottom": "3px",
+                                "contents": [
+                                    {"type": "text", "text": change_str, "size": "xs", "weight": "bold", "color": pill_text_color}
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "sm",
+                "paddingTop": "xs",
+                "backgroundColor": "#FFFFFF",
+                "contents": [
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "spacing": "sm",
+                        "contents": [
+                            {
+                                "type": "box",
+                                "layout": "vertical",
+                                "flex": 3,
+                                "backgroundColor": "#F9FAFB",
+                                "cornerRadius": "6px",
+                                "paddingAll": "6px",
+                                "spacing": "xs",
+                                "contents": [
+                                    _metric_box("開盤", open_val, "#111827"),
+                                    _metric_box("最高", high_val, "#DC2626"),
+                                    _metric_box("最低", low_val, "#16A34A"),
+                                    _metric_box("昨收", ref_val, "#111827"),
+                                    _metric_box("成交", vol_val, "#D97706"),
+                                ],
+                            },
+                            {
+                                "type": "box",
+                                "layout": "vertical",
+                                "flex": 7,
+                                "contents": [
+                                    {
+                                        "type": "image",
+                                        "url": url,
+                                        "size": "full",
+                                        "aspectRatio": "16:9",
+                                        "aspectMode": "cover",
+                                        "action": {
+                                            "type": "uri",
+                                            "label": "Yahoo股市",
+                                            "uri": yahoo_quote_url(target, market=market),
+                                        },
+                                    }
+                                ],
+                            },
+                        ],
+                    },
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "backgroundColor": "#FEF3C7",
+                        "cornerRadius": "6px",
+                        "paddingAll": "6px",
+                        "margin": "sm",
+                        "action": {
+                            "type": "uri",
+                            "label": "當沖雷達",
+                            "uri": "https://jimmyeyes.com/easystock/#dashboard",
+                        },
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": "⚡ EasyStock 當沖量化雷達 · 點擊查看",
+                                "size": "xxs",
+                                "weight": "bold",
+                                "color": "#B45309",
+                                "align": "center",
+                                "flex": 1,
+                            }
+                        ],
+                    },
+                ],
+            },
+            "footer": footer_box,
+        }
+        return {
+            "type": "flex",
+            "altText": f"{title} {alt_target} 即時走勢",
+            "contents": bubble,
+        }
 
     return {
         "type": "flex",
@@ -1533,14 +1782,7 @@ def interactive_card_message(
                     "uri": yahoo_quote_url(target, market=market),
                 },
             },
-            "footer": {
-                "type": "box",
-                "layout": "horizontal",
-                "spacing": "xs",
-                "paddingAll": "4px",
-                "backgroundColor": "#FFFFFF",
-                "contents": buttons,
-            },
+            "footer": footer_box,
         },
     }
 
@@ -1587,11 +1829,11 @@ def handle_command(cmd: ParsedCommand) -> list[dict]:
                     rows = SJ.intraday_rows("IX0001")
                 except Exception:
                     rows = []
-                chart = render_market_intraday_card(
+                chart = render_market_sparkline(
                     snap, rows, _card_path("P_market")
                 )
                 url = make_chart_url(chart)
-                return [interactive_card_message(url, title="加權指數", target="大盤", selected="P", market=True)] if url else [chart_fallback(chart)]
+                return [interactive_card_message(url, title="加權指數", target="大盤", selected="P", market=True, snapshot=snap)] if url else [chart_fallback(chart)]
 
             if cmd.kind == "K":
                 rows = twse_taiex_daily_rows(months=4)
@@ -1643,11 +1885,11 @@ def handle_command(cmd: ParsedCommand) -> list[dict]:
             snap["name"] = name
             snap = _stamp_snapshot(snap)
             rows = SJ.intraday_rows(code)
-            chart = render_stock_intraday_card(
+            chart = render_stock_sparkline(
                 snap, rows, _card_path(f"P_{code}")
             )
             url = make_chart_url(chart)
-            return [interactive_card_message(url, title=name, target=code, selected="P", market=False)] if url else [chart_fallback(chart)]
+            return [interactive_card_message(url, title=name, target=code, selected="P", market=False, snapshot=snap)] if url else [chart_fallback(chart)]
 
         if cmd.kind == "K":
             end = now_tpe().date()
