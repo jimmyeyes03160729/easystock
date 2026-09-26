@@ -11,7 +11,10 @@ from datetime import datetime, timezone, timedelta
 from urllib.request import Request, urlopen
 
 TPE = timezone(timedelta(hours=8))
-from .features import LEGACY_FEATURES as FEATURES
+if __package__:
+    from .features import LEGACY_FEATURES as FEATURES
+else:
+    from features import LEGACY_FEATURES as FEATURES
 SCHEMA_VERSION = "legacy-offline-v1"
 
 
