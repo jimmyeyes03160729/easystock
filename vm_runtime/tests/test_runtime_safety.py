@@ -244,5 +244,17 @@ class DeploymentTests(unittest.TestCase):
         engine.assert_not_called()
         self.assertIsNone(ns['_ENGINE'])
 
+    def test_calendar_failure_keeps_premarket_stopped(self):
+        tree = ast.parse((ROOT/'premarket_ai.py').read_text())
+        main = next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')
+        build_brief = Mock()
+        ns = {'os':os, 'sys':sys, 'build_brief':build_brief}
+        exec(compile(ast.Module(body=[main],type_ignores=[]),'<premarket-main>','exec'),ns)
+        calendar = types.ModuleType('market_calendar')
+        calendar.is_market_open = Mock(side_effect=RuntimeError('calendar unavailable'))
+        with patch.dict(sys.modules,{'market_calendar':calendar}), patch.dict(os.environ,{'FORCE_PREMARKET_AI':'0'}):
+            ns['main']()
+        build_brief.assert_not_called()
+
 
 if __name__=='__main__':unittest.main()

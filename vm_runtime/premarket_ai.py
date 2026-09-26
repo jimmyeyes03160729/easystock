@@ -1698,7 +1698,8 @@ def main() -> None:
             print(f"🛑 [MARKET CLOSED] 今日台股休市 ({reason})，盤前晨報排程跳過。")
             return
     except Exception as _cal_exc:
-        print(f"⚠️ [CALENDAR WARN] 開盤日檢查例外: {_cal_exc}")
+        print(f"🛑 [CALENDAR ERROR] 開盤日檢查例外: {_cal_exc}，停止盤前晨報。")
+        return
 
     no_line = "--no-line" in sys.argv
     no_firebase = "--no-firebase" in sys.argv
