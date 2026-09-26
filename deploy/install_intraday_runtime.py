@@ -22,7 +22,8 @@ FILES = [
     "market_risk.py",
     "firebase_store.py",
     "paper_account.py",
-    "premarket_ai.py",
+    # The root premarket_ai.py is a compatibility entry point that executes
+    # vm_runtime/premarket_ai.py. Keep that entry point intact on the VM.
     "daytrade_learning/features.py",
     "daytrade_learning/core.py",
     "daytrade_learning/research.py",

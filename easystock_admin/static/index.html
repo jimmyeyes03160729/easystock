@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="dark">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EasyStock｜當沖管理</title>
+<link rel="stylesheet" href="/admin/assets/admin.css">
+<script defer src="https://accounts.google.com/gsi/client"></script>
+<script defer src="/admin/assets/admin.js"></script>
+<script defer src="/admin/assets/paper-trade.js"></script>
+  <script defer src="/admin/assets/order.js"></script>
+</head>
+<body>
+<header><a class="brand" href="https://jimmyeyes03160729.github.io/easystock/">E<span>EasyStock</span></a><button id="openOrderModal" type="button" style="background:#2563eb;color:#fff;font-weight:600;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;margin-left:auto;margin-right:12px;">🚀 永豐下單</button><button id="theme" type="button">切換明暗</button></header>
+<main>
+<section id="login" class="login panel">
+<p class="eyebrow">管理員登入</p><h1>當沖設定</h1><p class="muted">使用已授權的 Google 帳號登入。</p>
+<div id="googleButton"></div><p id="loginStatus" role="status">正在確認登入狀態…</p><button id="retryLogin" type="button" hidden>重新載入登入</button>
+</section>
+<section id="workspace" hidden>
+<div class="title"><div><p class="eyebrow">當沖管理</p><h1>把推薦範圍設好。</h1><p class="muted">新推薦與 LINE／Telegram 進場通知前，會套用最新限制。</p></div><button id="logout" type="button">登出</button></div>
+<div class="identity"><span id="identity"></span><span id="version"></span></div>
+<div>
+<section class="panel settings"><h2>推薦條件</h2>
+<form id="settingsForm">
+<label for="maxGain">推薦當下漲幅上限</label><div class="number"><input id="maxGain" name="max_gain_pct" type="number" min="0" max="100" step="0.01" required><span>%</span></div><p class="hint">相對昨收，超過此漲幅就不推薦；等於上限仍可通過。</p>
+<div class="priceGrid"><div><label for="minPrice">最低股價</label><div class="number"><input id="minPrice" name="min_price" type="number" min="0.01" max="1000000" step="0.01" required><span>元</span></div></div><div><label for="maxPrice">最高股價</label><div class="number"><input id="maxPrice" name="max_price" type="number" min="0.01" max="1000000" step="0.01" required><span>元</span></div></div></div>
+<p class="hint">停損與停利繼續由系統判斷；既有訊號繼續追蹤。</p>
+<div class="actions"><button class="primary" id="save" type="submit">儲存設定</button><button id="reload" type="button">重新載入</button></div><p id="saveStatus" role="status" aria-live="polite"></p>
+</form></section>
+</div>
+
+<section class="panel paper-trade" id="paperTradePanel" style="margin-top:24px">
+<h2>當沖模擬動態帳本</h2>
+<p class="hint">以設定本金模擬實盤開倉（扣除 0.15% 證交稅與手續費折讓），每日損益直接滾入次日可用資金。</p>
+
+<div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0;">
+  <div style="background:var(--bg,#111);padding:14px;border-radius:8px;border:1px solid var(--border,#333);">
+    <div style="font-size:12px;color:var(--muted,#888);">目前可用資金 (滾動)</div>
+    <div id="simCurrentCapital" style="font-size:24px;font-weight:bold;margin-top:4px;color:#4ade80;">-- 元</div>
+    <div id="simReturnRate" style="font-size:11px;color:var(--muted,#888);margin-top:4px;">累計損益: -- 元 (0.00%)</div>
+  </div>
+  <div style="background:var(--bg,#111);padding:14px;border-radius:8px;border:1px solid var(--border,#333);">
+    <div style="font-size:12px;color:var(--muted,#888);">模擬運行狀態</div>
+    <div id="simStatusBadge" style="font-size:16px;font-weight:bold;margin-top:8px;">讀取中...</div>
+    <div id="simStartDate" style="font-size:11px;color:var(--muted,#888);margin-top:4px;">起始日期: --</div>
+  </div>
+</div>
+
+<form id="paperTradeForm" style="margin-bottom:16px;">
+  <label for="simInitialInput">設定模擬起始本金</label>
+  <div class="number" style="display:flex;align-items:center;gap:8px;max-width:320px;margin:8px 0;">
+    <input id="simInitialInput" name="initial_capital" type="number" min="1000" max="100000000" step="1000" value="100000" required>
+    <span>元</span>
+  </div>
+  <div class="actions" style="display:flex;gap:10px;margin-top:10px;">
+    <button class="primary" id="btnSimStart" type="submit">重設本金並開始</button>
+    <button id="btnSimToggle" type="button">暫停 / 啟動模擬</button>
+  </div>
+  <p id="simActionStatus" role="status" aria-live="polite" style="font-size:12px;margin-top:8px;"></p>
+</form>
+
+<!-- 今日持倉狀態 -->
+<div style="margin:20px 0 12px 0;">
+  <div style="font-size:13px;font-weight:bold;color:var(--text,#ddd);margin-bottom:8px;">📌 今日模擬持倉部位</div>
+  <div id="simPositionsContainer" style="font-size:12px;color:var(--muted,#888);">目前無任何持倉部位</div>
+</div>
+
+<!-- 即時決策紀錄與略過原因 -->
+<details open style="margin-top:16px;border:1px solid var(--border,#333);border-radius:6px;padding:12px;">
+  <summary style="cursor:pointer;font-weight:bold;font-size:13px;">📋 今日選股決策與未進場原因紀錄</summary>
+  <table style="width:100%;margin-top:10px;border-collapse:collapse;font-size:12px;">
+    <thead>
+      <tr style="border-bottom:1px solid var(--border,#333);color:var(--muted,#888);text-align:left;">
+        <th style="padding:6px 4px;width:70px;">時間</th>
+        <th style="padding:6px 4px;width:120px;">標的</th>
+        <th style="padding:6px 4px;width:65px;">價格</th>
+        <th style="padding:6px 4px;width:60px;">動作</th>
+        <th style="padding:6px 4px;">決策說明 / 略過原因</th>
+      </tr>
+    </thead>
+    <tbody id="simEventsTableBody">
+      <tr><td colspan="5" style="text-align:center;padding:12px;color:var(--muted,#888);">今日尚無決策紀錄</td></tr>
+    </tbody>
+  </table>
+</details>
+
+<details open style="margin-top:16px;border:1px solid var(--border,#333);border-radius:6px;padding:12px;">
+  <summary style="cursor:pointer;font-weight:bold;font-size:13px;">📊 每日已結算歷程 (最近 30 日)</summary>
+  <table style="width:100%;margin-top:10px;border-collapse:collapse;font-size:12px;">
+    <thead>
+      <tr style="border-bottom:1px solid var(--border,#333);color:var(--muted,#888);text-align:left;">
+        <th style="padding:6px 4px;">日期</th>
+        <th style="padding:6px 4px;">起始額度</th>
+        <th style="padding:6px 4px;">當日標的</th>
+        <th style="padding:6px 4px;">當日淨損益</th>
+        <th style="padding:6px 4px;">結算後餘額</th>
+      </tr>
+    </thead>
+    <tbody id="simLogsTableBody">
+      <tr><td colspan="5" style="text-align:center;padding:12px;color:var(--muted,#888);">尚無結算紀錄</td></tr>
+    </tbody>
+  </table>
+</details>
+</section>
+
+<section class="panel" id="conversationPanel" style="margin-top:24px"><h2>通知與機器人設定</h2>
+<p class="hint">可開關 LINE 與 Telegram 的群組查詢、進出場推播，以及個人加入好友時的自動歡迎導引。個人私訊與群組均支援即時看盤指令。</p>
+
+<!-- 加入好友自動回覆設定卡片 -->
+<div id="botPolicyCard" style="background:var(--bg,#111);padding:14px 18px;border-radius:8px;border:1px solid var(--border,#333);margin:16px 0;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+    <div>
+      <div style="font-size:14px;font-weight:bold;color:var(--text,#ddd);">🤖 加入好友自動回覆（LINE & Telegram）</div>
+      <div style="font-size:12px;color:var(--muted,#888);margin-top:4px;">當新使用者加為好友或首次啟動機器人時，自動發送指令操作導引與歡迎訊息。</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <label style="display:flex;align-items:center;cursor:pointer;gap:8px;font-size:13px;font-weight:600;">
+        <input id="autoReplyToggle" type="checkbox" style="width:18px;height:18px;cursor:pointer;">
+        <span>啟用自動回覆</span>
+      </label>
+      <button id="saveBotPolicy" type="button" class="primary" style="padding:4px 14px;font-size:12px;">儲存開關</button>
+    </div>
+  </div>
+  <p id="botPolicyStatus" role="status" aria-live="polite" style="font-size:12px;margin-top:8px;margin-bottom:0;"></p>
+</div>
+
+<div id="conversationList" class="grid"></div>
+<button type="button" id="reloadLine">重新載入群組設定</button><p id="conversationStatus" role="status" aria-live="polite"></p>
+<button type="button" id="checkUsage">查詢本月 LINE 用量</button><p id="lineUsage" role="status">群組推播按接收人數計費，例如 7 人群組推播一次計 7 則；不是一個群組算一則。</p>
+<p class="hint">LINE 群組查詢回覆不扣月訊息額度。LINE 與 Telegram 支援 1 對 1 私訊及群組指令查詢（P2330、K2330、#大盤、T2330 等），點擊圖卡按鈕可即時切換。</p>
+<details><summary>最近通知傳送狀態</summary><p class="hint">「送出成功」表示平台已接受，不代表每位成員已讀。逾時或程序中斷不自動重送，避免重複進出場通知。</p><div id="deliveryStatus"></div></details></section>
+</section>
+</main><footer>EasyStock · 當沖管理</footer>
+<!-- 永豐下單 Modal -->
+<div id="orderModal" class="order-modal-backdrop" hidden>
+  <div class="order-modal-box">
+    <div class="order-modal-head">
+      <h2>🚀 永豐證券委託</h2>
+      <button id="closeOrderModal" type="button" class="order-close-btn">&times;</button>
+    </div>
+
+    <!-- 步驟 1: API 驗證 -->
+    <div class="order-section">
+      <div class="order-section-title">步驟 1：帳號連線驗證</div>
+      <div style="display:flex;gap:8px;">
+        <input id="orderApiKey" type="text" placeholder="留空使用環境變數 API Key" style="flex:1;">
+        <input id="orderSecretKey" type="password" placeholder="留空使用環境變數 Secret" style="flex:1;">
+        <button id="btnOrderVerify" type="button" class="primary">連線驗證</button>
+      </div>
+      <div id="orderVerifyBadge" class="order-badge" style="margin-top:6px;">尚未驗證</div>
+    </div>
+
+    <!-- 步驟 2: 報價與五檔 -->
+    <div class="order-section">
+      <div class="order-section-title">步驟 2：股票報價查詢</div>
+      <div style="display:flex;gap:8px;">
+        <input id="orderSymbol" type="text" placeholder="輸入代碼 (例 2834)" style="width:140px;font-weight:bold;">
+        <button id="btnOrderQuery" type="button" class="primary">查詢報價</button>
+      </div>
+
+      <div id="orderQuotePanel" style="margin-top:10px;background:#18181b;padding:12px;border-radius:8px;" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span id="orderStockTitle" style="font-size:16px;font-weight:bold;">--</span>
+          <span id="orderStockPrice" style="font-size:18px;font-weight:bold;">--</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;">
+          <div>
+            <div style="color:#ef4444;border-bottom:1px solid #333;padding-bottom:3px;margin-bottom:4px;font-weight:600;">買盤 (點選帶入價)</div>
+            <table style="width:100%;" id="orderBidTable"></table>
+          </div>
+          <div>
+            <div style="color:#22c55e;border-bottom:1px solid #333;padding-bottom:3px;margin-bottom:4px;font-weight:600;">賣盤 (點選帶入價)</div>
+            <table style="width:100%;" id="orderAskTable"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 步驟 3: 委託條件 (簡約 股 / 張) -->
+    <div class="order-section">
+      <div class="order-section-title">步驟 3：委託條件</div>
+      <div class="order-unit-toggle">
+        <button type="button" id="btnUnitShare" class="unit-btn active">股 (零股)</button>
+        <button type="button" id="btnUnitSheet" class="unit-btn">張 (整張)</button>
+      </div>
+      <div class="order-row">
+        <div class="field-group">
+          <div class="field-header">
+            <label>委託限價 (元)</label>
+          </div>
+          <input id="orderPrice" type="number" step="0.01" placeholder="價格" style="width:100%;">
+        </div>
+        <div class="field-group">
+          <div class="field-header">
+            <label id="orderQtyLabel">委託數量 (股)</label>
+            <div id="quickQtyBtns" class="quick-btns">
+              <button type="button" data-qty="1">1</button>
+              <button type="button" data-qty="10">10</button>
+              <button type="button" data-qty="100">100</button>
+            </div>
+          </div>
+          <input id="orderQty" type="number" value="1" min="1" style="width:100%;">
+        </div>
+      </div>
+      <div id="orderTotalEst" class="order-total-est">預估交割金額：約 0 元</div>
+    </div>
+
+    <!-- 步驟 4: 憑證簽章送單 -->
+    <div class="order-section">
+      <div class="order-section-title">步驟 4：憑證簽章送單</div>
+      <div style="display:flex;gap:8px;">
+        <input id="orderCaPasswd" type="password" placeholder="請輸入永豐電子憑證密碼" style="flex:1;">
+        <button id="btnOrderSubmit" type="button" class="btn-submit-order">⚡ 確認送出委託</button>
+      </div>
+      <div id="orderResult" style="font-size:12px;margin-top:8px;"></div>
+    </div>
+  </div>
+</div>
+</body></html>

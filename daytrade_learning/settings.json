@@ -1,0 +1,9 @@
+{
+  "fee_rate": 0.0015,
+  "minimum_fee_twd": 20,
+  "sell_tax_rate": 0.003,
+  "slippage_bps": 10,
+  "shares": 1000,
+  "scenario": "conservative_research_assumption_not_account_rates",
+  "filters": {"min_price": 1, "max_price": 1000000, "max_gain_pct": 5}
+}

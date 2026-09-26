@@ -218,4 +218,18 @@ class PublicFeedTests(unittest.TestCase):
         self.assertIn('settlement',private)
 
 
+class DeploymentTests(unittest.TestCase):
+    def test_tracked_vm_entrypoint_matches_runtime(self):
+        """A VM pull must not leave the scheduled root entrypoint on old code."""
+        repo = ROOT.parent
+        tree = ast.parse((repo/'deploy/install_intraday_runtime.py').read_text())
+        files = next(ast.literal_eval(n.value) for n in tree.body
+                     if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='FILES'
+                                                          for t in n.targets))
+        for rel in files:
+            with self.subTest(file=rel):
+                self.assertEqual((repo/rel).read_bytes(),(ROOT/rel).read_bytes())
+        self.assertIn('PositionManager', (repo/'position_manager.py').read_text())
+
+
 if __name__=='__main__':unittest.main()

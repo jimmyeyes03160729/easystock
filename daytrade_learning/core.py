@@ -11,7 +11,8 @@ from datetime import datetime, timezone, timedelta
 from urllib.request import Request, urlopen
 
 TPE = timezone(timedelta(hours=8))
-FEATURES = ('gain_pct', 'return_5m_pct', 'volume_ratio', 'vwap_distance_pct', 'market_gain_pct')
+from .features import LEGACY_FEATURES as FEATURES
+SCHEMA_VERSION = "legacy-offline-v1"
 
 
 def stamp(value):
@@ -184,7 +185,7 @@ def report(store, day):
 
 
 def gemini_review(summary):
-    key, model = os.environ.get('GEMINI_API_KEY'), os.environ.get('GEMINI_REVIEW_MODEL')
+    key, model = (os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')), os.environ.get('GEMINI_REVIEW_MODEL')
     if not key or not model:
         return {'status': 'skipped', 'reason': 'GEMINI_API_KEY or GEMINI_REVIEW_MODEL missing'}
     if not re.fullmatch(r'[A-Za-z0-9._-]+', model):
