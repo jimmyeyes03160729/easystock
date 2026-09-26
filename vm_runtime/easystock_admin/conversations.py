@@ -5,7 +5,7 @@ import re
 import time
 
 DEFAULTS = {'replies': True, 'groups': True, 'users': False,
-            'trade_push': False, 'other_push': False}
+            'trade_push': True, 'other_push': False}
 
 
 def initialize(db):
