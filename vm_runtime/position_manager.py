@@ -45,158 +45,39 @@ class PaperWallet:
     def current_capital(self) -> float:
         return float(self.state.get("current_capital") or self.state.get("initial_capital", 100000.0))
 
-    def try_buy(self, symbol: str, name: str, price: float) -> int:
-        """嘗試開倉，若無法買進則記錄具體略過原因"""
-        self.refresh()
-        if not self.is_active():
-            log_paper_trade_event(symbol, name, price, "略過", "後台模擬當沖處於【暫停】狀態")
-            return 0
+    def open_fill(self, symbol, name, price):
+        from paper_account import buy
+        return buy(symbol, name, price)
 
-        capital = self.current_capital()
-        # 單檔標的最多投入當日可用資金的 80% (保留保證金緩衝)
-        max_budget = capital * 0.8
-        one_lot_cost = price * 1000
+    def try_buy(self, symbol, name, price):
+        return self.open_fill(symbol, name, price).get('shares', 0)
 
-        if one_lot_cost > max_budget:
-            reason = f"資金不足：買進 1 張需 {one_lot_cost:,.0f} 元，已超過單檔上限 {max_budget:,.0f} 元 (總資金 {capital:,.0f} 元)"
-            log_paper_trade_event(symbol, name, price, "略過", reason)
-            print(f"[Paper Trade] {symbol} {name} 略過: {reason}")
-            return 0
-
-        shares = math.floor(max_budget / one_lot_cost) * 1000
-        if shares > 0:
-            set_paper_position(symbol, name, price, shares)
-            log_paper_trade_event(symbol, name, price, "買進", f"成功買進 {shares} 股，花費約 {price * shares:,.0f} 元")
-            print(f"[Paper Trade] 成功開倉 {symbol} {name} {shares} 股，價格 {price}")
-            return shares
-
-        log_paper_trade_event(symbol, name, price, "略過", "部位計算為 0 股，取消委託")
-        return 0
-
-    def close_and_settle(
-        self,
-        symbol: str,
-        exit_price: float,
-        exit_reason: str = "平倉出場",
-        name: str | None = None,
-        entry_price: float | None = None,
-        shares: int | None = None,
-    ) -> dict:
-        """平倉出場並結算損益；缺少買進資料時由 SQLite 持倉讀回。"""
-
-        symbol = str(symbol)
-
-        if name is None or entry_price is None or shares is None:
-            position = get_paper_position(symbol)
-
-            if not position:
-                raise RuntimeError(
-                    f"找不到 PaperWallet 持倉資料: {symbol}"
-                )
-
-            name = str(position["name"])
-            entry_price = float(position["entry_price"])
-            shares = int(position["shares"])
-
-        entry_price = float(entry_price)
-        exit_price = float(exit_price)
-        shares = int(shares)
-
-        if shares <= 0:
-            raise ValueError(
-                f"PaperWallet shares 無效: {symbol} shares={shares}"
-            )
-
-        self.refresh()
-
-        start_cap = self.current_capital()
-
-        buy_amount = entry_price * shares
-        sell_amount = exit_price * shares
-
-        buy_fee = max(
-            20,
-            round(buy_amount * BROKER_FEE_RATE)
-        )
-
-        sell_fee = max(
-            20,
-            round(sell_amount * BROKER_FEE_RATE)
-        )
-
-        tax = round(
-            sell_amount * TAX_RATE
-        )
-
-        costs = buy_fee + sell_fee + tax
-        gross_pnl = sell_amount - buy_amount
-
-        net_pnl = round(
-            gross_pnl - costs,
-            2
-        )
-
-        end_cap = round(
-            start_cap + net_pnl,
-            2
-        )
-
-        today_str = datetime.now(
-            TPE
-        ).strftime("%Y-%m-%d")
-
-        clear_paper_position(symbol)
-
-        log_paper_trade_event(
-            symbol,
-            name,
-            exit_price,
-            "賣出",
-            (
-                f"{exit_reason}："
-                f"淨損益 {net_pnl:+,.0f} 元 "
-                f"(扣手續費與稅 {costs} 元)"
-            )
-        )
-
-        record_paper_trade_settlement(
-            date_str=today_str,
-            start_bal=start_cap,
-            end_bal=end_cap,
-            net_pnl=net_pnl,
-            symbols_str=f"{symbol} {name}",
-            costs=costs,
-            trades_count=1,
-        )
-
-        self.refresh()
-
-        print(
-            f"[Paper Settle] "
-            f"{symbol} {name} 平倉完成 | "
-            f"淨損益: {net_pnl:+.0f} | "
-            f"最新本金: {end_cap:,.0f}"
-        )
-
-        return {
-            "date": today_str,
-            "start_balance": start_cap,
-            "end_balance": end_cap,
-            "net_pnl": net_pnl,
-            "costs": costs,
-        }
+    def close_and_settle(self, symbol, exit_price, exit_reason='平倉出場',
+                         name=None, entry_price=None, shares=None, trade_id=None):
+        from paper_account import sell
+        return sell(symbol, exit_price, exit_reason, trade_id=trade_id)
 
 
 from datetime import time
+from functools import wraps
+from threading import RLock
+
+
+def synchronized(method):
+    @wraps(method)
+    def call(self, *args, **kwargs):
+        with self._position_lock:
+            return method(self, *args, **kwargs)
+    return call
 
 
 class PositionManager:
     """
     Easystock 當沖部位管理器 V2
 
-    目前管理的是「訊號部位」。
-    尚未串接 Shioaji 真實 Order / Deal，
-    所以 entry / exit price 仍是策略訊號價。
+    Runtime 注入紙上帳務 callbacks，成交／結算成功後才提交部位事件。
+    離線研究可不注入 callbacks，此時明確標記 strategy_signal。
+    不呼叫 Shioaji Order / Deal。
     """
 
     ENTRY_START = time(9, 30)
@@ -211,7 +92,27 @@ class PositionManager:
         trailing_activate_pct=0.006,
         trailing_pullback_pct=0.004,
         allow_reentry=False,
+        exit_mode='hybrid',
+        breakeven_activate_pct=.006,
+        breakeven_floor_pct=.0035,
+        technical_exit_enabled=True,
+        before_open=None,
+        before_close=None,
     ):
+        if exit_mode not in {'fixed', 'trailing', 'hybrid'}:
+            raise ValueError('invalid_exit_mode')
+        values = (stop_loss_pct, take_profit_pct, trailing_activate_pct,
+                  trailing_pullback_pct, breakeven_activate_pct, breakeven_floor_pct)
+        if any(not math.isfinite(float(v)) or not 0 < float(v) < 1 for v in values):
+            raise ValueError('invalid_exit_percentages')
+        if breakeven_floor_pct >= breakeven_activate_pct:
+            raise ValueError('breakeven_floor_must_be_below_activation')
+        self._position_lock = RLock()
+        self.exit_mode = exit_mode
+        self.breakeven_activate_pct = breakeven_activate_pct
+        self.breakeven_floor_pct = breakeven_floor_pct
+        self.technical_exit_enabled = technical_exit_enabled
+        self.before_open, self.before_close = before_open, before_close
         self.stop_loss_pct = stop_loss_pct
         self.take_profit_pct = take_profit_pct
 
@@ -306,6 +207,7 @@ class PositionManager:
     # 開倉
     # =====================================================
 
+    @synchronized
     def open_position(
         self,
         symbol,
@@ -325,9 +227,21 @@ class PositionManager:
 
         price = float(price)
 
+        if not math.isfinite(price) or price <= 0:
+            raise ValueError('invalid_entry_price')
+        fill = None
+        if self.before_open:
+            fill = self.before_open(symbol=str(symbol), name=name, price=price)
+            if not isinstance(fill, dict) or fill.get('status') != 'bought' or fill.get('shares',0) <= 0:
+                return None
+
         position = {
             "symbol": str(symbol),
             "name": name,
+            "trade_id": fill.get('trade_id') if fill else None,
+            "shares": fill.get('shares') if fill else None,
+            "execution_kind": 'paper_fill' if fill else 'strategy_signal',
+            "exit_mode": self.exit_mode,
 
             "status": "OPEN",
 
@@ -376,6 +290,7 @@ class PositionManager:
 
         return {
             "type": "ENTRY",
+            "trade_id": position.get("trade_id"),
             "position": position.copy(),
         }
 
@@ -384,6 +299,7 @@ class PositionManager:
     # Tick 即時監控
     # =====================================================
 
+    @synchronized
     def on_tick(
         self,
         symbol,
@@ -403,6 +319,8 @@ class PositionManager:
             return None
 
         price = float(price)
+        if not math.isfinite(price) or price <= 0:
+            return None
 
         position["current_price"] = (
             price
@@ -458,7 +376,7 @@ class PositionManager:
         # 動態保本機制：若最高價曾漲達 +0.6% 以上，拉升至保本位(成本+0.35%稅費)，杜絕獲利反轉虧損
         highest = position.get("highest_price", price)
         entry_price = position.get("entry_price", price)
-        if highest >= entry_price * 1.006 and price <= entry_price * 1.0035:
+        if highest >= entry_price * (1+self.breakeven_activate_pct) and price <= entry_price * (1+self.breakeven_floor_pct):
             return self.close_position(
                 symbol=symbol,
                 exit_price=price,
@@ -472,7 +390,8 @@ class PositionManager:
         # =================================================
 
         if (
-            price
+            self.exit_mode in {"fixed", "hybrid"}
+            and price
             >= position[
                 "take_profit_price"
             ]
@@ -500,7 +419,8 @@ class PositionManager:
 
 
         if (
-            position["highest_price"]
+            self.exit_mode in {"trailing", "hybrid"}
+            and position["highest_price"]
             >= activate_price
         ):
 
@@ -540,7 +460,8 @@ class PositionManager:
 
 
         if (
-            trailing_stop is not None
+            self.exit_mode in {"trailing", "hybrid"}
+            and trailing_stop is not None
             and price <= trailing_stop
         ):
 
@@ -559,6 +480,7 @@ class PositionManager:
     # 每完成一根 5M K 後做技術面出場
     # =====================================================
 
+    @synchronized
     def on_strategy_result(
         self,
         symbol,
@@ -592,6 +514,9 @@ class PositionManager:
                 reason="12:55當沖強制出場",
             )
 
+
+        if not self.technical_exit_enabled:
+            return None
 
         vetoes = (
             result.get("vetoes")
@@ -630,6 +555,7 @@ class PositionManager:
     # 平倉
     # =====================================================
 
+    @synchronized
     def close_position(
         self,
         symbol,
@@ -652,6 +578,15 @@ class PositionManager:
         exit_price = float(
             exit_price
         )
+
+        if not math.isfinite(exit_price) or exit_price <= 0:
+            return None
+        settlement = None
+        if self.before_close:
+            settlement = self.before_close(symbol=symbol, exit_price=exit_price,
+                exit_reason=reason, trade_id=position.get('trade_id'))
+            if not isinstance(settlement, dict) or settlement.get('status') != 'sold':
+                return None
 
         entry_price = float(
             position["entry_price"]
@@ -709,6 +644,7 @@ class PositionManager:
 
             "exit_reason":
                 reason,
+            "settlement": settlement,
 
             "pnl_pct":
                 pnl_pct,
@@ -736,6 +672,7 @@ class PositionManager:
 
         return {
             "type": "EXIT",
+            "trade_id": position.get("trade_id"),
             "trade": trade,
         }
 

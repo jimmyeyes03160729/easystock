@@ -1369,7 +1369,7 @@ def build_brief() -> dict:
         )
     )
 
-    level = market_level_from_score(final_score)
+    level = market_level_from_score(base_score)  # deterministic trading gate; AI score is advisory
     volatility = expected_volatility(snapshot, final_score)
 
     sector = default_sector_bias(snapshot)
@@ -1404,6 +1404,8 @@ def build_brief() -> dict:
         "base_risk_score": base_score,
         "headline_risk_adjustment": adjustment,
         "market_level": level,
+        "advisory_market_level": market_level_from_score(final_score),
+        "risk_policy": "deterministic-base-v1",
         "expected_volatility": volatility,
         "sector_bias": sector,
         "summary": summary,

@@ -502,9 +502,7 @@ class FirebaseStore:
             )
 
 
-        trade_id = (
-            f"{stamp}_{symbol}"
-        )
+        trade_id = str(trade.get('trade_id') or f"{stamp}_{symbol}")
 
 
         payload = {

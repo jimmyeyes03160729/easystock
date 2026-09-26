@@ -9,7 +9,7 @@ from collections import Counter
 from .core import gemini_review, metrics
 
 TPE=timezone(timedelta(hours=8))
-FEATURES=['gain_pct','return_5m_pct','surge_60s','buy_ratio_60s','amount_60s']
+from .features import FEATURES, SCHEMA_VERSION, vector
 
 
 def dt(x):
@@ -180,7 +180,7 @@ def simulate(sample, pack, costs):
     if min(price,previous)<=0:return None,'invalid_price'
     m=sample['metrics']
     try:
-        x=[(price/previous-1)*100,finite(sample['return_5m_pct']),finite(m['surge_60s']),finite(m['buy_ratio_60s']),finite(m['amount_60s'])]
+        x=vector(dict(gain_pct=(price/previous-1)*100, return_5m_pct=sample['return_5m_pct'], surge_60s=m['surge_60s'], buy_ratio_60s=m['buy_ratio_60s'], amount_60s=m['amount_60s']))
     except (KeyError,ValueError,TypeError):return None,'missing_features'
     if finite(m.get('history_seconds',0))<300 or finite(m.get('classified_ratio_60s',0))<.5:return None,'insufficient_tick_history'
     # Fixed constraints saved BEFORE observing outcomes. Research follows latest user limits once configured.
@@ -303,7 +303,7 @@ def train_candidate(data):
             'brier':sum((float(p)-int(r['net_return_pct']>0))**2 for r,p in zip(test,probs))/len(test)})
         last_model=model
     scaler,clf=last_model.steps[0][1],last_model.steps[1][1]
-    result={'status':'candidate_only','deployment_allowed':False,'profile':latest,'folds':folds,'threshold':.6,
+    result={'schema_version':SCHEMA_VERSION,'approved':False,'version':'research-'+dates[-1],'status':'candidate_only','deployment_allowed':False,'profile':latest,'folds':folds,'threshold':.6,
         'features':FEATURES,'mean':scaler.mean_.tolist(),'scale':scaler.scale_.tolist(),'coef':clf.coef_[0].tolist(),'intercept':float(clf.intercept_[0]),
         'trained_through':folds[-1]['train_through'],
         'benchmark':'same-exit radar selection; not the actual live portfolio',

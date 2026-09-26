@@ -23,6 +23,8 @@ def main():
     parser.add_argument('--publish',action='store_true')
     parser.add_argument('--retry-ai',action='store_true',help='Explicitly reset failed AI attempt budget for this input')
     args=parser.parse_args()
+    if args.train and (args.collect or args.gemini or args.publish):
+        parser.error('--train must run separately; use learning_cycle.py for the full pipeline')
     day=datetime.strptime(args.date,'%Y-%m-%d').date().isoformat()
     now=datetime.now(TPE)
     if args.collect and (day!=now.date().isoformat() or not time(13,35)<=now.time().replace(tzinfo=None)<=time(20,30)):

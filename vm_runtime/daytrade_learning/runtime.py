@@ -27,7 +27,7 @@ def clean(x):
 
 class Recorder:
     def __init__(self):
-        self.enabled = os.environ.get('LEARNING_ENABLED', '0') == '1'
+        self.enabled = os.environ.get('LEARNING_ENABLED', '1') == '1'
         self.queue = queue.Queue(maxsize=10000)
         self.lock = threading.Lock()
         self.last_sample = {}
@@ -77,11 +77,11 @@ class Recorder:
 
     def entry(self, event):
         p=event.get('position',{})
-        self.submit('entry',{k:p.get(k) for k in ('symbol','name','entry_time','entry_price','entry_score','stop_price','take_profit_price')})
+        self.submit('entry',{k:p.get(k) for k in ('symbol','name','trade_id','execution_kind','shares','entry_time','entry_price','entry_score','stop_price','take_profit_price')})
 
     def exit(self, event):
         p=event.get('trade',{})
-        self.submit('exit',{k:p.get(k) for k in ('symbol','name','entry_time','entry_price','exit_time','exit_price','exit_reason','pnl_pct')})
+        self.submit('exit',{k:p.get(k) for k in ('symbol','name','trade_id','execution_kind','shares','settlement','entry_time','entry_price','exit_time','exit_price','exit_reason','pnl_pct')})
 
     def close(self):
         if not self.thread:

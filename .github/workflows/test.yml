@@ -28,6 +28,7 @@ jobs:
       - run: python tests/test_market_calendar.py
       - run: python daytrade_learning/test_core.py
       - run: python tests/test_premarket_entry.py
+      - run: python vm_runtime/tests/test_runtime_safety.py
       - run: python vm_runtime/daytrade_learning/test_integration.py
       - run: python vm_runtime/daytrade_learning/test_eod_fix.py
       - run: python vm_runtime/easystock_admin/test_admin.py

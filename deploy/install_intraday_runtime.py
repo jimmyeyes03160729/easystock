@@ -19,10 +19,19 @@ BACKUP_ROOT = Path(
 
 FILES = [
     "intraday_live.py",
+    "market_risk.py",
+    "firebase_store.py",
+    "paper_account.py",
+    "premarket_ai.py",
+    "daytrade_learning/features.py",
+    "daytrade_learning/core.py",
+    "daytrade_learning/research.py",
     "position_manager.py",
     "daytrade_learning/runtime.py",
     "daytrade_learning/model_runtime.py",
     "learning_status.py",
+    "learning_cycle.py",
+    "learning_eod.py",
     "easystock_admin/store.py",
 ]
 
@@ -30,6 +39,7 @@ CORE_SERVICES = [
     "easystock-intraday.service",
     "easystock-learning.service",
     "easystock-learning-train.service",
+    "easystock-research-cycle.service",
 ]
 
 
@@ -71,6 +81,7 @@ def source_is_committed() -> None:
         for p in FILES
     ]
 
+    run("git", "ls-files", "--error-unmatch", *paths, capture=True)
     r = run(
         "git",
         "diff",
@@ -248,7 +259,7 @@ from daytrade_learning.model_runtime import (
     live_features,
 )
 
-m = DaytradeModel()
+m = DaytradeModel(path="")
 d = m.evaluate({})
 
 assert d.get("reason") == "no_approved_model"
@@ -283,6 +294,7 @@ def restore(backup: Path) -> None:
         src = backup / rel
 
         if not src.exists():
+            (ROOT / rel).unlink(missing_ok=True)
             continue
 
         dest = ROOT / rel
@@ -317,6 +329,7 @@ def publish_status() -> None:
 
 def main():
     os.umask(0o077)
+    os.chdir(ROOT)
 
     print(
         "Easystock Intraday Runtime Installer"
@@ -337,6 +350,9 @@ def main():
     check_sources()
     compile_sources()
     check_services()
+    if '--check-only' in sys.argv:
+        print('Checks completed; no runtime files installed.')
+        return
 
     backup = backup_live()
 

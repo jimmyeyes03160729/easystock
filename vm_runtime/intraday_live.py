@@ -80,6 +80,7 @@ from firebase_store import FirebaseStore
 from public_feed import write_public_tick
 from position_manager import PositionManager
 from daytrade_learning.runtime import Recorder
+from market_risk import premarket_context, snapshot_risk, combine
 from daytrade_learning.model_runtime import DaytradeModel, live_features
 from easystock_admin.store import read_live_settings
 from strategy_engine import evaluate_daytrade, clamp
@@ -908,7 +909,7 @@ def format_entry_message(
     )
 
     return "\n".join([
-        "⚡ 當沖吧！牛馬仔｜當沖 ENTRY",
+        "🧪 當沖吧！牛馬仔｜模擬成交 ENTRY",
         f"{symbol} {name} {change_text}".strip(),
         f"分數 {score}" if score is not None else "分數 --",
     ])
@@ -940,7 +941,7 @@ def format_exit_message(
     )
 
     return "\n".join([
-        "✅ 當沖吧！牛馬仔｜當沖 EXIT",
+        "🧪 當沖吧！牛馬仔｜模擬成交 EXIT",
         f"{symbol} {name}",
         pnl_text,
     ])
@@ -1235,6 +1236,10 @@ def build_position_manager() -> PositionManager:
         trailing_activate_pct=TRAILING_ACTIVATE_PCT,
         trailing_pullback_pct=TRAILING_PULLBACK_PCT,
         allow_reentry=False,
+        exit_mode=os.environ.get('LIVE_EXIT_MODE', 'hybrid'),
+        breakeven_activate_pct=float(os.environ.get('LIVE_BREAKEVEN_ACTIVATE_PCT', '.006')),
+        breakeven_floor_pct=float(os.environ.get('LIVE_BREAKEVEN_FLOOR_PCT', '.0035')),
+        technical_exit_enabled=os.environ.get('LIVE_TECHNICAL_EXIT_ENABLED', '1') == '1',
     )
 
 
@@ -1576,37 +1581,8 @@ def load_market_context() -> tuple[str, dict]:
     except Exception:
         brief = {}
 
-    level = str(
-        brief.get(
-            "market_level"
-        )
-        or ""
-    ).upper()
-
-    if level not in {
-        "GREEN",
-        "YELLOW",
-        "RED",
-    }:
-        try:
-            legacy = db.reference(
-                "/market_data/intraday_picks/market_level"
-            ).get()
-
-            level = str(
-                legacy
-                or "YELLOW"
-            ).upper()
-
-        except Exception:
-            level = "YELLOW"
-
-    if level not in {
-        "GREEN",
-        "YELLOW",
-        "RED",
-    }:
-        level = "YELLOW"
+    level, reason = premarket_context(brief, now_tpe())
+    brief = dict(brief, runtime_risk_reason=reason)
 
     return level, brief
 
@@ -2795,10 +2771,19 @@ class IntradayLiveEngine:
 
         self._last_heartbeat = 0.0
         self._force_exit_done = False
+        self._last_force_exit_attempt = 0.0
         self.learning = Recorder()
         self.silent_symbols = set()
         # EASYSTOCK_VALIDATED_MODEL_GATE_V2
         self.daytrade_model = DaytradeModel()
+        self.entry_mode = os.environ.get('LIVE_ENTRY_MODE', 'rules')
+        if self.entry_mode not in {'rules', 'model'}:
+            raise ValueError('LIVE_ENTRY_MODE must be rules or model')
+        self._market_checked_at = 0.0
+        self.market_valid_until = 0.0
+        self.market_risk = {'valid': False, 'reason': 'not_checked'}
+        self.manager.before_open = lambda **kw: paper_wallet.open_fill(**kw)
+        self.manager.before_close = lambda **kw: paper_wallet.close_and_settle(**kw)
         self._previous_closes = {}
         self._previous_close_retry = {}
 
@@ -2815,6 +2800,48 @@ class IntradayLiveEngine:
         )
 
         print("✅ Shioaji login success")
+
+    def refresh_market_risk(self, force=False):
+        current = now_tpe()
+        mono = time.monotonic()
+        if not force and mono - self._market_checked_at < 30:
+            return
+        self._market_checked_at = mono
+        self.market_valid_until = 0.0
+        self.market_level = 'RED'
+        base, brief = load_market_context()
+        risk = {'level': 'RED', 'valid': False, 'reason': 'index_unavailable'}
+        try:
+            # Shioaji >=1.7 uses IX0001; older SDKs use 001.
+            contract = None
+            for code in ('IX0001', '001'):
+                try:
+                    contract = self.api.Contracts.Indexs.TSE[code]
+                except (KeyError, AttributeError, TypeError):
+                    continue
+                if contract is not None:
+                    break
+            if contract is None:
+                raise LookupError('index_contract_unavailable')
+            quotes = self.api.snapshots([contract], timeout=3000)
+            if quotes:
+                risk = snapshot_risk(quotes[0], current,
+                    yellow_pct=float(os.environ.get('LIVE_INDEX_YELLOW_PCT', '-1')),
+                    red_pct=float(os.environ.get('LIVE_INDEX_RED_PCT', '-2')))
+        except Exception as exc:
+            risk['reason'] = 'index_unavailable:' + type(exc).__name__
+        self.premarket_brief = brief
+        self.market_risk = risk
+        self.market_level = combine(base, risk['level'])
+        if risk.get('valid') and brief.get('runtime_risk_reason') == 'valid':
+            self.market_valid_until = min(current.timestamp()+45,
+                datetime.fromisoformat(risk['observed_at']).timestamp()+90)
+        try:
+            db.reference('/market_data/intraday_live/market_risk').set(dict(
+                risk, market_level=self.market_level, premarket_level=base,
+                premarket_reason=brief.get('runtime_risk_reason'), checked_at=current.isoformat()))
+        except Exception as exc:
+            print('[RISK] status publish failed:', type(exc).__name__)
 
     def init_firebase(self) -> None:
         self.market_level, self.premarket_brief = (
@@ -2836,6 +2863,11 @@ class IntradayLiveEngine:
             db.reference(
                 "/market_data/intraday_live/config"
             ).update({
+                "entry_mode": self.entry_mode,
+                "model_version": self.daytrade_model.model_version,
+                "model_ready": self.daytrade_model.artifact is not None,
+                "learning_enabled": self.learning.enabled,
+                "exit_mode": self.manager.exit_mode,
                 "candidate_mode":
                     "shioaji_instant_volume_surge",
                 "universe_scanners":
@@ -2940,6 +2972,34 @@ class IntradayLiveEngine:
 
             except Exception as exc:
                 raise RuntimeError("Cannot restore daily state: " + node_name) from exc
+
+        # Recover committed wallet fills even if a previous Firebase publish failed.
+        from paper_account import open_positions
+        fills = {p['symbol']:p for p in open_positions()}
+        for symbol in set(self.manager.positions)-set(fills):
+            del self.manager.positions[symbol]  # old signal or already-settled mirror
+        for symbol, fill in fills.items():
+            previous = self.manager.positions.get(symbol, {})
+            at = as_datetime(fill['entry_time'])
+            if at is None and previous:
+                at = previous.get('entry_time')
+            if at is None or at.date() != now_tpe().date():
+                raise RuntimeError('Paper position needs reconciliation: ' + symbol)
+            entry = float(fill['entry_price'])
+            if previous and float(previous.get('entry_price',0)) != entry:
+                raise RuntimeError('Paper/Firebase entry mismatch: ' + symbol)
+            restored = dict(previous, **fill)
+            restored.update(entry_time=at, status='OPEN', execution_kind='paper_fill',
+                highest_price=max(entry,float(previous.get('highest_price',entry))),
+                lowest_price=min(entry,float(previous.get('lowest_price',entry))),
+                current_price=previous.get('current_price',entry),
+                stop_price=entry*(1-self.manager.stop_loss_pct),
+                take_profit_price=entry*(1+self.manager.take_profit_pct),
+                trailing_stop=previous.get('trailing_stop'),
+                last_update_at=at)
+            self.manager.positions[symbol] = restored
+            self.manager.traded_symbols.add(symbol)
+            self.entry_symbols.add(symbol)
 
         if self.entry_symbols:
             print(
@@ -3620,7 +3680,13 @@ class IntradayLiveEngine:
                     {"stop_loss_pct": self.manager.stop_loss_pct,
                      "take_profit_pct": self.manager.take_profit_pct,
                      "entry_cutoff": "12:30", "force_exit": "12:55",
-                     "source_version": "vm-v5.1-research2",
+                     "source_version": "runtime-audit-v3",
+                     "exit_mode": self.manager.exit_mode,
+                     "trailing_activate_pct": self.manager.trailing_activate_pct,
+                     "trailing_pullback_pct": self.manager.trailing_pullback_pct,
+                     "breakeven_activate_pct": self.manager.breakeven_activate_pct,
+                     "breakeven_floor_pct": self.manager.breakeven_floor_pct,
+                     "technical_exit_enabled": self.manager.technical_exit_enabled,
                      "entry_filters": read_live_settings()},
                 )
             except Exception as exc:
@@ -3935,7 +4001,11 @@ class IntradayLiveEngine:
         ):
             return
 
-        if not eligible:
+        if self.market_level == 'RED' or now_tpe().timestamp() > self.market_valid_until:
+            return
+        if self.entry_mode == 'rules' and not eligible:
+            return
+        if self.entry_mode == 'model' and vetoes:
             return
 
         if symbol not in self.scanner_top_symbols:
@@ -3959,20 +4029,23 @@ class IntradayLiveEngine:
         ) if previous_close else None
         model_decision = self.daytrade_model.evaluate(feature_row or {})
         model_reason = None
-        if model_decision.get("active") and model_decision.get("evaluated"):
-            model_probability = float(model_decision["probability"])
-            print(
-                f"[MODEL] {symbol} p={model_probability:.3f} "
-                f"threshold={float(model_decision['threshold']):.3f} "
-                f"version={model_decision.get('model_version')} "
-                f"approved={model_decision.get('approved')}"
-            )
-            if not model_decision.get("approved"):
+        if self.entry_mode == 'model':
+            if not (model_decision.get('active') and model_decision.get('evaluated')
+                    and model_decision.get('approved') and model_decision.get('accepted')):
                 return
-            model_reason = (
-                f"量化模型 {model_probability * 100:.0f}% "
-                f"({model_decision.get('model_version')})"
-            )
+            if float(model_decision['probability']) < float(model_decision['threshold']):
+                return
+            model_reason = f"模型分數 {model_decision['probability']:.3f} ({model_decision['model_version']})"
+
+        # Apply user constraints BEFORE creating any position/ENTRY.
+        try:
+            limits = read_live_settings()
+            gain = (price / previous_close - 1) * 100 if previous_close else None
+            if gain is None or not limits['min_price'] <= price <= limits['max_price'] or gain > limits['max_gain_pct']:
+                return
+        except Exception as exc:
+            print('[ENTRY] settings unavailable:', type(exc).__name__)
+            return
 
         # 硬性限制：一天最多 5 檔。
         # 用 lock 先 reservation，避免多個 Tick callback 同時通過而超過3檔。
@@ -4053,12 +4126,32 @@ class IntradayLiveEngine:
         if model_reason:
             entry_reasons.insert(1, model_reason)
 
+        evaluated_price = price
         checked = self.fresh_entry_quote(symbol)
         if checked is None:
             with self._lock:
                 self.entry_symbols.discard(symbol)
             return
         price, strategy_time = checked
+        if self.entry_mode == 'model' and price != evaluated_price:
+            # The score belonged to a different tick; evaluate anew on the next pass.
+            with self._lock:
+                self.entry_symbols.discard(symbol)
+            return
+        if self.market_level == 'RED' or now_tpe().timestamp() > self.market_valid_until:
+            with self._lock:
+                self.entry_symbols.discard(symbol)
+            return
+        try:
+            limits = read_live_settings()
+            if not previous_close or not limits['min_price'] <= price <= limits['max_price'] or (price/previous_close-1)*100 > limits['max_gain_pct']:
+                with self._lock:
+                    self.entry_symbols.discard(symbol)
+                return
+        except Exception:
+            with self._lock:
+                self.entry_symbols.discard(symbol)
+            return
         try:
             event = self.manager.open_position(
                 symbol=symbol,
@@ -4094,37 +4187,6 @@ class IntradayLiveEngine:
 
         self.learning.entry(event)
 
-        # ==========================
-        # 雙軌架構：前台與實盤門檻檢核
-        # ==========================
-        def _check_live_gate(sym, pr):
-            try:
-                st = read_live_settings()
-                lo, hi, cap = (st[k] for k in ("min_price", "max_price", "max_gain_pct"))
-                prev_c = self._previous_closes.get(sym, (None, None))[1]
-                gain_pct = ((pr / prev_c - 1) * 100) if prev_c else 0.0
-                if pr < lo:
-                    return False, f"股價 {pr:.2f} 元低於最低門檻 ({lo:g} 元)"
-                if pr > hi:
-                    return False, f"股價 {pr:.2f} 元高於最高門檻 ({hi:g} 元)"
-                if gain_pct > cap + 1e-9:
-                    return False, f"即時漲幅 {gain_pct:.1f}% 超過上限 ({cap:g}%)"
-                return True, "符合條件"
-            except Exception as _ge:
-                return True, f"檢核例外放行: {_ge}"
-
-        passed_gate, gate_reason = _check_live_gate(symbol, price)
-        if not passed_gate:
-            with self._lock:
-                self.silent_symbols.add(symbol)
-            try:
-                from easystock_admin.store import log_paper_trade_event
-                log_paper_trade_event(symbol, name, price, "略過", f"[後台條件限制] {gate_reason}")
-            except Exception as _log_e:
-                pass
-            print(f"ℹ️ [GATE 略過] {symbol} {name} {price:.2f} 僅供 AI 學習復盤，不推播/不模擬下單：{gate_reason}")
-            return
-
         try:
             self.store.write_entry(
                 event
@@ -4149,10 +4211,6 @@ class IntradayLiveEngine:
                     event.get("trade_id", "")
                 ),
             )
-            try:
-                paper_wallet.try_buy(symbol=symbol, name=name, price=price)
-            except Exception as _p_err:
-                print(f"[PaperWallet Error] ENTRY: {_p_err}")
 
         except Exception as exc:
             print(
@@ -4208,55 +4266,13 @@ class IntradayLiveEngine:
                 f"{type(exc).__name__}: {exc}"
             )
 
-        # ==========================
-        # Paper Trade Game EXIT
-        # ==========================
+        # Wallet settlement was committed before PositionManager emitted EXIT.
+        trade = event.get('trade') or {}
         try:
-            exit_price = float(
-                event.get(
-                    "exit_price",
-                    0
-                )
-            )
-
-            trade = (
-                event.get("trade")
-                if isinstance(
-                    event.get("trade"),
-                    dict
-                )
-                else {}
-            )
-
-            reason = str(
-                trade.get(
-                    "exit_reason",
-                    ""
-                )
-                or event.get(
-                    "exit_reason",
-                    ""
-                )
-                or ""
-            )
-
-            if exit_price > 0:
-                close_signal(
-                    symbol=symbol,
-                    exit_price=exit_price,
-                    reason=reason,
-                )
-                try:
-                    paper_wallet.close_and_settle(symbol=symbol, exit_price=exit_price, exit_reason=reason)
-                except Exception as _p_err:
-                    print(f"[PaperWallet Error] EXIT: {_p_err}")
-
+            close_signal(symbol=symbol, exit_price=float(trade['exit_price']),
+                         reason=str(trade.get('exit_reason', '')))
         except Exception as exc:
-            print(
-                f"[ERROR] PAPER GAME EXIT "
-                f"{symbol}: "
-                f"{type(exc).__name__}: {exc}"
-            )
+            print('[PAPER MIRROR] EXIT failed:', type(exc).__name__)
 
 
         push_line_text(
@@ -4283,6 +4299,8 @@ class IntradayLiveEngine:
 
         正常情況優先使用 manager.on_tick。
         """
+        if isinstance(self.manager, PositionManager):
+            return None
         position = get_position_safe(
             self.manager,
             symbol,
@@ -4712,9 +4730,12 @@ class IntradayLiveEngine:
         if self._force_exit_done:
             return
 
-        self._force_exit_done = True
+        mono = time.monotonic()
+        if mono - self._last_force_exit_attempt < 5:
+            return
+        self._last_force_exit_attempt = mono
 
-        for symbol in self.contracts:
+        for symbol in list(self.manager.positions):
             position = get_position_safe(
                 self.manager,
                 symbol,
@@ -4780,6 +4801,8 @@ class IntradayLiveEngine:
                     f"{type(exc).__name__}: "
                     f"{exc}"
                 )
+
+        self._force_exit_done = not bool(self.manager.positions)
 
     # -----------------------------------------------------
     # Main loop / shutdown
@@ -4951,6 +4974,8 @@ class IntradayLiveEngine:
                     tzinfo=None
                 )
 
+                if dtime(9, 0) <= tt < ENTRY_CUTOFF:
+                    self.refresh_market_risk()
                 self.heartbeat_if_due()
 
                 if (

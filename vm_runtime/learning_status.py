@@ -865,55 +865,16 @@ def main():
             )
         )
 
-        if (
-            runtime_reason
-            == "no_approved_model"
-            or runtime_version
-            == "gate-v2-disabled-no-approved-model"
-        ):
-            result[
-                "model_application"
-            ] = {
-                "status":
-                    "not_applied",
-
-                "basis":
-                    "no_approved_model",
-
-                "model_version":
-                    runtime_version,
-            }
-
-        elif (
-            runtime_decision.get(
-                "active"
-            )
-            and runtime_decision.get(
-                "approved"
-            )
-        ):
-            result[
-                "model_application"
-            ] = {
-                "status":
-                    (
-                        "applied"
-                        if engine_hash
-                        in known
-                        else "unknown"
-                    ),
-
-                "basis":
-                    (
-                        "approved_model_and_reviewed_engine"
-                        if engine_hash
-                        in known
-                        else "approved_model_engine_unreviewed"
-                    ),
-
-                "model_version":
-                    runtime_version,
-            }
+        mode = os.environ.get('LIVE_ENTRY_MODE', 'rules')
+        ready = bool(runtime_decision.get('active') and runtime_decision.get('approved'))
+        result['model_application'] = {
+            'status': 'not_applied' if mode != 'model' or not ready else 'unknown',
+            'basis': 'explicit_rules_mode' if mode == 'rules' else
+                     'approved_model_configured_runtime_not_verified' if ready else runtime_reason,
+            'model_version': runtime_version,
+            'entry_mode': mode,
+            'configured': ready,
+        }
 
     except Exception as exc:
         result.setdefault(

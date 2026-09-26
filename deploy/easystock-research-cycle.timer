@@ -1,0 +1,8 @@
+[Unit]
+Description=EasyStock daily post-close research cycle
+[Timer]
+OnCalendar=Mon..Fri *-*-* 16:10:00 Asia/Taipei
+Persistent=false
+Unit=easystock-research-cycle.service
+[Install]
+WantedBy=timers.target
