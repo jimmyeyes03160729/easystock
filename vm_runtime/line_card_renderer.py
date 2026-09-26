@@ -444,9 +444,9 @@ def render_stock_intraday_card(snapshot: dict, rows: list[dict], path: Path) -> 
 
 def render_stock_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Path:
     """Pure sparkline intraday chart (no duplicate header/text) for the Stitch hybrid Flex layout."""
-    fig = plt.figure(figsize=(4.8, 2.7), dpi=130, facecolor=BG)
-    ax = fig.add_axes([0.04, 0.32, 0.80, 0.64])
-    axv = fig.add_axes([0.04, 0.08, 0.80, 0.22], sharex=ax)
+    fig = plt.figure(figsize=(5.4, 3.0), dpi=140, facecolor=BG)
+    ax = fig.add_axes([0.085, 0.26, 0.805, 0.65])
+    axv = fig.add_axes([0.085, 0.08, 0.805, 0.17], sharex=ax)
 
     ref = _num(snapshot.get("reference"))
     avg = _num(snapshot.get("average_price"))
@@ -462,7 +462,7 @@ def render_stock_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Path
         all_pts = closes + ([base] if base else []) + ([avg] if avg else [])
         min_p, max_p = min(all_pts), max(all_pts)
         max_diff = max(abs(max_p - base), abs(base - min_p), 1.0)
-        ax.set_ylim(base - max_diff * 1.15, base + max_diff * 1.15)
+        ax.set_ylim(base - max_diff * 1.25, base + max_diff * 1.25)
 
         # Baseline
         ax.axhline(base, color="#9CA3AF", lw=0.8, ls="--", alpha=0.9, zorder=2)
@@ -474,7 +474,7 @@ def render_stock_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Path
                         color=GREEN, alpha=0.14, interpolate=True, zorder=2)
 
         curve_color = GREEN if closes[-1] < base else RED
-        ax.plot(xvals, closes, color=curve_color, lw=1.6, zorder=4)
+        ax.plot(xvals, closes, color=curve_color, lw=1.8, zorder=4)
 
         if avg:
             ax.axhline(avg, color=AMBER, lw=0.8, ls=":", alpha=0.85, zorder=3)
@@ -484,16 +484,16 @@ def render_stock_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Path
         hx, hy = xvals[hi_idx], closes[hi_idx]
         lx, ly = xvals[lo_idx], closes[lo_idx]
 
-        ax.scatter([hx], [hy], s=16, color=RED, zorder=5)
+        ax.scatter([hx], [hy], s=20, color=RED, zorder=5)
         ax.text(hx, hy + (max_diff * 0.05), f"{hy:.2f}", color=RED,
-                fontsize=7.2, fontweight="bold", ha="center", va="bottom", zorder=6)
+                fontsize=8.0, fontweight="bold", ha="center", va="bottom", zorder=6)
 
-        ax.scatter([lx], [ly], s=16, color=GREEN, zorder=5)
+        ax.scatter([lx], [ly], s=20, color=GREEN, zorder=5)
         ax.text(lx, ly - (max_diff * 0.05), f"{ly:.2f}", color=GREEN,
-                fontsize=7.2, fontweight="bold", ha="center", va="top", zorder=6)
+                fontsize=8.0, fontweight="bold", ha="center", va="top", zorder=6)
 
-        ax.scatter([xvals[-1]], [closes[-1]], s=24, color=curve_color,
-                   edgecolors="#FFFFFF", linewidths=1.2, zorder=7)
+        ax.scatter([xvals[-1]], [closes[-1]], s=28, color=curve_color,
+                   edgecolors="#FFFFFF", linewidths=1.3, zorder=7)
 
         ticks = [0, 60, 120, 180, 240, 270]
         labels = ["09:00", "10:00", "11:00", "12:00", "13:00", ""]
@@ -507,7 +507,7 @@ def render_stock_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Path
         ax_r.set_ylim(ax.get_ylim())
         r_labels = [f"{(y - base) / base * 100:+.1f}%" if base else "" for y in y_ticks]
         ax_r.set_yticks(y_ticks)
-        ax_r.set_yticklabels(r_labels, fontsize=6.8)
+        ax_r.set_yticklabels(r_labels, fontsize=7.2)
         ax_r.tick_params(colors=TEXT_MUTED, length=2, width=0.6)
         for s in ax_r.spines.values():
             s.set_visible(False)
@@ -516,7 +516,7 @@ def render_stock_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Path
         axv.bar(xvals, vols, width=0.9, color="#F59E0B", alpha=0.85)
         axv.set_xlim(0, 270)
         axv.set_xticks(ticks)
-        axv.set_xticklabels(labels, fontsize=7.0)
+        axv.set_xticklabels(labels, fontsize=7.5)
         axv.tick_params(axis="y", labelleft=False)
     else:
         ax.text(0.5, 0.5, "暫無分時走勢", transform=ax.transAxes,
@@ -529,9 +529,9 @@ def render_stock_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Path
 
 def render_market_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Path:
     """Pure sparkline intraday chart for market index."""
-    fig = plt.figure(figsize=(4.8, 2.7), dpi=130, facecolor=BG)
-    ax = fig.add_axes([0.04, 0.32, 0.80, 0.64])
-    axv = fig.add_axes([0.04, 0.08, 0.80, 0.22], sharex=ax)
+    fig = plt.figure(figsize=(5.4, 3.0), dpi=140, facecolor=BG)
+    ax = fig.add_axes([0.085, 0.26, 0.805, 0.65])
+    axv = fig.add_axes([0.085, 0.08, 0.805, 0.17], sharex=ax)
 
     ref = _num(snapshot.get("reference"))
     valid = [r for r in rows if r.get("close") is not None]
@@ -546,7 +546,7 @@ def render_market_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Pat
         all_pts = closes + ([base] if base else [])
         min_p, max_p = min(all_pts), max(all_pts)
         max_diff = max(abs(max_p - base), abs(base - min_p), 10.0)
-        ax.set_ylim(base - max_diff * 1.15, base + max_diff * 1.15)
+        ax.set_ylim(base - max_diff * 1.25, base + max_diff * 1.25)
 
         ax.axhline(base, color="#9CA3AF", lw=0.8, ls="--", alpha=0.9, zorder=2)
 
@@ -556,23 +556,23 @@ def render_market_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Pat
                         color=GREEN, alpha=0.14, interpolate=True, zorder=2)
 
         curve_color = GREEN if closes[-1] < base else RED
-        ax.plot(xvals, closes, color=curve_color, lw=1.6, zorder=4)
+        ax.plot(xvals, closes, color=curve_color, lw=1.8, zorder=4)
 
         hi_idx = max(range(len(closes)), key=lambda i: closes[i])
         lo_idx = min(range(len(closes)), key=lambda i: closes[i])
         hx, hy = xvals[hi_idx], closes[hi_idx]
         lx, ly = xvals[lo_idx], closes[lo_idx]
 
-        ax.scatter([hx], [hy], s=16, color=RED, zorder=5)
+        ax.scatter([hx], [hy], s=20, color=RED, zorder=5)
         ax.text(hx, hy + (max_diff * 0.05), f"{hy:,.1f}", color=RED,
-                fontsize=7.2, fontweight="bold", ha="center", va="bottom", zorder=6)
+                fontsize=8.0, fontweight="bold", ha="center", va="bottom", zorder=6)
 
-        ax.scatter([lx], [ly], s=16, color=GREEN, zorder=5)
+        ax.scatter([lx], [ly], s=20, color=GREEN, zorder=5)
         ax.text(lx, ly - (max_diff * 0.05), f"{ly:,.1f}", color=GREEN,
-                fontsize=7.2, fontweight="bold", ha="center", va="top", zorder=6)
+                fontsize=8.0, fontweight="bold", ha="center", va="top", zorder=6)
 
-        ax.scatter([xvals[-1]], [closes[-1]], s=24, color=curve_color,
-                   edgecolors="#FFFFFF", linewidths=1.2, zorder=7)
+        ax.scatter([xvals[-1]], [closes[-1]], s=28, color=curve_color,
+                   edgecolors="#FFFFFF", linewidths=1.3, zorder=7)
 
         ticks = [0, 60, 120, 180, 240, 270]
         labels = ["09:00", "10:00", "11:00", "12:00", "13:00", ""]
@@ -585,7 +585,7 @@ def render_market_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Pat
         ax_r.set_ylim(ax.get_ylim())
         r_labels = [f"{(y - base) / base * 100:+.1f}%" if base else "" for y in y_ticks]
         ax_r.set_yticks(y_ticks)
-        ax_r.set_yticklabels(r_labels, fontsize=6.8)
+        ax_r.set_yticklabels(r_labels, fontsize=7.2)
         ax_r.tick_params(colors=TEXT_MUTED, length=2, width=0.6)
         for s in ax_r.spines.values():
             s.set_visible(False)
@@ -593,7 +593,7 @@ def render_market_sparkline(snapshot: dict, rows: list[dict], path: Path) -> Pat
         axv.bar(xvals, vols, width=0.9, color="#F59E0B", alpha=0.85)
         axv.set_xlim(0, 270)
         axv.set_xticks(ticks)
-        axv.set_xticklabels(labels, fontsize=7.0)
+        axv.set_xticklabels(labels, fontsize=7.5)
         axv.tick_params(axis="y", labelleft=False)
     else:
         ax.text(0.5, 0.5, "暫無大盤走勢", transform=ax.transAxes,

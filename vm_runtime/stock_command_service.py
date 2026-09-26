@@ -1591,11 +1591,12 @@ def interactive_card_message(
         ref_val = _format_price(ref)
         vol_val = _format_compact_volume(_num(snapshot.get("total_amount") if market else snapshot.get("total_volume")), is_market=market)
 
-        def _metric_box(lbl: str, val: str, c: str) -> dict:
+        def _col_box(lbl: str, val: str, c: str) -> dict:
             return {
                 "type": "box",
                 "layout": "vertical",
-                "spacing": "none",
+                "flex": 1,
+                "alignItems": "center",
                 "contents": [
                     {"type": "text", "text": lbl, "size": "xxs", "color": "#9CA3AF"},
                     {"type": "text", "text": val, "size": "xs", "weight": "bold", "color": c},
@@ -1690,44 +1691,38 @@ def interactive_card_message(
                 "contents": [
                     {
                         "type": "box",
-                        "layout": "horizontal",
-                        "spacing": "sm",
+                        "layout": "vertical",
                         "contents": [
                             {
-                                "type": "box",
-                                "layout": "vertical",
-                                "flex": 3,
-                                "backgroundColor": "#F9FAFB",
-                                "cornerRadius": "6px",
-                                "paddingAll": "6px",
-                                "spacing": "xs",
-                                "contents": [
-                                    _metric_box("開盤", open_val, "#111827"),
-                                    _metric_box("最高", high_val, "#DC2626"),
-                                    _metric_box("最低", low_val, "#16A34A"),
-                                    _metric_box("昨收", ref_val, "#111827"),
-                                    _metric_box("成交", vol_val, "#D97706"),
-                                ],
-                            },
-                            {
-                                "type": "box",
-                                "layout": "vertical",
-                                "flex": 7,
-                                "contents": [
-                                    {
-                                        "type": "image",
-                                        "url": url,
-                                        "size": "full",
-                                        "aspectRatio": "16:9",
-                                        "aspectMode": "cover",
-                                        "action": {
-                                            "type": "uri",
-                                            "label": "Yahoo股市",
-                                            "uri": yahoo_quote_url(target, market=market),
-                                        },
-                                    }
-                                ],
-                            },
+                                "type": "image",
+                                "url": url,
+                                "size": "full",
+                                "aspectRatio": "16:9",
+                                "aspectMode": "cover",
+                                "action": {
+                                    "type": "uri",
+                                    "label": "Yahoo股市",
+                                    "uri": yahoo_quote_url(target, market=market),
+                                },
+                            }
+                        ],
+                    },
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "backgroundColor": "#F9FAFB",
+                        "cornerRadius": "8px",
+                        "paddingAll": "8px",
+                        "contents": [
+                            _col_box("開盤", open_val, "#111827"),
+                            {"type": "separator", "color": "#E5E7EB"},
+                            _col_box("最高", high_val, "#DC2626"),
+                            {"type": "separator", "color": "#E5E7EB"},
+                            _col_box("最低", low_val, "#16A34A"),
+                            {"type": "separator", "color": "#E5E7EB"},
+                            _col_box("昨收", ref_val, "#111827"),
+                            {"type": "separator", "color": "#E5E7EB"},
+                            _col_box("成交", vol_val, "#D97706"),
                         ],
                     },
                     {
