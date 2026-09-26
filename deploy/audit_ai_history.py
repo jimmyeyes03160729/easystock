@@ -89,6 +89,7 @@ def log_summary(unit, since):
     code, raw = command(['journalctl','-u',unit,'--since',since,'--no-pager','-o','json','-n','15000'])
     days = defaultdict(Counter)
     versions = defaultdict(set)
+    frames = defaultdict(Counter)
     first = last = None
     for line in raw.splitlines():
         try:
@@ -105,6 +106,9 @@ def log_summary(unit, since):
             'market_closed':r'\[MARKET CLOSED\]',
             'calendar_error':r'\[CALENDAR ERROR\]',
             'model_evaluation_log':r'\[MODEL\]',
+            'model_boot_log':r'\[MODEL_BOOT\]',
+            'rules_decision_log':r'\[ENTRY_DECISION\] mode=rules',
+            'model_decision_log':r'\[ENTRY_DECISION\] mode=model',
             'entry_log':r'ENTRY .*score=|\[ENTRY\]',
             'learning_error':r'\[LEARNING\].*(?:error|failed|full|not flushed)',
         }.items():
@@ -112,9 +116,12 @@ def log_summary(unit, since):
         for name in re.findall(r'\b(?:ImportError|SyntaxError|NameError|TypeError|ValueError|RuntimeError|OperationalError|ConnectionError|TimeoutError)\b',msg):
             days[day][name]+=1
         versions[day].update(re.findall(r'\b(?:paper-adaptive|quote-markout|research|gate-v\d|approved-model-gate)[A-Za-z0-9_.-]*',msg))
+        for filename,number in re.findall(r'File "(/(?:home/ubuntu/easystock[^"\n]*|opt/easystock-guardian)/[^"\n]+\.py)", line (\d+)',msg):
+            frames[day][filename+':'+number]+=1
     return {'returncode':code,'first_retained':first,'last_retained':last,
             'tail_limit':15000,'note':'Counts are log matches, not trade counts; missing retained logs cannot prove no execution.',
-            'by_day':dict(days),'versions_by_day':{d:sorted(v) for d,v in versions.items() if v}}
+            'by_day':dict(days),'versions_by_day':{d:sorted(v) for d,v in versions.items() if v},
+            'traceback_locations_by_day':dict(frames)}
 
 
 def main():
@@ -177,7 +184,8 @@ def main():
             result['daily_journals'].append({'date':path.name[8:18],'counts':dict(counts),'corrupt_lines':bad,
                                               'model_versions':sorted(versions),'truncated':bytes_read>50_000_000})
         except OSError:result['daily_journals'].append({'path':str(path),'unreadable':True})
-    roots=[p for p in root.parent.glob('easystock*') if p.is_dir() and re.search(r'learning|history|paper',p.name)]
+    roots=[p for p in root.parent.glob('easystock*') if p.is_dir()
+           and re.search(r'learning|history|paper|model',p.name) and 'venv' not in p.name]
     roots=list(dict.fromkeys([data,*roots]));found=[];visited=0
     for base in roots:
         for directory,dirs,names in os.walk(base):
