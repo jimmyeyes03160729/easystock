@@ -1,6 +1,6 @@
 # Oracle VM 程式來源
 
-這裡保存 2026-09-15 從正式 `/home/ubuntu/easystock` 核對取得的程式，來源 SHA-256 見 `source-manifest.json`。
+此目錄起源於 2026-09-15 VM 快照；之後的 repo 修正不等於 VM 已部署。`source-manifest.json` 僅是歷史來源紀錄，現在版本以 Git commit 及實際檔案雜湊為準。
 只收錄程式、管理介面靜態資源與研究成本假設；未收錄 `.env`、服務帳號、私鑰、LINE 群組清單、個人交易紀錄或 SQLite。
 
 ## 執行邊界
@@ -31,3 +31,7 @@ python easystock_admin/test_admin.py
 
 不要直接執行正式主程式來測試；它們可能訂閱券商行情、写入 Firebase 或傳送 LINE。
 歷史訓練與雙 AI 復盤的其他常駐／排程程式可能位於 VM 其他目錄，並不宣稱本快照已涵蓋整台 VM。
+
+## 2026-09-27 Runtime 修正
+
+請依 [部署核對文件](../docs/DAYTRADE_RUNTIME_AUDIT.md) 比對正式 VM 差異。模型預設規則模式、研究紀錄預設開啟；盤中風險及模擬帳務改為明確驗證後才發布成交。新增 `python tests/test_runtime_safety.py` 離線回歸。

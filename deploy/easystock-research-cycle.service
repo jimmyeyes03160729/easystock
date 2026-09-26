@@ -1,0 +1,14 @@
+[Unit]
+Description=EasyStock post-close labels and candidate training (no promotion)
+After=network-online.target
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+EnvironmentFile=/home/ubuntu/easystock/.env
+EnvironmentFile=-/home/ubuntu/easystock-learning.env
+ExecStart=/home/ubuntu/easystock-learning-venv/bin/python /home/ubuntu/easystock/learning_cycle.py
+UMask=0077
+NoNewPrivileges=true
+TimeoutStartSec=2h

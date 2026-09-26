@@ -3036,17 +3036,18 @@
 
     const modelBadge = document.getElementById("intradayModelBadge");
     const metaDaytradeModel = document.getElementById("metaDaytradeModel");
-    const ms = INTRADAY_LIVE?.model_status || {};
-    const ver = ms.version || "";
-    const match = ver.match(/\d{4}-\d{2}-\d{2}/);
-    const modDate = match ? match[0] : (window.__LATEST_LEARNING_DATE || "");
-    if (modelBadge && modDate) {
-      modelBadge.textContent = `當沖模組：${modDate}`;
-      modelBadge.title = `模型版本: ${ver || modDate}`;
+    const config = INTRADAY_LIVE?.config || {};
+    const modeLabel = config.entry_mode === 'rules' ? '規則模式'
+      : config.entry_mode === 'model' ? (config.model_ready ? '模型模式' : '模型未就緒，禁止進場')
+      : '模式待確認';
+    const modeDate = INTRADAY_LIVE?.scan_date || '日期未知';
+    if (modelBadge) {
+      modelBadge.textContent = `當沖：${modeLabel}`;
+      modelBadge.title = `引擎設定日期：${modeDate}；模型版本：${config.model_version || '未提供'}。設定不代表當下服務正常，請同時查看更新時間。`;
     }
-    if (metaDaytradeModel && modDate) {
-      metaDaytradeModel.textContent = modDate;
-      metaDaytradeModel.title = `牛馬 AI 實盤當沖模組基準日: ${ver || modDate}`;
+    if (metaDaytradeModel) {
+      metaDaytradeModel.textContent = modeLabel;
+      metaDaytradeModel.title = `引擎設定日期：${modeDate}，不以訓練日期推斷部署版本`;
     }
 
 
@@ -4984,7 +4985,7 @@
 </dialog>
 <script src="assets/vendor/html2canvas.min.js"></script>
 <script src="assets/module-share.js?v=d047d833f8a3"></script>
-<script src="assets/learning-status.js?v=e2b8901659b4"></script>
+<script src="assets/learning-status.js?v=46b0ad3e26c0"></script>
 <script src="assets/rebound-ui.js?v=bbc3b5a7a212"></script>
 <script src="assets/dashboard-layout.js?v=ab06770c6379"></script>
 <script src="assets/intraday-chart.js?v=3c6fa9154797"></script>

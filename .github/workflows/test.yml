@@ -26,8 +26,11 @@ jobs:
       - run: python tests/test_parsers.py
       - run: python tests/test_selection.py
       - run: python tests/test_market_calendar.py
+      - run: python tests/test_ai_history_audit.py
       - run: python daytrade_learning/test_core.py
       - run: python tests/test_premarket_entry.py
+      - run: python vm_runtime/tests/test_runtime_safety.py
+      - run: bash -n deploy/switch_vm_runtime.sh
       - run: python vm_runtime/daytrade_learning/test_integration.py
       - run: python vm_runtime/daytrade_learning/test_eod_fix.py
       - run: python vm_runtime/easystock_admin/test_admin.py
