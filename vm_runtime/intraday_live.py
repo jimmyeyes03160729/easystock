@@ -5066,7 +5066,8 @@ def main() -> None:
             print(f"🛑 [MARKET CLOSED] 今日台股未開盤 ({reason})，當沖即時引擎不啟動。")
             return
     except Exception as _cal_err:
-        print(f"⚠️ [CALENDAR WARN] 開盤日檢查例外: {_cal_err}，以預設排程繼續。")
+        print(f"🛑 [CALENDAR ERROR] 開盤日檢查例外: {_cal_err}，停止當沖引擎。")
+        return
 
     engine = IntradayLiveEngine()
     _ENGINE = engine

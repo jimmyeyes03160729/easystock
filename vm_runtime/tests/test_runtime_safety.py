@@ -231,5 +231,18 @@ class DeploymentTests(unittest.TestCase):
                 self.assertEqual((repo/rel).read_bytes(),(ROOT/rel).read_bytes())
         self.assertIn('PositionManager', (repo/'position_manager.py').read_text())
 
+    def test_calendar_failure_keeps_engine_stopped(self):
+        tree = ast.parse((ROOT/'intraday_live.py').read_text())
+        main = next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')
+        engine = Mock()
+        ns = {'os':os, 'IntradayLiveEngine':engine, '_ENGINE':None}
+        exec(compile(ast.Module(body=[main],type_ignores=[]),'<intraday-main>','exec'),ns)
+        calendar = types.ModuleType('market_calendar')
+        calendar.is_market_open = Mock(side_effect=RuntimeError('calendar unavailable'))
+        with patch.dict(sys.modules,{'market_calendar':calendar}), patch.dict(os.environ,{'FORCE_INTRADAY_LIVE':'0'}):
+            ns['main']()
+        engine.assert_not_called()
+        self.assertIsNone(ns['_ENGINE'])
+
 
 if __name__=='__main__':unittest.main()
