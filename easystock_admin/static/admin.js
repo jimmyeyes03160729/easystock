@@ -12,7 +12,11 @@ function applySettings(data){version=data.version;el('maxGain').value=data.value
 function showAdminTab(id){
   const panels=[...document.querySelectorAll('.admin-tab-panel')];
   if(!panels.some(panel=>panel.id===id))id='healthPanel';
-  for(const panel of panels)panel.hidden=panel.id!==id;
+  // The health centre is the combined control room: diagnostics plus the
+  // manually editable recommendation limits.  The Selection tab remains a
+  // compact shortcut to the same settings form.
+  const visible=id==='healthPanel'?new Set(['healthPanel','settingsPanel']):new Set([id]);
+  for(const panel of panels)panel.hidden=!visible.has(panel.id);
   for(const button of document.querySelectorAll('[data-admin-tab]'))button.setAttribute('aria-selected',String(button.dataset.adminTab===id));
 }
 const healthLabels={ok:'正常',warning:'注意',error:'異常',idle:'等待'};
