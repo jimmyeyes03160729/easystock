@@ -19,14 +19,20 @@
 <section id="workspace" hidden>
 <div class="title"><div><p class="eyebrow">當沖管理</p><h1>把推薦範圍設好。</h1><p class="muted">新推薦與 LINE／Telegram 進場通知前，會套用最新限制。</p></div><button id="logout" type="button">登出</button></div>
 <div class="identity"><span id="identity"></span><span id="version"></span></div>
-<section class="panel health-panel" aria-labelledby="healthTitle">
+<nav class="admin-section-nav" aria-label="後台功能分類">
+  <a href="#healthPanel">健康中心</a>
+  <a href="#settingsPanel">選股設定</a>
+  <a href="#paperTradePanel">模擬帳本</a>
+  <a href="#conversationPanel">通知設定</a>
+</nav>
+<section class="panel health-panel" id="healthPanel" aria-labelledby="healthTitle">
   <div class="health-heading"><div><p class="eyebrow">系統健康中心</p><h2 id="healthTitle">訓練與資料檢測燈號</h2><p class="hint">唯讀顯示最近一次狀態；不會在此頁啟動訓練、修改模型或執行交易。</p></div><button id="reloadHealth" type="button">重新檢查</button></div>
   <div id="healthSummary" class="health-summary" role="status" aria-live="polite">正在檢查系統狀態…</div>
   <div id="healthSignals" class="health-signals" aria-live="polite"></div>
   <p class="hint health-note">綠燈：可用或完成；黃燈：等待條件、時段或額度；紅燈：需要處理；灰燈：尚未開始或未啟用。</p>
 </section>
 <div>
-<section class="panel settings"><h2>推薦條件</h2>
+<section class="panel settings" id="settingsPanel"><h2>推薦條件</h2>
 <form id="settingsForm">
 <label for="maxGain">推薦當下漲幅上限</label><div class="number"><input id="maxGain" name="max_gain_pct" type="number" min="0" max="100" step="0.01" required><span>%</span></div><p class="hint">相對昨收，超過此漲幅就不推薦；等於上限仍可通過。</p>
 <div class="priceGrid"><div><label for="minPrice">最低股價</label><div class="number"><input id="minPrice" name="min_price" type="number" min="0.01" max="1000000" step="0.01" required><span>元</span></div></div><div><label for="maxPrice">最高股價</label><div class="number"><input id="maxPrice" name="max_price" type="number" min="0.01" max="1000000" step="0.01" required><span>元</span></div></div></div>
