@@ -30,8 +30,21 @@
 
   let currentUnit = "share"; // "share" (股) 或 "sheet" (張)
 
-  openBtn?.addEventListener("click", () => { modal.hidden = false; });
-  closeBtn?.addEventListener("click", () => { modal.hidden = true; });
+  function closeModal() {
+    modal.hidden = true;
+    openBtn?.focus();
+  }
+  openBtn?.addEventListener("click", () => {
+    modal.hidden = false;
+    closeBtn?.focus();
+  });
+  closeBtn?.addEventListener("click", closeModal);
+  modal?.addEventListener("click", event => {
+    if (event.target === modal) closeModal();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && modal && !modal.hidden) closeModal();
+  });
 
   // 1. 單位切換：股 vs 張
   function setUnit(unit) {
