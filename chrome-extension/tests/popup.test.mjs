@@ -10,6 +10,8 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   const dom = new JSDOM(html, { url: 'https://example.test', runScripts: 'outside-only' });
   const w = dom.window, messages = [];
   const state = { ...core.defaultState(), vip: false, vm: true, quotes: {}, bounce: [], used: 0, marketOpen: false, paymentURL: '' };
+  // Start light so the first theme click exercises enabling dark mode.
+  state.settings.darkMode = false;
   state.stocks.push({ symbol: '8299', market: 'TWO', name: '<img src=x onerror=alert(1)>', groups: ['rebound'] });
   state.bounce.push({ symbol: '8299', market: 'TWO', name: '群聯', price: 500, reason: '支撐區反彈' });
   const openedTabs = [];
