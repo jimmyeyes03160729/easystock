@@ -272,6 +272,14 @@ RADAR_TOP_N = max(
     ),
 )
 
+
+def recommendation_limit() -> int:
+    """Read the admin cap for the next radar pass without widening its safety bound."""
+    try:
+        return max(1, min(30, int(read_live_settings()['max_recommendations'])))
+    except Exception:
+        return RADAR_TOP_N
+
 RADAR_HISTORY_SECONDS = max(
     300,
     int(
@@ -3487,6 +3495,7 @@ class IntradayLiveEngine:
     def _write_radar_top30(
         self,
         rows: list[dict],
+        recommendation_cap: int,
     ) -> None:
         try:
             payload = {}
@@ -3536,7 +3545,7 @@ class IntradayLiveEngine:
                 "/market_data/intraday_live/radar_meta"
             ).set({
                 "mode": "instant_volume_surge",
-                "top_n": RADAR_TOP_N,
+                "top_n": recommendation_cap,
                 "actual_count": len(payload),
                 "pool_subscriptions": len(self.radar_universe_symbols),
                 "refresh_seconds": RADAR_REFRESH_SECONDS,
@@ -3653,7 +3662,8 @@ class IntradayLiveEngine:
             reverse=True,
         )
 
-        top_rows = qualified[:RADAR_TOP_N]
+        recommendation_cap = recommendation_limit()
+        top_rows = qualified[:recommendation_cap]
 
         for rank, row in enumerate(
             top_rows,
@@ -3717,7 +3727,8 @@ class IntradayLiveEngine:
         )
 
         self._write_radar_top30(
-            top_rows
+            top_rows,
+            recommendation_cap,
         )
 
         if new_top != old_top or force:

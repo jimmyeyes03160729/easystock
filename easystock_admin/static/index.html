@@ -29,6 +29,7 @@
 <section class="panel settings admin-tab-panel" id="settingsPanel"><h2>推薦條件</h2>
 <form id="settingsForm">
 <label for="maxGain">推薦當下漲幅上限</label><div class="number"><input id="maxGain" name="max_gain_pct" type="number" min="0" max="100" step="0.01" required><span>%</span></div><p class="hint">相對昨收，超過此漲幅就不推薦；等於上限仍可通過。</p>
+<label for="maxRecommendations">推薦股票上限數量</label><div class="number"><input id="maxRecommendations" name="max_recommendations" type="number" min="1" max="30" step="1" required><span>檔</span></div><p class="hint">每輪量能雷達最多顯示與追蹤的推薦檔數。系統安全上限為 30 檔。</p>
 <div class="priceGrid"><div><label for="minPrice">最低股價</label><div class="number"><input id="minPrice" name="min_price" type="number" min="0.01" max="1000000" step="0.01" required><span>元</span></div></div><div><label for="maxPrice">最高股價</label><div class="number"><input id="maxPrice" name="max_price" type="number" min="0.01" max="1000000" step="0.01" required><span>元</span></div></div></div>
 <p class="hint">停損與停利繼續由系統判斷；既有訊號繼續追蹤。</p>
 <div class="actions"><button class="primary" id="save" type="submit">儲存設定</button><button id="reload" type="button">重新載入</button></div><p id="saveStatus" role="status" aria-live="polite"></p>

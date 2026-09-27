@@ -12,7 +12,8 @@ import sqlite3
 import time
 
 OWNER = os.environ.get('ADMIN_OWNER_EMAIL', '').strip().lower()
-KEYS = ('min_price', 'max_price', 'max_gain_pct')
+KEYS = ('min_price', 'max_price', 'max_gain_pct', 'max_recommendations')
+LEGACY_KEYS = KEYS[:-1]
 
 def db_path():
     return Path(os.environ.get('EASYSTOCK_ADMIN_DB', '/home/ubuntu/easystock-admin/state.sqlite'))
@@ -21,8 +22,9 @@ def digest(s):
     return hashlib.sha256(s.encode()).hexdigest()
 
 def validate(value):
-    if not isinstance(value, dict) or set(value) != set(KEYS):
-        raise ValueError('只允許最低股價、最高股價與漲幅上限。')
+    if not isinstance(value, dict) or set(value) not in (set(KEYS), set(LEGACY_KEYS)):
+        raise ValueError('只允許最低股價、最高股價、漲幅上限與推薦檔數上限。')
+    value = {**value, 'max_recommendations': value.get('max_recommendations', 30)}
     result = {}
     for k, v in value.items():
         if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
@@ -34,6 +36,9 @@ def validate(value):
         raise ValueError('最低股價須大於0，且不得超過最高股價。')
     if not 0 <= result['max_gain_pct'] <= 100:
         raise ValueError('漲幅上限須介於0至100%。')
+    if result['max_recommendations'] != int(result['max_recommendations']) or not 1 <= result['max_recommendations'] <= 30:
+        raise ValueError('推薦檔數上限須為 1 至 30 的整數。')
+    result['max_recommendations'] = int(result['max_recommendations'])
     return result
 
 def defaults():
@@ -44,7 +49,8 @@ def defaults():
     return validate({
         'min_price': get('DAYTRADE_MIN_PRICE', '1'),
         'max_price': get('DAYTRADE_MAX_PRICE', '1000000'),
-        'max_gain_pct': get('DAYTRADE_MAX_GAIN_PCT', '5')
+        'max_gain_pct': get('DAYTRADE_MAX_GAIN_PCT', '5'),
+        'max_recommendations': get('LIVE_RADAR_TOP_N', '30')
     })
 
 class Conflict(Exception): pass
@@ -314,8 +320,8 @@ class Store:
                     state = self._state(db)
                 fields = state['values']
                 reply = (f"當沖設定（版本 {state['version']}）\n最低股價：{fields['min_price']:g} 元\n最高股價：{fields['max_price']:g} 元\n"
-                         f"推薦當下漲幅上限：{fields['max_gain_pct']:g}%\n\n"
-                         "修改範例：\n當沖設定 最高股價 100\n當沖設定 最低股價 20\n當沖設定 漲幅上限 5\n\n新推薦與LINE發送前會讀取最新設定；既有訊號繼續追蹤。")
+                         f"推薦當下漲幅上限：{fields['max_gain_pct']:g}%\n推薦檔數上限：{fields['max_recommendations']} 檔\n\n"
+                         "修改範例：\n當沖設定 最高股價 100\n當沖設定 最低股價 20\n當沖設定 漲幅上限 5\n當沖設定 推薦檔數 10\n\n新推薦與LINE發送前會讀取最新設定；既有訊號繼續追蹤。")
             db.execute('INSERT INTO receipts VALUES(?,?,?)', (key, reply, time.time()))
             return reply
 

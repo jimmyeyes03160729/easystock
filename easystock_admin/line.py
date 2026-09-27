@@ -15,8 +15,8 @@ def handle_admin_command(text,source,event_id,store=None):
             if not re.fullmatch('[0-9A-F]{32}',code):return '請貼上後台產生的完整綁定指令。'
             return store.line(uid,event_id,'bind',code)
         if text=='當沖設定':return store.line(uid,event_id,'read')
-        match=re.fullmatch(r'當沖設定\s+(最低股價|最高股價|漲幅上限)\s+(\d+(?:\.\d{1,2})?)',text)
-        if not match:return '指令範例：當沖設定 最高股價 100（數字不加元或%）'
-        field={'最低股價':'min_price','最高股價':'max_price','漲幅上限':'max_gain_pct'}[match[1]]
+        match=re.fullmatch(r'當沖設定\s+(最低股價|最高股價|漲幅上限|推薦檔數)\s+(\d+(?:\.\d{1,2})?)',text)
+        if not match:return '指令範例：當沖設定 推薦檔數 10（數字不加單位）'
+        field={'最低股價':'min_price','最高股價':'max_price','漲幅上限':'max_gain_pct','推薦檔數':'max_recommendations'}[match[1]]
         return store.line(uid,event_id,'update',{field:float(match[2])})
     except (Denied,ValueError) as exc:return str(exc)

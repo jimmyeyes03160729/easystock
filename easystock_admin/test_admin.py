@@ -17,7 +17,7 @@ sys.path.insert(0,str(ROOT))
 os.environ['ADMIN_OWNER_EMAIL']='owner@example.test'
 from easystock_admin.store import Store,Denied,Conflict,validate,read_live_settings,OWNER
 from easystock_admin.line import handle_admin_command
-INITIAL={'min_price':20,'max_price':100,'max_gain_pct':5}
+INITIAL={'min_price':20,'max_price':100,'max_gain_pct':5,'max_recommendations':30}
 ORIGIN='https://admin.example.com'
 CLIENT='123456-test.apps.googleusercontent.com'
 
@@ -48,8 +48,8 @@ class StoreTests(unittest.TestCase):
         self.s.update({**INITIAL,'max_price':80},1)
         with self.assertRaises(Conflict):self.s.update({**INITIAL,'max_price':90},1)
         self.assertEqual(self.s.get()['values']['max_price'],80)
-    def test_only_three_fields_and_valid_ranges(self):
-        for values in ({**INITIAL,'stop_loss':1},{**INITIAL,'min_price':101},{**INITIAL,'max_price':True},{**INITIAL,'max_gain_pct':float('nan')},{**INITIAL,'max_gain_pct':1.123}):
+    def test_only_allowed_fields_and_valid_ranges(self):
+        for values in ({**INITIAL,'stop_loss':1},{**INITIAL,'min_price':101},{**INITIAL,'max_price':True},{**INITIAL,'max_gain_pct':float('nan')},{**INITIAL,'max_gain_pct':1.123},{**INITIAL,'max_recommendations':31},{**INITIAL,'max_recommendations':2.5}):
             with self.assertRaises(ValueError):validate(values)
     def test_line_binding_one_use_and_revocation(self):
         code=self.s.bind_code();self.s.line('user1','e1','bind',code)

@@ -8,7 +8,7 @@ async function api(path,{method='GET',body}={}){
   if(!response.ok)throw new Error(data.error||'登入已失效，請重新登入。');
   return data;
 }
-function applySettings(data){version=data.version;el('maxGain').value=data.values.max_gain_pct;el('minPrice').value=data.values.min_price;el('maxPrice').value=data.values.max_price;el('version').textContent='設定版本 '+version;}
+function applySettings(data){version=data.version;el('maxGain').value=data.values.max_gain_pct;el('maxRecommendations').value=data.values.max_recommendations;el('minPrice').value=data.values.min_price;el('maxPrice').value=data.values.max_price;el('version').textContent='設定版本 '+version;}
 function showAdminTab(id){
   const panels=[...document.querySelectorAll('.admin-tab-panel')];
   if(!panels.some(panel=>panel.id===id))id='healthPanel';
@@ -59,8 +59,9 @@ el('theme').onclick=()=>{const theme=document.documentElement.dataset.theme==='d
 try{if(localStorage.getItem('easystock-admin-theme')==='light')document.documentElement.dataset.theme='light';}catch{}
 el('settingsForm').onsubmit=async event=>{
   event.preventDefault();if(version===null)return;
-  const values={min_price:Number(el('minPrice').value),max_price:Number(el('maxPrice').value),max_gain_pct:Number(el('maxGain').value)};
+  const values={min_price:Number(el('minPrice').value),max_price:Number(el('maxPrice').value),max_gain_pct:Number(el('maxGain').value),max_recommendations:Number(el('maxRecommendations').value)};
   if(values.min_price>values.max_price){message('saveStatus','最低股價不得超過最高股價。',true);return;}
+  if(!Number.isInteger(values.max_recommendations)||values.max_recommendations<1||values.max_recommendations>30){message('saveStatus','推薦股票上限數量須為 1 至 30 的整數。',true);return;}
   el('save').disabled=true;message('saveStatus','正在儲存…');
   try{applySettings(await api('settings',{method:'PUT',body:{values,version}}));message('saveStatus','已儲存。之後的新推薦會讀取這份設定。');}
   catch(error){message('saveStatus',error.message,true);}finally{el('save').disabled=false;}
