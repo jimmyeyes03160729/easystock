@@ -1,0 +1,510 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+html, body {
+  width: 440px;
+  min-width: 440px;
+  max-width: 440px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+#popup-container {
+  width: 440px;
+  min-width: 440px;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+button, a, input { outline-offset: 2px; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid #0284c7; }
+.tab-btn { background: transparent; border: 1px solid transparent; color: #64748b; }
+.tab-btn.tab-active { background: white; border-color: #e2e8f0; color: #0f172a; box-shadow: 0 1px 2px #0000000d; }
+#update-timestamp { max-width: 290px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#action-message { overflow-wrap: anywhere; }
+.stock-card h2 { overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* 黑暗 / 光明主題模式 */
+body.dark-mode {
+  color-scheme: dark;
+  background-color: #020617 !important;
+  color: #e2e8f0 !important;
+}
+body.dark-mode #popup-container,
+body.dark-mode #settings-panel {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+}
+body.dark-mode .bg-white { background-color: #111827 !important; }
+body.dark-mode .bg-slate-50,
+body.dark-mode .bg-slate-50\/50,
+body.dark-mode .bg-slate-50\/60 { background-color: #0f172a !important; }
+body.dark-mode .bg-slate-100,
+body.dark-mode .bg-slate-100\/90 { background-color: #1e293b !important; }
+body.dark-mode .bg-slate-200 { background-color: #334155 !important; }
+body.dark-mode .bg-slate-300 { background-color: #475569 !important; }
+body.dark-mode .bg-slate-700 { background-color: #334155 !important; }
+body.dark-mode .bg-slate-800 { background-color: #1e293b !important; }
+body.dark-mode .bg-slate-900 { background-color: #020617 !important; }
+body.dark-mode .text-slate-900 { color: #f8fafc !important; }
+body.dark-mode .text-slate-800 { color: #f1f5f9 !important; }
+body.dark-mode .text-slate-700 { color: #e2e8f0 !important; }
+body.dark-mode .text-slate-600 { color: #cbd5e1 !important; }
+body.dark-mode .text-slate-500 { color: #94a3b8 !important; }
+body.dark-mode .text-slate-400 { color: #94a3b8 !important; }
+body.dark-mode .text-slate-300 { color: #cbd5e1 !important; }
+body.dark-mode .border-slate-100,
+body.dark-mode .border-slate-200,
+body.dark-mode .border-slate-200\/60,
+body.dark-mode .border-slate-200\/80,
+body.dark-mode .border-slate-200\/90,
+body.dark-mode .border-slate-300 { border-color: #334155 !important; }
+body.dark-mode .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1e293b !important; }
+body.dark-mode input,
+body.dark-mode select {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #475569 !important;
+}
+body.dark-mode input::placeholder { color: #64748b !important; }
+body.dark-mode .tab-btn { color: #94a3b8 !important; }
+body.dark-mode .tab-btn.tab-active {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+  color: #f8fafc !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.35) !important;
+}
+body.dark-mode .stock-row,
+body.dark-mode .stock-card {
+  background-color: #111827 !important;
+  border-color: #1e293b !important;
+}
+body.dark-mode .stock-row:hover,
+body.dark-mode .setting-toggle-card:hover {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+}
+body.dark-mode .size-pill-label:has(input:checked) {
+  background-color: #334155 !important;
+  color: #7dd3fc !important;
+}
+body.dark-mode input[type=range] { background: #334155 !important; }
+body.dark-mode input[type=range]::-webkit-slider-thumb {
+  background: #e2e8f0 !important;
+  border-color: #38bdf8 !important;
+}
+body.dark-mode .toggle-slider { background-color: #475569; }
+body.dark-mode .toggle-slider:before { background-color: #f8fafc; }
+body.dark-mode .bg-sky-50,
+body.dark-mode .bg-sky-50\/40,
+body.dark-mode .bg-sky-50\/60,
+body.dark-mode .bg-sky-100 { background-color: #082f49 !important; }
+body.dark-mode .bg-purple-50,
+body.dark-mode .bg-purple-50\/20,
+body.dark-mode .bg-purple-50\/80,
+body.dark-mode .bg-purple-100 { background-color: #2e1065 !important; }
+body.dark-mode .bg-red-50,
+body.dark-mode .bg-red-50\/40 { background-color: #450a0a !important; }
+body.dark-mode .bg-emerald-50\/40 { background-color: #022c22 !important; }
+body.dark-mode .bg-amber-100 { background-color: #451a03 !important; }
+body.dark-mode .text-sky-950 { color: #e0f2fe !important; }
+body.dark-mode .text-sky-800,
+body.dark-mode .text-sky-700,
+body.dark-mode .text-sky-600 { color: #7dd3fc !important; }
+body.dark-mode .text-purple-900,
+body.dark-mode .text-purple-800,
+body.dark-mode .text-purple-700,
+body.dark-mode .text-purple-600 { color: #c4b5fd !important; }
+body.dark-mode .text-amber-700 { color: #fcd34d !important; }
+body.dark-mode .border-sky-200,
+body.dark-mode .border-sky-200\/60,
+body.dark-mode .border-sky-300 { border-color: #075985 !important; }
+body.dark-mode .border-purple-200,
+body.dark-mode .border-purple-200\/80 { border-color: #6d28d9 !important; }
+body.dark-mode .border-red-100 { border-color: #7f1d1d !important; }
+body.dark-mode .border-emerald-100 { border-color: #065f46 !important; }
+body.dark-mode #brand-tag {
+  background-color: #1e293b !important;
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+}
+body.dark-mode #btn-theme-toggle {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #475569 !important;
+}
+body.dark-mode #btn-theme-toggle:hover { background-color: #334155 !important; }
+body.dark-mode #watchlist-pagination-bar,
+body.dark-mode #taiex-banner,
+body.dark-mode #group-tabs,
+body.dark-mode #stock-table-header,
+body.dark-mode footer,
+body.dark-mode #disclaimer-bar {
+  border-color: #1e293b !important;
+}
+body.dark-mode #search-suggestions { background-color: #020617 !important; border-color: #334155 !important; }
+
+.ai-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.375rem;
+}
+
+/* 圖片2：精緻表格排版 (個股 | 今價 | 漲跌 | 高 / 低 | 走勢 | 時間) - 依 Stitch 規範完美對齊 440px 容器 */
+.stock-table-grid, #stock-table-header {
+  display: grid !important;
+  grid-template-columns: 112px 68px 74px 66px 60px 36px !important;
+  align-items: center !important;
+  font-variant-numeric: tabular-nums !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  box-sizing: border-box !important;
+}
+.stock-table-grid.no-sparkline, #stock-table-header.no-sparkline {
+  grid-template-columns: 126px 82px 88px 80px 0px 40px !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  box-sizing: border-box !important;
+}
+.stock-table-grid.no-sparkline .col-sparkline,
+#stock-table-header.no-sparkline #col-header-sparkline {
+  display: none !important;
+}
+
+.stock-row {
+  border-bottom: 1px solid #f1f5f9;
+  background-color: #ffffff;
+  transition: background-color 0.15s ease;
+  position: relative;
+}
+.stock-row:hover {
+  background-color: #f8fafc;
+}
+
+/* 刪除鍵與時間互斥平滑替換 (解決 0×30 重疊問題) */
+.stock-row .col-time-text {
+  display: inline-block !important;
+}
+.stock-row .btn-row-delete {
+  display: none !important;
+}
+.stock-row:hover .col-time-text {
+  display: none !important;
+}
+.stock-row:hover .btn-row-delete {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   全介面字級連動系統 (小 / 標準 / 大) - 依 Stitch 規範連同整個介面文字等比縮放
+   即使放大到最大模式 (Large)，亦保有 440px 容器內的黃金比例排版，絕不折行溢出
+   ========================================================================== */
+
+/* ----------------- 1. 小字模式 (.size-small) - 緊湊顯示版 ----------------- */
+.size-small #brand-title { font-size: 11px !important; }
+.size-small #brand-tag { font-size: 8.5px !important; }
+.size-small #btn-theme-toggle,
+.size-small #btn-open-settings { font-size: 9.5px !important; padding: 2px 5px !important; }
+.size-small #input-search { font-size: 11px !important; padding-top: 3px !important; padding-bottom: 3px !important; }
+.size-small #btn-add { font-size: 11px !important; height: 26px !important; padding-left: 6px !important; padding-right: 6px !important; }
+.size-small #taiex-banner { font-size: 10px !important; padding-top: 4px !important; padding-bottom: 4px !important; }
+.size-small #taiex-price { font-size: 11.5px !important; }
+.size-small #taiex-change { font-size: 10px !important; }
+.size-small #otc-container { font-size: 9.5px !important; }
+.size-small #group-tabs button { font-size: 11px !important; padding: 3px 6px !important; }
+.size-small #stock-table-header { font-size: 9.5px !important; padding-top: 3px !important; padding-bottom: 3px !important; }
+.size-small .stock-row { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+.size-small .stock-sym { font-size: 11px !important; }
+.size-small .stock-name { font-size: 10px !important; }
+.size-small .stock-price { font-size: 12.5px !important; }
+.size-small .stock-sub { font-size: 9px !important; }
+.size-small .col-time-text { font-size: 9px !important; }
+.size-small footer { font-size: 10px !important; padding-top: 5px !important; padding-bottom: 5px !important; }
+.size-small #disclaimer-bar { font-size: 9px !important; }
+
+/* ----------------- 2. 標準模式 (.size-standard / .size-medium) - 精緻平衡 ----------------- */
+.size-standard #brand-title,
+.size-medium #brand-title { font-size: 12px !important; }
+.size-standard #input-search,
+.size-medium #input-search { font-size: 12px !important; }
+.size-standard #btn-add,
+.size-medium #btn-add { font-size: 12px !important; height: 28px !important; }
+.size-standard #taiex-banner,
+.size-medium #taiex-banner { font-size: 11px !important; }
+.size-standard #taiex-price,
+.size-medium #taiex-price { font-size: 12px !important; }
+.size-standard #taiex-change,
+.size-medium #taiex-change { font-size: 11px !important; }
+.size-standard #group-tabs button,
+.size-medium #group-tabs button { font-size: 12px !important; padding: 4px 8px !important; }
+.size-standard #stock-table-header,
+.size-medium #stock-table-header { font-size: 10.5px !important; }
+.size-standard .stock-row,
+.size-medium .stock-row { padding-top: 0.45rem !important; padding-bottom: 0.45rem !important; }
+.size-standard .stock-sym,
+.size-medium .stock-sym { font-size: 13px !important; font-weight: 700 !important; }
+.size-standard .stock-name,
+.size-medium .stock-name { font-size: 11px !important; }
+.size-standard .stock-price,
+.size-medium .stock-price { font-size: 14px !important; font-weight: 700 !important; }
+.size-standard .stock-sub,
+.size-medium .stock-sub { font-size: 10.5px !important; }
+.size-standard .col-time-text,
+.size-medium .col-time-text { font-size: 10.5px !important; }
+.size-standard footer,
+.size-medium footer { font-size: 11px !important; }
+.size-standard #disclaimer-bar,
+.size-medium #disclaimer-bar { font-size: 10px !important; }
+
+/* ----------------- 3. 大字模式 (.size-large) - 清晰醒目、嚴密防破版 ----------------- */
+.size-large #brand-title { font-size: 13.5px !important; font-weight: 800 !important; }
+.size-large #brand-tag { font-size: 10px !important; }
+.size-large #btn-theme-toggle,
+.size-large #btn-open-settings { font-size: 11.5px !important; padding: 2px 7px !important; }
+.size-large #input-search { font-size: 13px !important; padding-top: 4px !important; padding-bottom: 4px !important; }
+.size-large #btn-add { font-size: 12.5px !important; height: 30px !important; padding-left: 10px !important; padding-right: 10px !important; }
+.size-large #taiex-banner { font-size: 12px !important; padding-top: 6px !important; padding-bottom: 6px !important; }
+.size-large #taiex-price { font-size: 13.5px !important; font-weight: 800 !important; }
+.size-large #taiex-change { font-size: 11.5px !important; }
+.size-large #otc-container { font-size: 11px !important; }
+.size-large #group-tabs button { font-size: 12.5px !important; padding: 4px 7px !important; font-weight: 600 !important; }
+.size-large #stock-table-header { font-size: 11px !important; padding-top: 6px !important; padding-bottom: 6px !important; }
+.size-large .stock-row { padding-top: 0.65rem !important; padding-bottom: 0.65rem !important; }
+.size-large .stock-sym { font-size: 14.5px !important; font-weight: 800 !important; }
+.size-large .stock-name { font-size: 12px !important; font-weight: 600 !important; }
+.size-large .stock-price { font-size: 16px !important; font-weight: 800 !important; }
+.size-large .stock-sub { font-size: 11.5px !important; }
+.size-large .col-time-text { font-size: 11.5px !important; }
+.size-large footer { font-size: 12px !important; padding-top: 7px !important; padding-bottom: 7px !important; }
+.size-large #disclaimer-bar { font-size: 10.5px !important; padding-top: 5px !important; padding-bottom: 5px !important; }
+.size-large #settings-panel h2 { font-size: 13.5px !important; }
+.size-large #settings-panel h3 { font-size: 13px !important; }
+.size-large #settings-panel select { font-size: 12.5px !important; }
+.size-large #settings-panel .test-btn { font-size: 12px !important; padding-top: 7px !important; padding-bottom: 7px !important; }
+
+/* iOS 風格平滑切換開關 (Stitch Design) */
+.toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+  margin: 0;
+  pointer-events: none;
+}
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #cbd5e1;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 9999px;
+}
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #ffffff;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #0284c7;
+}
+.toggle-switch input.accent-purple-600:checked + .toggle-slider {
+  background-color: #9333ea;
+}
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(16px);
+}
+
+/* Stitch 現代滑桿美化樣式 (圓角軌道與高質感白色滑塊) */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 9999px;
+  outline: none;
+  transition: background 0.15s ease;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #0284c7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 5px rgba(2, 132, 199, 0.35);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #0284c7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+/* 水平分段膠囊切換鈕 (Segmented Control) */
+.size-pill-label:has(input:checked) {
+  background-color: #ffffff !important;
+  color: #0369a1 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+  font-weight: 700 !important;
+}
+
+/* 緊湊高密度樣式相容 */
+.density-compact .stock-card:not(.stock-row) {
+  padding: 0.375rem 0.5rem !important;
+  margin-bottom: 0.25rem !important;
+  gap: 0.25rem !important;
+}
+.density-compact .stock-card:not(.stock-row) h2 {
+  font-size: 11px !important;
+}
+.density-compact .stock-card:not(.stock-row) .card-price {
+  font-size: 13px !important;
+}
+.density-compact .stock-card:not(.stock-row) .card-meta {
+  font-size: 9px !important;
+}
+
+/* 全面橫向防文字縱向折行與排版加固 (移除全局 label，避免選項文字擠壓) */
+.shrink-0 { flex-shrink: 0 !important; }
+.whitespace-nowrap { white-space: nowrap !important; }
+.truncate { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+
+#brand-title {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  min-width: 0 !important;
+  flex: 1 1 auto;
+}
+#brand-tag,
+#btn-theme-toggle,
+#btn-open-settings,
+#btn-add,
+#group-tabs button,
+#taiex-banner span,
+#strategy-bar button,
+.stock-card .card-price,
+.stock-card .card-badge,
+button {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+/* 設定面板排版呼吸感加固 (字距、行高、卡片分層舒適大氣) */
+.setting-toggle-card {
+  transition: all 0.15s ease !important;
+  line-height: 1.45 !important;
+  letter-spacing: 0.015em !important;
+}
+.setting-toggle-card:hover {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* 即時通知彈窗最上層懸浮保證 (高於設定抽屜 z-20，絕對可見) */
+#in-app-toast {
+  z-index: 9999 !important;
+  position: absolute !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 系統推播與即時彈窗測試按鈕群組 (強制單列橫向等寬、高質感卡片、放大出場圖示) */
+.test-btn-group {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  gap: 6px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+.test-btn {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  padding: 6px 4px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  border: 1px solid transparent !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+}
+.test-btn:hover {
+  filter: brightness(1.08) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+}
+.test-btn:active {
+  transform: translateY(0) !important;
+}
+.test-btn-buy {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  color: #ffffff !important;
+  border-color: #0284c7 !important;
+}
+.test-btn-exit {
+  background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%) !important;
+  color: #ffffff !important;
+  border-color: #f43f5e !important;
+}
+.test-btn-rebound {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%) !important;
+  color: #ffffff !important;
+  border-color: #8b5cf6 !important;
+}
+.test-btn-icon {
+  width: 15px !important;
+  height: 15px !important;
+  flex-shrink: 0 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+}
+
+
+

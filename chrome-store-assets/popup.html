@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockWatch Pro</title>
+  <link rel="stylesheet" href="assets/popup.css">
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased selection:bg-slate-200">
+  <div id="popup-container" class="w-[440px] flex flex-col bg-white border border-slate-200 shadow-xl overflow-hidden relative">
+
+    <!-- 即時 In-App 推播通知彈窗 (點擊測試或即時訊號直接在小工具內彈出，最上層浮動) -->
+    <div id="in-app-toast" class="hidden absolute top-2 left-2 right-2 z-50 bg-slate-900 text-white p-3 rounded-lg shadow-2xl border border-slate-700 transition-all duration-200" style="z-index: 9999;">
+      <div class="flex items-start justify-between gap-2 mb-1.5">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span id="toast-badge" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500 text-white shrink-0 whitespace-nowrap">🚀 當沖進場</span>
+          <span id="toast-title" class="font-bold text-xs truncate whitespace-nowrap">2330 台積電</span>
+        </div>
+        <button id="btn-close-toast" class="text-slate-400 hover:text-white text-sm px-1 leading-none shrink-0" aria-label="關閉彈窗">×</button>
+      </div>
+      <div id="toast-body" class="text-[11px] text-slate-300 space-y-0.5 leading-relaxed font-sans max-h-36 overflow-y-auto whitespace-pre-line bg-slate-950/60 p-2 rounded border border-slate-800/80"></div>
+      <div class="flex justify-end gap-2 mt-2 pt-1 border-t border-slate-800">
+        <button id="toast-chart-btn" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow-xs transition whitespace-nowrap">查看線圖 ↗</button>
+      </div>
+    </div>
+
+    <!-- 頂部列與搜尋 -->
+    <header class="p-3 border-b border-slate-100 bg-white sticky top-0 z-10">
+      <div class="flex items-center justify-between mb-2 gap-2">
+        <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+          <div id="market-status-dot" class="h-2 w-2 rounded-full bg-slate-400 shrink-0" title="離線 / 休市"></div>
+          <img src="assets/icon16.png" class="w-3.5 h-3.5 shrink-0 inline-block" alt="Logo" />
+          <h1 id="brand-title" class="text-xs font-bold tracking-tight text-slate-900 truncate whitespace-nowrap">EasyStock · 牛馬自救終端</h1>
+          <span id="brand-tag" class="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 py-0.2 rounded border border-slate-200 shrink-0 whitespace-nowrap">v1.01</span>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+          <button id="btn-theme-toggle" aria-label="切換黑暗與光明模式" title="切換黑暗 / 光明模式 (快捷鍵 D)" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 flex items-center gap-1 transition shrink-0 whitespace-nowrap">
+            <span id="theme-btn-icon">🌙</span> <span id="theme-btn-label" class="whitespace-nowrap">黑暗</span>
+          </button>
+          <button id="btn-open-settings" aria-label="開啟設定" title="開啟設定面板" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-1 shadow-xs transition active:scale-95 cursor-pointer shrink-0 whitespace-nowrap">
+            <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 shrink-0"></i>
+            <span class="whitespace-nowrap">設定</span>
+          </button>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5 relative">
+        <div class="relative flex-1">
+          <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input id="input-search" aria-label="股票代號或名稱" type="text" autocomplete="off" placeholder="代號/中文 (如 2330 或 台積電)..." class="w-full pl-8 pr-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-md focus:outline-none focus:border-slate-400" />
+          <!-- 搜尋建議框：深色高對比，避免白底看不清按鈕 -->
+          <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-slate-900 text-white border border-slate-700 rounded-lg shadow-2xl z-30 max-h-56 overflow-y-auto text-xs py-1 divide-y divide-slate-800"></div>
+        </div>
+        <button id="btn-add" class="h-7 px-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-medium flex items-center gap-1 shrink-0">
+          <i data-lucide="plus" class="w-3 h-3"></i> 新增
+        </button>
+      </div>
+    </header>
+
+    <!-- 大盤即時加權與櫃買指數 -->
+    <div id="taiex-banner" class="flex items-center justify-between px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[11px]">
+      <div class="flex items-center gap-1.5 min-w-0">
+        <span class="font-bold text-slate-700">加權指數</span>
+        <span id="taiex-price" class="font-bold text-slate-900">-</span>
+        <span id="taiex-change" class="font-semibold text-slate-500">-</span>
+      </div>
+      <div id="otc-container" class="flex items-center gap-1 text-[10px] text-slate-500 shrink-0">
+        <span>櫃買</span>
+        <span id="otc-price" class="font-medium text-slate-700">-</span>
+        <span id="otc-change" class="font-medium">-</span>
+      </div>
+    </div>
+
+    <!-- 群組切換 Tabs (自選看股與系統策略分流) -->
+    <nav id="group-tabs" class="flex px-3 py-1.5 border-b border-slate-100 gap-1 text-xs bg-slate-50/50">
+      <button class="tab-btn px-2 py-1 rounded font-medium text-slate-900 bg-white border border-slate-200 shadow-xs" data-group="watchlist">⭐ 自選</button>
+      <button class="tab-btn px-2 py-1 rounded font-medium text-slate-500 hover:text-slate-800" data-group="daytrade">🎯 當沖</button>
+      <button class="tab-btn px-2 py-1 rounded font-medium text-slate-500 hover:text-slate-800" data-group="rebound">🛡️ 觸底反彈</button>
+      <button class="tab-btn px-2 py-1 rounded font-medium text-slate-500 hover:text-slate-800" data-group="ai_matrix">🤖 當沖AI架構</button>
+    </nav>
+
+    <!-- 策略標的池與一鍵加入自選 -->
+    <section id="strategy-bar" class="hidden px-3 py-2 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between text-xs">
+      <div class="flex items-center gap-1.5 min-w-0">
+        <span id="strategy-bar-title" class="font-bold text-slate-800 truncate">策略標的</span>
+        <span id="strategy-bar-count" class="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full font-semibold">0</span>
+      </div>
+      <button id="btn-batch-add" class="px-2 py-0.5 bg-sky-600 hover:bg-sky-700 text-white rounded text-[11px] font-semibold flex items-center gap-1 shrink-0 transition">
+        <i data-lucide="zap" class="w-3 h-3"></i>
+        <span id="btn-batch-add-text">一鍵全部加入自選</span>
+      </button>
+    </section>
+
+    <!-- 表格表頭 (圖片2排版：個股 | 今價 | 漲跌 | 高 / 低 | 走勢 | 時間) -->
+    <div id="stock-table-header" class="stock-table-grid items-center px-3 py-1.5 bg-slate-100/90 border-b border-slate-200 text-[10px] text-slate-500 font-semibold select-none">
+      <div class="text-left pl-0.5">個股</div>
+      <div class="text-right pr-1">今價</div>
+      <div class="text-right pr-1">漲跌</div>
+      <div class="text-right pr-1">高 / 低</div>
+      <div id="col-header-sparkline" class="text-center">走勢</div>
+      <div class="text-right pr-0.5">時間</div>
+    </div>
+
+    <!-- 自選列表容器 (圖片2精緻表格清單) -->
+    <main id="stock-list-container" class="flex-1 overflow-y-auto no-scrollbar size-standard divide-y divide-slate-100">
+      <!-- 動態插入表格行 stock-row stock-card -->
+    </main>
+
+    <!-- 自選分頁控制列 (固定置於休市狀態列正上方) -->
+    <div id="watchlist-pagination-bar" class="hidden flex items-center justify-between text-xs text-slate-500 py-1.5 px-3 bg-slate-50 border-t border-slate-200 shrink-0 select-none">
+      <span id="watchlist-page-info" class="text-[11px] text-slate-500">第 1 / 1 頁 (共 0 檔)</span>
+      <div class="flex items-center gap-1.5">
+        <button id="btn-page-prev" class="px-2 py-0.5 rounded text-[11px] border border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer">上一頁</button>
+        <button id="btn-page-next" class="px-2 py-0.5 rounded text-[11px] border border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer">下一頁</button>
+      </div>
+    </div>
+
+    <!-- 底部狀態列 -->
+    <footer class="px-3 py-2 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+      <span id="update-timestamp">狀態：就緒</span>
+      <div class="flex items-center gap-2">
+        <button id="btn-refresh" class="hover:text-slate-600 transition" title="重新整理">
+          <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+    </footer>
+
+    <!-- 法規免責聲明警語列 (Stitch 極簡風格) -->
+    <div id="disclaimer-bar" class="px-3 py-1 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 text-center leading-tight select-none">
+      <span>⚖️ 免責聲明：本工具報價與訊號僅供量化模擬研究，非投資建議，投資請自負盈虧</span>
+    </div>
+
+    <!-- 設定面板 (Drawer) - Stitch 現代極簡設計 (Raycast / Apple Settings 風格) -->
+    <div id="settings-panel" role="dialog" aria-label="擴充功能設定" aria-hidden="true" class="absolute inset-0 bg-slate-50 z-20 transform translate-x-full transition-transform duration-200 flex flex-col">
+      <div class="px-3.5 py-2.5 border-b border-slate-200/80 flex items-center justify-between bg-white shrink-0 shadow-2xs">
+        <div class="flex items-center gap-2">
+          <h2 class="text-xs font-bold text-slate-900 tracking-tight">擴充功能設定</h2>
+          <span class="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Preferences</span>
+        </div>
+        <button id="btn-close-settings" aria-label="關閉設定" class="text-slate-400 hover:text-slate-700 p-1 rounded-md hover:bg-slate-100 transition cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
+        <p id="action-message" role="status" aria-live="polite" class="text-[11px] text-slate-500"></p>
+
+        <!-- 黑暗 / 光明模式 -->
+        <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+          <div class="flex items-center justify-between">
+            <div class="space-y-0.5 pr-2">
+              <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                <span class="text-sm">🌙</span> <span>黑暗模式</span>
+              </span>
+              <span class="block text-[10px] text-slate-500 leading-normal">切換深色介面，夜間看盤更舒適；關閉即回到光明模式 (快捷鍵 D)</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-dark-mode" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 顯示排版與外觀自定義 (Stitch 分段膠囊鈕 + 緊湊預覽) -->
+        <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-2.5">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+              <span>📐</span> <span>顯示排版與外觀自定義</span>
+            </span>
+            <span id="density-status-tag" class="text-[10px] text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full font-semibold border border-sky-200/60">+0px</span>
+          </div>
+
+          <!-- 顯示大小 (水平三段膠囊鈕) -->
+          <div class="space-y-1.5 pt-0.5">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-800 font-bold text-xs">顯示大小</span>
+              <span class="text-[10px] text-slate-400">緊湊 / 標準 / 舒適</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1 bg-slate-100/90 p-1 rounded-lg border border-slate-200/60 text-xs font-semibold select-none">
+              <label class="size-pill-label flex items-center justify-center py-1 rounded-md cursor-pointer transition text-slate-600 has-[:checked]:bg-white has-[:checked]:text-sky-700 has-[:checked]:shadow-xs has-[:checked]:font-bold">
+                <input type="radio" name="font-size" id="radio-size-small" value="small" class="sr-only" />
+                <span>小</span>
+              </label>
+              <label class="size-pill-label flex items-center justify-center py-1 rounded-md cursor-pointer transition text-slate-600 has-[:checked]:bg-white has-[:checked]:text-sky-700 has-[:checked]:shadow-xs has-[:checked]:font-bold">
+                <input type="radio" name="font-size" id="radio-size-standard" value="standard" checked class="sr-only" />
+                <span>標準</span>
+              </label>
+              <label class="size-pill-label flex items-center justify-center py-1 rounded-md cursor-pointer transition text-slate-600 has-[:checked]:bg-white has-[:checked]:text-sky-700 has-[:checked]:shadow-xs has-[:checked]:font-bold">
+                <input type="radio" name="font-size" id="radio-size-large" value="large" class="sr-only" />
+                <span>大</span>
+              </label>
+            </div>
+            <!-- 即時預覽盒 (Stitch 精緻卡片：以台積電為例) -->
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-[10px] text-slate-400">
+                <span>即時排版預覽</span>
+                <span id="preview-size-tag" class="font-mono text-sky-600 font-semibold">標準 (推薦)</span>
+              </div>
+              <div id="font-size-preview-box" class="bg-slate-50 border border-slate-200/90 rounded-lg px-3 py-2 flex items-center justify-between shadow-2xs">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span class="preview-sym font-bold font-mono text-sky-600 text-[12.5px]">2330</span>
+                  <span class="preview-name text-slate-700 font-medium text-[11px]">台積電</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="preview-price font-bold font-mono text-red-600 text-[13.5px]">1,025.0</span>
+                  <span class="preview-chg font-mono font-semibold text-red-600 text-[10px] bg-red-50 border border-red-100 px-1.5 py-0.5 rounded">▲ 25.0 (+2.50%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 列表高度滑桿 -->
+          <div class="space-y-1.5 pt-2 border-t border-slate-100">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-slate-800 font-bold text-xs">列表高度</span>
+                <span class="block text-[10px] text-slate-400 mt-0.5">增加可同時顯示的股票筆數。</span>
+              </div>
+              <span id="window-height-val" class="font-mono text-xs font-bold text-slate-900 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full shadow-2xs">+20px</span>
+            </div>
+            <input type="range" id="range-window-height" min="480" max="580" step="1" value="500" class="w-full accent-sky-600 cursor-pointer" />
+            <div class="flex justify-between text-[10px] text-slate-400 font-medium">
+              <span>預設 (0px)</span>
+              <span>最高 (+100px)</span>
+            </div>
+          </div>
+
+          <!-- 列表走勢圖開關 -->
+          <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+            <div class="space-y-0.5 pr-2">
+              <span class="text-slate-800 font-bold text-xs block">列表走勢圖</span>
+              <span class="block text-[10px] text-slate-400">在股票列表中顯示當日走勢折線圖</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-sparkline" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <!-- 一頁顯示筆數 -->
+          <div class="space-y-1.5 pt-2 border-t border-slate-100 text-[11px]">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-800 font-bold text-xs">一頁顯示筆數:</span>
+              <span id="range-page-size-val" class="w-8 text-center font-bold text-slate-900 text-xs bg-slate-100 border border-slate-200 rounded-full py-0.5">5 檔</span>
+            </div>
+            <input type="range" id="range-page-size" min="3" max="10" step="1" value="5" class="w-full accent-slate-900 cursor-pointer" />
+            <div class="flex justify-between text-[10px] text-slate-400 font-medium">
+              <span>3 檔 (極簡)</span>
+              <span>10 檔 (完整)</span>
+            </div>
+            <div class="hidden">
+              <input type="radio" name="card-density" id="radio-density-normal" value="normal" />
+              <input type="radio" name="card-density" id="radio-density-compact" value="compact" checked />
+            </div>
+          </div>
+        </div>
+
+        <!-- 下單捷徑與觀察看盤偏好 -->
+        <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-2.5">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+              <span>🚀</span> <span>下單捷徑與觀察看盤偏好</span>
+            </span>
+            <span id="current-broker-badge" class="text-[10px] text-white bg-red-600 px-2 py-0.5 rounded-full font-bold shadow-2xs">🔴 永豐金證券</span>
+          </div>
+          <p class="text-[10px] text-slate-500 leading-normal">在「當沖」與「觸底反彈」卡片點擊時，直通券商下單或純看盤觀察（自動複製代號）。</p>
+
+          <div class="space-y-1.5 pt-0.5">
+            <div class="relative">
+              <select id="select-preferred-broker" class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-3 pr-8 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 shadow-2xs cursor-pointer appearance-none">
+                <optgroup label="👀 觀察看盤偏好（純看盤／不跳券商）">
+                  <option value="observe">👀 純觀察就好（不跳轉網頁 · 僅複製代號）</option>
+                  <option value="yahoo">📈 Yahoo 奇摩股市（個股走勢行情 · 純看盤）</option>
+                  <option value="wantgoo">📊 玩股網 WantGoo（技術線圖 · 籌碼分析）</option>
+                </optgroup>
+                <optgroup label="🚀 券商官方直通下單">
+                  <option value="sinopac">🔴 永豐金證券（大戶投 / 新理財網）</option>
+                  <option value="fubon">🔵 富邦證券（官方平台 / e點通）</option>
+                  <option value="yuanta">🟠 元大證券（投資先生 / eYuanta）</option>
+                  <option value="cathay">🟢 國泰證券（數位證券官方平台）</option>
+                  <option value="kgi">🟣 凱基證券（隨身e策略 / 官方交易）</option>
+                  <option value="esun">🟩 玉山證券（A+理財贏家官方平台）</option>
+                </optgroup>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
+
+            <!-- 即時動態提示盒 -->
+            <div id="broker-hint-box" class="bg-slate-50 border border-slate-200/80 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-600 flex items-center gap-1.5 shadow-2xs">
+              <span class="text-xs shrink-0">💡</span>
+              <span id="broker-hint-text" class="leading-relaxed">點擊當沖或觸底反彈卡片按鈕，將自動複製股票代號並開啟對應頁面。</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 系統推播通知中樞 (徹底解決文字截斷、不對齊、多層嵌套問題) -->
+        <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h3 class="font-bold text-slate-900 flex items-center gap-1.5 text-xs">
+              <i data-lucide="bell-ring" class="w-3.5 h-3.5 text-sky-600"></i>
+              <span>系統推播通知中樞</span>
+            </h3>
+            <span id="filter-status-tag" class="text-[10px] text-sky-700 bg-sky-50 border border-sky-200/60 px-2 py-0.5 rounded-full font-semibold">全開模式</span>
+          </div>
+
+          <!-- 推播開關 Grouped Rows (充足 16px 呼吸空間，文字絕不被裁切) -->
+          <div class="divide-y divide-slate-100">
+            <div class="py-2.5 flex items-center justify-between">
+              <div class="space-y-0.5 pr-2">
+                <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-sky-500 inline-block"></span>
+                  當沖推播提醒
+                </span>
+                <span class="block text-[10px] text-slate-500 leading-normal">當沖進場（買進）與出場（賣出）桌面通知</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-daytrade" class="accent-sky-600" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="py-2.5 flex items-center justify-between pl-3 border-l-2 border-l-sky-400">
+              <div class="space-y-0.5 pr-2">
+                <span class="font-semibold text-slate-800 text-xs block">全市場當沖連動</span>
+                <span class="block text-[10px] text-slate-500 leading-normal">不限自選清單，自動接收全市場當沖部位</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-all-daytrade" class="accent-sky-600" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="py-2.5 flex items-center justify-between">
+              <div class="space-y-0.5 pr-2">
+                <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
+                  觸底反彈推播提醒
+                </span>
+                <span class="block text-[10px] text-slate-500 leading-normal">技術面支撐區反彈與量能回升推播</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-rebound" class="accent-purple-600" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="py-2.5 flex items-center justify-between pl-3 border-l-2 border-l-purple-400">
+              <div class="space-y-0.5 pr-2">
+                <span class="font-semibold text-slate-800 text-xs block">全市場反彈連動</span>
+                <span class="block text-[10px] text-slate-500 leading-normal">不限自選清單，自動接收全市場反彈股</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-all-rebound" class="accent-purple-600" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 系統推播測試按鈕 -->
+          <div class="pt-2 border-t border-slate-100 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 tracking-wide">系統推播與即時彈窗測試</span>
+              <span class="text-[10px] text-slate-400">點擊即時發送</span>
+            </div>
+            <div class="test-btn-group">
+              <button id="btn-test-daytrade-notif" class="test-btn test-btn-buy" title="模擬觸發當沖做多進場推播通知">
+                <svg class="test-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                  <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                  <path d="M9 12H4s.55-3.03 2-4.5c1.62-1.63 5-2.5 5-2.5"/>
+                  <path d="M15 12v5s3.03-.55 4.5-2c1.63-1.62 2.5-5 2.5-5"/>
+                </svg>
+                <span>買進範例</span>
+              </button>
+              <button id="btn-test-exit-notif" class="test-btn test-btn-exit" title="模擬觸發當沖出場/獲利平倉推播通知">
+                <svg class="test-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <span>出場範例</span>
+              </button>
+              <button id="btn-test-rebound-notif" class="test-btn test-btn-rebound" title="模擬觸發觸底反彈訊號推播通知">
+                <svg class="test-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+                <span>反彈範例</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 條件式設定 -->
+          <div class="pt-2 border-t border-slate-100 space-y-2">
+            <span class="text-xs font-bold text-slate-800 block tracking-wide">條件式設定</span>
+            <div class="flex items-center gap-5 text-xs font-medium">
+              <label class="flex items-center gap-1.5 cursor-pointer">
+                <input type="radio" name="filter-mode" id="radio-filter-all" value="all" checked class="accent-slate-900 w-3.5 h-3.5 cursor-pointer" />
+                <span class="text-slate-800 text-xs">全開 (全部推播)</span>
+              </label>
+              <label class="flex items-center gap-1.5 cursor-pointer">
+                <input type="radio" name="filter-mode" id="radio-filter-custom" value="custom" class="accent-slate-900 w-3.5 h-3.5 cursor-pointer" />
+                <span class="text-slate-800 text-xs">條件過濾</span>
+              </label>
+            </div>
+
+            <div id="custom-filter-fields" class="space-y-2 pt-1 text-xs border-t border-slate-100">
+              <div class="flex items-center gap-1.5">
+                <span class="w-18 text-slate-600 font-medium shrink-0 text-[11px]">價格區間：</span>
+                <input type="number" id="input-min-price" placeholder="最低" class="w-18 px-1.5 py-1 bg-slate-50 border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:border-slate-600" />
+                <span class="text-slate-400">～</span>
+                <input type="number" id="input-max-price" placeholder="最高" class="w-18 px-1.5 py-1 bg-slate-50 border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:border-slate-600" />
+                <span class="text-slate-500 text-[10px]">元</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-18 text-slate-600 font-medium shrink-0 text-[11px]">漲幅超過：</span>
+                <input type="number" step="0.1" id="input-min-pct" placeholder="如: 2.0" class="w-20 px-1.5 py-1 bg-slate-50 border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:border-slate-600" />
+                <span class="text-slate-500 text-[10px]">% (達門檻才發)</span>
+              </div>
+              <button id="btn-save-filter" class="w-full mt-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded font-bold text-xs shadow-xs transition cursor-pointer">
+                儲存條件設定
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 自選清單備份 -->
+        <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+          <h3 class="font-bold text-slate-800 text-xs mb-2">資料備份與還原</h3>
+          <div class="flex gap-2">
+            <button id="btn-export-stocks" class="flex-1 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 font-medium text-slate-700 transition">匯出 JSON</button>
+            <button id="btn-import-stocks" class="flex-1 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 font-medium text-slate-700 transition">匯入 JSON</button>
+            <input type="file" id="file-import" class="hidden" accept=".json" />
+          </div>
+        </div>
+
+        <!-- 官方免責聲明與風險告知卡片 (Stitch 規範) -->
+        <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-2">
+          <div class="flex items-center gap-1.5 border-b border-slate-100 pb-1.5">
+            <span class="text-xs">⚖️</span>
+            <h3 class="font-bold text-slate-800 text-xs">免責聲明與風險告知 (Disclaimer)</h3>
+          </div>
+          <div class="text-[10px] text-slate-500 leading-relaxed space-y-1.5">
+            <p>1. <strong>非投資分析或買賣推介</strong>：本小工具所提供之所有即時行情、走勢圖表、策略演算法（包含當沖突破與觸底反彈模型）及券商官方平台跳轉連結，純屬個人量化技術研究與模擬看盤輔助，非屬任何形式之證券投資顧問分析、推介或下單委託建議。</p>
+            <p>2. <strong>獨立判斷與自負盈虧</strong>：金融市場波動劇烈，歷史行情與演算法不保證未來獲利。實際委託下單由使用者於券商官方平台獨立登入進行，使用者應審慎評估個人財務能力與投資風險，並自負一切盈虧，本工具不承擔任何投資損益或衍生法律責任。</p>
+            <p>3. <strong>模擬交易與無託管</strong>：本工具嚴格遵循無營業行為與無託管原則，不儲存、不經手任何券商帳號密碼、API 金鑰或委託憑證。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
