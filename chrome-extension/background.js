@@ -11,7 +11,16 @@ export function serial(fn) {
 }
 async function read(key, fallback) { return (await chrome.storage.local.get(key))[key] ?? fallback; }
 async function write(key, value) { await chrome.storage.local.set({ [key]: value }); }
-async function state() { return read('state', defaultState()); }
+async function state() {
+  const defaults = defaultState();
+  const saved = await read('state', null);
+  if (!saved) return defaults;
+  return {
+    ...defaults,
+    ...saved,
+    settings: { ...defaults.settings, ...(saved.settings || {}) }
+  };
+}
 async function json(url, maxBytes = 1500000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
@@ -587,7 +596,7 @@ export async function handle(message) {
       break;
     }
     case 'SETTINGS': {
-      const allowed = [...GROUPS, 'allDaytradeAlerts', 'allReboundAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'stealthMode', 'pageSize', 'cardDensity', 'fontSize', 'windowHeight', 'showSparkline', 'preferredBroker'];
+      const allowed = [...GROUPS, 'allDaytradeAlerts', 'allReboundAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'darkMode', 'pageSize', 'cardDensity', 'fontSize', 'windowHeight', 'showSparkline', 'preferredBroker'];
       if (!allowed.includes(message.strategy)) throw new Error('開關格式不正確');
       st.settings[message.strategy] = message.enabled !== undefined ? message.enabled : message.value;
       break;

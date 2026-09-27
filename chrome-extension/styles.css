@@ -30,30 +30,126 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .stock-card h2 { overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
-/* 牛馬上班偷看摸魚模式 (Stealth Mode) */
-body.stealth-mode {
-  background-color: #f1f5f9;
+/* 黑暗 / 光明主題模式 */
+body.dark-mode {
+  color-scheme: dark;
+  background-color: #020617 !important;
+  color: #e2e8f0 !important;
 }
-body.stealth-mode .text-red-600 {
-  color: #64748b !important;
+body.dark-mode #popup-container,
+body.dark-mode #settings-panel {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
 }
-body.stealth-mode .text-emerald-600 {
-  color: #475569 !important;
+body.dark-mode .bg-white { background-color: #111827 !important; }
+body.dark-mode .bg-slate-50,
+body.dark-mode .bg-slate-50\/50,
+body.dark-mode .bg-slate-50\/60 { background-color: #0f172a !important; }
+body.dark-mode .bg-slate-100,
+body.dark-mode .bg-slate-100\/90 { background-color: #1e293b !important; }
+body.dark-mode .bg-slate-200 { background-color: #334155 !important; }
+body.dark-mode .bg-slate-300 { background-color: #475569 !important; }
+body.dark-mode .bg-slate-700 { background-color: #334155 !important; }
+body.dark-mode .bg-slate-800 { background-color: #1e293b !important; }
+body.dark-mode .bg-slate-900 { background-color: #020617 !important; }
+body.dark-mode .text-slate-900 { color: #f8fafc !important; }
+body.dark-mode .text-slate-800 { color: #f1f5f9 !important; }
+body.dark-mode .text-slate-700 { color: #e2e8f0 !important; }
+body.dark-mode .text-slate-600 { color: #cbd5e1 !important; }
+body.dark-mode .text-slate-500 { color: #94a3b8 !important; }
+body.dark-mode .text-slate-400 { color: #94a3b8 !important; }
+body.dark-mode .text-slate-300 { color: #cbd5e1 !important; }
+body.dark-mode .border-slate-100,
+body.dark-mode .border-slate-200,
+body.dark-mode .border-slate-200\/60,
+body.dark-mode .border-slate-200\/80,
+body.dark-mode .border-slate-200\/90,
+body.dark-mode .border-slate-300 { border-color: #334155 !important; }
+body.dark-mode .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1e293b !important; }
+body.dark-mode input,
+body.dark-mode select {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #475569 !important;
 }
-body.stealth-mode .bg-sky-600 {
-  background-color: #475569 !important;
+body.dark-mode input::placeholder { color: #64748b !important; }
+body.dark-mode .tab-btn { color: #94a3b8 !important; }
+body.dark-mode .tab-btn.tab-active {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+  color: #f8fafc !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.35) !important;
 }
-body.stealth-mode #brand-title {
-  color: #334155 !important;
+body.dark-mode .stock-row,
+body.dark-mode .stock-card {
+  background-color: #111827 !important;
+  border-color: #1e293b !important;
 }
-body.stealth-mode .stock-card,
-body.stealth-mode .stock-row {
-  border-color: #cbd5e1 !important;
-  background-color: #ffffff !important;
+body.dark-mode .stock-row:hover,
+body.dark-mode .setting-toggle-card:hover {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
 }
-body.stealth-mode .stock-row:hover {
-  background-color: #f1f5f9 !important;
+body.dark-mode .size-pill-label:has(input:checked) {
+  background-color: #334155 !important;
+  color: #7dd3fc !important;
 }
+body.dark-mode input[type=range] { background: #334155 !important; }
+body.dark-mode input[type=range]::-webkit-slider-thumb {
+  background: #e2e8f0 !important;
+  border-color: #38bdf8 !important;
+}
+body.dark-mode .toggle-slider { background-color: #475569; }
+body.dark-mode .toggle-slider:before { background-color: #f8fafc; }
+body.dark-mode .bg-sky-50,
+body.dark-mode .bg-sky-50\/40,
+body.dark-mode .bg-sky-50\/60,
+body.dark-mode .bg-sky-100 { background-color: #082f49 !important; }
+body.dark-mode .bg-purple-50,
+body.dark-mode .bg-purple-50\/20,
+body.dark-mode .bg-purple-50\/80,
+body.dark-mode .bg-purple-100 { background-color: #2e1065 !important; }
+body.dark-mode .bg-red-50,
+body.dark-mode .bg-red-50\/40 { background-color: #450a0a !important; }
+body.dark-mode .bg-emerald-50\/40 { background-color: #022c22 !important; }
+body.dark-mode .bg-amber-100 { background-color: #451a03 !important; }
+body.dark-mode .text-sky-950 { color: #e0f2fe !important; }
+body.dark-mode .text-sky-800,
+body.dark-mode .text-sky-700,
+body.dark-mode .text-sky-600 { color: #7dd3fc !important; }
+body.dark-mode .text-purple-900,
+body.dark-mode .text-purple-800,
+body.dark-mode .text-purple-700,
+body.dark-mode .text-purple-600 { color: #c4b5fd !important; }
+body.dark-mode .text-amber-700 { color: #fcd34d !important; }
+body.dark-mode .border-sky-200,
+body.dark-mode .border-sky-200\/60,
+body.dark-mode .border-sky-300 { border-color: #075985 !important; }
+body.dark-mode .border-purple-200,
+body.dark-mode .border-purple-200\/80 { border-color: #6d28d9 !important; }
+body.dark-mode .border-red-100 { border-color: #7f1d1d !important; }
+body.dark-mode .border-emerald-100 { border-color: #065f46 !important; }
+body.dark-mode #brand-tag {
+  background-color: #1e293b !important;
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+}
+body.dark-mode #btn-theme-toggle {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #475569 !important;
+}
+body.dark-mode #btn-theme-toggle:hover { background-color: #334155 !important; }
+body.dark-mode #watchlist-pagination-bar,
+body.dark-mode #taiex-banner,
+body.dark-mode #group-tabs,
+body.dark-mode #stock-table-header,
+body.dark-mode footer,
+body.dark-mode #disclaimer-bar {
+  border-color: #1e293b !important;
+}
+body.dark-mode #search-suggestions { background-color: #020617 !important; border-color: #334155 !important; }
+
 .ai-section-title {
   display: flex;
   align-items: center;
@@ -115,10 +211,10 @@ body.stealth-mode .stock-row:hover {
    即使放大到最大模式 (Large)，亦保有 440px 容器內的黃金比例排版，絕不折行溢出
    ========================================================================== */
 
-/* ----------------- 1. 小字模式 (.size-small) - 緊湊摸魚極致版 ----------------- */
+/* ----------------- 1. 小字模式 (.size-small) - 緊湊顯示版 ----------------- */
 .size-small #brand-title { font-size: 11px !important; }
 .size-small #brand-tag { font-size: 8.5px !important; }
-.size-small #btn-stealth-toggle,
+.size-small #btn-theme-toggle,
 .size-small #btn-open-settings { font-size: 9.5px !important; padding: 2px 5px !important; }
 .size-small #input-search { font-size: 11px !important; padding-top: 3px !important; padding-bottom: 3px !important; }
 .size-small #btn-add { font-size: 11px !important; height: 26px !important; padding-left: 6px !important; padding-right: 6px !important; }
@@ -174,7 +270,7 @@ body.stealth-mode .stock-row:hover {
 /* ----------------- 3. 大字模式 (.size-large) - 清晰醒目、嚴密防破版 ----------------- */
 .size-large #brand-title { font-size: 13.5px !important; font-weight: 800 !important; }
 .size-large #brand-tag { font-size: 10px !important; }
-.size-large #btn-stealth-toggle,
+.size-large #btn-theme-toggle,
 .size-large #btn-open-settings { font-size: 11.5px !important; padding: 2px 7px !important; }
 .size-large #input-search { font-size: 13px !important; padding-top: 4px !important; padding-bottom: 4px !important; }
 .size-large #btn-add { font-size: 12.5px !important; height: 30px !important; padding-left: 10px !important; padding-right: 10px !important; }
@@ -290,7 +386,7 @@ input[type="range"]::-moz-range-thumb {
   font-weight: 700 !important;
 }
 
-/* 摸魚緊湊高密度樣式相容 */
+/* 緊湊高密度樣式相容 */
 .density-compact .stock-card:not(.stock-row) {
   padding: 0.375rem 0.5rem !important;
   margin-bottom: 0.25rem !important;
@@ -319,7 +415,7 @@ input[type="range"]::-moz-range-thumb {
   flex: 1 1 auto;
 }
 #brand-tag,
-#btn-stealth-toggle,
+#btn-theme-toggle,
 #btn-open-settings,
 #btn-add,
 #group-tabs button,

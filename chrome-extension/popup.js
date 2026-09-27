@@ -154,22 +154,21 @@ async function act(message, success = '') {
   finally { pending = false; document.body.removeAttribute('aria-busy'); }
 }
 
-// 企業 OA 摸魚偽裝模式 (真正逼真的牛馬打工人系統)
-function applyStealthMode(enabled) {
-  document.body.classList.toggle('stealth-mode', !!enabled);
-  const brand = $('brand-title');
+// 黑暗 / 光明主題模式
+function applyDarkMode(enabled) {
+  document.body.classList.toggle('dark-mode', !!enabled);
   const tag = $('brand-tag');
-  const btnLabel = $('stealth-btn-label');
-  const toggleCheckbox = $('toggle-stealth');
+  const btnLabel = $('theme-btn-label');
+  const btnIcon = $('theme-btn-icon');
+  const toggleCheckbox = $('toggle-dark-mode');
   if (toggleCheckbox) toggleCheckbox.checked = !!enabled;
+  if (tag) tag.textContent = 'v1.01';
   if (enabled) {
-    if (brand) brand.textContent = 'OA企業門戶 · 專案日報審批';
-    if (tag) tag.textContent = '待簽核';
-    if (btnLabel) btnLabel.textContent = '搬磚中';
+    if (btnIcon) btnIcon.textContent = '☀️';
+    if (btnLabel) btnLabel.textContent = '光明';
   } else {
-    if (brand) brand.textContent = 'EasyStock · 牛馬自救終端';
-    if (tag) tag.textContent = '摸魚中';
-    if (btnLabel) btnLabel.textContent = '摸魚';
+    if (btnIcon) btnIcon.textContent = '🌙';
+    if (btnLabel) btnLabel.textContent = '黑暗';
   }
 }
 
@@ -1008,7 +1007,7 @@ function render() {
   }
   if ($('toggle-all-daytrade')) $('toggle-all-daytrade').checked = view.settings?.allDaytradeAlerts !== false;
   if ($('toggle-all-rebound')) $('toggle-all-rebound').checked = view.settings?.allReboundAlerts !== false;
-  applyStealthMode(view.settings?.stealthMode);
+  applyDarkMode(view.settings?.darkMode);
 
   // 視窗高度自定義 (比照截圖：預設 500px 即 +20px)
   const windowHeight = Number(view.settings?.windowHeight) || 500;
@@ -1022,7 +1021,7 @@ function render() {
   const showSparkline = view.settings?.showSparkline !== false;
   if ($('toggle-sparkline')) $('toggle-sparkline').checked = showSparkline;
 
-  // 摸魚排版與每頁筆數同步
+  // 顯示排版與每頁筆數同步
   const pageSize = Math.max(3, Math.min(10, Number(view.settings?.pageSize) || 5));
   const cardDensity = view.settings?.cardDensity || 'compact';
   const isCompact = cardDensity === 'compact';
@@ -1422,7 +1421,7 @@ $('toggle-sparkline')?.addEventListener('change', async e => {
   render();
 });
 
-// 摸魚排版與卡片自定義監聽 (拉動滑桿即時反應)
+// 顯示排版與卡片自定義監聽 (拉動滑桿即時反應)
 $('range-page-size')?.addEventListener('input', e => {
   const val = Number(e.target.value);
   if ($('range-page-size-val')) $('range-page-size-val').textContent = String(val);
@@ -1527,32 +1526,32 @@ $('file-import').addEventListener('change', async e => {
   } catch (err) { status(err.message, true); }
 });
 
-async function toggleStealthMode() {
+async function toggleDarkMode() {
   if (!view) return;
-  const current = !!view.settings?.stealthMode;
+  const current = !!view.settings?.darkMode;
   const next = !current;
-  await act({ type: 'SETTINGS', strategy: 'stealthMode', enabled: next });
+  await act({ type: 'SETTINGS', strategy: 'darkMode', enabled: next });
   if (view) {
     if (!view.settings) view.settings = {};
-    view.settings.stealthMode = next;
-    applyStealthMode(next);
+    view.settings.darkMode = next;
+    applyDarkMode(next);
   }
-  status(next ? '🐮 已切換為牛馬摸魚模式 (企業OA工時偽裝已啟用)' : '已還原一般看盤模式');
+  status(next ? '🌙 已切換為黑暗模式' : '☀️ 已切換為光明模式');
 }
-$('btn-stealth-toggle')?.addEventListener('click', toggleStealthMode);
-$('toggle-stealth')?.addEventListener('change', async e => {
-  await act({ type: 'SETTINGS', strategy: 'stealthMode', enabled: e.target.checked });
+$('btn-theme-toggle')?.addEventListener('click', toggleDarkMode);
+$('toggle-dark-mode')?.addEventListener('change', async e => {
+  await act({ type: 'SETTINGS', strategy: 'darkMode', enabled: e.target.checked });
   if (view) {
     if (!view.settings) view.settings = {};
-    view.settings.stealthMode = e.target.checked;
-    applyStealthMode(e.target.checked);
+    view.settings.darkMode = e.target.checked;
+    applyDarkMode(e.target.checked);
   }
-  status(e.target.checked ? '🐮 已切換為牛馬摸魚模式 (企業OA工時偽裝已啟用)' : '已還原一般看盤模式');
+  status(e.target.checked ? '🌙 已切換為黑暗模式' : '☀️ 已切換為光明模式');
 });
 
 document.addEventListener('keydown', e => {
-  if ((e.key === 'b' || e.key === 'B') && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) && $('settings-panel')?.inert) {
-    toggleStealthMode();
+  if ((e.key === 'd' || e.key === 'D') && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) && $('settings-panel')?.inert) {
+    toggleDarkMode();
     return;
   }
   if (e.key === 'Escape') {

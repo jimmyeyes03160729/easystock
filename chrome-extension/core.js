@@ -541,7 +541,7 @@ export function defaultState() {
       minChangePct: null,
       pageSize: 5,
       cardDensity: 'compact',
-      stealthMode: false,
+      darkMode: true,
       fontSize: 'standard',
       windowHeight: 500,
       showSparkline: true,

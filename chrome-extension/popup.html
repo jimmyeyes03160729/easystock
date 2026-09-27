@@ -31,11 +31,11 @@
           <div id="market-status-dot" class="h-2 w-2 rounded-full bg-slate-400 shrink-0" title="離線 / 休市"></div>
           <img src="assets/icon16.png" class="w-3.5 h-3.5 shrink-0 inline-block" alt="Logo" />
           <h1 id="brand-title" class="text-xs font-bold tracking-tight text-slate-900 truncate whitespace-nowrap">EasyStock · 牛馬自救終端</h1>
-          <span id="brand-tag" class="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 py-0.2 rounded border border-slate-200 shrink-0 whitespace-nowrap">摸魚中</span>
+          <span id="brand-tag" class="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 py-0.2 rounded border border-slate-200 shrink-0 whitespace-nowrap">v1.01</span>
         </div>
         <div class="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
-          <button id="btn-stealth-toggle" aria-label="切換牛馬上班摸魚偽裝模式" title="一鍵切換牛馬上班摸魚偽裝模式 (快捷鍵 B)" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 flex items-center gap-1 transition shrink-0 whitespace-nowrap">
-            <span>🐮</span> <span id="stealth-btn-label" class="whitespace-nowrap">摸魚</span>
+          <button id="btn-theme-toggle" aria-label="切換黑暗與光明模式" title="切換黑暗 / 光明模式 (快捷鍵 D)" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 flex items-center gap-1 transition shrink-0 whitespace-nowrap">
+            <span id="theme-btn-icon">🌙</span> <span id="theme-btn-label" class="whitespace-nowrap">黑暗</span>
           </button>
           <button id="btn-open-settings" aria-label="開啟設定" title="開啟設定面板" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-1 shadow-xs transition active:scale-95 cursor-pointer shrink-0 whitespace-nowrap">
             <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 shrink-0"></i>
@@ -143,27 +143,27 @@
       <div class="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
         <p id="action-message" role="status" aria-live="polite" class="text-[11px] text-slate-500"></p>
 
-        <!-- 牛馬專屬摸魚偽裝模式 -->
+        <!-- 黑暗 / 光明模式 -->
         <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
           <div class="flex items-center justify-between">
             <div class="space-y-0.5 pr-2">
               <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                <span class="text-sm">🐮</span> <span>牛馬上班摸魚偽裝模式</span>
+                <span class="text-sm">🌙</span> <span>黑暗模式</span>
               </span>
-              <span class="block text-[10px] text-slate-500 leading-normal">淡化刺眼紅綠盤面，標題偽裝成企業工時日誌 (快捷鍵 B)</span>
+              <span class="block text-[10px] text-slate-500 leading-normal">切換深色介面，夜間看盤更舒適；關閉即回到光明模式 (快捷鍵 D)</span>
             </div>
             <label class="toggle-switch">
-              <input type="checkbox" id="toggle-stealth" />
+              <input type="checkbox" id="toggle-dark-mode" />
               <span class="toggle-slider"></span>
             </label>
           </div>
         </div>
 
-        <!-- 摸魚排版與外觀自定義 (Stitch 分段膠囊鈕 + 緊湊預覽) -->
+        <!-- 顯示排版與外觀自定義 (Stitch 分段膠囊鈕 + 緊湊預覽) -->
         <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-2.5">
           <div class="flex items-center justify-between border-b border-slate-100 pb-2">
             <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-              <span>📐</span> <span>摸魚排版與外觀自定義</span>
+              <span>📐</span> <span>顯示排版與外觀自定義</span>
             </span>
             <span id="density-status-tag" class="text-[10px] text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full font-semibold border border-sky-200/60">+0px</span>
           </div>
