@@ -1,6 +1,6 @@
 'use strict';
 const el=id=>document.getElementById(id);
-let csrf='',version=null;
+let csrf='',version=null,liveRefreshTimer=0;
 function message(id,text,error=false){el(id).textContent=text;el(id).classList.toggle('error',error);}
 async function api(path,{method='GET',body}={}){
   const response=await fetch('/admin/'+path,{method,credentials:'same-origin',headers:{...(body!==undefined?{'Content-Type':'application/json'}:{}),...(csrf?{'X-CSRF-Token':csrf}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{})});
@@ -39,7 +39,8 @@ async function loadHealth(){try{renderHealth(await api('health'));}catch(error){
 async function loadMaintenance(){try{const data=await api('maintenance');const parts=[];for(const [key,value] of Object.entries(data)){if(key!=='available'&&key!=='detail')parts.push(`${key}: ${value}`);}message('maintenanceStatus',data.detail||parts.join(' · ')||'維護狀態未知',!data.available);for(const id of ['restartIntraday','syncVm'])el(id).disabled=!data.available;}catch(error){message('maintenanceStatus',error.message,true);}}
 async function maintenance(action,confirmation,label){if(!confirm(`確認要${label}嗎？\n此操作會受到時段、工作衝突與冷卻限制。`))return;const id=action==='restart-intraday'?'restartIntraday':'syncVm';const button=el(id);button.disabled=true;message('maintenanceStatus','正在送出受控維護要求…');try{const result=await api('maintenance/'+action,{method:'POST',body:{confirmation}});message('maintenanceStatus',result.detail||'操作已送出。',!result.available);}catch(error){message('maintenanceStatus',error.message,true);}finally{await loadMaintenance();}}
 async function session(){const s=await api('session');csrf=s.csrf;el('identity').textContent=s.email;return s;}
-async function enter(){await session();applySettings(await api('settings'));await reloadConversations();try{await loadBotPolicy();}catch(_){}el('login').hidden=true;el('workspace').hidden=false;await loadHealth();await loadMaintenance();}
+function startLiveRefresh(){if(liveRefreshTimer)clearInterval(liveRefreshTimer);liveRefreshTimer=setInterval(()=>{if(!document.hidden){loadHealth();loadMaintenance();}},30000);}
+async function enter(){await session();applySettings(await api('settings'));await reloadConversations();try{await loadBotPolicy();}catch(_){}el('login').hidden=true;el('workspace').hidden=false;await loadHealth();await loadMaintenance();startLiveRefresh();}
 async function loginSetup(){
   try{
     const config=await api('config');

@@ -5,6 +5,7 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 
 MAX_STATUS_BYTES = 1024 * 1024
@@ -56,6 +57,20 @@ def _first_count(value: dict, *keys: str):
     return None
 
 
+def _market_session() -> dict:
+    """A clock status, deliberately not a trading-calendar assertion."""
+    now = datetime.now(ZoneInfo('Asia/Taipei'))
+    stamp = now.strftime('%Y-%m-%d %H:%M:%S')
+    if now.weekday() >= 5:
+        return _signal('market_session', '當沖時段', 'idle', f'台北時間 {stamp} · 非平日；當沖服務不應自動進場。')
+    minute = now.hour * 60 + now.minute
+    if 8 * 60 + 45 <= minute < 9 * 60:
+        return _signal('market_session', '當沖時段', 'warning', f'台北時間 {stamp} · 盤前準備中，尚未開放進場。')
+    if 9 * 60 <= minute < 13 * 60 + 30:
+        return _signal('market_session', '當沖時段', 'ok', f'台北時間 {stamp} · 盤中；即時推薦與既有風控依服務狀態執行。')
+    return _signal('market_session', '當沖時段', 'idle', f'台北時間 {stamp} · 已收盤；當沖服務不會建立新進場。')
+
+
 def snapshot(store) -> dict:
     """Return safe status summaries only; no secrets, paths, commands or actions."""
     learning = _root('EASYSTOCK_LEARNING_DATA', '/home/ubuntu/easystock-learning-data')
@@ -67,6 +82,7 @@ def snapshot(store) -> dict:
 
     settings = store.get()
     signals = [
+        _market_session(),
         _signal('admin_store', '後台設定資料庫', 'ok', '可讀取目前設定版本。', settings.get('updated_at'), {'setting_version': settings.get('version')}),
         _signal(
             'market_credentials', '行情資料憑證',
