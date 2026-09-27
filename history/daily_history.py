@@ -133,6 +133,79 @@ def extend_calendar(session,api,plan):
     return True
 
 
+def extend_recent_calendar(session,api,plan,today=None):
+    """Append observed completed sessions before spending quota on older history."""
+    today = today or datetime.now(core.TPE).date()
+    cursor = date.fromisoformat(max(plan['dates'])) + timedelta(days=1)
+    changed = False
+    while cursor <= today:
+        end = min(today,cursor+timedelta(days=29))
+        bars = session.request('kbars',contract=core.contract(api,'0050'),start=str(cursor),end=str(end))
+        if not bars.get('ts'):
+            session.check()  # Empty responses never fabricate trading dates.
+            cursor = end + timedelta(days=1)
+            continue
+        times = core.validate(bars,core.BAR_FIELDS)
+        if any(not cursor <= t.date() <= end for t in times):
+            raise ValueError('recent_calendar_outside_range')
+        dates = {t.date().isoformat() for t in times
+                 if t.weekday()<5 and clock(9,1)<=t.time()<=clock(13,30)}
+        if dates:
+            plan['dates'] = sorted(set(plan['dates']) | dates)
+            plan.update(days=len(plan['dates']),end=max(plan['dates']))
+            core.save(DATA/'plan.json',plan)
+            changed = True
+        cursor = end + timedelta(days=1)
+    return changed
+
+
+def expanded_pool(plan,ranked,target,observed_at):
+    """Preserve original symbols; freeze additions by descending scanner amount."""
+    import math
+    import re
+    if not 1 <= target <= core.MAX_HISTORY_SYMBOLS:
+        raise ValueError('invalid_history_target_symbols')
+    if len(plan['symbols']) >= target:
+        return plan
+    candidates = {}
+    for row in ranked:
+        code = str(row.get('code',''))
+        try:amount = float(row.get('total_amount',row.get('amount',0)))
+        except (ValueError,TypeError):continue
+        if re.fullmatch(r'[1-9][0-9]{3}',code) and math.isfinite(amount) and amount>0:
+            candidates[code] = max(amount,candidates.get(code,0))
+    symbols = list(plan['symbols'])
+    additions = []
+    for code,amount in sorted(candidates.items(),key=lambda x:(-x[1],x[0])):
+        if code not in symbols:
+            symbols.append(code);additions.append({'symbol':code,'amount':amount})
+        if len(symbols) == target:break
+    if len(symbols) != target:
+        raise ValueError('insufficient_ranked_stocks_for_expansion')
+    updated = dict(plan,symbols=symbols)
+    updated['pool_expansion'] = {'observed_at':observed_at,'method':'keep original pool; append Shioaji AmountRank stocks by descending total_amount',
+                                 'original_symbols':list(plan['symbols']),'added':additions}
+    updated['scope'] = f'Frozen {target}-stock current liquidity pool; historical survivorship bias; not historical whole market'
+    return validate_plan(updated)
+
+
+def expand_from_scanner(session,api,plan,scanner_type,target):
+    if len(plan['symbols']) >= target:return plan
+    session.check()
+    rows = api.scanners(scanner_type=scanner_type,ascending=True,count=200,timeout=30000)
+    ranked = []
+    for row in rows or []:
+        row = row if isinstance(row,dict) else row.dict()
+        try:core.contract(api,str(row.get('code','')))
+        except ValueError:continue
+        ranked.append(core.native(row))
+    updated = expanded_pool(plan,ranked,target,datetime.now(core.TPE).isoformat())
+    backup = DATA/('plan-before-expansion-'+datetime.now(core.TPE).strftime('%Y%m%dT%H%M%S%f')+'.json')
+    core.save(backup,plan)
+    core.save(DATA/'plan.json',updated)
+    return updated
+
+
 def run():
     os.umask(0o077)
     if not allowed():print('Outside 14:00–22:00 Taipei; waiting for next timer');return 0
@@ -158,6 +231,14 @@ def run():
         try:
             api.login(api_key=key,secret_key=secret)
             session=Session(api);failures=0;processed=0
+            summarize(plan,'downloading',session.check())
+            extend_recent_calendar(session,api,plan)
+            target = int(os.getenv('EASYSTOCK_HISTORY_TARGET_SYMBOLS','100'))
+            try:
+                plan = expand_from_scanner(session,api,plan,sj.ScannerType.AmountRank,target)
+            except (ValueError,AttributeError) as exc:
+                # Keep collecting the original pool if the ranking is unavailable.
+                core.save(DATA/'pool-expansion-status.json',{'status':'pending','target':target,'error_type':type(exc).__name__})
             summarize(plan,'downloading',session.check())
             while True:
                 for day in reversed(plan['dates']):

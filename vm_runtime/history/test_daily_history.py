@@ -61,4 +61,36 @@ class Tests(unittest.TestCase):
             self.assertEqual(plan['dates'],['2026-08-03','2026-09-01'])
             self.assertEqual(plan['days'],2)
 
+    def test_recent_dates_append_without_changing_old_cursor(self):
+        with tempfile.TemporaryDirectory() as folder,patch.object(h,'DATA',Path(folder)),patch.object(h.core,'contract',return_value='contract'),patch.object(h.core,'validate',return_value=[datetime(2026,9,24,13,30)]):
+            plan={'dates':['2023-09-04','2026-09-10'],'symbols':['2330'],'calendar_before':'2023-09-01'}
+            session=Mock();session.request.return_value={'ts':[1]}
+            self.assertTrue(h.extend_recent_calendar(session,Mock(),plan,date(2026,9,27)))
+            self.assertEqual(plan['dates'],['2023-09-04','2026-09-10','2026-09-24'])
+            self.assertEqual(plan['end'],'2026-09-24')
+            self.assertEqual(plan['calendar_before'],'2023-09-01')
+            self.assertEqual(session.request.call_args.kwargs['start'],'2026-09-11')
+
+    def test_empty_or_out_of_range_calendar_does_not_invent_dates(self):
+        plan={'dates':['2026-09-24'],'symbols':['2330']}
+        with patch.object(h.core,'contract',return_value='contract'):
+            session=Mock();session.request.return_value={'ts':[]}
+            self.assertFalse(h.extend_recent_calendar(session,Mock(),plan,date(2026,9,27)))
+            self.assertEqual(plan['dates'],['2026-09-24'])
+            session.request.return_value={'ts':[1]}
+            with patch.object(h.core,'validate',return_value=[datetime(2026,9,28,10)]):
+                with self.assertRaises(ValueError):h.extend_recent_calendar(session,Mock(),plan,date(2026,9,27))
+
+    def test_expansion_preserves_55_and_adds_top_45_normal_stocks(self):
+        original=[str(1000+i) for i in range(55)]
+        plan={'symbols':original,'dates':['2026-09-10'],'selection_snapshot_date':'old'}
+        rows=[{'code':str(2000+i),'total_amount':100-i} for i in range(60)]
+        rows += [{'code':'0050','total_amount':999999},{'code':'BAD','total_amount':999999}]
+        expanded=h.expanded_pool(plan,rows,100,'2026-09-27')
+        self.assertEqual(expanded['symbols'][:55],original)
+        self.assertEqual(expanded['symbols'][55:],[str(2000+i) for i in range(45)])
+        self.assertEqual(plan['symbols'],original)
+        self.assertEqual(expanded['selection_snapshot_date'],'old')
+        with self.assertRaises(ValueError):h.expanded_pool(plan,[],100,'now')
+
 if __name__=='__main__':unittest.main()

@@ -22,6 +22,7 @@ FILES = [
     "market_risk.py",
     "firebase_store.py",
     "paper_account.py",
+    "paper_ledger.py",
     # The root premarket_ai.py is a compatibility entry point that executes
     # vm_runtime/premarket_ai.py. Keep that entry point intact on the VM.
     "daytrade_learning/features.py",
@@ -351,6 +352,9 @@ def main():
     check_sources()
     compile_sources()
     check_services()
+    run(str(ROOT / '.venv/bin/python'), str(ROOT / 'deploy/verify_paper_ledger.py'),
+        '--runtime', str(SOURCE), '--database',
+        os.environ.get('EASYSTOCK_ADMIN_DB','/home/ubuntu/easystock-admin/state.sqlite'))
     if '--check-only' in sys.argv:
         print('Checks completed; no runtime files installed.')
         return
