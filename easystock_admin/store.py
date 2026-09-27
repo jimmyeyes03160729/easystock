@@ -14,6 +14,14 @@ import time
 OWNER = os.environ.get('ADMIN_OWNER_EMAIL', '').strip().lower()
 KEYS = ('min_price', 'max_price', 'max_gain_pct', 'max_recommendations')
 LEGACY_KEYS = KEYS[:-1]
+PIPELINE_DEFAULTS = {
+    'history_target_symbols': 100, 'history_symbols': [], 'history_max_pairs': 5,
+    'history_weekends': False, 'history_window_start': '14:00', 'history_window_end': '22:00',
+    'learning_enabled': True, 'learning_time': '16:10', 'min_training_dates': 101,
+    'min_training_samples': 1000, 'min_class_samples': 30, 'holdout_days': 20,
+    'model_threshold': .6, 'fee_rate': .0015, 'minimum_fee_twd': 20,
+    'sell_tax_rate': .003, 'slippage_bps': 10, 'shares': 1000,
+}
 
 def db_path():
     return Path(os.environ.get('EASYSTOCK_ADMIN_DB', '/home/ubuntu/easystock-admin/state.sqlite'))
@@ -53,6 +61,28 @@ def defaults():
         'max_recommendations': get('LIVE_RADAR_TOP_N', '30')
     })
 
+def validate_pipeline(value):
+    if not isinstance(value, dict) or set(value) != set(PIPELINE_DEFAULTS):
+        raise ValueError('訓練與資料計畫欄位不正確。')
+    result = dict(value)
+    symbols = result['history_symbols']
+    if not isinstance(symbols, list) or len(symbols) > 200 or any(not isinstance(s, str) or not __import__('re').fullmatch(r'\d{4}', s) for s in symbols) or len(set(symbols)) != len(symbols):
+        raise ValueError('指定股票請填入最多 200 個四位數代碼。')
+    result['history_symbols'] = symbols
+    for key, lo, hi in (('history_target_symbols', 1, 200), ('history_max_pairs', 1, 50), ('min_training_dates', 20, 1000), ('min_training_samples', 100, 1000000), ('min_class_samples', 10, 100000), ('holdout_days', 5, 250), ('shares', 1, 100000)):
+        n = result[key]
+        if isinstance(n, bool) or not isinstance(n, int) or not lo <= n <= hi: raise ValueError(f'{key} 超出安全範圍。')
+    if result['min_class_samples'] * 2 > result['min_training_samples']: raise ValueError('正負樣本最低數量不可超過總樣本的一半。')
+    if not isinstance(result['learning_enabled'], bool) or not isinstance(result['history_weekends'], bool): raise ValueError('開關設定不正確。')
+    for key in ('history_window_start', 'history_window_end', 'learning_time'):
+        if not isinstance(result[key], str) or not __import__('re').fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d', result[key]): raise ValueError('時間格式須為 HH:MM。')
+    if result['history_window_start'] >= result['history_window_end']: raise ValueError('抓取開始時間須早於截止時間。')
+    for key, lo, hi in (('model_threshold', .05, .95), ('fee_rate', 0, .01), ('minimum_fee_twd', 0, 10000), ('sell_tax_rate', 0, .01), ('slippage_bps', 0, 500)):
+        n = result[key]
+        if isinstance(n, bool) or not isinstance(n, (int, float)) or not math.isfinite(n) or not lo <= n <= hi: raise ValueError(f'{key} 超出安全範圍。')
+        result[key] = float(n)
+    return result
+
 class Conflict(Exception): pass
 class Denied(Exception): pass
 
@@ -76,12 +106,15 @@ class Store:
             CREATE TABLE IF NOT EXISTS paper_trade_positions(symbol TEXT PRIMARY KEY,name TEXT NOT NULL,entry_price REAL NOT NULL,shares INTEGER NOT NULL,entry_time TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS paper_trade_events(id INTEGER PRIMARY KEY AUTOINCREMENT,date TEXT NOT NULL,time_str TEXT NOT NULL,symbol TEXT NOT NULL,name TEXT NOT NULL,price REAL NOT NULL,action TEXT NOT NULL,reason TEXT NOT NULL,created_at REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS bot_policy(id INTEGER PRIMARY KEY CHECK(id=1),auto_reply_on_follow INTEGER NOT NULL DEFAULT 1,private_replies INTEGER NOT NULL DEFAULT 1,version INTEGER NOT NULL DEFAULT 1);
+            CREATE TABLE IF NOT EXISTS pipeline_settings(id INTEGER PRIMARY KEY CHECK(id=1),body TEXT NOT NULL,version INTEGER NOT NULL,updated REAL NOT NULL);
             INSERT OR IGNORE INTO bot_policy(id, auto_reply_on_follow, private_replies, version) VALUES(1, 1, 1, 1);
             ''')
             from .conversations import initialize
             initialize(db)
             if not db.execute('SELECT 1 FROM settings WHERE id=1').fetchone():
                 db.execute('INSERT OR IGNORE INTO settings VALUES(1,?,1,?)', (json.dumps(validate(initial) if initial is not None else defaults()), time.time()))
+            if not db.execute('SELECT 1 FROM pipeline_settings WHERE id=1').fetchone():
+                db.execute('INSERT OR IGNORE INTO pipeline_settings VALUES(1,?,1,?)', (json.dumps(PIPELINE_DEFAULTS), time.time()))
         self.path.chmod(0o600)
 
     @contextmanager
@@ -119,6 +152,22 @@ class Store:
             db.execute('UPDATE settings SET body=?,version=version+1,updated=? WHERE id=1', (json.dumps(value), time.time()))
             self._audit(db, 'google', 'settings', {'before': before['values'], 'after': value})
             return self._state(db)
+
+    def get_pipeline_settings(self):
+        with self.tx() as db:
+            row = db.execute('SELECT body,version,updated FROM pipeline_settings WHERE id=1').fetchone()
+            return {'values': validate_pipeline(json.loads(row[0])), 'version': row[1], 'updated_at': row[2]}
+
+    def update_pipeline_settings(self, value, version):
+        value = validate_pipeline(value)
+        if isinstance(version, bool) or not isinstance(version, int): raise ValueError('缺少設定版本。')
+        with self.tx() as db:
+            row = db.execute('SELECT body,version FROM pipeline_settings WHERE id=1').fetchone()
+            if row[1] != version: raise Conflict('訓練與資料計畫已被更新，請重新載入。')
+            previous = validate_pipeline(json.loads(row[0]))
+            db.execute('UPDATE pipeline_settings SET body=?,version=version+1,updated=? WHERE id=1', (json.dumps(value), time.time()))
+            self._audit(db, 'google', 'pipeline_settings', {'before': previous, 'after': value})
+        return self.get_pipeline_settings()
 
     def get_bot_policy(self) -> dict:
         with self.tx() as db:

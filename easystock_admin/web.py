@@ -173,6 +173,19 @@ def register_admin(app, store=None, verifier=None):
             raise ValueError('設定欄位不正確。')
         return jsonify(store.update(data['values'], data['version']))
 
+    @bp.get('/admin/pipeline-settings')
+    def get_pipeline_settings():
+        authenticated()
+        return jsonify(store.get_pipeline_settings())
+
+    @bp.put('/admin/pipeline-settings')
+    def put_pipeline_settings():
+        authenticated(True)
+        data = body()
+        if set(data) != {'values', 'version'}:
+            raise ValueError('訓練與資料計畫欄位不正確。')
+        return jsonify(store.update_pipeline_settings(data['values'], data['version']))
+
     @bp.get('/admin/paper-trade')
     def get_paper_trade():
         authenticated()
