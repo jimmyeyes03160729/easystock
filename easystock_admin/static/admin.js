@@ -9,8 +9,29 @@ async function api(path,{method='GET',body}={}){
   return data;
 }
 function applySettings(data){version=data.version;el('maxGain').value=data.values.max_gain_pct;el('minPrice').value=data.values.min_price;el('maxPrice').value=data.values.max_price;el('version').textContent='設定版本 '+version;}
+const healthLabels={ok:'正常',warning:'注意',error:'異常',idle:'等待'};
+function healthMetric(label,value){if(value===null||value===undefined)return null;const node=document.createElement('span');node.textContent=`${label} ${Number(value).toLocaleString('zh-TW')}`;return node;}
+function renderHealth(data){
+  const rows=Array.isArray(data.signals)?data.signals:[];const target=el('healthSignals');target.replaceChildren();
+  const counts=rows.reduce((out,row)=>{out[row.state]=(out[row.state]||0)+1;return out;},{});
+  el('healthSummary').textContent=`最後檢查：${new Date(data.generated_at).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})} · 正常 ${counts.ok||0} · 注意 ${counts.warning||0} · 異常 ${counts.error||0} · 等待 ${counts.idle||0}`;
+  for(const row of rows){
+    const card=document.createElement('article');card.className=`health-card health-${row.state||'idle'}`;
+    const head=document.createElement('div');head.className='health-card-head';
+    const title=document.createElement('h3');title.textContent=row.label||'未命名檢查';
+    const badge=document.createElement('span');badge.className='health-badge';badge.textContent=healthLabels[row.state]||'未知';head.append(title,badge);
+    const detail=document.createElement('p');detail.textContent=row.detail||'沒有附加說明。';card.append(head,detail);
+    const metrics=document.createElement('div');metrics.className='health-metrics';
+    const names={setting_version:'設定版本',samples:'樣本',labeled:'已標記',candidate_count:'候選數',completed_stock_days:'完成股票日',target_stock_days:'目標股票日',failed_stock_days:'失敗股票日'};
+    for(const [key,value] of Object.entries(row.metrics||{})){const metric=healthMetric(names[key]||key,value);if(metric)metrics.append(metric);}
+    if(row.updated_at){const updated=document.createElement('span');updated.textContent=`更新 ${new Date(row.updated_at).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}`;metrics.append(updated);}
+    if(metrics.childNodes.length)card.append(metrics);target.append(card);
+  }
+  if(!rows.length)target.textContent='尚未收到檢測資料。';
+}
+async function loadHealth(){try{renderHealth(await api('health'));}catch(error){el('healthSummary').textContent=error.message;el('healthSignals').replaceChildren();}}
 async function session(){const s=await api('session');csrf=s.csrf;el('identity').textContent=s.email;return s;}
-async function enter(){await session();applySettings(await api('settings'));await reloadConversations();try{await loadBotPolicy();}catch(_){}el('login').hidden=true;el('workspace').hidden=false;}
+async function enter(){await session();applySettings(await api('settings'));await reloadConversations();try{await loadBotPolicy();}catch(_){}el('login').hidden=true;el('workspace').hidden=false;await loadHealth();}
 async function loginSetup(){
   try{
     const config=await api('config');
@@ -39,6 +60,7 @@ el('settingsForm').onsubmit=async event=>{
   catch(error){message('saveStatus',error.message,true);}finally{el('save').disabled=false;}
 };
 el('reload').onclick=async()=>{try{applySettings(await api('settings'));message('saveStatus','已載入最新設定。');}catch(e){message('saveStatus',e.message,true);}};
+el('reloadHealth').onclick=async()=>{const button=el('reloadHealth');button.disabled=true;try{await loadHealth();}finally{button.disabled=false;}};
 el('logout').onclick=async()=>{try{await api('logout',{method:'POST',body:{}});location.reload();}catch(e){message('saveStatus',e.message,true);}};
 el('checkUsage').onclick=async()=>{el('checkUsage').disabled=true;try{const s=await api('line-usage');message('lineUsage',`本月已用 ${s.used} / ${s.limit??'無上限'} 則，剩餘 ${s.remaining??'無上限'} 則。群組主動推播按接收人數計算，查詢回覆不扣額度。`);}catch(e){message('lineUsage',e.message,true);}finally{el('checkUsage').disabled=false;}};
 function checkbox(label,checked){const wrap=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.checked=!!checked;wrap.append(input,document.createTextNode(' '+label));wrap.style.display='block';wrap.style.margin='12px 0';input.style.width='auto';return {wrap,input};}

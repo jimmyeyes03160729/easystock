@@ -146,6 +146,12 @@ def register_admin(app, store=None, verifier=None):
         authenticated()
         return jsonify(store.get())
 
+    @bp.get('/admin/health')
+    def get_health():
+        authenticated()
+        from .health import snapshot
+        return jsonify(snapshot(store))
+
     @bp.put('/admin/settings')
     def put_settings():
         authenticated(True)
