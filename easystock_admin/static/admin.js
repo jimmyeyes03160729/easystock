@@ -36,8 +36,10 @@ function renderHealth(data){
   if(!rows.length)target.textContent='尚未收到檢測資料。';
 }
 async function loadHealth(){try{renderHealth(await api('health'));}catch(error){el('healthSummary').textContent=error.message;el('healthSignals').replaceChildren();}}
+async function loadMaintenance(){try{const data=await api('maintenance');const parts=[];for(const [key,value] of Object.entries(data)){if(key!=='available'&&key!=='detail')parts.push(`${key}: ${value}`);}message('maintenanceStatus',data.detail||parts.join(' · ')||'維護狀態未知',!data.available);for(const id of ['restartIntraday','syncVm'])el(id).disabled=!data.available;}catch(error){message('maintenanceStatus',error.message,true);}}
+async function maintenance(action,confirmation,label){if(!confirm(`確認要${label}嗎？\n此操作會受到時段、工作衝突與冷卻限制。`))return;const id=action==='restart-intraday'?'restartIntraday':'syncVm';const button=el(id);button.disabled=true;message('maintenanceStatus','正在送出受控維護要求…');try{const result=await api('maintenance/'+action,{method:'POST',body:{confirmation}});message('maintenanceStatus',result.detail||'操作已送出。',!result.available);}catch(error){message('maintenanceStatus',error.message,true);}finally{await loadMaintenance();}}
 async function session(){const s=await api('session');csrf=s.csrf;el('identity').textContent=s.email;return s;}
-async function enter(){await session();applySettings(await api('settings'));await reloadConversations();try{await loadBotPolicy();}catch(_){}el('login').hidden=true;el('workspace').hidden=false;await loadHealth();}
+async function enter(){await session();applySettings(await api('settings'));await reloadConversations();try{await loadBotPolicy();}catch(_){}el('login').hidden=true;el('workspace').hidden=false;await loadHealth();await loadMaintenance();}
 async function loginSetup(){
   try{
     const config=await api('config');
@@ -68,6 +70,8 @@ el('settingsForm').onsubmit=async event=>{
 };
 el('reload').onclick=async()=>{try{applySettings(await api('settings'));message('saveStatus','已載入最新設定。');}catch(e){message('saveStatus',e.message,true);}};
 el('reloadHealth').onclick=async()=>{const button=el('reloadHealth');button.disabled=true;try{await loadHealth();}finally{button.disabled=false;}};
+el('restartIntraday').onclick=()=>maintenance('restart-intraday','RESTART_INTRADAY','重啟當沖');
+el('syncVm').onclick=()=>maintenance('sync-vm','SYNC_VM','同步 VM');
 for(const button of document.querySelectorAll('[data-admin-tab]'))button.onclick=()=>showAdminTab(button.dataset.adminTab);
 el('logout').onclick=async()=>{try{await api('logout',{method:'POST',body:{}});location.reload();}catch(e){message('saveStatus',e.message,true);}};
 el('checkUsage').onclick=async()=>{el('checkUsage').disabled=true;try{const s=await api('line-usage');message('lineUsage',`本月已用 ${s.used} / ${s.limit??'無上限'} 則，剩餘 ${s.remaining??'無上限'} 則。群組主動推播按接收人數計算，查詢回覆不扣額度。`);}catch(e){message('lineUsage',e.message,true);}finally{el('checkUsage').disabled=false;}};

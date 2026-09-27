@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ACTION="${1:-}"; ROOT=/home/ubuntu/easystock; STATE=/var/lib/easystock-admin; LOCK="$STATE/maintenance.lock"
+mkdir -p "$STATE"; chmod 700 "$STATE"
+json() { printf '{"detail":"%s"}\n' "${1//\"/\\\"}"; }
+unit_state() { systemctl is-active "$1" 2>/dev/null || true; }
+blocked() { for unit in easystock-history-download.service easystock-history-train.service easystock-learning.service easystock-paper-train.service; do if systemctl is-active --quiet "$unit"; then json "工作進行中：$unit"; return 0; fi; done; return 1; }
+case "$ACTION" in
+status) printf '{"intraday":"%s","history_train":"%s","history_download":"%s","sync":"%s"}\n' "$(unit_state easystock-intraday.service)" "$(unit_state easystock-history-train.service)" "$(unit_state easystock-history-download.service)" "$(cat "$STATE/sync-status" 2>/dev/null || printf idle)";;
+restart-intraday) exec 9>"$LOCK"; flock -n 9 || { json '已有維護操作正在執行。'; exit 1; }; blocked && exit 1; [[ "$(TZ=Asia/Taipei date +%u)" -le 5 && "$(TZ=Asia/Taipei date +%H%M)" -ge 0845 && "$(TZ=Asia/Taipei date +%H%M)" -le 1330 ]] || { json '僅限台北交易日 08:45–13:30 重啟。'; exit 1; }; systemctl is-active --quiet easystock-intraday.service || { json '當沖服務未運行；為避免意外啟動，已拒絕重啟。'; exit 1; }; systemctl restart easystock-intraday.service; json '當沖服務已重新啟動。';;
+sync-vm) exec 9>"$LOCK"; flock -n 9 || { json '已有維護操作正在執行。'; exit 1; }; blocked && exit 1; printf running > "$STATE/sync-status"; nohup "$ROOT/deploy/update_vm_main.sh" >"$STATE/sync.log" 2>&1 & printf '%s\n' "$!" > "$STATE/sync.pid"; json 'VM 同步已排入執行；當沖 timer 仍會保持停用。';;
+*) json '不允許的維護操作。'; exit 1;; esac

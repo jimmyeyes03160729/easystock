@@ -152,6 +152,19 @@ def register_admin(app, store=None, verifier=None):
         from .health import snapshot
         return jsonify(snapshot(store))
 
+    @bp.get('/admin/maintenance')
+    def get_maintenance():
+        authenticated()
+        from .operations import status
+        return jsonify(status())
+
+    @bp.post('/admin/maintenance/<action>')
+    def post_maintenance(action):
+        authenticated(True)
+        data = body()
+        from .operations import execute
+        return jsonify(execute(store, action, data.get('confirmation', '')))
+
     @bp.put('/admin/settings')
     def put_settings():
         authenticated(True)

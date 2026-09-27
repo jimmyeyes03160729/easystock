@@ -20,10 +20,11 @@
 <div class="title"><div><p class="eyebrow">當沖管理</p><h1>把推薦範圍設好。</h1><p class="muted">新推薦與 LINE／Telegram 進場通知前，會套用最新限制。</p></div><div class="title-actions"><nav class="admin-section-nav" aria-label="後台功能分類"><button type="button" data-admin-tab="healthPanel">健康中心</button><button type="button" data-admin-tab="settingsPanel">選股設定</button><button type="button" data-admin-tab="paperTradePanel">模擬帳本</button><button type="button" data-admin-tab="conversationPanel">通知設定</button></nav><button id="logout" type="button">登出</button></div></div>
 <div class="identity"><span id="identity"></span><span id="version"></span></div>
 <section class="panel health-panel admin-tab-panel" id="healthPanel" aria-labelledby="healthTitle">
-  <div class="health-heading"><div><p class="eyebrow">系統健康中心</p><h2 id="healthTitle">訓練與資料檢測燈號</h2><p class="hint">唯讀顯示最近一次狀態；不會在此頁啟動訓練、修改模型或執行交易。</p></div><button id="reloadHealth" type="button">重新檢查</button></div>
+  <div class="health-heading"><div><p class="eyebrow">系統健康中心</p><h2 id="healthTitle">當沖設定及健檢</h2><p class="hint">檢查訓練、資料與當沖服務狀態；設定調整在選股設定頁，維護操作有安全限制。</p></div><button id="reloadHealth" type="button">重新檢查</button></div>
   <div id="healthSummary" class="health-summary" role="status" aria-live="polite">正在檢查系統狀態…</div>
   <div id="healthSignals" class="health-signals" aria-live="polite"></div>
   <p class="hint health-note">綠燈：可用或完成；黃燈：等待條件、時段或額度；紅燈：需要處理；灰燈：尚未開始或未啟用。</p>
+  <section class="maintenance" aria-labelledby="maintenanceTitle"><h3 id="maintenanceTitle">受控維護</h3><p id="maintenanceStatus" class="hint">正在確認 VM 維護狀態…</p><div class="actions"><button id="restartIntraday" type="button">重啟當沖</button><button id="syncVm" type="button">同步 VM</button></div><p class="hint">重啟只限台北交易日 08:45–13:30，且訓練／下載工作必須空閒。同步會先做相同檢查、建立備份，並保持當沖排程停用。</p></section>
 </section>
 <div>
 <section class="panel settings admin-tab-panel" id="settingsPanel"><h2>推薦條件</h2>
