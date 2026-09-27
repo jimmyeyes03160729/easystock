@@ -169,7 +169,7 @@ class EngineTests(unittest.TestCase):
         self.manager=PositionManager(before_open=Mock(return_value=dict(status='insufficient_cash',shares=0)))
         self.engine=types.SimpleNamespace(bars=types.SimpleNamespace(rows5=lambda _: [{}],rows15=lambda _:[{}]),
             candidates={'TEST':{}},market_level='GREEN',market_valid_until=NOW.timestamp()+30,
-            entry_mode='rules',last_prices={'TEST':100},manager=self.manager,scanner_top_symbols={'TEST'},
+            entry_mode='rules',collect_only=False,last_prices={'TEST':100},manager=self.manager,scanner_top_symbols={'TEST'},
             fresh_entry_quote=Mock(return_value=(100,NOW)),_previous_closes={'TEST':(None,100)},
             _lock=threading.RLock(),radar_ticks={'TEST':[]},daytrade_model=DaytradeModel(path=''),
             entry_symbols=set(),_entry_limit_logged=False,learning=Mock(),store=Mock())
@@ -186,6 +186,15 @@ class EngineTests(unittest.TestCase):
     def test_model_mode_never_falls_back_to_rules(self):
         self.engine.entry_mode='model';self.run_engine()
         self.manager.before_open.assert_not_called()
+
+    def test_collect_only_never_attempts_a_fill_even_when_rules_accept(self):
+        self.engine.collect_only=True
+        self.manager.before_open.return_value=dict(status='bought',shares=1000,trade_id='unexpected')
+        self.run_engine()
+        self.manager.before_open.assert_not_called()
+        self.engine.learning.entry.assert_not_called()
+        self.engine.store.write_entry.assert_not_called()
+        self.assertFalse(self.engine.entry_symbols)
 
     def test_stale_risk_blocks_only_new_entries(self):
         self.engine.market_valid_until=NOW.timestamp()-1;self.run_engine()

@@ -2773,19 +2773,22 @@ class IntradayLiveEngine:
         self._force_exit_done = False
         self._last_force_exit_attempt = 0.0
         self.learning = Recorder()
+        # A root-owned VM marker makes a session observation-only, regardless
+        # of entry mode or a model artifact appearing later in the environment.
+        self.collect_only = Path('/etc/easystock/collect-only').exists()
         self.silent_symbols = set()
         # EASYSTOCK_VALIDATED_MODEL_GATE_V2
         self.daytrade_model = DaytradeModel()
         self.entry_mode = os.environ.get('LIVE_ENTRY_MODE', 'rules')
         if self.entry_mode not in {'rules', 'model'}:
             raise ValueError('LIVE_ENTRY_MODE must be rules or model')
-        print(f"[MODEL_BOOT] mode={self.entry_mode} ready={self.daytrade_model.artifact is not None} "
+        print(f"[MODEL_BOOT] mode={self.entry_mode} collect_only={self.collect_only} ready={self.daytrade_model.artifact is not None} "
               f"version={self.daytrade_model.model_version} sha256={self.daytrade_model.artifact_sha256} "
               f"threshold={self.daytrade_model.threshold} learning={self.learning.enabled}")
         self._market_checked_at = 0.0
         self.market_valid_until = 0.0
         self.market_risk = {'valid': False, 'reason': 'not_checked'}
-        self.manager.before_open = lambda **kw: paper_wallet.open_fill(**kw)
+        self.manager.before_open = lambda **kw: None if self.collect_only else paper_wallet.open_fill(**kw)
         self.manager.before_close = lambda **kw: paper_wallet.close_and_settle(**kw)
         self._previous_closes = {}
         self._previous_close_retry = {}
@@ -3999,6 +4002,9 @@ class IntradayLiveEngine:
         # -------------------------------------------------
         # 新 ENTRY
         # -------------------------------------------------
+
+        if getattr(self, 'collect_only', False):
+            return
 
         if not in_entry_window(
             strategy_time

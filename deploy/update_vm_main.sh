@@ -58,6 +58,7 @@ git branch --set-upstream-to=origin/main main
 .venv/bin/python3 vm_runtime/tests/test_runtime_safety.py -q
 .venv/bin/python3 history/test_daily_history.py -q
 .venv/bin/python3 tests/test_paper_legacy.py -q
+.venv/bin/python3 tests/test_research_schedule.py -q
 .venv/bin/python3 deploy/verify_paper_ledger.py --runtime /home/ubuntu/easystock
 printf '主線更新完成：'
 git rev-parse --short HEAD
