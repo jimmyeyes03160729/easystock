@@ -71,6 +71,17 @@ def _market_session() -> dict:
     return _signal('market_session', '當沖時段', 'idle', f'台北時間 {stamp} · 已收盤；當沖服務不會建立新進場。')
 
 
+def _worker_signal(key: str, label: str, value: object) -> dict:
+    state = str(value or 'unknown').lower()
+    if state == 'active':
+        return _signal(key, label, 'ok', '目前正在執行。')
+    if state in ('failed', 'activating', 'deactivating'):
+        return _signal(key, label, 'error' if state == 'failed' else 'warning', '服務狀態：' + state + '。')
+    if state == 'inactive':
+        return _signal(key, label, 'idle', '目前沒有執行；請搭配最近更新時間判斷是否已完成。')
+    return _signal(key, label, 'idle', '尚未取得 VM 執行狀態。')
+
+
 def snapshot(store) -> dict:
     """Return safe status summaries only; no secrets, paths, commands or actions."""
     learning = _root('EASYSTOCK_LEARNING_DATA', '/home/ubuntu/easystock-learning-data')
@@ -95,6 +106,27 @@ def snapshot(store) -> dict:
             '發布端點已設定。' if os.environ.get('FIREBASE_DATABASE_URL') else '未設定發布端點；後台僅顯示本機狀態。',
         ),
     ]
+
+    # The root-owned runner only exposes a fixed allowlist of unit states.
+    # If it is not installed yet, health remains read-only and reports that
+    # limitation instead of pretending that a worker is active.
+    try:
+        from .operations import status as maintenance_status
+        workers = maintenance_status()
+    except Exception:
+        workers = {'available': False}
+    if workers.get('available'):
+        signals.extend([
+            _worker_signal('training_worker', '歷史訓練工作', workers.get('history_train')),
+            _worker_signal('daily_learning_worker', '每日訓練工作', workers.get('learning')),
+            _worker_signal('download_worker', '歷史資料抓取工作', workers.get('history_download')),
+        ])
+    else:
+        signals.extend([
+            _signal('training_worker', '歷史訓練工作', 'idle', 'VM 執行狀態尚未連線；下方仍顯示最近一次訓練紀錄。'),
+            _signal('daily_learning_worker', '每日訓練工作', 'idle', 'VM 執行狀態尚未連線；下方仍顯示最近一次訓練紀錄。'),
+            _signal('download_worker', '歷史資料抓取工作', 'idle', 'VM 執行狀態尚未連線；下方仍顯示資料進度檔。'),
+        ])
 
     if training is None:
         signals.append(_signal('daily_training', '每日訓練流程', 'idle' if training_error == 'not_started' else 'error', '尚未產生訓練紀錄。' if training_error == 'not_started' else '無法讀取訓練狀態。'))
