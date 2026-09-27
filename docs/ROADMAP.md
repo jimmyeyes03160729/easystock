@@ -87,6 +87,217 @@ auth.uid == {uid}
 - 最後同步時間。
 - 雲端同步成功 / 失敗狀態。
 
+
+---
+
+## 觸底反彈 AI 學習規劃
+
+### 目前先決問題：統一正式策略定義
+現況存在兩套不同的「觸底反彈」邏輯：
+- `scan_rebound.py`：以 MA20 大幅乖離、突破昨高、紅 K、5 日反彈等條件為主。
+- `assets/rebound-engine.js`：以重複支撐 / 壓力區、近期回測支撐、突破或止跌確認、ATR、風報比、失效價與目標價為主。
+
+AI 上線前必須先統一正式定義，避免同一個「rebound」標籤混用兩套不同策略造成學習污染。
+
+目前規劃優先以較完整的 `range-rebound` 邏輯作為正式基準，之後將核心演算法搬到 VM / Python，前端 JS 只負責顯示。
+
+### AI 定位
+第一階段不讓 AI 直接取代既有反彈規則。
+
+採用：
+
+```text
+固定 Rebound Rule
+        ↓
+產生候選池
+        ↓
+Rebound AI 排序 / 評分
+        ↓
+Shadow Mode
+        ↓
+Web / Chrome / LINE
+```
+
+AI 的角色是第二層排序器與品質評估器，而不是一開始就自行決定哪些股票叫做「觸底反彈」。
+
+### Dataset 收集原則
+不要只保存最後有被選中的股票。
+
+每天應保存：
+- 已符合反彈規則的股票。
+- 差一點符合的候選。
+- 被規則淘汰但接近門檻的股票。
+- 當時的完整 feature snapshot。
+- 原規則是否選中。
+- 原規則分數與淘汰原因。
+- 訊號時間與資料版本。
+
+目的：讓模型同時看到成功反彈與失敗 / 假反彈案例。
+
+### 建議第一版特徵
+價格與趨勢：
+- distance_to_support
+- distance_to_resistance
+- range_position
+- bias_ma20
+- bias_ma60
+- ma20_slope
+- ma60_slope
+- rebound_3d
+- rebound_5d
+
+支撐 / 壓力：
+- support_touches
+- resistance_touches
+- support_span_days
+- support_age
+- net_rr
+- atr_pct
+
+K 線：
+- daily_change
+- candle_body
+- upper_shadow
+- lower_shadow
+- close_position
+
+成交與市場：
+- volume_ratio
+- amount_rank
+- market_5d_return
+- market_regime
+- breadth
+- institution_flow_ratio
+
+第一版控制在約 15～25 個穩定特徵，不一開始堆過多欄位。
+
+### Label / 成功定義
+以訊號日 D0 為基準，預設 D1 開盤模擬進場，主要追蹤 10 個交易日。
+
+結果分類：
+- Target 先碰到 → `SUCCESS`
+- Invalid / Stop 先碰到 → `FAIL`
+- 10 日內都沒碰到 → `TIMEOUT`
+- 同一根日 K 同時碰到 Target 與 Stop、無法確認先後 → `AMBIGUOUS`，第一版建議排除訓練
+
+同時保存：
+- return_5d
+- return_10d
+- return_20d
+- MFE_10d
+- MAE_10d
+- days_to_target
+
+目前 `update_market.py` 已有 1 / 5 / 10 / 20 日驗證框架，且 rebound 的主要 horizon 已是 10 日，後續應盡量沿用，不重複建立另一套口徑。
+
+### Rebound Learning 模組
+沿用現有 `daytrade_learning` 的研究架構，不重新發明一套完全不同的系統。
+
+建議新增：
+
+```text
+rebound_learning/
+├── features.py
+├── collector.py
+├── labels.py
+├── research.py
+├── model_runtime.py
+├── settings.json
+└── status.py
+```
+
+共用原則：
+- point-in-time feature
+- candidate only
+- walk-forward validation
+- holdout
+- shadow comparison
+- 不自動 promote 未驗證模型
+
+### 模型方案
+第一版同時比較：
+
+```text
+Baseline：原 Rebound Rule
+Challenger A：Logistic Regression
+Challenger B：HistGradientBoosting
+```
+
+比較指標至少包含：
+- 訊號數
+- Target 命中率
+- 平均 10 日報酬
+- Profit Factor
+- 最大不利走勢 / Drawdown
+- Calibration / Brier（若輸出機率）
+
+AI 沒有穩定優於 Baseline，就維持 Shadow，不套用正式選股。
+
+### 訓練與升版原則
+不允許「每日新增資料 → 當日重新訓練 → 立即上線」。
+
+建議流程：
+
+```text
+每日收集 Snapshot
+      ↓
+成熟後自動 Label
+      ↓
+定期產生 Candidate
+      ↓
+Walk-forward / Holdout
+      ↓
+Shadow
+      ↓
+達標後人工 / 明確規則 Approved
+      ↓
+Applied Model
+```
+
+資料成熟度初步規劃：
+- < 60 個交易日：收集研究資料
+- 60～120 個交易日：允許 Candidate
+- >= 120 個交易日：正式 Walk-forward 評估
+- 通過 forward shadow 才能 Applied
+
+若歷史 K 線資料足夠，可做 Historical Bootstrap，但必須避免 future leakage、current-universe bias 與不同策略版本混用。
+
+### UI / 對外顯示
+第一階段顯示：
+
+```text
+原策略分數
+AI Score
+AI 狀態
+支撐 / 壓力
+失效價
+目標價
+RR
+AI 觀察摘要
+```
+
+在模型尚未完成 probability calibration 前，只稱為 `AI Score`，不得直接標示成「勝率」或「成功機率」。
+
+### Gemini 定位
+Gemini 不作為主要 K 線學習模型。
+
+Gemini 適合：
+- 盤後解釋
+- 市場環境摘要
+- 新聞 / 事件風險
+- 候選標的文字說明
+
+核心量化學習仍以可驗證的 sklearn / Gradient Boosting 類模型為主。
+
+### 實作順序
+1. 先統一正式 Rebound 定義。
+2. 建立 `rebound_learning`。
+3. 儘早開始收集 Rebound snapshot，即使 AI 尚未上線。
+4. 10 個交易日後自動 Label。
+5. 自動產生研究 / 回測報告。
+6. AI 先 Shadow，不影響目前正式結果。
+7. 數據與驗證成熟後，再考慮「AI 強化反彈」正式功能。
+
 ---
 
 ## GitHub / 模型核心保護規劃
