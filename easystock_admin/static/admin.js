@@ -9,6 +9,12 @@ async function api(path,{method='GET',body}={}){
   return data;
 }
 function applySettings(data){version=data.version;el('maxGain').value=data.values.max_gain_pct;el('minPrice').value=data.values.min_price;el('maxPrice').value=data.values.max_price;el('version').textContent='設定版本 '+version;}
+function showAdminTab(id){
+  const panels=[...document.querySelectorAll('.admin-tab-panel')];
+  if(!panels.some(panel=>panel.id===id))id='healthPanel';
+  for(const panel of panels)panel.hidden=panel.id!==id;
+  for(const button of document.querySelectorAll('[data-admin-tab]'))button.setAttribute('aria-selected',String(button.dataset.adminTab===id));
+}
 const healthLabels={ok:'正常',warning:'注意',error:'異常',idle:'等待'};
 function healthMetric(label,value){if(value===null||value===undefined)return null;const node=document.createElement('span');node.textContent=`${label} ${Number(value).toLocaleString('zh-TW')}`;return node;}
 function renderHealth(data){
@@ -61,6 +67,7 @@ el('settingsForm').onsubmit=async event=>{
 };
 el('reload').onclick=async()=>{try{applySettings(await api('settings'));message('saveStatus','已載入最新設定。');}catch(e){message('saveStatus',e.message,true);}};
 el('reloadHealth').onclick=async()=>{const button=el('reloadHealth');button.disabled=true;try{await loadHealth();}finally{button.disabled=false;}};
+for(const button of document.querySelectorAll('[data-admin-tab]'))button.onclick=()=>showAdminTab(button.dataset.adminTab);
 el('logout').onclick=async()=>{try{await api('logout',{method:'POST',body:{}});location.reload();}catch(e){message('saveStatus',e.message,true);}};
 el('checkUsage').onclick=async()=>{el('checkUsage').disabled=true;try{const s=await api('line-usage');message('lineUsage',`本月已用 ${s.used} / ${s.limit??'無上限'} 則，剩餘 ${s.remaining??'無上限'} 則。群組主動推播按接收人數計算，查詢回覆不扣額度。`);}catch(e){message('lineUsage',e.message,true);}finally{el('checkUsage').disabled=false;}};
 function checkbox(label,checked){const wrap=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.checked=!!checked;wrap.append(input,document.createTextNode(' '+label));wrap.style.display='block';wrap.style.margin='12px 0';input.style.width='auto';return {wrap,input};}
@@ -106,4 +113,4 @@ if(el('saveBotPolicy')){
 }
 async function reloadConversations(){applyConversations(await api('notification-groups'));try{await loadBotPolicy();}catch(_){}}
 el('reloadLine').onclick=async()=>{try{await reloadConversations();message('conversationStatus','已載入最新設定。');}catch(e){message('conversationStatus',e.message,true);}};
-(async()=>{try{await enter();}catch{await loginSetup();}})();
+(async()=>{try{await enter();showAdminTab('healthPanel');}catch{await loginSetup();}})();
