@@ -97,24 +97,25 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.match(listContainer.textContent, /jimmyeyes\.com\/easystock/);
   assert.equal(stratBar.classList.contains('hidden'), true);
 
-  // Test stealth mode (牛馬上班摸魚模式)
-  const stealthBtn = w.document.getElementById('btn-stealth-toggle');
-  assert.ok(stealthBtn);
-  stealthBtn.click();
+  // Test dark / light theme mode
+  const themeBtn = w.document.getElementById('btn-theme-toggle');
+  assert.ok(themeBtn);
+  themeBtn.click();
   await new Promise(r => setTimeout(r, 0));
   assert.equal(messages.at(-1).type, 'SETTINGS');
-  assert.equal(messages.at(-1).strategy, 'stealthMode');
+  assert.equal(messages.at(-1).strategy, 'darkMode');
   assert.equal(messages.at(-1).enabled, true);
-  assert.equal(w.document.body.classList.contains('stealth-mode'), true);
-  assert.match(w.document.getElementById('brand-title').textContent, /OA企業門戶/);
-  assert.equal(w.document.getElementById('stealth-btn-label').textContent, '搬磚中');
+  assert.equal(w.document.body.classList.contains('dark-mode'), true);
+  assert.match(w.document.getElementById('brand-title').textContent, /牛馬自救終端/);
+  assert.equal(w.document.getElementById('theme-btn-label').textContent, '光明');
+  assert.equal(w.document.getElementById('brand-tag').textContent, 'v1.01');
 
-  stealthBtn.click();
+  themeBtn.click();
   await new Promise(r => setTimeout(r, 0));
   assert.equal(messages.at(-1).enabled, false);
-  assert.equal(w.document.body.classList.contains('stealth-mode'), false);
+  assert.equal(w.document.body.classList.contains('dark-mode'), false);
   assert.match(w.document.getElementById('brand-title').textContent, /牛馬自救終端/);
-  assert.equal(w.document.getElementById('stealth-btn-label').textContent, '摸魚');
+  assert.equal(w.document.getElementById('theme-btn-label').textContent, '黑暗');
 
   w.document.getElementById('btn-open-settings').click();
   assert.equal(w.document.getElementById('settings-panel').inert, false);

@@ -32,6 +32,7 @@ test('config is data only; payment URLs cannot execute script', () => {
   assert.throws(() => config({ ...base, vip_keys_hash: ['VIP888'] }));
 });
 test('watchlist is bounded, typed, deduplicated, and export-safe', () => {
+  assert.equal(defaultState().settings.darkMode, true);
   const s = defaultState().stocks[0];
   assert.deepEqual(watchlist([s]), [s]);
   for (const input of [[s, s], [{ ...s, symbol: '__proto__' }], [{ ...s, groups: [] }], [{ ...s, market: 'X' }], Array(101).fill(s)]) assert.throws(() => watchlist(input));
