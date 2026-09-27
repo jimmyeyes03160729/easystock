@@ -388,6 +388,20 @@ def read_live_settings():
         db.close()
 
 
+def read_pipeline_settings():
+    """Read the plan from a worker without granting it write access to admin state."""
+    path = db_path()
+    uri = path.resolve().as_uri() + '?mode=ro'
+    db = sqlite3.connect(uri, uri=True, timeout=1)
+    try:
+        row = db.execute('SELECT body FROM pipeline_settings WHERE id=1').fetchone()
+        if not row:
+            raise RuntimeError('Pipeline settings missing')
+        return validate_pipeline(json.loads(row[0]))
+    finally:
+        db.close()
+
+
 def read_paper_trade_settings():
     path = db_path()
     if not path.exists():

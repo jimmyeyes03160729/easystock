@@ -19,9 +19,24 @@ REQUESTED = '2010-01-01'
 RESERVE_MB = 120
 
 
-def allowed(now=None):
+def pipeline_settings():
+    try:
+        root = Path(__file__).resolve().parents[1]
+        if str(root) not in sys.path: sys.path.insert(0, str(root))
+        from easystock_admin.store import read_pipeline_settings
+        return read_pipeline_settings()
+    except Exception:
+        return {'history_window_start': '14:00', 'history_window_end': '22:00', 'history_weekends': False,
+                'history_target_symbols': 100, 'history_max_pairs': 5, 'history_symbols': []}
+
+
+def allowed(now=None, settings=None):
     now = now or datetime.now(core.TPE)
-    return clock(14) <= now.time().replace(tzinfo=None) < clock(22)
+    settings = settings or pipeline_settings()
+    if now.weekday() >= 5 and not settings['history_weekends']: return False
+    start = clock.fromisoformat(settings['history_window_start'])
+    end = clock.fromisoformat(settings['history_window_end'])
+    return start <= now.time().replace(tzinfo=None) < end
 
 
 def eligible_failure(record, now):
@@ -208,7 +223,8 @@ def expand_from_scanner(session,api,plan,scanner_type,target):
 
 def run():
     os.umask(0o077)
-    if not allowed():print('Outside 14:00–22:00 Taipei; waiting for next timer');return 0
+    settings = pipeline_settings()
+    if not allowed(settings=settings):print('Outside configured Taipei collection window; waiting for next timer');return 0
     DATA.mkdir(parents=True,exist_ok=True,mode=0o700)
     core.DATA=DATA
     with ExitStack() as stack:
@@ -233,7 +249,7 @@ def run():
             session=Session(api);failures=0;processed=0
             summarize(plan,'downloading',session.check())
             extend_recent_calendar(session,api,plan)
-            target = int(os.getenv('EASYSTOCK_HISTORY_TARGET_SYMBOLS','100'))
+            target = settings['history_target_symbols']
             try:
                 plan = expand_from_scanner(session,api,plan,sj.ScannerType.AmountRank,target)
             except (ValueError,AttributeError) as exc:
@@ -246,6 +262,7 @@ def run():
                         if (DATA/'raw'/day/(symbol+'.json.gz')).exists():continue
                         previous=read_failure(day,symbol)
                         if not eligible_failure(previous,time.time()):continue
+                        if processed >= settings['history_max_pairs']: raise core.StopRun('pair_limit')
                         try:
                             collect_pair(session,api,symbol,day,sj.constant.TicksQueryType.AllDay)
                             processed+=1;failures=0

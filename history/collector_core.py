@@ -18,7 +18,7 @@ TPE = timezone(timedelta(hours=8))
 DATA = Path('/home/ubuntu/easystock-history-data')
 LIVE = Path('/home/ubuntu/easystock')
 MB = 1024 * 1024
-MAX_HISTORY_SYMBOLS = 100
+MAX_HISTORY_SYMBOLS = 200
 TICK_FIELDS = ('ts', 'close', 'volume', 'tick_type', 'bid_price', 'ask_price')
 BAR_FIELDS = ('ts', 'Open', 'High', 'Low', 'Close', 'Volume', 'Amount')
 

@@ -24,6 +24,13 @@ def main():
     from dotenv import load_dotenv
     root = Path(__file__).resolve().parent
     load_dotenv(root/'.env')
+    try:
+        from easystock_admin.store import read_pipeline_settings
+        if not read_pipeline_settings()['learning_enabled']:
+            print(json.dumps({'status':'skipped','reason':'disabled_in_admin_plan'}))
+            return
+    except Exception:
+        pass
     from daytrade_learning.runtime import TPE, DATA
     from daytrade_learning.research import journal
     day = datetime.now(TPE).date().isoformat()

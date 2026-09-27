@@ -274,36 +274,42 @@ def build(data, day, costs, persist_report=True):
     return result
 
 
-def train_candidate(data):
+def train_candidate(data, controls=None):
     try:
         from sklearn.pipeline import make_pipeline
         from sklearn.preprocessing import StandardScaler
         from sklearn.linear_model import LogisticRegression
     except ImportError:return {'status':'blocked','reason':'research scikit-learn environment not installed'}
+    controls = controls or {}
+    min_dates = int(controls.get('min_training_dates', 101))
+    min_samples = int(controls.get('min_training_samples', 1000))
+    min_class = int(controls.get('min_class_samples', 30))
+    holdout = int(controls.get('holdout_days', 20))
+    threshold = float(controls.get('model_threshold', .6))
     rows=[]
     for p in sorted((Path(data)/'labels').glob('*.json')):rows.extend(json.loads(p.read_text()))
     if not rows:return {'status':'blocked','reason':'no labeled snapshots'}
     # Different exit/risk/fee profiles must never be pooled silently.
     latest=max(rows,key=lambda r:r['at'])['profile'];rows=[r for r in rows if r['profile']==latest]
     dates=sorted({r['date'] for r in rows})
-    if len(dates)<101 or len(rows)<1000:return {'status':'blocked','reason':'need 101 dates and 1000 samples in one profile','dates':len(dates),'samples':len(rows)}
+    if len(dates)<min_dates or len(rows)<min_samples:return {'status':'blocked','reason':'training data threshold not met','dates':len(dates),'samples':len(rows),'required_dates':min_dates,'required_samples':min_samples}
     folds=[]; last_model=None
-    for offset in (60,40,20):
-        test_dates=set(dates[-offset:][:20]); first=dates.index(min(test_dates));fit_dates=set(dates[:first-1])
+    for offset in (holdout*3,holdout*2,holdout):
+        test_dates=set(dates[-offset:][:holdout]); first=dates.index(min(test_dates));fit_dates=set(dates[:first-1])
         fit=[r for r in rows if r['date'] in fit_dates];test=[r for r in rows if r['date'] in test_dates]
         y=[int(r['net_return_pct']>0) for r in fit]
-        if not y or min(sum(y),len(y)-sum(y))<30:return {'status':'blocked','reason':'insufficient class balance'}
+        if not y or min(sum(y),len(y)-sum(y))<min_class:return {'status':'blocked','reason':'insufficient class balance','required_per_class':min_class}
         model=make_pipeline(StandardScaler(),LogisticRegression(C=1,max_iter=2000,random_state=7))
         model.fit([r['features'] for r in fit],y)
         probs=model.predict_proba([r['features'] for r in test])[:,1]
-        picks=[r['net_return_pct'] for r,p in zip(test,probs) if p>=.6]
+        picks=[r['net_return_pct'] for r,p in zip(test,probs) if p>=threshold]
         base=[r['net_return_pct'] for r in test if r['radar_selected']]
         folds.append({'train_through':max(fit_dates),'gap_date':dates[first-1],'test_from':min(test_dates),'test_through':max(test_dates),
             'candidate':metrics(picks),'radar_benchmark':metrics(base),
             'brier':sum((float(p)-int(r['net_return_pct']>0))**2 for r,p in zip(test,probs))/len(test)})
         last_model=model
     scaler,clf=last_model.steps[0][1],last_model.steps[1][1]
-    result={'schema_version':SCHEMA_VERSION,'approved':False,'version':'research-'+dates[-1],'status':'candidate_only','deployment_allowed':False,'profile':latest,'folds':folds,'threshold':.6,
+    result={'schema_version':SCHEMA_VERSION,'approved':False,'version':'research-'+dates[-1],'status':'candidate_only','deployment_allowed':False,'profile':latest,'folds':folds,'threshold':threshold,
         'features':FEATURES,'mean':scaler.mean_.tolist(),'scale':scaler.scale_.tolist(),'coef':clf.coef_[0].tolist(),'intercept':float(clf.intercept_[0]),
         'trained_through':folds[-1]['train_through'],
         'benchmark':'same-exit radar selection; not the actual live portfolio',
