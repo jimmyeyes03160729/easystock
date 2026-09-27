@@ -68,10 +68,13 @@
     .intro p { color:var(--sub); font-size:13.5px; }
     .intro-status { text-align:right; max-width:400px; }
     .intro-status .btn { margin-bottom:10px; padding:7px 15px; border-radius:8px; font-size:12px; }
-    .extension-cta { display:inline-flex; align-items:center; gap:8px; color:var(--sub); font-size:12px; font-weight:650; text-decoration:none; }
-    .extension-cta:hover { color:var(--main); }
-    .extension-cta .extension-icon { display:grid; place-items:center; width:24px; height:24px; border:1px solid var(--border); border-radius:7px; background:var(--surface); font-size:14px; }
-    .extension-cta small { display:block; color:var(--muted); font-size:10px; font-weight:500; line-height:1.35; }
+    .extension-cta { position:relative; display:inline-flex; align-items:center; gap:11px; width:min(100%,340px); padding:11px 13px; overflow:hidden; color:#F8FAFC; font-size:13px; font-weight:750; text-align:left; text-decoration:none; border:1px solid #F59E0B66; border-radius:10px; background:linear-gradient(120deg,#17243A 0%,#182E46 55%,#29405C 100%); box-shadow:0 8px 22px #0B1C3033; transition:transform .15s,box-shadow .15s,border-color .15s; }
+    .extension-cta::after { content:""; position:absolute; inset:-40% -20% auto auto; width:120px; height:120px; border-radius:50%; background:radial-gradient(circle,#F59E0B55 0%,#F59E0B00 70%); pointer-events:none; }
+    .extension-cta:hover { color:#FFFFFF; border-color:#F59E0B; box-shadow:0 12px 28px #0B1C3055; transform:translateY(-1px); }
+    .extension-cta .extension-icon { position:relative; z-index:1; display:grid; place-items:center; flex:none; width:42px; height:42px; border:1px solid #FFFFFF24; border-radius:10px; background:#0B1C3099; }
+    .extension-cta .extension-icon img { width:32px; height:32px; object-fit:contain; image-rendering:auto; }
+    .extension-cta > span:last-child { position:relative; z-index:1; }
+    .extension-cta small { display:block; color:#CBD5E1; font-size:10px; font-weight:500; line-height:1.4; }
     .section-nav { display:flex; gap:24px; border-bottom:1px solid var(--border); margin-bottom:24px; overflow-x:auto; }
     .section-nav a { color:var(--sub); white-space:nowrap; padding:12px 0; font-size:13px; text-decoration:none; font-weight:600; }
     .section-nav a:first-child { color:var(--main); border-bottom:2px solid var(--accent); font-weight:700; }
@@ -473,7 +476,7 @@
         </button>
       </div>
       <a class="extension-cta" href="https://chromewebstore.google.com/detail/%E7%95%B6%E6%B2%96%E5%90%A7%EF%BC%81%E7%89%9B%E9%A6%AC%E4%BB%94-%E5%B7%A5%E4%BD%8D%E6%91%B8%E9%AD%9A%E7%9C%8B%E7%9B%A4%E7%A5%9E%E5%99%A8-%EF%BD%9C-%E5%8F%B0%E8%82%A1-ai/khidbieahmnnandhkcmjceideljgjfid" target="_blank" rel="noopener noreferrer" aria-label="在 Chrome 線上應用程式商店安裝當沖吧牛馬仔小工具">
-        <span class="extension-icon" aria-hidden="true">🧩</span>
+        <span class="extension-icon" aria-hidden="true"><img src="assets/bull-head.png" alt=""></span>
         <span>安裝 Chrome 小工具<small>工位摸魚快速看盤、免切頁 ↗</small></span>
       </a>
       <div id="dataStatusText" class="text-sub text-xs font-mono" role="status">正在從 Firebase 載入市場資料…</div>
