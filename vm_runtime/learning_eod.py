@@ -11,6 +11,11 @@ from datetime import datetime, time
 def main():
     from dotenv import load_dotenv
     load_dotenv(Path(__file__).parent/'.env')
+    try:
+        from easystock_admin.store import read_pipeline_settings
+        pipeline = read_pipeline_settings()
+    except Exception:
+        pipeline = None
     from daytrade_learning.runtime import DATA,TPE
     from daytrade_learning.research import journal, collect, build, save, train_candidate, finite
     from daytrade_learning.core import gemini_review
@@ -34,11 +39,14 @@ def main():
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:raise SystemExit('Research job already running')
         if args.train:
-            result=train_candidate(DATA)
+            result=train_candidate(DATA, pipeline)
             save(DATA/'training-status.json',result)
             print(json.dumps({k:v for k,v in result.items() if k not in ('coef','mean','scale')},ensure_ascii=False))
             return
         settings=json.loads((Path(__file__).parent/'daytrade_learning/settings.json').read_text())
+        if pipeline:
+            for key in ('fee_rate','minimum_fee_twd','sell_tax_rate','slippage_bps','shares'):
+                settings[key] = pipeline[key]
         for key in ('fee_rate','minimum_fee_twd','sell_tax_rate','slippage_bps','shares'):
             settings[key]=finite(settings[key])
             if settings[key]<0:raise ValueError('Negative cost settings')
