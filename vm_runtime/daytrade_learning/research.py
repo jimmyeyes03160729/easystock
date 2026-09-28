@@ -54,6 +54,38 @@ def promote_candidate(data, candidate, *, promoted_at=None):
     return promoted
 
 
+def fit_logistic(rows, iterations=800, learning_rate=.12):
+    """Small deterministic logistic trainer; keeps the VM dependency-free."""
+    xs=[[finite(v) for v in r['features']] for r in rows]
+    ys=[int(r['net_return_pct']>0) for r in rows]
+    n=len(xs); width=len(FEATURES)
+    mean=[sum(x[j] for x in xs)/n for j in range(width)]
+    scale=[max((sum((x[j]-mean[j])**2 for x in xs)/n)**.5,1e-9) for j in range(width)]
+    standardized=[[(x[j]-mean[j])/scale[j] for j in range(width)] for x in xs]
+    prior=min(max(sum(ys)/n,1e-6),1-1e-6)
+    intercept=math.log(prior/(1-prior)); coef=[0.0]*width
+    for step in range(iterations):
+        grad=[0.0]*width; grad_intercept=0.0
+        for x,y in zip(standardized,ys):
+            z=max(-35.0,min(35.0,intercept+sum(c*v for c,v in zip(coef,x))))
+            error=1/(1+math.exp(-z))-y
+            grad_intercept+=error
+            for j,v in enumerate(x):grad[j]+=error*v
+        rate=learning_rate/(1+step/400)
+        intercept-=rate*grad_intercept/n
+        for j in range(width):coef[j]-=rate*(grad[j]/n+coef[j]/n)
+    return {'mean':mean,'scale':scale,'coef':coef,'intercept':intercept}
+
+
+def logistic_probabilities(model, rows):
+    probabilities=[]
+    for row in rows:
+        values=[finite(v) for v in row['features']]
+        z=model['intercept']+sum((x-m)/s*c for x,m,s,c in zip(values,model['mean'],model['scale'],model['coef']))
+        z=max(-35.0,min(35.0,z));probabilities.append(1/(1+math.exp(-z)))
+    return probabilities
+
+
 def journal(path):
     rows=[]; corrupt=0
     if Path(path).exists():
@@ -291,11 +323,6 @@ def build(data, day, costs, persist_report=True):
 
 
 def train_candidate(data, controls=None, *, allow_paper_bootstrap=False):
-    try:
-        from sklearn.pipeline import make_pipeline
-        from sklearn.preprocessing import StandardScaler
-        from sklearn.linear_model import LogisticRegression
-    except ImportError:return {'status':'blocked','reason':'research scikit-learn environment not installed'}
     controls = controls or {}
     min_dates = int(controls.get('min_training_dates', 101))
     min_samples = int(controls.get('min_training_samples', 1000))
@@ -309,22 +336,20 @@ def train_candidate(data, controls=None, *, allow_paper_bootstrap=False):
     latest=max(rows,key=lambda r:r['at'])['profile'];rows=[r for r in rows if r['profile']==latest]
     dates=sorted({r['date'] for r in rows})
     full_validation = len(dates)>=min_dates and len(rows)>=min_samples
-    folds=[]; last_model=None
+    folds=[]
     if full_validation:
         for offset in (holdout*3,holdout*2,holdout):
             test_dates=set(dates[-offset:][:holdout]); first=dates.index(min(test_dates));fit_dates=set(dates[:first-1])
             fit=[r for r in rows if r['date'] in fit_dates];test=[r for r in rows if r['date'] in test_dates]
             y=[int(r['net_return_pct']>0) for r in fit]
             if not y or min(sum(y),len(y)-sum(y))<min_class:return {'status':'blocked','reason':'insufficient class balance','required_per_class':min_class}
-            model=make_pipeline(StandardScaler(),LogisticRegression(C=1,max_iter=2000,random_state=7))
-            model.fit([r['features'] for r in fit],y)
-            probs=model.predict_proba([r['features'] for r in test])[:,1]
+            model=fit_logistic(fit)
+            probs=logistic_probabilities(model,test)
             picks=[r['net_return_pct'] for r,p in zip(test,probs) if p>=threshold]
             base=[r['net_return_pct'] for r in test if r['radar_selected']]
             folds.append({'train_through':max(fit_dates),'gap_date':dates[first-1],'test_from':min(test_dates),'test_through':max(test_dates),
                 'candidate':metrics(picks),'radar_benchmark':metrics(base),
                 'brier':sum((float(p)-int(r['net_return_pct']>0))**2 for r,p in zip(test,probs))/len(test)})
-            last_model=model
     else:
         bootstrap_min=max(200,min_class*2)
         if not allow_paper_bootstrap or len(rows)<bootstrap_min:
@@ -337,9 +362,8 @@ def train_candidate(data, controls=None, *, allow_paper_bootstrap=False):
         if (not test or min(sum(y),len(y)-sum(y))<min_class
                 or min(sum(test_y),len(test_y)-sum(test_y))<validation_min):
             return {'status':'blocked','reason':'insufficient bootstrap class balance','required_per_class':min_class}
-        model=make_pipeline(StandardScaler(),LogisticRegression(C=1,max_iter=2000,random_state=7))
-        model.fit([r['features'] for r in fit],y)
-        probs=model.predict_proba([r['features'] for r in test])[:,1]
+        model=fit_logistic(fit)
+        probs=logistic_probabilities(model,test)
         picks=[r['net_return_pct'] for r,p in zip(test,probs) if p>=threshold]
         base=[r['net_return_pct'] for r in test if r['radar_selected']]
         folds.append({'train_through':fit[-1]['at'],'gap_date':ordered[cut-1]['at'],'test_from':test[0]['at'],'test_through':test[-1]['at'],
@@ -351,11 +375,9 @@ def train_candidate(data, controls=None, *, allow_paper_bootstrap=False):
     final_y=[int(r['net_return_pct']>0) for r in rows]
     if min(sum(final_y),len(final_y)-sum(final_y))<min_class:
         return {'status':'blocked','reason':'insufficient class balance','required_per_class':min_class}
-    last_model=make_pipeline(StandardScaler(),LogisticRegression(C=1,max_iter=2000,random_state=7))
-    last_model.fit([r['features'] for r in rows],final_y)
-    scaler,clf=last_model.steps[0][1],last_model.steps[1][1]
+    final_model=fit_logistic(rows)
     result={'schema_version':SCHEMA_VERSION,'approved':False,'version':'research-'+dates[-1],'status':'candidate_only','deployment_allowed':False,'profile':latest,'folds':folds,'threshold':threshold,
-        'features':FEATURES,'mean':scaler.mean_.tolist(),'scale':scaler.scale_.tolist(),'coef':clf.coef_[0].tolist(),'intercept':float(clf.intercept_[0]),
+        'features':FEATURES,'mean':final_model['mean'],'scale':final_model['scale'],'coef':final_model['coef'],'intercept':final_model['intercept'],
         'trained_through':dates[-1], 'validation_mode':'full_walk_forward' if full_validation else 'paper_bootstrap_time_split',
         'benchmark':'same-exit radar selection; not the actual live portfolio',
         'required_before_deployment':['fixed untouched forward window','probability calibration','portfolio capital/drawdown simulation','live shadow comparison']}
