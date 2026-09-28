@@ -26,7 +26,7 @@ function renderHealth(data){
     const card=document.createElement('article');card.className=`health-card health-${row.state||'idle'}`;
     const head=document.createElement('div');head.className='health-card-head';
     const title=document.createElement('h3');title.textContent=row.label||'未命名檢查';
-    const badge=document.createElement('span');badge.className='health-badge';badge.textContent=healthLabels[row.state]||'未知';head.append(title,badge);
+    const badge=document.createElement('span');badge.className='health-badge';badge.textContent=row.key==='paper_trade'?(row.state==='ok'?'已啟用・等待交易時段':'已暫停'):healthLabels[row.state]||'未知';head.append(title,badge);
     const detail=document.createElement('p');detail.textContent=row.detail||'沒有附加說明。';card.append(head,detail);
     const metrics=document.createElement('div');metrics.className='health-metrics';
     const names={setting_version:'設定版本',samples:'樣本',labeled:'已標記',candidate_count:'候選數',completed_stock_days:'完成股票日',target_stock_days:'目標股票日',failed_stock_days:'失敗股票日',initial_capital:'起始本金',current_capital:'目前資金'};
