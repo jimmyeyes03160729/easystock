@@ -34,6 +34,13 @@ def _updated_at(path: Path) -> str | None:
         return None
 
 
+def _timestamp(value) -> str | None:
+    try:
+        return datetime.fromtimestamp(float(value), timezone.utc).isoformat()
+    except (TypeError, ValueError, OSError, OverflowError):
+        return None
+
+
 def _signal(key: str, label: str, state: str, detail: str, updated_at: str | None = None, metrics: dict | None = None) -> dict:
     return {
         'key': key,
@@ -58,11 +65,16 @@ def _first_count(value: dict, *keys: str):
 
 
 def _market_session() -> dict:
-    """A clock status, deliberately not a trading-calendar assertion."""
+    """Report the actual Taiwan exchange calendar before applying clock windows."""
     now = datetime.now(ZoneInfo('Asia/Taipei'))
     stamp = now.strftime('%Y-%m-%d %H:%M:%S')
-    if now.weekday() >= 5:
-        return _signal('market_session', '當沖時段', 'idle', f'台北時間 {stamp} · 非平日；當沖服務不應自動進場。')
+    try:
+        from market_calendar import is_market_open
+        opened, reason, _ = is_market_open(now.date())
+    except Exception:
+        return _signal('market_session', '當沖時段', 'warning', f'台北時間 {stamp} · 無法確認交易日曆；當沖引擎會保持停止。')
+    if not opened:
+        return _signal('market_session', '當沖時段', 'idle', f'台北時間 {stamp} · 今日休市（{reason}）；等待下一個開盤日。')
     minute = now.hour * 60 + now.minute
     if 8 * 60 + 45 <= minute < 9 * 60:
         return _signal('market_session', '當沖時段', 'warning', f'台北時間 {stamp} · 盤前準備中，尚未開放進場。')
@@ -71,14 +83,17 @@ def _market_session() -> dict:
     return _signal('market_session', '當沖時段', 'idle', f'台北時間 {stamp} · 已收盤；當沖服務不會建立新進場。')
 
 
-def _worker_signal(key: str, label: str, value: object) -> dict:
+def _worker_signal(key: str, label: str, value: object, timer: object = None, next_at: object = None) -> dict:
     state = str(value or 'unknown').lower()
     if state == 'active':
         return _signal(key, label, 'ok', '目前正在執行。')
     if state in ('failed', 'activating', 'deactivating'):
         return _signal(key, label, 'error' if state == 'failed' else 'warning', '服務狀態：' + state + '。')
     if state == 'inactive':
-        return _signal(key, label, 'idle', '目前沒有執行；請搭配最近更新時間判斷是否已完成。')
+        if str(timer).lower() == 'active':
+            suffix = f'下次：{next_at}。' if next_at else '正在等待下次排程。'
+            return _signal(key, label, 'idle', '排程已啟用，目前未執行；' + suffix)
+        return _signal(key, label, 'warning', '目前未執行，而且自動排程未啟用。')
     return _signal(key, label, 'idle', '尚未取得 VM 執行狀態。')
 
 
@@ -95,12 +110,12 @@ def snapshot(store) -> dict:
     paper_trade = store.get_paper_trade().get('settings', {})
     signals = [
         _market_session(),
-        _signal('admin_store', '後台設定資料庫', 'ok', '可讀取目前設定版本。', settings.get('updated_at'), {'setting_version': settings.get('version')}),
+        _signal('admin_store', '後台設定資料庫', 'ok', '可讀取目前設定版本。', _timestamp(settings.get('updated_at')), {'setting_version': settings.get('version')}),
         _signal(
             'paper_trade', '模擬買進',
             'ok' if paper_trade.get('status') == 'running' else 'idle',
             '模擬買進已啟用；非交易時段不會執行，會等待下一個交易時段。' if paper_trade.get('status') == 'running' else '模擬買進目前已暫停；不會等待開盤或建立模擬買進。',
-            datetime.fromtimestamp(float(paper_trade.get('updated_at', 0)), timezone.utc).isoformat() if paper_trade.get('updated_at') else None,
+            _timestamp(paper_trade.get('updated_at')),
             {'initial_capital': paper_trade.get('initial_capital'), 'current_capital': paper_trade.get('current_capital')},
         ),
         _signal(
@@ -125,9 +140,9 @@ def snapshot(store) -> dict:
         workers = {'available': False}
     if workers.get('available'):
         signals.extend([
-            _worker_signal('training_worker', '歷史訓練工作', workers.get('history_train')),
-            _worker_signal('daily_learning_worker', '每日訓練工作', workers.get('learning')),
-            _worker_signal('download_worker', '歷史資料抓取工作', workers.get('history_download')),
+            _worker_signal('training_worker', '歷史訓練工作', workers.get('history_train'), workers.get('history_train_timer'), workers.get('history_train_next')),
+            _worker_signal('daily_learning_worker', '每日訓練工作', workers.get('learning'), workers.get('learning_timer'), workers.get('learning_next')),
+            _worker_signal('download_worker', '歷史資料抓取工作', workers.get('history_download'), workers.get('history_download_timer'), workers.get('history_download_next')),
         ])
     else:
         signals.extend([
@@ -159,8 +174,9 @@ def snapshot(store) -> dict:
         signals.append(_signal('history_collection', '歷史資料補抓', 'idle' if history_error == 'not_started' else 'error', '尚未產生歷史資料進度。' if history_error == 'not_started' else '無法讀取歷史資料進度。'))
     else:
         stop_reason = str(progress.get('stop_reason', ''))
-        state = 'error' if stop_reason.startswith('error') or stop_reason == 'credentials_missing' else 'warning' if stop_reason in ('quota_exhausted', 'pair_limit', 'outside_window') else 'ok'
-        signals.append(_signal('history_collection', '歷史資料補抓', state, '目前停止原因：' + (stop_reason or '持續處理中'), _updated_at(history_path), {
+        state = 'error' if stop_reason.startswith('error') or stop_reason == 'credentials_missing' else 'warning' if stop_reason in ('quota_exhausted', 'pair_limit') else 'idle' if stop_reason == 'outside_window' else 'ok'
+        detail = '目前不在抓取時段，等待下一次排程。' if stop_reason == 'outside_window' else '目前停止原因：' + (stop_reason or '持續處理中')
+        signals.append(_signal('history_collection', '歷史資料補抓', state, detail, _updated_at(history_path), {
             'completed_stock_days': _positive_int(progress.get('archived_stock_days')),
             'target_stock_days': _positive_int(progress.get('target_stock_days')),
             'failed_stock_days': _positive_int(progress.get('failed_stock_days')),
