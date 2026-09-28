@@ -39,7 +39,7 @@ def main():
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:raise SystemExit('Research job already running')
         if args.train:
-            result=train_candidate(DATA, pipeline)
+            result=train_candidate(DATA, pipeline, allow_paper_bootstrap=True)
             result=promote_candidate(DATA, result)
             save(DATA/'training-status.json',result)
             print(json.dumps({k:v for k,v in result.items() if k not in ('coef','mean','scale')},ensure_ascii=False))
