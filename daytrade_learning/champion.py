@@ -101,6 +101,27 @@ def validation_summary(candidate):
         'test_from':f.get('test_from'),'test_through':f.get('test_through'),'candidate':f.get('candidate'),
         'radar_benchmark':f.get('radar_benchmark')} for index,f in enumerate(candidate.get('folds',[]),1)]
 
+def promotion_gate(candidate):
+    """Only a full, out-of-sample result may replace the rolling paper model."""
+    folds=candidate.get('folds') or []
+    rows=sum(int(f.get('test_samples') or 0) for f in folds)
+    picks=sum(int((f.get('candidate') or {}).get('count') or 0) for f in folds)
+    radar_picks=sum(int((f.get('radar_benchmark') or {}).get('count') or 0) for f in folds)
+    def weighted(key, count_key):
+        parts=[(float((f.get(key) or {})['mean_net_return_pct']),int((f.get(count_key) or {}).get('count') or 0)) for f in folds if (f.get(key) or {}).get('mean_net_return_pct') is not None]
+        total=sum(n for _,n in parts);return sum(v*n for v,n in parts)/total if total else None
+    mean=weighted('candidate','candidate');radar_mean=weighted('radar_benchmark','radar_benchmark')
+    brier_parts=[(float(f['brier']),int(f.get('test_samples') or 0)) for f in folds if f.get('brier') is not None]
+    brier_n=sum(n for _,n in brier_parts);brier=sum(v*n for v,n in brier_parts)/brier_n if brier_n else None
+    reference_parts=[(float(f['constant_brier']),int(f.get('test_samples') or 0)) for f in folds if f.get('constant_brier') is not None]
+    reference_n=sum(n for _,n in reference_parts);reference=sum(v*n for v,n in reference_parts)/reference_n if reference_n else None
+    checks={'full_walk_forward':candidate.get('validation_mode')=='full_walk_forward','three_folds':len(folds)>=3,
+        'minimum_test_rows':rows>=100,'minimum_picks':picks>=30,'positive_mean':mean is not None and mean>0,
+        'radar_comparable':radar_picks>0,'beats_radar':radar_mean is not None and mean is not None and mean>radar_mean,
+        'beats_constant_brier':brier is not None and reference is not None and brier<reference}
+    return {'passed':all(checks.values()),'checks':checks,'n_rows':rows,'n_picks':picks,'radar_picks':radar_picks,
+        'mean_net_return_pct':mean,'radar_mean_net_return_pct':radar_mean,'brier':brier,'constant_brier':reference}
+
 def formal_cycle(data,day,profile,controls,shadow_entry):
     models=Path(data)/'models';state_path=models/'formal-state.json';state=read(state_path,{})
     if state.get('status')=='observing':
@@ -160,7 +181,10 @@ def run_close(data,day,controls):
     elif not latest or len(due)>=int(controls['model_retrain_every_days']):
         candidate=train_candidate(data,controls,allow_paper_bootstrap=True)
         if candidate.get('status')=='candidate_only':
-            if latest:
+            gate=promotion_gate(candidate)
+            if not gate['passed']:
+                action='blocked';result={**candidate,'status':'blocked','reason':'promotion_gate_not_met','promotion_gate':gate}
+            elif latest:
                 try:backup=archive(models,models/'latest-approved.json','approved',str(latest.get('trained_through') or day))
                 except Exception as exc:
                     errors.append({'stage':'archive','error':type(exc).__name__});action='blocked';result={**candidate,'status':'backup_failed'}
@@ -174,7 +198,7 @@ def run_close(data,day,controls):
         else:action='blocked';result=candidate
     entry={'date':day,'action':action,'trained_through':result.get('trained_through'),'profile':profile,
         'sample_count':profile_sample_count(data,profile,dates),'validation':validation_summary(result),'backup_file':backup,
-        'warnings':shadow_entry.get('warnings',[]),'errors':errors}
+        'reason':result.get('reason'),'promotion_gate':result.get('promotion_gate'),'warnings':shadow_entry.get('warnings',[]),'errors':errors}
     try:entry['formal']=formal_cycle(data,day,profile,controls,shadow_entry)
     except Exception as exc:errors.append({'stage':'formal','error':type(exc).__name__})
     save(close_state,{'status':'complete','date':day,'entry':entry})

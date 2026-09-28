@@ -6,7 +6,7 @@ from daytrade_learning.champion import run_close,shadow
 
 PROFILE='profile-a'
 def row(day,return_pct=1,radar=True):return {'date':day,'at':day+'T10:00:00+08:00','profile':PROFILE,'features':[0.1]*len(FEATURES),'net_return_pct':return_pct,'radar_selected':radar}
-def model(day):return {'status':'candidate_only','version':'m-'+day,'trained_through':day,'profile':PROFILE,'threshold':.5,'features':FEATURES,'mean':[0]*len(FEATURES),'scale':[1]*len(FEATURES),'coef':[0]*len(FEATURES),'intercept':0,'folds':[]}
+def model(day):return {'status':'candidate_only','version':'m-'+day,'trained_through':day,'profile':PROFILE,'threshold':.5,'features':FEATURES,'mean':[0]*len(FEATURES),'scale':[1]*len(FEATURES),'coef':[0]*len(FEATURES),'intercept':0,'validation_mode':'full_walk_forward','folds':[{'test_samples':40,'candidate':{'count':10,'mean_net_return_pct':1},'radar_benchmark':{'count':10,'mean_net_return_pct':.5},'brier':.1,'constant_brier':.2} for _ in range(3)]}
 
 class Champion(unittest.TestCase):
  def setup(self,dates,latest=None):
@@ -37,5 +37,9 @@ class Champion(unittest.TestCase):
   temp,data=self.setup(['2026-09-26'])
   with temp,patch('daytrade_learning.champion.shadow',side_effect=OSError('fail')),patch('daytrade_learning.champion.train_candidate',return_value=model('2026-09-26')):
    result=run_close(data,'2026-09-26',self.controls(1));self.assertEqual(result['action'],'promoted');self.assertEqual(result['errors'][0]['stage'],'shadow')
+ def test_bootstrap_candidate_cannot_replace_rolling_model(self):
+  temp,data=self.setup(['2026-09-26'],model('2026-09-25'));candidate=model('2026-09-26');candidate['validation_mode']='paper_bootstrap_time_split'
+  with temp,patch('daytrade_learning.champion.train_candidate',return_value=candidate):
+   result=run_close(data,'2026-09-26',self.controls(1));self.assertEqual(result['action'],'blocked');self.assertEqual(result['reason'],'promotion_gate_not_met')
 
 if __name__=='__main__':unittest.main()

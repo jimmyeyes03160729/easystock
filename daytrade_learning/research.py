@@ -250,8 +250,15 @@ def collect(api, data, day, observations, max_symbols=500):
             'omitted_by_cap':max(0,len(scanned)-len(wanted)),'scope':'observed pool plus 3 post-close top-200 rankings; not full market'}
 
 
+def price_exit_policy(policy):
+    policy=policy or {};mode=str(policy.get('exit_mode','hybrid'))
+    if mode not in ('fixed','trailing','hybrid'):raise ValueError('invalid_exit_mode')
+    return {'stop_loss_pct':finite(policy['stop_loss_pct']),'take_profit_pct':finite(policy['take_profit_pct']),'exit_mode':mode,
+        'trailing_activate_pct':finite(policy.get('trailing_activate_pct',.006)),'trailing_pullback_pct':finite(policy.get('trailing_pullback_pct',.004)),
+        'breakeven_activate_pct':finite(policy.get('breakeven_activate_pct',.006)),'breakeven_floor_pct':finite(policy.get('breakeven_floor_pct',.0035))}
+
 def simulate(sample, pack, costs):
-    """Conservative, fixed-stop benchmark. Not the live trailing/technical exit policy."""
+    """Conservative minute-bar reconstruction of the live price exit policy."""
     at=dt(sample['observed_at']); day=at.date().isoformat()
     if not time(9,30)<=at.time()<time(12,30):return None,'outside_entry_window'
     quote=dt(sample['quote_at'])
@@ -281,25 +288,30 @@ def simulate(sample, pack, costs):
     if entry>=limit_up or entry<=limit_down:return None,'entry_at_limit'
     # Recheck limits at simulated fill too.
     if not limits['min_price']<=entry<=limits['max_price'] or (entry/previous-1)*100>limits['max_gain_pct']+1e-9:return None,'fill_filter'
-    stop=entry*(1-sample['policy']['stop_loss_pct']); take=entry*(1+sample['policy']['take_profit_pct'])
+    policy=price_exit_policy(sample.get('policy'))
+    stop=entry*(1-policy['stop_loss_pct']); take=entry*(1+policy['take_profit_pct'])
     if not 0<stop<entry<take:return None,'invalid_exit_policy'
-    cursor=start; reason=None; exit_price=None
+    cursor=start; reason=None; exit_price=None; highest=entry; trailing_stop=None
     while cursor<=end:
         b=bars.get(cursor)
         if not b or b['volume']<=0:return None,'missing_or_zero_volume_bar'
         if b['low']<=limit_down:return None,'possible_locked_exit'
-        if cursor==end:exit_price=b['open'];reason='12:55';break
+        if cursor==end:exit_price=b['open'];reason='12:55強制出場';break
         if b['open']<=stop:exit_price=b['open'];reason='gap_stop';break
         if b['low']<=stop:exit_price=stop;reason='stop_or_ambiguous_bar';break
-        if b['open']>=take:exit_price=take;reason='take';break
-        if b['high']>=take:exit_price=take;reason='take';break
+        breakeven=entry*(1+policy['breakeven_floor_pct'])
+        if highest>=entry*(1+policy['breakeven_activate_pct']) and b['low']<=breakeven:exit_price=breakeven;reason='動態保本出場';break
+        if policy['exit_mode'] in ('fixed','hybrid') and b['high']>=take:exit_price=take;reason='固定停利';break
+        if policy['exit_mode'] in ('trailing','hybrid') and trailing_stop is not None and b['low']<=trailing_stop:exit_price=trailing_stop;reason='移動停利';break
+        highest=max(highest,b['high'])
+        if policy['exit_mode'] in ('trailing','hybrid') and highest>=entry*(1+policy['trailing_activate_pct']):trailing_stop=max(trailing_stop or 0,highest*(1-policy['trailing_pullback_pct']))
         cursor+=timedelta(minutes=1)
     if exit_price is None:return None,'unresolved'
     exit_price*=1-costs['slippage_bps']/10000
     qty=costs['shares']
     fees=max(costs['minimum_fee_twd'],entry*qty*costs['fee_rate'])+max(costs['minimum_fee_twd'],exit_price*qty*costs['fee_rate'])+exit_price*qty*costs['sell_tax_rate']
     net=((exit_price-entry)*qty-fees)/(entry*qty)*100
-    version=hashlib.sha256(json.dumps({'costs':costs,'policy':sample['policy'],'features':FEATURES,'execution':'next-minute-fixed-stop-v2'},sort_keys=True).encode()).hexdigest()[:16]
+    version=hashlib.sha256(json.dumps({'costs':costs,'policy':policy,'features':FEATURES,'execution':'next-minute-live-price-exit-v3'},sort_keys=True).encode()).hexdigest()[:16]
     return {'symbol':sample['symbol'],'date':day,'at':at.isoformat(),'exit_at':cursor.isoformat(),'features':x,
             'net_return_pct':net,'radar_selected':sample['radar_selected'],'entry_price':entry,'exit_price':exit_price,
             'cost_twd':fees,'reason':reason,'profile':version,'kind':'simulation'},None
@@ -348,9 +360,9 @@ def build(data, day, costs, persist_report=True):
         'existing_signal_tracking':{'closed_count':len(actual),'gross':metrics([finite(r['pnl_pct']) for r in actual if r.get('pnl_pct') is not None])},
         'cost_assumptions':costs,
         'limitations':['Only observed pool has point-in-time samples; post-close additional movers have no fabricated samples',
-            'Benchmark exits use fixed stop/take and 12:55; not live trailing or technical exits',
+            'Labels share the live stop, take, breakeven, trailing and 12:55 price exits; minute bars cannot reconstruct tick order or technical exits',
             'Minute-bar simulated fills are assumptions, not actual execution',
-            'Same-bar stop/take uses stop first; missing or price-limit exits excluded and reported',
+            'Same-bar reconstruction is conservative: stop before profit exits; missing or price-limit exits excluded and reported',
             'Signal averages are not portfolio profits; no daily improvement guarantee']}
     save(data/'labels'/(day+'.json'),labeled)
     if persist_report:save(data/'reports'/(day+'.json'),result)
@@ -380,12 +392,14 @@ def train_candidate(data, controls=None, *, allow_paper_bootstrap=False):
             if not y or min(sum(y),len(y)-sum(y))<min_class:return {'status':'blocked','reason':'insufficient class balance','required_per_class':min_class}
             model=fit_logistic(fit)
             probs=logistic_probabilities(model,test)
+            test_y=[int(r['net_return_pct']>0) for r in test]
             picks=[r['net_return_pct'] for r,p in zip(test,probs) if p>=threshold]
             base=[r['net_return_pct'] for r in test if r['radar_selected']]
             folds.append({'train_through':max(fit_dates),'gap_date':dates[first-1],'test_from':min(test_dates),'test_through':max(test_dates),
                 'test_samples':len(test),
                 'candidate':metrics(picks),'radar_benchmark':metrics(base),
-                'brier':sum((float(p)-int(r['net_return_pct']>0))**2 for r,p in zip(test,probs))/len(test)})
+                'brier':sum((float(p)-truth)**2 for truth,p in zip(test_y,probs))/len(test),
+                'constant_brier':(sum(test_y)/len(test))*(1-sum(test_y)/len(test))})
     else:
         bootstrap_min=max(200,min_class*2)
         if not allow_paper_bootstrap or len(rows)<bootstrap_min:
@@ -405,7 +419,8 @@ def train_candidate(data, controls=None, *, allow_paper_bootstrap=False):
         folds.append({'train_through':fit[-1]['at'],'gap_date':ordered[cut-1]['at'],'test_from':test[0]['at'],'test_through':test[-1]['at'],
             'test_samples':len(test),
             'candidate':metrics(picks),'radar_benchmark':metrics(base),
-            'brier':sum((float(p)-truth)**2 for truth,p in zip(test_y,probs))/len(test)})
+            'brier':sum((float(p)-truth)**2 for truth,p in zip(test_y,probs))/len(test),
+            'constant_brier':(sum(test_y)/len(test))*(1-sum(test_y)/len(test))})
     # Validation remains strictly time-separated. After it completes, refit the
     # paper-trading artifact on every labeled row available through this close,
     # so tomorrow uses today's newest information rather than a holdout-era fit.

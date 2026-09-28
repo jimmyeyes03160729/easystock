@@ -3,10 +3,12 @@ import json
 import hashlib
 import math
 import os
+from datetime import datetime, date, timedelta, timezone
 from pathlib import Path
 from .features import FEATURES, SCHEMA_VERSION, finite, vector
 
 MODEL_RUNTIME_VERSION = 'approved-model-gate-v3'
+TPE = timezone(timedelta(hours=8))
 
 
 def live_features(*, price, previous_close, now_ts, ticks=None, radar=None):
@@ -37,6 +39,11 @@ def live_features(*, price, previous_close, now_ts, ticks=None, radar=None):
 
 
 class DaytradeModel:
+    @staticmethod
+    def age_in_weekdays(trained_through):
+        trained=date.fromisoformat(str(trained_through)[:10]); today=datetime.now(TPE).date()
+        return sum((trained+timedelta(days=offset)).weekday()<5 for offset in range(1,(today-trained).days+1))
+
     def __init__(self, path=None):
         self.artifact = None
         self.artifact_sha256 = None
@@ -69,6 +76,11 @@ class DaytradeModel:
             threshold = finite(a['threshold'])
             if not 0 <= threshold <= 1 or not a.get('version'):
                 raise ValueError('invalid_model_metadata')
+            maximum=int(os.environ.get('LIVE_MODEL_MAX_AGE_TRADING_DAYS','10'))
+            age=self.age_in_weekdays(a.get('trained_through'))
+            if maximum < 1 or age>maximum:
+                self.reason=f'stale_model:{age}_weekdays'
+                return
             self.artifact, self.threshold = a, threshold
             self.artifact_sha256 = hashlib.sha256(raw).hexdigest()
             self.model_version, self.reason = str(a['version']), 'approved_model_loaded'
