@@ -2,6 +2,7 @@
 const el=id=>document.getElementById(id);
 let csrf='',version=null,liveRefreshTimer=0;
 let pipelineVersion=null;
+let modelLogPage=1;
 function message(id,text,error=false){el(id).textContent=text;el(id).classList.toggle('error',error);}
 async function api(path,{method='GET',body}={}){
   const response=await fetch('/admin/'+path,{method,credentials:'same-origin',headers:{...(body!==undefined?{'Content-Type':'application/json'}:{}),...(csrf?{'X-CSRF-Token':csrf}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{})});
@@ -43,7 +44,11 @@ function logValue(value,digits=0){const number=Number(value);return Number.isFin
 function logMetric(label,value){const box=document.createElement('div');box.className='model-log-metric';const name=document.createElement('span'),strong=document.createElement('strong');name.textContent=label;strong.textContent=value;box.append(name,strong);return box;}
 function renderModelLog(data){
   const rows=Array.isArray(data.entries)?data.entries:[],target=el('modelLogEntries');target.replaceChildren();
-  el('modelLogSummary').textContent=rows.length?`共顯示 ${rows.length} 筆，最新紀錄在最上方。`:'目前還沒有模型晉升紀錄。';
+  modelLogPage=Number(data.page)||1;
+  el('modelLogSummary').textContent=rows.length?`本頁 ${rows.length} 筆，最新紀錄在最上方。`:'這一頁沒有模型晉升紀錄。';
+  el('modelLogPage').textContent=`第 ${modelLogPage} 頁`;
+  el('modelLogPrevious').disabled=!data.has_previous;
+  el('modelLogNext').disabled=!data.has_more;
   for(const row of rows){
     const card=document.createElement('article');card.className='model-log-card';
     const head=document.createElement('div');head.className='model-log-head';
@@ -63,7 +68,7 @@ function renderModelLog(data){
     target.append(card);
   }
 }
-async function loadModelLog(){const button=el('reloadModelLog');if(button)button.disabled=true;try{renderModelLog(await api('model-log'));}catch(error){el('modelLogSummary').textContent=error.message;el('modelLogEntries').replaceChildren();}finally{if(button)button.disabled=false;}}
+async function loadModelLog(page=modelLogPage){const button=el('reloadModelLog');if(button)button.disabled=true;try{renderModelLog(await api(`model-log?page=${Math.max(1,Number(page)||1)}`));}catch(error){el('modelLogSummary').textContent=error.message;el('modelLogEntries').replaceChildren();}finally{if(button)button.disabled=false;}}
 async function loadMaintenance(){try{const data=await api('maintenance');const names={history_download:'資料抓取',history_train:'歷史訓練',intraday:'當沖服務',learning:'每日訓練',sync:'VM 同步'};const states={active:'進行中',inactive:'未執行',activating:'啟動中',deactivating:'停止中',failed:'失敗',idle:'尚未同步',running:'同步中',succeeded:'已完成'};const parts=Object.entries(names).map(([key,label])=>`${label}：${states[data[key]]||'未知'}`);message('maintenanceStatus',data.detail||parts.join('｜'),!data.available);for(const id of ['restartIntraday','syncVm'])el(id).disabled=!data.available;}catch(error){message('maintenanceStatus',error.message,true);}}
 function applyPipeline(data){pipelineVersion=data.version;const v=data.values;el('pTarget').value=v.history_target_symbols;el('pSymbols').value=v.history_symbols.join(',');el('pPairs').value=v.history_max_pairs;el('pStart').value=v.history_window_start;el('pEnd').value=v.history_window_end;el('pWeekend').checked=v.history_weekends;el('pLearning').checked=v.learning_enabled;el('pLearningTime').value=v.learning_time;el('pDates').value=v.min_training_dates;el('pSamples').value=v.min_training_samples;el('pClass').value=v.min_class_samples;el('pHoldout').value=v.holdout_days;el('pThreshold').value=v.model_threshold;el('pFee').value=v.fee_rate;el('pTax').value=v.sell_tax_rate;el('pSlip').value=v.slippage_bps;el('pShares').value=v.shares;}
 async function loadPipeline(){try{applyPipeline(await api('pipeline-settings'));}catch(error){message('pipelineStatus',error.message,true);}}
@@ -101,7 +106,9 @@ el('settingsForm').onsubmit=async event=>{
 };
 el('reload').onclick=async()=>{try{applySettings(await api('settings'));message('saveStatus','已載入最新設定。');}catch(e){message('saveStatus',e.message,true);}};
 el('reloadHealth').onclick=async()=>{const button=el('reloadHealth');button.disabled=true;try{await loadHealth();}finally{button.disabled=false;}};
-el('reloadModelLog').onclick=loadModelLog;
+el('reloadModelLog').onclick=()=>loadModelLog();
+el('modelLogPrevious').onclick=()=>loadModelLog(modelLogPage-1);
+el('modelLogNext').onclick=()=>loadModelLog(modelLogPage+1);
 el('restartIntraday').onclick=()=>maintenance('restart-intraday','RESTART_INTRADAY','重啟當沖');
 el('syncVm').onclick=()=>maintenance('sync-vm','SYNC_VM','同步 VM');
 el('pipelineForm').onsubmit=async event=>{event.preventDefault();const values={history_target_symbols:+el('pTarget').value,history_symbols:el('pSymbols').value.split(',').map(x=>x.trim()).filter(Boolean),history_max_pairs:+el('pPairs').value,history_weekends:el('pWeekend').checked,history_window_start:el('pStart').value,history_window_end:el('pEnd').value,learning_enabled:el('pLearning').checked,learning_time:el('pLearningTime').value,min_training_dates:+el('pDates').value,min_training_samples:+el('pSamples').value,min_class_samples:+el('pClass').value,holdout_days:+el('pHoldout').value,model_threshold:+el('pThreshold').value,fee_rate:+el('pFee').value,minimum_fee_twd:20,sell_tax_rate:+el('pTax').value,slippage_bps:+el('pSlip').value,shares:+el('pShares').value};try{applyPipeline(await api('pipeline-settings',{method:'PUT',body:{values,version:pipelineVersion}}));message('pipelineStatus','已儲存。此計畫將在 VM 同步後由下一次抓取／訓練讀取。');}catch(error){message('pipelineStatus',error.message,true);}};

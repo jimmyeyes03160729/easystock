@@ -120,10 +120,26 @@ class StoreTests(unittest.TestCase):
                'validation':[{'fold':1,'test_samples':94,'selected_count':30,'expected_value_pct':.2,'brier':.1,'extra':'hidden'}]}
         (models/'promotion-log.jsonl').write_text('bad json\n'+json.dumps(entry)+'\n',encoding='utf-8')
         with patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning)}):result=model_promotion_log()
-        self.assertEqual(result['count'],1)
+        self.assertEqual(len(result['entries']),1)
         self.assertEqual(result['entries'][0]['promoted_model'],'research-2026-09-28')
         self.assertNotIn('secret',result['entries'][0])
         self.assertNotIn('extra',result['entries'][0]['validation'][0])
+
+    def test_model_promotion_log_pages_newest_first(self):
+        from easystock_admin.health import model_promotion_log
+        learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
+        entries=[]
+        for index in range(25):
+            entries.append(json.dumps({'promoted_model':f'model-{index}','validation':[]}))
+        (models/'promotion-log.jsonl').write_text('\n'.join(entries)+'\n',encoding='utf-8')
+        with patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning)}):
+            first=model_promotion_log(page=1,page_size=10)
+            second=model_promotion_log(page=2,page_size=10)
+            third=model_promotion_log(page=3,page_size=10)
+        self.assertEqual([r['promoted_model'] for r in first['entries']],[f'model-{i}' for i in range(24,14,-1)])
+        self.assertEqual([r['promoted_model'] for r in second['entries']],[f'model-{i}' for i in range(14,4,-1)])
+        self.assertEqual(len(third['entries']),5)
+        self.assertTrue(first['has_more']);self.assertTrue(second['has_more']);self.assertFalse(third['has_more'])
 
 class WebTests(unittest.TestCase):
     def setUp(self):

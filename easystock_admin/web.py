@@ -156,7 +156,9 @@ def register_admin(app, store=None, verifier=None):
     def get_model_log():
         authenticated()
         from .health import model_promotion_log
-        return jsonify(model_promotion_log())
+        try:page=int(request.args.get('page','1'))
+        except (TypeError,ValueError):page=1
+        return jsonify(model_promotion_log(page=page,page_size=10))
 
     @bp.get('/admin/maintenance')
     def get_maintenance():

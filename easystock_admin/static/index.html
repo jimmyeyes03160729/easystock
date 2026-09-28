@@ -31,6 +31,7 @@
   <div class="health-heading"><div><p class="eyebrow">模型稽核紀錄</p><h2 id="modelLogTitle">每日模型晉升日誌</h2><p class="hint">逐筆查看新舊模型、備份與留出測試結果。期望值為挑出樣本的平均淨報酬，不是勝率。</p></div><button id="reloadModelLog" type="button">重新載入</button></div>
   <p id="modelLogSummary" class="health-summary" role="status" aria-live="polite">正在讀取模型日誌…</p>
   <div id="modelLogEntries" class="model-log-list" aria-live="polite"></div>
+  <nav class="model-log-pages" aria-label="模型日誌分頁"><button id="modelLogPrevious" type="button">上一頁</button><span id="modelLogPage">第 1 頁</span><button id="modelLogNext" type="button">下一頁</button></nav>
 </section>
 <div>
 <section class="panel settings admin-tab-panel" id="settingsPanel"><h2>推薦條件</h2>
