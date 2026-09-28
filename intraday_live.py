@@ -84,7 +84,6 @@ from market_risk import premarket_context, snapshot_risk, combine
 from daytrade_learning.model_runtime import DaytradeModel, live_features
 from easystock_admin.store import read_live_settings
 from strategy_engine import evaluate_daytrade, clamp
-from paper_trade_game import register_signal, close_signal
 
 
 # =========================================================
@@ -4232,26 +4231,6 @@ class IntradayLiveEngine:
                 f"{type(exc).__name__}: {exc}"
             )
 
-        # ==========================
-        # Paper Trade Game ENTRY
-        # ==========================
-        try:
-            register_signal(
-                symbol=symbol,
-                name=name,
-                price=price,
-                trade_id=str(
-                    event.get("trade_id", "")
-                ),
-            )
-
-        except Exception as exc:
-            print(
-                f"[ERROR] PAPER GAME ENTRY "
-                f"{symbol}: "
-                f"{type(exc).__name__}: {exc}"
-            )
-
 
         push_line_text(
             format_entry_message(
@@ -4300,12 +4279,6 @@ class IntradayLiveEngine:
             )
 
         # Wallet settlement was committed before PositionManager emitted EXIT.
-        trade = event.get('trade') or {}
-        try:
-            close_signal(symbol=symbol, exit_price=float(trade['exit_price']),
-                         reason=str(trade.get('exit_reason', '')))
-        except Exception as exc:
-            print('[PAPER MIRROR] EXIT failed:', type(exc).__name__)
 
 
         push_line_text(

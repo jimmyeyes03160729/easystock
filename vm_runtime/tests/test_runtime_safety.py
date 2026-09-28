@@ -164,7 +164,7 @@ class EngineTests(unittest.TestCase):
             in_entry_window=lambda _:True,now_tpe=lambda:NOW,MAX_DAILY_ENTRIES=5,
             live_features=Mock(return_value=dict.fromkeys(FEATURES,1)),
             read_live_settings=lambda:dict(min_price=1,max_price=200,max_gain_pct=5),
-            register_signal=Mock(),push_line_text=Mock(),format_entry_message=Mock(return_value='entry'))
+            push_line_text=Mock(),format_entry_message=Mock(return_value='entry'))
         exec(compile(ast.Module(body=[method],type_ignores=[]),'<engine>','exec'),self.ns)
         self.manager=PositionManager(before_open=Mock(return_value=dict(status='insufficient_cash',shares=0)))
         self.engine=types.SimpleNamespace(bars=types.SimpleNamespace(rows5=lambda _: [{}],rows15=lambda _:[{}]),

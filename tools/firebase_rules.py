@@ -82,7 +82,7 @@ def main():
             status = requests.get(url+'/market_data/'+node+'.json', params={'shallow':'true'}, timeout=20).status_code
             if status != 200:
                 raise RuntimeError('Public node denied: '+node+' HTTP '+str(status))
-        for node in ['/', '/market_data', '/market_data/line_groups', '/market_data/paper_game',
+        for node in ['/', '/market_data', '/market_data/line_groups',
                      '/market_data/history', '/market_data/selection_history', '/market_data/overnight_history',
                      '/market_data/intraday_archive', '/market_data/daytrade_research']:
             status = requests.get(url+node+'.json', params={'shallow':'true'}, timeout=20).status_code

@@ -221,10 +221,9 @@ class WebhookTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             fake_line=types.ModuleType('line_bot');fake_line.reply_messages=Mock()
             groups=types.ModuleType('line_group_manager');groups.register_group=Mock()
-            game=types.ModuleType('paper_trade_game');game.handle_game_command=lambda *a:None
             stock=types.ModuleType('stock_command_service');stock.CHART_DIR=Path(temp)/'cards';stock.handle_command=lambda *a:[];stock.parse_command=lambda *a:None
             env={'EASYSTOCK_ADMIN_DB':str(Path(temp)/'db'),'LINE_CHANNEL_SECRET':'TEST_ONLY_SECRET'}
-            with patch.dict(os.environ,env),patch.dict(sys.modules,{'line_bot':fake_line,'line_group_manager':groups,'paper_trade_game':game,'stock_command_service':stock}):
+            with patch.dict(os.environ,env),patch.dict(sys.modules,{'line_bot':fake_line,'line_group_manager':groups,'stock_command_service':stock}):
                 spec=importlib.util.spec_from_file_location('tested_webhook',ROOT/'line_stock_bot.py')
                 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
                 code=module.ADMIN_STORE.bind_code()
