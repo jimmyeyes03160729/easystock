@@ -298,6 +298,318 @@ Gemini 適合：
 6. AI 先 Shadow，不影響目前正式結果。
 7. 數據與驗證成熟後，再考慮「AI 強化反彈」正式功能。
 
+
+---
+
+## 永豐實盤當沖後台規劃
+
+### 功能定位
+新增一個完全獨立的「永豐實盤當沖」後台模組，只供 Owner 使用，不對外開放。
+
+此模組與以下功能分離：
+- 公開網站
+- Chrome Extension
+- 模擬當沖
+- AI 學習面板
+
+公開端不得取得任何可下單能力、券商憑證或實盤控制權。
+
+### 後台主要區塊
+建議後台導覽：
+
+```text
+EasyStock Admin
+
+📊 系統總覽
+🤖 AI 學習
+🧪 模擬當沖
+💰 永豐實盤當沖
+   ├─ 帳戶設定
+   ├─ AUTO ON / OFF
+   ├─ 今日持倉
+   ├─ 委託 / 成交
+   ├─ 今日損益
+   ├─ 歷史報表
+   ├─ 損益圖表
+   └─ KILL SWITCH
+⚙️ 系統設定
+```
+
+### 永豐帳戶憑證持久化
+第一次在後台完成：
+- Shioaji API Key
+- Secret Key
+- CA 憑證
+- CA Password
+- 指定證券帳戶
+
+驗證成功後，必須保存於 VM 私有加密儲存區。
+
+需求：
+- VM 重啟後不用重新輸入 Key。
+- 程式重啟後不用重新輸入 Key。
+- 關閉 Auto Trading 不刪除憑證。
+- 再次開啟 Auto Trading 時，自動重新登入 Shioaji、啟用 CA 並驗證指定帳戶。
+- Firebase 不保存券商 Secret。
+- GitHub 不保存券商 Secret。
+- Chrome Extension 永遠拿不到券商 Secret。
+
+建議私有儲存：
+
+```text
+/home/ubuntu/easystock-private/
+├── broker.enc
+├── broker.key
+└── cert/
+    └── Sinopac.pfx
+```
+
+檔案權限至少限制為 Owner / service account 可讀。
+
+SQLite 僅保存非敏感狀態，例如：
+- broker_connected
+- masked_account
+- auto_trade_enabled
+- auto_resume_enabled
+- updated_at
+
+### 自動交易控制
+至少提供三個獨立控制：
+
+```text
+自動交易
+[ ON / OFF ]
+
+重新啟動後自動恢復
+[ ON / OFF ]
+
+緊急停止
+[ KILL SWITCH ]
+```
+
+AUTO OFF：
+- 禁止新的自動實盤訂單。
+- 不刪除帳號、Key 或 CA 設定。
+- 既有持倉仍需持續監控與明確處理。
+
+Auto Resume ON：
+VM / 服務重新啟動後：
+1. 載入加密憑證。
+2. 登入 Shioaji。
+3. 啟用 CA。
+4. 驗證 person / broker / account 是否為指定 Owner 帳戶。
+5. 同步真實持倉與未完成委託。
+6. 確認帳務一致。
+7. 才允許恢復 AUTO READY。
+
+KILL SWITCH：
+- 立即停止新增自動委託。
+- 保留操作紀錄。
+- 是否同時啟動平倉流程要做成獨立且明確的安全動作，避免誤觸。
+
+### Owner-only 與帳戶綁定
+實盤模組只能使用指定的 Owner 永豐帳戶。
+
+每次啟動必須檢查：
+- person_id
+- broker_id
+- account_id
+
+與後台已綁定的帳戶不一致時：
+- 不允許 AUTO READY。
+- 不允許送出實盤委託。
+- 後台顯示明確錯誤。
+
+### 實盤交易流程
+
+```text
+EasyStock Daytrade Signal
+        ↓
+Trade Gate
+        ↓
+風控檢查
+        ↓
+確認當沖資格 / 帳戶 / 可用資金
+        ↓
+Shioaji 下單
+        ↓
+Order Callback
+        ↓
+Deal Callback
+        ↓
+建立真實 Position
+        ↓
+即時監控
+  ├─ Stop Loss
+  ├─ Take Profit
+  ├─ Trailing Stop
+  ├─ Strategy Exit
+  └─ 收盤前強制出場
+        ↓
+真實賣出成交
+        ↓
+寫入 Live Trade Ledger
+```
+
+實盤成交價必須以券商實際 Deal Callback 為準，不能以策略訊號價或原始委託價取代。
+
+部分成交時必須累積實際成交數量與加權平均成交價。
+
+### 真實持倉為最高權威
+VM 啟動 / Shioaji 重連後必須執行 Reconcile：
+
+```text
+永豐實際委託 / 成交 / 持倉
+             ↓
+       本機 Live Ledger
+             ↓
+          比對
+```
+
+若不一致：
+- AUTO PAUSED
+- 禁止新增交易
+- 後台顯示帳務不一致原因
+- 等待人工確認或自動安全修復
+
+不可只相信 SQLite / Firebase 的本機狀態。
+
+### 獨立資料庫
+實盤不可與 `paper_trade_*` 共用。
+
+建議新增：
+- live_trade_settings
+- live_trade_orders
+- live_trade_deals
+- live_trade_positions
+- live_trade_daily
+- live_trade_events
+
+單筆完整交易建議保存：
+- trade_id
+- strategy_version
+- model_version
+- symbol
+- name
+- entry_time
+- entry_order_price
+- entry_fill_price
+- entry_shares
+- exit_time
+- exit_order_price
+- exit_fill_price
+- gross_pnl
+- broker_fee
+- tax
+- net_pnl
+- net_pnl_pct
+- entry_reason
+- exit_reason
+- mfe
+- mae
+- status
+
+### 今日交易報表
+後台需有獨立實盤報表，至少顯示：
+
+```text
+時間
+股票
+動作
+委託價
+實際成交價
+數量
+成交金額
+策略 / 模型版本
+進出場原因
+手續費
+證交稅
+毛損益
+淨損益
+```
+
+今日摘要：
+- 今日實現損益
+- 今日報酬率
+- 今日投入金額
+- 交易次數
+- 勝 / 負筆數
+- 勝率
+- 未實現損益
+- 手續費
+- 證交稅
+- 淨損益
+
+### 圖表
+實盤報表至少提供：
+
+1. 今日累積損益曲線
+   - X 軸：時間
+   - Y 軸：累積淨損益
+
+2. 每筆交易損益圖
+   - 每筆已完成交易的淨損益
+   - 可快速辨識主要獲利 / 虧損來源
+
+3. 帳戶 Equity Curve
+   - 本日
+   - 本週
+   - 本月
+   - 全部
+
+後續可再增加：
+- 勝率趨勢
+- Profit Factor
+- 最大回撤
+- 策略別損益
+- 模型版本別損益
+- 時段別績效
+
+### PAPER vs LIVE 對照
+同一個正式策略訊號，保留：
+- 模擬成交結果
+- 真實成交結果
+
+可比較：
+- entry slippage
+- exit slippage
+- 手續費
+- 稅
+- 部分成交
+- 未成交
+- 延遲
+- 最終 PnL 差異
+
+用於量化「理論模型績效 vs 真實券商執行績效」。
+
+### 實盤模式層級
+交易功能至少保留：
+
+```text
+OFF
+SHADOW
+PAPER
+LIVE AUTO
+```
+
+只有明確 Approved 的 strategy / model version 才能進入 LIVE AUTO。
+
+AI Candidate、Shadow Model、未通過驗證的新 Rebound AI 不得自動取得實盤權限。
+
+### 與 Private Core 整合
+未來 Public / Private GitHub 拆分時，以下全部屬於 Private Core：
+- Shioaji session
+- broker credential store
+- trade gate
+- risk manager
+- execution engine
+- live position manager
+- live trade ledger
+- live reporting backend
+- account reconciliation
+
+公開 repo 只能顯示經過授權後的必要狀態，不包含任何可直接下單的秘密或核心交易邏輯。
+
 ---
 
 ## GitHub / 模型核心保護規劃
