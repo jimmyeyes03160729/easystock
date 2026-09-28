@@ -42,15 +42,49 @@ def promote_candidate(data, candidate, *, promoted_at=None):
     """Atomically make a successfully trained candidate the next-session model."""
     if not isinstance(candidate, dict) or candidate.get('status') != 'candidate_only':
         return candidate
+    model_dir=Path(data)/'models'; latest=model_dir/'latest-approved.json'
+    when=datetime.fromisoformat(promoted_at) if promoted_at else datetime.now(TPE)
+    if when.tzinfo is None:when=when.replace(tzinfo=TPE)
+    previous_version=None; backup_name=None
+    if latest.exists():
+        raw=latest.read_bytes()
+        try:previous_version=json.loads(raw).get('version')
+        except (ValueError,TypeError,AttributeError):previous_version=None
+        archive=model_dir/'archive';archive.mkdir(parents=True,exist_ok=True,mode=0o700)
+        stamp=when.astimezone(TPE).strftime('%Y-%m-%d_%H%M%S_%f')
+        backup=archive/f'latest-approved-{stamp}.json'
+        temp=backup.with_suffix('.json.tmp');temp.write_bytes(raw);temp.chmod(0o600);os.replace(temp,backup)
+        backup_name=backup.relative_to(model_dir).as_posix()
     promoted = dict(candidate)
     promoted.update(
         approved=True,
         deployment_allowed=True,
         status='auto_approved_for_paper',
         promotion_policy='daily_paper_auto_promote',
-        promoted_at=promoted_at or datetime.now(TPE).isoformat(),
+        promoted_at=when.isoformat(),
     )
-    save(Path(data)/'models'/'latest-approved.json', promoted)
+    save(latest, promoted)
+    validation=[]
+    for index,fold in enumerate(promoted.get('folds') or [],1):
+        candidate_metrics=fold.get('candidate') or {}
+        validation.append({
+            'fold':index,
+            'test_samples':fold.get('test_samples'),
+            'selected_count':candidate_metrics.get('count'),
+            'expected_value_pct':candidate_metrics.get('mean_net_return_pct'),
+            'brier':fold.get('brier'),
+            'test_from':fold.get('test_from'),'test_through':fold.get('test_through'),
+        })
+    log_entry={
+        'promoted_at':promoted['promoted_at'],'promoted_model':promoted.get('version'),
+        'previous_model':previous_version,'backup_file':backup_name,
+        'trained_through':promoted.get('trained_through'),'validation_mode':promoted.get('validation_mode'),
+        'validation':validation,
+    }
+    log_path=model_dir/'promotion-log.jsonl';log_path.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+    fd=os.open(log_path,os.O_WRONLY|os.O_CREAT|os.O_APPEND,0o600)
+    with os.fdopen(fd,'a',encoding='utf-8') as out:
+        out.write(json.dumps(log_entry,ensure_ascii=False,allow_nan=False)+'\n')
     return promoted
 
 
@@ -348,6 +382,7 @@ def train_candidate(data, controls=None, *, allow_paper_bootstrap=False):
             picks=[r['net_return_pct'] for r,p in zip(test,probs) if p>=threshold]
             base=[r['net_return_pct'] for r in test if r['radar_selected']]
             folds.append({'train_through':max(fit_dates),'gap_date':dates[first-1],'test_from':min(test_dates),'test_through':max(test_dates),
+                'test_samples':len(test),
                 'candidate':metrics(picks),'radar_benchmark':metrics(base),
                 'brier':sum((float(p)-int(r['net_return_pct']>0))**2 for r,p in zip(test,probs))/len(test)})
     else:
@@ -367,6 +402,7 @@ def train_candidate(data, controls=None, *, allow_paper_bootstrap=False):
         picks=[r['net_return_pct'] for r,p in zip(test,probs) if p>=threshold]
         base=[r['net_return_pct'] for r in test if r['radar_selected']]
         folds.append({'train_through':fit[-1]['at'],'gap_date':ordered[cut-1]['at'],'test_from':test[0]['at'],'test_through':test[-1]['at'],
+            'test_samples':len(test),
             'candidate':metrics(picks),'radar_benchmark':metrics(base),
             'brier':sum((float(p)-truth)**2 for truth,p in zip(test_y,probs))/len(test)})
     # Validation remains strictly time-separated. After it completes, refit the

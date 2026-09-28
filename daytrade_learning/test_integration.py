@@ -77,15 +77,30 @@ class ResearchTests(unittest.TestCase):
                 self.assertLess(fold['train_through'],fold['gap_date']);self.assertLess(fold['gap_date'],fold['test_from'])
     def test_paper_promotion_is_atomic_and_blocked_training_keeps_previous(self):
         with tempfile.TemporaryDirectory() as folder:
-            candidate={'status':'candidate_only','approved':False,'deployment_allowed':False,'version':'research-2026-09-27'}
+            candidate={'status':'candidate_only','approved':False,'deployment_allowed':False,'version':'research-2026-09-27',
+                       'trained_through':'2026-09-27','validation_mode':'paper_bootstrap_time_split',
+                       'folds':[{'test_samples':94,'test_from':'a','test_through':'b','candidate':{'count':7,'mean_net_return_pct':.25},'brier':.19}]}
             promoted=promote_candidate(folder,candidate,promoted_at='2026-09-27T16:10:00+08:00')
             path=Path(folder)/'models/latest-approved.json'
             self.assertTrue(promoted['approved']);self.assertTrue(promoted['deployment_allowed'])
             self.assertEqual(json.loads(path.read_text()),promoted)
+            log=Path(folder)/'models/promotion-log.jsonl'
+            first=json.loads(log.read_text().splitlines()[0])
+            self.assertEqual(first['promoted_model'],'research-2026-09-27')
+            self.assertEqual(first['validation'][0],{'fold':1,'test_samples':94,'selected_count':7,'expected_value_pct':.25,'brier':.19,'test_from':'a','test_through':'b'})
+            candidate2={**candidate,'version':'research-2026-09-28','trained_through':'2026-09-28'}
+            promote_candidate(folder,candidate2,promoted_at='2026-09-28T16:10:00+08:00')
+            backups=list((Path(folder)/'models/archive').glob('latest-approved-2026-09-28_*.json'))
+            self.assertEqual(len(backups),1)
+            self.assertEqual(json.loads(backups[0].read_text())['version'],'research-2026-09-27')
+            second=json.loads(log.read_text().splitlines()[1])
+            self.assertEqual(second['previous_model'],'research-2026-09-27')
+            self.assertEqual(second['backup_file'],'archive/'+backups[0].name)
             before=path.read_bytes()
             blocked={'status':'blocked','reason':'training data threshold not met'}
             self.assertEqual(promote_candidate(folder,blocked),blocked)
             self.assertEqual(path.read_bytes(),before)
+            self.assertEqual(len(log.read_text().splitlines()),2)
 
 class StateTests(unittest.TestCase):
     def test_rollover_drops_old_closed_keeps_history_source(self):
