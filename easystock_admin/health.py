@@ -180,12 +180,24 @@ def snapshot(store) -> dict:
         detail = '已建立候選模型，等待自動核准流程完成。' if newest else '尚無候選模型；資料達到啟動門檻後會自動建立並核准。'
         signals.append(_signal('candidate_model', '候選模型', 'idle', detail, _updated_at(newest) if newest else None, {'candidate_count': len(models)}))
 
+    shadow_path = model_dir / 'shadow-summary.json'
+    shadow_summary, _ = _read_json(shadow_path)
+    mismatches = [item for item in (shadow_summary or {}).get('warnings', []) if item.get('type') == 'profile_mismatch']
+    if mismatches:
+        names = '、'.join(str(item.get('line') or '未知模型') for item in mismatches)
+        signals.append(_signal('model_profile', '模型參數一致性', 'warning', f'目前交易參數與 {names} 不同；該線今日已停止比較，請勿把兩組樣本混合解讀。', _updated_at(shadow_path)))
+    elif shadow_summary:
+        signals.append(_signal('model_profile', '模型參數一致性', 'ok', '今日影子評估的模型與交易參數一致。', _updated_at(shadow_path)))
+
     if progress is None:
         signals.append(_signal('history_collection', '歷史資料補抓', 'idle' if history_error == 'not_started' else 'error', '尚未產生歷史資料進度。' if history_error == 'not_started' else '無法讀取歷史資料進度。'))
     else:
         stop_reason = str(progress.get('stop_reason', ''))
-        state = 'error' if stop_reason.startswith('error') or stop_reason == 'credentials_missing' else 'warning' if stop_reason in ('quota_exhausted', 'pair_limit') else 'idle' if stop_reason == 'outside_window' else 'ok'
-        detail = '目前不在抓取時段，等待下一次排程。' if stop_reason == 'outside_window' else '目前停止原因：' + (stop_reason or '持續處理中')
+        state = 'error' if stop_reason.startswith('error') or stop_reason == 'credentials_missing' else 'warning' if stop_reason == 'quota_exhausted' else 'idle' if stop_reason == 'outside_window' else 'ok'
+        if stop_reason in ('pair_limit','pair_limit_or_plan_complete'):
+            detail = '本輪已達設定的處理上限，已保存進度；系統會在下一次排程自動接續。'
+        else:
+            detail = '目前不在抓取時段，等待下一次排程。' if stop_reason == 'outside_window' else '目前停止原因：' + (stop_reason or '持續處理中')
         signals.append(_signal('history_collection', '歷史資料補抓', state, detail, _updated_at(history_path), {
             'completed_stock_days': _positive_int(progress.get('archived_stock_days')),
             'target_stock_days': _positive_int(progress.get('target_stock_days')),
@@ -226,10 +238,12 @@ def model_promotion_log(page: int = 1, page_size: int = 10) -> dict:
             validations.append({key:item.get(key) for key in (
                 'fold','test_samples','selected_count','expected_value_pct','brier','test_from','test_through')})
         rows.append({
-            'promoted_at':source.get('promoted_at'),'promoted_model':source.get('promoted_model'),
+            'promoted_at':source.get('promoted_at') or source.get('date'),
+            'promoted_model':source.get('promoted_model') or (('滾動模型 · '+str(source.get('action'))) if source.get('action') else None),
             'previous_model':source.get('previous_model'),'backup_file':source.get('backup_file'),
             'trained_through':source.get('trained_through'),'validation_mode':source.get('validation_mode'),
-            'validation':validations,
+            'validation':validations,'action':source.get('action'),'profile':source.get('profile'),
+            'sample_count':source.get('sample_count'),'warnings':source.get('warnings') or [],
         })
     start=(page-1)*page_size;entries=rows[start:start+page_size]
     return {'entries':entries,'page':page,'page_size':page_size,'has_previous':page>1,'has_more':len(rows)>start+page_size}
