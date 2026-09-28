@@ -120,6 +120,15 @@ class StoreTests(unittest.TestCase):
         signal=next(row for row in result['signals'] if row['key']=='model_profile')
         self.assertEqual(signal['state'],'warning');self.assertIn('frozen_baseline',signal['detail'])
 
+    def test_health_treats_pair_limit_as_resumable_success(self):
+        from easystock_admin.health import snapshot
+        history=self.path.parent/'history';history.mkdir()
+        (history/'progress.json').write_text(json.dumps({'stop_reason':'pair_limit','archived_stock_days':10,'target_stock_days':20,'failed_stock_days':0}))
+        with patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(self.path.parent/'learning'),'EASYSTOCK_HISTORY_DATA':str(history)}):
+            result=snapshot(self.s)
+        signal=next(row for row in result['signals'] if row['key']=='history_collection')
+        self.assertEqual(signal['state'],'ok');self.assertIn('下一次排程自動接續',signal['detail'])
+
     def test_model_promotion_log_is_bounded_and_whitelisted(self):
         from easystock_admin.health import model_promotion_log
         learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)

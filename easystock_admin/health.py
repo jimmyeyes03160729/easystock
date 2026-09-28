@@ -193,8 +193,11 @@ def snapshot(store) -> dict:
         signals.append(_signal('history_collection', '歷史資料補抓', 'idle' if history_error == 'not_started' else 'error', '尚未產生歷史資料進度。' if history_error == 'not_started' else '無法讀取歷史資料進度。'))
     else:
         stop_reason = str(progress.get('stop_reason', ''))
-        state = 'error' if stop_reason.startswith('error') or stop_reason == 'credentials_missing' else 'warning' if stop_reason in ('quota_exhausted', 'pair_limit') else 'idle' if stop_reason == 'outside_window' else 'ok'
-        detail = '目前不在抓取時段，等待下一次排程。' if stop_reason == 'outside_window' else '目前停止原因：' + (stop_reason or '持續處理中')
+        state = 'error' if stop_reason.startswith('error') or stop_reason == 'credentials_missing' else 'warning' if stop_reason == 'quota_exhausted' else 'idle' if stop_reason == 'outside_window' else 'ok'
+        if stop_reason in ('pair_limit','pair_limit_or_plan_complete'):
+            detail = '本輪已達設定的處理上限，已保存進度；系統會在下一次排程自動接續。'
+        else:
+            detail = '目前不在抓取時段，等待下一次排程。' if stop_reason == 'outside_window' else '目前停止原因：' + (stop_reason or '持續處理中')
         signals.append(_signal('history_collection', '歷史資料補抓', state, detail, _updated_at(history_path), {
             'completed_stock_days': _positive_int(progress.get('archived_stock_days')),
             'target_stock_days': _positive_int(progress.get('target_stock_days')),
