@@ -3,6 +3,52 @@
 > 本文件用於記錄已確認的後續規劃。  
 > 更新原則：使用者在 EasyStock 相關討論中說「紀錄」時，更新此文件，保留既有內容並整理版本脈絡。
 
+## 待新增 / 待執行主題總覽
+
+> 這一區固定放在 Roadmap 最前面，用來快速確認「還有哪些功能尚未執行」。  
+> 完成後改成 `[x]`；尚未開始或尚未完成維持 `[ ]`。細節保留在下方對應章節。
+
+- [ ] **Chrome Extension 1.01 實盤驗證**
+  - 等待完整台股交易時段驗證盤中掃描、通知、刷新、API / Firebase / VM 穩定性。
+  - 目前原則：先修實盤 BUG，不加入大型架構變更。
+
+- [ ] **Chrome Extension 1.02：Google 登入 + Firebase 使用者同步**
+  - Google Authentication。
+  - 自選股、當沖監控、提醒條件、群組與設定同步。
+  - 第一次登入執行本機資料 Migration。
+  - 核心原則：只合併、不覆蓋、不刪除。
+
+- [ ] **觸底反彈 AI 學習**
+  - 統一正式 Rebound 定義。
+  - 建立 `rebound_learning/`。
+  - 收集候選 Dataset。
+  - 10 個交易日後自動 Label。
+  - Baseline / Logistic Regression / HistGradientBoosting 比較。
+  - 先 Shadow，再決定是否 Applied。
+
+- [ ] **永豐實盤當沖後台（Owner-only）**
+  - 永豐 API / CA 憑證安全持久化。
+  - AUTO ON / OFF、Auto Resume、KILL SWITCH。
+  - 真實委託 / 成交 / 持倉 Reconcile。
+  - 獨立 `live_trade_*` 帳本。
+  - 今日交易、損益、手續費、稅與歷史報表。
+  - 今日 PnL、單筆交易、Equity Curve 圖表。
+  - PAPER vs LIVE 執行差異比較。
+
+- [ ] **AI Architecture Guardian 系統健檢**
+  - 每日 Tests / CodeQL / Secret Scan / Dependabot / Trivy / 自訂安全規則。
+  - 每週 AI Architecture Review。
+  - 首頁顯示 SAFE / REVIEW / DANGER / UNKNOWN 摘要。
+  - Private Admin 顯示 Critical / High / Medium / Low 詳細報告。
+  - 第一階段只掃描、分析、報告、通知，不直接修改交易系統。
+
+- [ ] **GitHub / 模型核心保護與 Public / Private Core 拆分**
+  - Public repo 只保留網站、Chrome UI 與必要 API Client。
+  - 策略、模型、訓練、交易、Shioaji、風控移入 Private Core。
+  - 移除 `raw.githubusercontent.com` 等直接 GitHub 關聯。
+  - Public repo 採乾淨 Git history，避免舊 commit 持續暴露核心程式。
+
+
 ## 目前版本：Chrome Extension 1.01
 
 ### 目標
@@ -984,7 +1030,10 @@ https://api.jimmyeyes.com/config
 使用者在 EasyStock 相關對話中輸入「紀錄」時：
 1. 讀取 `docs/ROADMAP.md`。
 2. 把本次已確認的規劃整合進文件。
-3. 保留既有內容，不重複堆疊。
-4. 依版本與主題整理。
-5. 不因「紀錄」而修改正式功能程式碼。
-6. 不影響目前正式版本，除非使用者另行要求。
+3. 同步更新文件最前面的「待新增 / 待執行主題總覽」。
+4. 新增但尚未完成的主題一律加入最前面總覽並維持 `[ ]`。
+5. 已完成並確認上線的主題改成 `[x]`，避免仍被誤認為待辦。
+6. 保留既有內容，不重複堆疊。
+7. 依版本與主題整理。
+8. 不因「紀錄」而修改正式功能程式碼。
+9. 不影響目前正式版本，除非使用者另行要求。
