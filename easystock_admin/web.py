@@ -152,6 +152,12 @@ def register_admin(app, store=None, verifier=None):
         from .health import snapshot
         return jsonify(snapshot(store))
 
+    @bp.get('/admin/model-log')
+    def get_model_log():
+        authenticated()
+        from .health import model_promotion_log
+        return jsonify(model_promotion_log())
+
     @bp.get('/admin/maintenance')
     def get_maintenance():
         authenticated()

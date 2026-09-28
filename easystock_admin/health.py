@@ -193,3 +193,33 @@ def snapshot(store) -> dict:
         }))
 
     return {'generated_at': datetime.now(timezone.utc).isoformat(), 'signals': signals}
+
+
+def model_promotion_log(limit: int = 100) -> dict:
+    """Return a bounded, display-only view of the paper-model audit log."""
+    limit=max(1,min(int(limit),200))
+    learning=_root('EASYSTOCK_LEARNING_DATA','/home/ubuntu/easystock-learning-data')
+    path=learning/'models'/'promotion-log.jsonl'
+    if not path.exists():return {'entries':[],'count':0}
+    rows=[]
+    try:
+        lines=path.read_text(encoding='utf-8').splitlines()[-limit:]
+    except OSError:
+        return {'entries':[],'count':0,'unavailable':True}
+    for line in reversed(lines):
+        if not line or len(line)>65536:continue
+        try:source=json.loads(line)
+        except (ValueError,TypeError):continue
+        if not isinstance(source,dict):continue
+        validations=[]
+        for item in source.get('validation') or []:
+            if not isinstance(item,dict):continue
+            validations.append({key:item.get(key) for key in (
+                'fold','test_samples','selected_count','expected_value_pct','brier','test_from','test_through')})
+        rows.append({
+            'promoted_at':source.get('promoted_at'),'promoted_model':source.get('promoted_model'),
+            'previous_model':source.get('previous_model'),'backup_file':source.get('backup_file'),
+            'trained_through':source.get('trained_through'),'validation_mode':source.get('validation_mode'),
+            'validation':validations,
+        })
+    return {'entries':rows,'count':len(rows)}

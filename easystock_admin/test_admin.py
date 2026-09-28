@@ -111,6 +111,20 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(candidate['state'], 'ok')
         self.assertIn('不需人工審核', candidate['detail'])
 
+    def test_model_promotion_log_is_bounded_and_whitelisted(self):
+        from easystock_admin.health import model_promotion_log
+        learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
+        entry={'promoted_at':'2026-09-28T16:10:00+08:00','promoted_model':'research-2026-09-28',
+               'previous_model':'research-2026-09-27','backup_file':'archive/latest-approved-date.json',
+               'trained_through':'2026-09-28','validation_mode':'test','secret':'hidden',
+               'validation':[{'fold':1,'test_samples':94,'selected_count':30,'expected_value_pct':.2,'brier':.1,'extra':'hidden'}]}
+        (models/'promotion-log.jsonl').write_text('bad json\n'+json.dumps(entry)+'\n',encoding='utf-8')
+        with patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning)}):result=model_promotion_log()
+        self.assertEqual(result['count'],1)
+        self.assertEqual(result['entries'][0]['promoted_model'],'research-2026-09-28')
+        self.assertNotIn('secret',result['entries'][0])
+        self.assertNotIn('extra',result['entries'][0]['validation'][0])
+
 class WebTests(unittest.TestCase):
     def setUp(self):
         from flask import Flask
