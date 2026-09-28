@@ -92,9 +92,17 @@ def snapshot(store) -> dict:
     progress, history_error = _read_json(history_path)
 
     settings = store.get()
+    paper_trade = store.get_paper_trade()
     signals = [
         _market_session(),
         _signal('admin_store', '後台設定資料庫', 'ok', '可讀取目前設定版本。', settings.get('updated_at'), {'setting_version': settings.get('version')}),
+        _signal(
+            'paper_trade', '模擬買進',
+            'ok' if paper_trade.get('status') == 'running' else 'idle',
+            '模擬買進已啟用。' if paper_trade.get('status') == 'running' else '模擬買進目前已暫停。',
+            datetime.fromtimestamp(float(paper_trade.get('updated_at', 0)), timezone.utc).isoformat() if paper_trade.get('updated_at') else None,
+            {'initial_capital': paper_trade.get('initial_capital'), 'current_capital': paper_trade.get('current_capital')},
+        ),
         _signal(
             'market_credentials', '行情資料憑證',
             'ok' if (os.environ.get('SJ_API_KEY') or os.environ.get('SHIOAJI_API_KEY')) and (os.environ.get('SJ_SECRET_KEY') or os.environ.get('SHIOAJI_SECRET_KEY') or os.environ.get('SJ_SEC_KEY')) else 'error',
