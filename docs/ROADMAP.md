@@ -610,6 +610,246 @@ AI Candidate、Shadow Model、未通過驗證的新 Rebound AI 不得自動取�
 
 公開 repo 只能顯示經過授權後的必要狀態，不包含任何可直接下單的秘密或核心交易邏輯。
 
+
+---
+
+## AI Architecture Guardian 系統健檢規劃
+
+### 功能定位
+新增一套獨立的「AI Architecture Guardian」，用來檢查 EasyStock 最近的程式與架構是否逐漸變得不合理、不安全或容易失控。
+
+與現有 Guardian 的職責分開：
+
+```text
+EasyStock Guardian
+→ 檢查 VM / 服務現在是否正常運作
+
+AI Architecture Guardian
+→ 檢查最近程式、交易邏輯、AI 模型與資料流程是否越改越危險
+```
+
+### 整體架構
+
+```text
+GitHub Repository
+      ↓
+GitHub Actions
+      ├─ Unit Tests
+      ├─ CodeQL
+      ├─ Secret Scan
+      ├─ Dependabot
+      ├─ Trivy
+      ├─ Python / JS Static Checks
+      └─ EasyStock Custom Safety Rules
+                    ↓
+             health-report.json
+                    ↓
+        Weekly AI Architecture Review
+                    ↓
+          Firebase / Private Admin
+                    ↓
+             EasyStock 首頁摘要
+```
+
+### 每日健檢
+每日執行確定性高、可重複驗證的自動檢查，不依賴 AI 判斷。
+
+建議至少包含：
+- Python syntax / import 檢查
+- Python tests
+- JavaScript / Chrome Extension tests
+- Firebase Rules 檢查
+- Secret Scan
+- CodeQL
+- Trivy
+- Dependency vulnerability 檢查
+- GitHub Actions 狀態
+- 關鍵檔案 hash / drift 檢查
+- VM Guardian 狀態摘要
+- EasyStock 自訂交易安全規則
+
+每日結果產生固定格式的 `health-report.json`。
+
+### EasyStock 自訂安全規則
+一般 CodeQL 不知道交易系統的商業與風控規則，因此必須建立 EasyStock 自己的檢查器。
+
+建議：
+
+```text
+health_rules/
+├── trading_safety.py
+├── model_safety.py
+├── firebase_safety.py
+├── data_integrity.py
+└── architecture_rules.py
+```
+
+交易安全至少檢查：
+- 只有 Approved strategy / model 才能進 LIVE AUTO
+- AUTO OFF 是否真的阻止新單
+- KILL SWITCH 是否覆蓋所有下單路徑
+- Owner account_id / broker_id / person_id 是否強制驗證
+- Shioaji API / CA Secret 是否只存在後端
+- 真實成交是否以 Deal Callback 為準
+- VM 重啟是否先做 position / order reconcile
+- Ledger 與券商持倉不一致時是否 AUTO PAUSED
+- PAPER / LIVE 是否可能共用錯誤路徑
+- Candidate / Shadow 模型是否可能誤進實盤
+
+### AI 模型健檢
+每日 / 每週檢查：
+- Candidate 是否可能被自動 Promote
+- Training / Inference Features 是否一致
+- Feature schema version 是否一致
+- Model threshold 是否被意外改動
+- Holdout 是否誤拿去 Training
+- 是否可能 Future Leakage
+- 不同策略版本資料是否混用
+- Shadow Model 是否可能進 LIVE
+- Rebound 的 10D Label / SUCCESS / FAIL 定義是否一致
+- 舊 Rebound 與 range-rebound 是否混用
+
+### 資料品質健檢
+至少檢查：
+- Firebase active_release 是否正常
+- K 線日期 / release 是否一致
+- 即時行情是否過期
+- Shioaji / Fugle 資料更新是否正常
+- AI Dataset 是否有缺失 Feature
+- Label 是否已成熟
+- History 是否出現 Future Leakage
+- Public Firebase Write 是否保持 DENY
+- Public / Private 資料邊界是否被破壞
+
+### 每週 AI Architecture Review
+每週不重新把整個 Repository 無差別丟給 AI。
+
+只提供：
+- 最近 7 天 commits
+- Git diff
+- docs/ROADMAP.md
+- docs/ARCHITECTURE.md
+- health-report.json
+- 測試失敗紀錄
+- 關鍵模組摘要
+- 已知 Guardian incidents
+
+AI 每週主要回答：
+- 是否出現重複邏輯
+- 是否有不合理 fallback
+- 是否破壞安全邊界
+- 是否讓模型進入錯誤執行階段
+- LIVE / PAPER 是否可能混用
+- Public / Private boundary 是否外洩
+- Dataset / Label 是否可能污染
+- 交易風控是否可能被繞過
+- 最近修改是否與 ROADMAP / ARCHITECTURE 衝突
+
+### AI Provider
+目前 Public Repository 階段，可優先使用 Gemini Developer API Free Tier 作為每週架構審查工具。
+
+原則：
+- 不讓 Gemini 直接取得 GitHub write 權限
+- GitHub Action 先產生有限範圍的 audit bundle
+- AI 只讀 audit bundle
+- AI 不可直接部署或修改正式交易系統
+- AI 的判斷只能形成 Review / 建議，不可直接解除交易安全限制
+
+未來 Private Core 建立後，Private Trading Core、模型與券商邏輯不應整份送到免費外部 AI API。
+
+未來改採：
+- VM / NAS 本機 Ollama
+- 開源 Coding Model
+- 本機 Architecture Review
+
+讓 Private Core 程式碼不離開自己的 VM / NAS。
+
+### 首頁顯示
+首頁只顯示摘要，不公開詳細漏洞或內部攻擊資訊。
+
+建議卡片：
+
+```text
+🩺 EasyStock AI 系統健檢
+
+整體狀態       🟢 SAFE
+最後健檢       今日 06:20
+
+程式穩定性     🟢 正常
+交易安全       🟢 正常
+AI 模型        🟡 2 項注意
+資料品質       🟢 正常
+資安           🟢 無高風險
+相依套件       🟡 1 項需更新
+
+[查看詳細報告]
+```
+
+狀態只使用：
+- SAFE
+- REVIEW
+- DANGER
+- UNKNOWN
+
+避免使用「87 / 100」之類容易製造錯誤安全感的總分。
+
+### Admin 詳細報告
+完整報告只在 Private Admin 顯示。
+
+固定分級：
+- Critical
+- High
+- Medium
+- Low
+
+每一項包含：
+- 問題
+- 影響
+- 證據來源
+- 建議處理方式
+- 是否阻擋 LIVE AUTO
+- 狀態
+- 首次發現時間
+- 最近確認時間
+
+例如：
+
+```text
+問題：
+Rebound 存在兩套策略定義
+
+風險：
+AI Dataset 標籤可能污染
+
+等級：
+High
+
+建議：
+統一 range-rebound
+
+LIVE AUTO：
+不直接阻擋，但禁止 Rebound AI Applied
+```
+
+### 自動化安全邊界
+AI Architecture Guardian 第一階段只做：
+- 掃描
+- 分析
+- 報告
+- 通知
+
+不得自動：
+- 修改交易策略
+- 修改模型門檻
+- Promote Candidate Model
+- 開啟 LIVE AUTO
+- 變更券商帳戶
+- 修改 KILL SWITCH
+- 修改 Firebase 安全規則
+- 將 AI 建議直接部署到正式交易環境
+
+若未來要加入自動修復，只能針對已明確 allowlist 的非交易性問題，並沿用現有 Guardian 的隔離、備份、測試與人工核准機制。
+
 ---
 
 ## GitHub / 模型核心保護規劃
