@@ -3,6 +3,23 @@
 set -euo pipefail
 cd /home/ubuntu/easystock
 export GIT_PAGER=cat SYSTEMD_PAGER=cat
+restore_collect_only=0
+if systemctl is-enabled --quiet easystock-intraday.timer && test -f /etc/easystock/collect-only; then
+  restore_collect_only=1
+fi
+restore_timer() {
+  status=$?
+  if [[ "$restore_collect_only" == 1 ]] && ! systemctl is-enabled --quiet easystock-intraday.timer; then
+    if bash deploy/enable_collect_only.sh; then
+      echo '已恢復同步前的 collect-only 當沖 timer。'
+    else
+      echo '無法自動恢復 collect-only timer；請檢查上方輸出。' >&2
+      [[ "$status" == 0 ]] && status=1
+    fi
+  fi
+  exit "$status"
+}
+trap restore_timer EXIT
 sudo systemctl disable --now easystock-intraday.timer
 for unit in easystock-intraday.service easystock-learning.service easystock-paper-train.service easystock-history-download.service easystock-history-train.service; do
   if systemctl is-active --quiet "$unit"; then
@@ -63,4 +80,8 @@ git branch --set-upstream-to=origin/main main
 printf '主線更新完成：'
 git rev-parse --short HEAD
 printf '備份位置：%s\n' "$backup"
-echo '當沖 timer 保持停用；帳本副本驗證通過後，仍需核對模型與訓練服務。歷史下載於原排程執行時更新近期日期並嘗試擴充至 100 檔。'
+if [[ "$restore_collect_only" == 1 ]]; then
+  echo '同步前為 collect-only；結束時會自動恢復相同排程。'
+else
+  echo '當沖 timer 保持停用；帳本副本驗證通過後，仍需核對模型與訓練服務。歷史下載於原排程執行時更新近期日期並嘗試擴充至 100 檔。'
+fi
