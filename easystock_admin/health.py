@@ -155,9 +155,10 @@ def snapshot(store) -> dict:
         signals.append(_signal('daily_training', '每日訓練流程', 'idle' if training_error == 'not_started' else 'error', '尚未產生訓練紀錄。' if training_error == 'not_started' else '無法讀取訓練狀態。'))
     else:
         status = str(training.get('status', '')).lower()
-        state = 'ok' if status in ('ok', 'completed', 'experimental_candidate') else 'warning' if status in ('blocked', 'skipped', 'pending') else 'error'
+        state = 'ok' if status in ('ok', 'completed', 'experimental_candidate', 'auto_approved_for_paper') else 'warning' if status in ('blocked', 'skipped', 'pending') else 'error'
         detail = {
             'experimental_candidate': '候選模型已完成；尚未套用到即時交易。',
+            'auto_approved_for_paper': '每日訓練完成，最新模型已自動核准供下一個交易日使用。',
             'blocked': '資料或驗證門檻尚未達成，未建立候選模型。',
             'skipped': '本次流程略過，請查看資料收集狀態。',
         }.get(status, '已讀取最近一次訓練結果。')
@@ -166,9 +167,18 @@ def snapshot(store) -> dict:
             'labeled': _first_count(training, 'labeled_count', 'labeled'),
         }))
 
-    models = list((learning / 'models').glob('candidate-*.json')) if (learning / 'models').is_dir() else []
+    model_dir = learning / 'models'
+    models = list(model_dir.glob('candidate-*.json')) if model_dir.is_dir() else []
     newest = max(models, key=lambda item: item.stat().st_mtime) if models else None
-    signals.append(_signal('candidate_model', '候選模型', 'ok' if newest else 'idle', '已建立候選模型，仍需人工核准才可套用。' if newest else '尚無候選模型；系統不會自動套用模型。', _updated_at(newest) if newest else None, {'candidate_count': len(models)}))
+    approved_path = model_dir / 'latest-approved.json'
+    approved, _ = _read_json(approved_path)
+    if approved and approved.get('approved') is True and approved.get('deployment_allowed') is True:
+        detail = '最新模型已自動核准，將於下一個交易日啟動時載入；不需人工審核。'
+        metrics = {'candidate_count': len(models), 'model_version': approved.get('version'), 'trained_through': approved.get('trained_through')}
+        signals.append(_signal('candidate_model', '候選模型', 'ok', detail, _updated_at(approved_path), metrics))
+    else:
+        detail = '已建立候選模型，等待自動核准流程完成。' if newest else '尚無候選模型；資料達到啟動門檻後會自動建立並核准。'
+        signals.append(_signal('candidate_model', '候選模型', 'idle', detail, _updated_at(newest) if newest else None, {'candidate_count': len(models)}))
 
     if progress is None:
         signals.append(_signal('history_collection', '歷史資料補抓', 'idle' if history_error == 'not_started' else 'error', '尚未產生歷史資料進度。' if history_error == 'not_started' else '無法讀取歷史資料進度。'))

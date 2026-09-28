@@ -91,6 +91,26 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(paper['state'], 'ok')
         self.assertEqual(paper['metrics']['current_capital'], 200000)
 
+    def test_health_treats_auto_approved_paper_model_as_healthy(self):
+        from easystock_admin.health import snapshot
+        learning = self.path.parent/'learning'
+        models = learning/'models'; models.mkdir(parents=True)
+        (learning/'training-status.json').write_text(json.dumps({
+            'status':'auto_approved_for_paper','samples':470,'version':'research-2026-09-24'
+        }))
+        (models/'candidate-2026-09-24.json').write_text(json.dumps({'status':'candidate_only'}))
+        (models/'latest-approved.json').write_text(json.dumps({
+            'approved':True,'deployment_allowed':True,'version':'research-2026-09-24','trained_through':'2026-09-24'
+        }))
+        with patch.dict(os.environ, {'EASYSTOCK_LEARNING_DATA': str(learning), 'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history')}):
+            result = snapshot(self.s)
+        training = next(row for row in result['signals'] if row['key'] == 'daily_training')
+        candidate = next(row for row in result['signals'] if row['key'] == 'candidate_model')
+        self.assertEqual(training['state'], 'ok')
+        self.assertIn('自動核准', training['detail'])
+        self.assertEqual(candidate['state'], 'ok')
+        self.assertIn('不需人工審核', candidate['detail'])
+
 class WebTests(unittest.TestCase):
     def setUp(self):
         from flask import Flask
