@@ -38,6 +38,22 @@ def save(path, value):
     temp.chmod(0o600); os.replace(temp,path)
 
 
+def promote_candidate(data, candidate, *, promoted_at=None):
+    """Atomically make a successfully trained candidate the next-session model."""
+    if not isinstance(candidate, dict) or candidate.get('status') != 'candidate_only':
+        return candidate
+    promoted = dict(candidate)
+    promoted.update(
+        approved=True,
+        deployment_allowed=True,
+        status='auto_approved_for_paper',
+        promotion_policy='daily_paper_auto_promote',
+        promoted_at=promoted_at or datetime.now(TPE).isoformat(),
+    )
+    save(Path(data)/'models'/'latest-approved.json', promoted)
+    return promoted
+
+
 def journal(path):
     rows=[]; corrupt=0
     if Path(path).exists():
@@ -308,10 +324,18 @@ def train_candidate(data, controls=None):
             'candidate':metrics(picks),'radar_benchmark':metrics(base),
             'brier':sum((float(p)-int(r['net_return_pct']>0))**2 for r,p in zip(test,probs))/len(test)})
         last_model=model
+    # Validation remains strictly time-separated. After it completes, refit the
+    # paper-trading artifact on every labeled row available through this close,
+    # so tomorrow uses today's newest information rather than a holdout-era fit.
+    final_y=[int(r['net_return_pct']>0) for r in rows]
+    if min(sum(final_y),len(final_y)-sum(final_y))<min_class:
+        return {'status':'blocked','reason':'insufficient class balance','required_per_class':min_class}
+    last_model=make_pipeline(StandardScaler(),LogisticRegression(C=1,max_iter=2000,random_state=7))
+    last_model.fit([r['features'] for r in rows],final_y)
     scaler,clf=last_model.steps[0][1],last_model.steps[1][1]
     result={'schema_version':SCHEMA_VERSION,'approved':False,'version':'research-'+dates[-1],'status':'candidate_only','deployment_allowed':False,'profile':latest,'folds':folds,'threshold':threshold,
         'features':FEATURES,'mean':scaler.mean_.tolist(),'scale':scaler.scale_.tolist(),'coef':clf.coef_[0].tolist(),'intercept':float(clf.intercept_[0]),
-        'trained_through':folds[-1]['train_through'],
+        'trained_through':dates[-1],
         'benchmark':'same-exit radar selection; not the actual live portfolio',
         'required_before_deployment':['fixed untouched forward window','probability calibration','portfolio capital/drawdown simulation','live shadow comparison']}
     save(Path(data)/'models'/('candidate-'+dates[-1]+'.json'),result)

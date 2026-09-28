@@ -1,4 +1,4 @@
-"""Pinned, approved research model inference. Never auto-promotes a candidate."""
+"""Validated paper-trading model inference using the latest daily promotion."""
 import json
 import hashlib
 import math
@@ -44,6 +44,9 @@ class DaytradeModel:
         self.threshold = None
         self.reason = 'no_approved_model'
         path = path if path is not None else os.environ.get('AI_PAPER_MODEL_PATH')
+        if path is None:
+            data = Path(os.environ.get('LEARNING_DATA_DIR', '/home/ubuntu/easystock-learning-data'))
+            path = data/'models'/'latest-approved.json'
         if not path:
             return
         try:

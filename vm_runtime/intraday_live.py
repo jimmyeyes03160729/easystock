@@ -2787,7 +2787,7 @@ class IntradayLiveEngine:
         self.silent_symbols = set()
         # EASYSTOCK_VALIDATED_MODEL_GATE_V2
         self.daytrade_model = DaytradeModel()
-        self.entry_mode = os.environ.get('LIVE_ENTRY_MODE', 'rules')
+        self.entry_mode = os.environ.get('LIVE_ENTRY_MODE', 'model')
         if self.entry_mode not in {'rules', 'model'}:
             raise ValueError('LIVE_ENTRY_MODE must be rules or model')
         print(f"[MODEL_BOOT] mode={self.entry_mode} collect_only={self.collect_only} ready={self.daytrade_model.artifact is not None} "

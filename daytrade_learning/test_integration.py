@@ -14,7 +14,7 @@ import sys
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
-from daytrade_learning.research import dt,normalize_bars,simulate,build,save,train_candidate
+from daytrade_learning.research import dt,normalize_bars,simulate,build,save,train_candidate,promote_candidate
 from daytrade_learning.daily_state import prepare_rollover
 TPE=timezone(timedelta(hours=8))
 COSTS=json.loads((ROOT/'daytrade_learning/settings.json').read_text())
@@ -75,6 +75,17 @@ class ResearchTests(unittest.TestCase):
             self.assertFalse(result['deployment_allowed']);self.assertEqual(len(result['folds']),3)
             for fold in result['folds']:
                 self.assertLess(fold['train_through'],fold['gap_date']);self.assertLess(fold['gap_date'],fold['test_from'])
+    def test_paper_promotion_is_atomic_and_blocked_training_keeps_previous(self):
+        with tempfile.TemporaryDirectory() as folder:
+            candidate={'status':'candidate_only','approved':False,'deployment_allowed':False,'version':'research-2026-09-27'}
+            promoted=promote_candidate(folder,candidate,promoted_at='2026-09-27T16:10:00+08:00')
+            path=Path(folder)/'models/latest-approved.json'
+            self.assertTrue(promoted['approved']);self.assertTrue(promoted['deployment_allowed'])
+            self.assertEqual(json.loads(path.read_text()),promoted)
+            before=path.read_bytes()
+            blocked={'status':'blocked','reason':'training data threshold not met'}
+            self.assertEqual(promote_candidate(folder,blocked),blocked)
+            self.assertEqual(path.read_bytes(),before)
 
 class StateTests(unittest.TestCase):
     def test_rollover_drops_old_closed_keeps_history_source(self):

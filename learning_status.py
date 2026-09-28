@@ -865,7 +865,7 @@ def main():
             )
         )
 
-        mode = os.environ.get('LIVE_ENTRY_MODE', 'rules')
+        mode = os.environ.get('LIVE_ENTRY_MODE', 'model')
         ready = bool(runtime_decision.get('active') and runtime_decision.get('approved'))
         result['model_application'] = {
             'status': 'not_applied' if mode != 'model' or not ready else 'unknown',

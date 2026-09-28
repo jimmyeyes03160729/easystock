@@ -13,8 +13,8 @@
 
 | 模式 | 進場判斷 |
 |---|---|
-| `rules`（預設） | 舊策略 `daytrade_score >= 76`、無 veto、至少兩項理由 |
-| `model` | 固定模型檔載入成功、已核准、特徵完整、分數達 artifact 門檻，並保留策略 veto 及獨立風控；不要求舊策略分數達 76 |
+| `rules` | 舊策略 `daytrade_score >= 76`、無 veto、至少兩項理由 |
+| `model`（模擬預設） | 前一個成功訓練並自動核准的模型載入成功、特徵完整、分數達 artifact 門檻，並保留策略 veto 及獨立風控；不要求舊策略分數達 76 |
 
 模型模式缺模型、模型未核准、資料缺漏或低於門檻，一律跳過新進場，**不會自動退回規則模式**。
 目前 repo 不附任何已核准模型，也不宣称 VM 已啟用模型。
@@ -32,13 +32,13 @@
 缺少資料不能填 0；行情 Tick 最長 30 秒，5 分鐘參考 Tick 最長 330 秒，至少 300 秒歷史與 50% 可分類成交。
 `core.py` 的五欄研究原型保留獨立的 legacy schema，不能當成線上模型。歷史文件中的 11 欄 `quote-markout-pilot-1` 不符合此 schema，會被拒絕載入。
 
-`AI_PAPER_MODEL_PATH` 固定 JSON artifact 路徑。載入器驗證 `approved=true`、`deployment_allowed=true`、schema、特徵順序、維度、有限數字及正尺度；標準化後使用 logistic score，並真正比較 `threshold`。研究 artifact 保持未核准，不能僅為上線而手改旗標。
+`AI_PAPER_MODEL_PATH` 預設指向 `models/latest-approved.json`。載入器驗證 `approved=true`、`deployment_allowed=true`、schema、特徵順序、維度、有限數字及正尺度；標準化後使用 logistic score，並真正比較 `threshold`。
 
 - `LEARNING_ENABLED=1` 為預設；明確設成 `0` 才停用紀錄。
 - 雷達樣本按每檔每 5 分鐘記錄，ENTRY／EXIT 記錄包含模擬成交身分及結算結果。
 - `learning_cycle.py` 串接當日盤後收集／標籤建立與候選模型訓練。沒有同日樣本就跳過，不把休市日當學習日。
 - 訓練要求同一設定至少 101 個日期、1,000 筆樣本及足夠正負例；不足時回報 blocked。
-- 候選模型不自動核准或替換隔日模型。盤後 Gemini 文字復盤也不等於更新線上模型。
+- 訓練成功後，候選模型會以原子寫入自動升級為 `latest-approved.json`，供下一個交易日服務啟動時載入；訓練不足或失敗時保留前一個可用模型，不在盤中熱切換。
 - 歷史標籤仍是固定停損停利研究基準，包含保守成本，不是線上 trailing／技術出場帳戶績效；完整策略回放與樣本外驗證仍是核准前置條件。
 
 ## 市場風險

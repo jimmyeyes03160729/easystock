@@ -17,7 +17,7 @@ def main():
     except Exception:
         pipeline = None
     from daytrade_learning.runtime import DATA,TPE
-    from daytrade_learning.research import journal, collect, build, save, train_candidate, finite
+    from daytrade_learning.research import journal, collect, build, save, train_candidate, promote_candidate, finite
     from daytrade_learning.core import gemini_review
     from daytrade_learning.eod_support import review_once, read_report, report_status
     parser=argparse.ArgumentParser(description=__doc__)
@@ -40,6 +40,7 @@ def main():
         except BlockingIOError:raise SystemExit('Research job already running')
         if args.train:
             result=train_candidate(DATA, pipeline)
+            result=promote_candidate(DATA, result)
             save(DATA/'training-status.json',result)
             print(json.dumps({k:v for k,v in result.items() if k not in ('coef','mean','scale')},ensure_ascii=False))
             return
