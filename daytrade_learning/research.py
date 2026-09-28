@@ -38,7 +38,7 @@ def save(path, value):
     temp.chmod(0o600); os.replace(temp,path)
 
 
-def promote_candidate(data, candidate, *, promoted_at=None):
+def promote_candidate(data, candidate, *, promoted_at=None, write_log=True, archive_previous=True):
     """Atomically make a successfully trained candidate the next-session model."""
     if not isinstance(candidate, dict) or candidate.get('status') != 'candidate_only':
         return candidate
@@ -46,7 +46,7 @@ def promote_candidate(data, candidate, *, promoted_at=None):
     when=datetime.fromisoformat(promoted_at) if promoted_at else datetime.now(TPE)
     if when.tzinfo is None:when=when.replace(tzinfo=TPE)
     previous_version=None; backup_name=None
-    if latest.exists():
+    if latest.exists() and archive_previous:
         raw=latest.read_bytes()
         try:previous_version=json.loads(raw).get('version')
         except (ValueError,TypeError,AttributeError):previous_version=None
@@ -81,10 +81,11 @@ def promote_candidate(data, candidate, *, promoted_at=None):
         'trained_through':promoted.get('trained_through'),'validation_mode':promoted.get('validation_mode'),
         'validation':validation,
     }
-    log_path=model_dir/'promotion-log.jsonl';log_path.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
-    fd=os.open(log_path,os.O_WRONLY|os.O_CREAT|os.O_APPEND,0o600)
-    with os.fdopen(fd,'a',encoding='utf-8') as out:
-        out.write(json.dumps(log_entry,ensure_ascii=False,allow_nan=False)+'\n')
+    if write_log:
+        log_path=model_dir/'promotion-log.jsonl';log_path.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+        fd=os.open(log_path,os.O_WRONLY|os.O_CREAT|os.O_APPEND,0o600)
+        with os.fdopen(fd,'a',encoding='utf-8') as out:
+            out.write(json.dumps(log_entry,ensure_ascii=False,allow_nan=False)+'\n')
     return promoted
 
 

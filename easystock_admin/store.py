@@ -21,6 +21,8 @@ PIPELINE_DEFAULTS = {
     'min_training_samples': 1000, 'min_class_samples': 30, 'holdout_days': 20,
     'model_threshold': .6, 'fee_rate': .0015, 'minimum_fee_twd': 20,
     'sell_tax_rate': .003, 'slippage_bps': 10, 'shares': 1000,
+    'model_retrain_every_days': 5, 'forward_observe_days': 20,
+    'formal_candidate_for_live': False,
 }
 
 def db_path():
@@ -62,18 +64,19 @@ def defaults():
     })
 
 def validate_pipeline(value):
-    if not isinstance(value, dict) or set(value) != set(PIPELINE_DEFAULTS):
+    previous=set(PIPELINE_DEFAULTS)-{'model_retrain_every_days','forward_observe_days','formal_candidate_for_live'}
+    if not isinstance(value, dict) or set(value) not in (set(PIPELINE_DEFAULTS),previous):
         raise ValueError('訓練與資料計畫欄位不正確。')
-    result = dict(value)
+    result = {**PIPELINE_DEFAULTS,**value}
     symbols = result['history_symbols']
     if not isinstance(symbols, list) or len(symbols) > 200 or any(not isinstance(s, str) or not __import__('re').fullmatch(r'\d{4}', s) for s in symbols) or len(set(symbols)) != len(symbols):
         raise ValueError('指定股票請填入最多 200 個四位數代碼。')
     result['history_symbols'] = symbols
-    for key, lo, hi in (('history_target_symbols', 1, 200), ('history_max_pairs', 1, 50), ('min_training_dates', 20, 1000), ('min_training_samples', 100, 1000000), ('min_class_samples', 10, 100000), ('holdout_days', 5, 250), ('shares', 1, 100000)):
+    for key, lo, hi in (('history_target_symbols', 1, 200), ('history_max_pairs', 1, 50), ('min_training_dates', 20, 1000), ('min_training_samples', 100, 1000000), ('min_class_samples', 10, 100000), ('holdout_days', 5, 250), ('shares', 1, 100000), ('model_retrain_every_days', 1, 20), ('forward_observe_days', 5, 60)):
         n = result[key]
         if isinstance(n, bool) or not isinstance(n, int) or not lo <= n <= hi: raise ValueError(f'{key} 超出安全範圍。')
     if result['min_class_samples'] * 2 > result['min_training_samples']: raise ValueError('正負樣本最低數量不可超過總樣本的一半。')
-    if not isinstance(result['learning_enabled'], bool) or not isinstance(result['history_weekends'], bool): raise ValueError('開關設定不正確。')
+    if any(not isinstance(result[k],bool) for k in ('learning_enabled','history_weekends','formal_candidate_for_live')): raise ValueError('開關設定不正確。')
     for key in ('history_window_start', 'history_window_end', 'learning_time'):
         if not isinstance(result[key], str) or not __import__('re').fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d', result[key]): raise ValueError('時間格式須為 HH:MM。')
     if result['history_window_start'] >= result['history_window_end']: raise ValueError('抓取開始時間須早於截止時間。')

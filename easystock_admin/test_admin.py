@@ -111,6 +111,15 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(candidate['state'], 'ok')
         self.assertIn('不需人工審核', candidate['detail'])
 
+    def test_health_exposes_profile_mismatch_warning(self):
+        from easystock_admin.health import snapshot
+        learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
+        (models/'shadow-summary.json').write_text(json.dumps({'warnings':[{'type':'profile_mismatch','line':'frozen_baseline'}]}))
+        with patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning),'EASYSTOCK_HISTORY_DATA':str(self.path.parent/'history')}):
+            result=snapshot(self.s)
+        signal=next(row for row in result['signals'] if row['key']=='model_profile')
+        self.assertEqual(signal['state'],'warning');self.assertIn('frozen_baseline',signal['detail'])
+
     def test_model_promotion_log_is_bounded_and_whitelisted(self):
         from easystock_admin.health import model_promotion_log
         learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
