@@ -1,19 +1,26 @@
 #!/usr/bin/env bash
-# Main-only update, preserving VM-local work and data; never resumes intraday automatically.
+# Main-only update, preserving VM-local work, data, and the prior timer mode.
 set -euo pipefail
 cd /home/ubuntu/easystock
 export GIT_PAGER=cat SYSTEMD_PAGER=cat
-restore_collect_only=0
-if systemctl is-enabled --quiet easystock-intraday.timer && test -f /etc/easystock/collect-only; then
-  restore_collect_only=1
-fi
+restore_intraday_timer=0
+collect_only_before=0
+systemctl is-enabled --quiet easystock-intraday.timer && restore_intraday_timer=1
+test -f /etc/easystock/collect-only && collect_only_before=1
 restore_timer() {
   status=$?
-  if [[ "$restore_collect_only" == 1 ]] && ! systemctl is-enabled --quiet easystock-intraday.timer; then
-    if bash deploy/enable_collect_only.sh; then
-      echo '已恢復同步前的 collect-only 當沖 timer。'
+  if [[ "$restore_intraday_timer" == 1 ]] && ! systemctl is-enabled --quiet easystock-intraday.timer; then
+    if [[ "$collect_only_before" == 1 ]]; then
+      restore_command=(bash deploy/enable_collect_only.sh)
+      restore_label='collect-only 排程'
     else
-      echo '無法自動恢復 collect-only timer；請檢查上方輸出。' >&2
+      restore_command=(sudo systemctl enable --now easystock-intraday.timer)
+      restore_label='模擬買進排程'
+    fi
+    if "${restore_command[@]}"; then
+      echo "已恢復同步前的${restore_label}。"
+    else
+      echo "無法自動恢復${restore_label}；請檢查上方輸出。" >&2
       [[ "$status" == 0 ]] && status=1
     fi
   fi
@@ -80,8 +87,8 @@ git branch --set-upstream-to=origin/main main
 printf '主線更新完成：'
 git rev-parse --short HEAD
 printf '備份位置：%s\n' "$backup"
-if [[ "$restore_collect_only" == 1 ]]; then
-  echo '同步前為 collect-only；結束時會自動恢復相同排程。'
+if [[ "$restore_intraday_timer" == 1 ]]; then
+  echo '同步前 timer 已啟用；結束時會自動恢復相同模式。'
 else
   echo '當沖 timer 保持停用；帳本副本驗證通過後，仍需核對模型與訓練服務。歷史下載於原排程執行時更新近期日期並嘗試擴充至 100 檔。'
 fi
