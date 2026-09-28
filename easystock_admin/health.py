@@ -92,7 +92,7 @@ def snapshot(store) -> dict:
     progress, history_error = _read_json(history_path)
 
     settings = store.get()
-    paper_trade = store.get_paper_trade()
+    paper_trade = store.get_paper_trade().get('settings', {})
     signals = [
         _market_session(),
         _signal('admin_store', '後台設定資料庫', 'ok', '可讀取目前設定版本。', settings.get('updated_at'), {'setting_version': settings.get('version')}),

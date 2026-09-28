@@ -78,6 +78,19 @@ class StoreTests(unittest.TestCase):
         with patch.dict(os.environ,{'EASYSTOCK_ADMIN_DB':str(self.path.parent/'missing.sqlite')}):
             with self.assertRaises(sqlite3.Error):read_live_settings()
 
+    def test_health_reads_nested_paper_trade_settings(self):
+        from easystock_admin.health import snapshot
+        with patch.dict(os.environ, {'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'), 'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history')}):
+            result = snapshot(self.s)
+        paper = next(row for row in result['signals'] if row['key'] == 'paper_trade')
+        self.assertEqual(paper['state'], 'idle')
+        self.s.start_paper_trade(200000)
+        with patch.dict(os.environ, {'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'), 'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history')}):
+            result = snapshot(self.s)
+        paper = next(row for row in result['signals'] if row['key'] == 'paper_trade')
+        self.assertEqual(paper['state'], 'ok')
+        self.assertEqual(paper['metrics']['current_capital'], 200000)
+
 class WebTests(unittest.TestCase):
     def setUp(self):
         from flask import Flask
