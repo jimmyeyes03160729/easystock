@@ -17,6 +17,7 @@ function showAdminTab(id){
   for(const button of document.querySelectorAll('[data-admin-tab]'))button.setAttribute('aria-selected',String(button.dataset.adminTab===id));
 }
 const healthLabels={ok:'正常',warning:'注意',error:'異常',idle:'等待'};
+function healthBadge(row){if(row.key==='paper_trade')return row.state==='ok'?'已啟用・等待交易時段':'已暫停';if(row.key==='market_session'&&row.state==='idle')return '今日休市';if(['market_credentials','firebase'].includes(row.key)&&row.state==='ok')return '已設定';if(row.key==='admin_store'&&row.state==='ok')return '可讀取';if(['training_worker','daily_learning_worker','download_worker'].includes(row.key)&&row.state==='idle')return '排程中';if(row.key==='candidate_model'&&row.state==='idle')return '尚無模型';if(row.key==='history_collection'&&row.state==='idle')return '等待時段';return healthLabels[row.state]||'未知';}
 function healthMetric(label,value){if(value===null||value===undefined)return null;const node=document.createElement('span');node.textContent=`${label} ${Number(value).toLocaleString('zh-TW')}`;return node;}
 function renderHealth(data){
   const rows=Array.isArray(data.signals)?data.signals:[];const target=el('healthSignals');target.replaceChildren();
@@ -26,7 +27,7 @@ function renderHealth(data){
     const card=document.createElement('article');card.className=`health-card health-${row.state||'idle'}`;
     const head=document.createElement('div');head.className='health-card-head';
     const title=document.createElement('h3');title.textContent=row.label||'未命名檢查';
-    const badge=document.createElement('span');badge.className='health-badge';badge.textContent=row.key==='paper_trade'?(row.state==='ok'?'已啟用・等待交易時段':'已暫停'):healthLabels[row.state]||'未知';head.append(title,badge);
+    const badge=document.createElement('span');badge.className='health-badge';badge.textContent=healthBadge(row);head.append(title,badge);
     const detail=document.createElement('p');detail.textContent=row.detail||'沒有附加說明。';card.append(head,detail);
     const metrics=document.createElement('div');metrics.className='health-metrics';
     const names={setting_version:'設定版本',samples:'樣本',labeled:'已標記',candidate_count:'候選數',completed_stock_days:'完成股票日',target_stock_days:'目標股票日',failed_stock_days:'失敗股票日',initial_capital:'起始本金',current_capital:'目前資金'};
