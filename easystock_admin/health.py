@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from daytrade_learning.model_runtime import model_runtime_consistency
+
 
 MAX_STATUS_BYTES = 1024 * 1024
 
@@ -204,7 +206,75 @@ def snapshot(store) -> dict:
             'failed_stock_days': _positive_int(progress.get('failed_stock_days')),
         }))
 
-    return {'generated_at': datetime.now(timezone.utc).isoformat(), 'signals': signals}
+    try:
+        consistency = model_runtime_consistency(
+            learning_data_dir=str(learning),
+            max_stale_seconds=int(os.environ.get('MODEL_RUNTIME_STALE_SECONDS', '90')),
+        )
+    except Exception as exc:
+        consistency = {
+            'status': 'RUNTIME_UNKNOWN',
+            'runtime': None,
+            'approved': None,
+            'match': False,
+            'reason': 'model_runtime_consistency_check_failed',
+            'error': f'{type(exc).__name__}: {exc}',
+        }
+    status_to_state = {
+        'OK': 'ok',
+        'MISMATCH': 'warning',
+        'RUNTIME_UNKNOWN': 'error',
+        'RUNTIME_STALE': 'error',
+        'APPROVED_MISSING': 'error',
+        'APPROVED_INVALID': 'error',
+    }
+    state = status_to_state.get(consistency['status'], 'error')
+    runtime = consistency.get('runtime') or {}
+    runtime_status = consistency.get('runtime_status') or {}
+    approved = consistency.get('approved') or {}
+    if consistency['status'] == 'OK':
+        detail = '盤中 process 實際載入的模型與 latest-approved artifact 一致。'
+    elif consistency['status'] == 'RUNTIME_UNKNOWN':
+        detail = '無法確認盤中 process 目前載入的模型；可能是尚未啟動、狀態遺失或模型載入失敗。'
+        if runtime.get('load_reason'):
+            detail += ' 載入原因：' + str(runtime['load_reason']) + '。'
+    elif consistency['status'] == 'RUNTIME_STALE':
+        detail = '盤中模型狀態太久未更新，不能視為目前正在使用的模型。'
+    elif consistency['status'] == 'APPROVED_MISSING':
+        detail = 'latest-approved.json 不存在；無法比對。'
+    elif consistency['status'] == 'APPROVED_INVALID':
+        detail = f'latest-approved.json 無法解析或不符合 schema：{consistency.get("reason")}'
+    else:
+        detail = '盤中 process 使用的模型與 latest-approved artifact 不一致；此為預期監控結果，不會自動重載。'
+    signals.append(_signal(
+        'model_runtime_consistency',
+        '盤中模型狀態',
+        state,
+        detail,
+        metrics={
+            'consistency_status': consistency['status'],
+            'match': bool(consistency.get('match')),
+            'reason': consistency.get('reason'),
+            'runtime_version': runtime.get('version'),
+            'runtime_profile': runtime.get('profile'),
+            'runtime_trained_through': runtime.get('trained_through'),
+            'runtime_loaded_at': runtime.get('loaded_at'),
+            'runtime_load_reason': runtime.get('load_reason'),
+            'runtime_entry_mode': runtime_status.get('entry_mode'),
+            'runtime_artifact_name': runtime.get('artifact_name'),
+            'runtime_sha256_short': (runtime.get('artifact_sha256') or '')[:12],
+            'approved_version': approved.get('version'),
+            'approved_profile': approved.get('profile'),
+            'approved_trained_through': approved.get('trained_through'),
+            'approved_sha256_short': (approved.get('artifact_sha256') or '')[:12],
+        },
+    ))
+
+    return {
+        'generated_at': datetime.now(timezone.utc).isoformat(),
+        'signals': signals,
+        'model_runtime_consistency': consistency,
+    }
 
 
 def model_promotion_log(page: int = 1, page_size: int = 10) -> dict:

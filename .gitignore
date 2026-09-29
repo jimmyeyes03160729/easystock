@@ -52,3 +52,4 @@ node_modules/
 *.sqlite-shm
 *.zip
 tools/sample_cards/
+runtime-model-status.json

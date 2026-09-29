@@ -30,7 +30,8 @@ def artifact(**overrides):
     return dict(dict(approved=True,deployment_allowed=True,schema_version=SCHEMA_VERSION,
                      features=list(FEATURES),mean=[0]*5,scale=[1]*5,coef=[0]*5,
                      intercept=0,threshold=.6,version='fixture',
-                     trained_through=datetime.now(TPE).date().isoformat()),**overrides)
+                     trained_through=datetime.now(TPE).date().isoformat(),
+                     profile='fixture-profile'),**overrides)
 
 
 class ModelTests(unittest.TestCase):

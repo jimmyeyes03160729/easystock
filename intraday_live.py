@@ -81,7 +81,7 @@ from public_feed import write_public_tick
 from position_manager import PositionManager
 from daytrade_learning.runtime import Recorder
 from market_risk import premarket_context, snapshot_risk, combine
-from daytrade_learning.model_runtime import DaytradeModel, live_features
+from daytrade_learning.model_runtime import DaytradeModel, live_features, write_runtime_model_status, refresh_runtime_model_status
 from easystock_admin.store import read_live_settings
 from strategy_engine import evaluate_daytrade, clamp
 
@@ -393,14 +393,14 @@ FIREBASE_PRICE_UPDATE_SECONDS = max(
     ),
 )
 
-HEARTBEAT_SECONDS = max(
-    5.0,
-    float(
-        os.environ.get(
-            "LIVE_HEARTBEAT_SECONDS",
-            "15",
-        )
-    ),
+try:
+    _configured_heartbeat = float(os.environ.get("LIVE_HEARTBEAT_SECONDS", "15"))
+except (TypeError, ValueError, OverflowError):
+    _configured_heartbeat = 15.0
+HEARTBEAT_SECONDS = (
+    _configured_heartbeat
+    if math.isfinite(_configured_heartbeat) and 5.0 <= _configured_heartbeat <= 300.0
+    else 15.0
 )
 
 LOOP_SLEEP_SECONDS = max(
@@ -2789,6 +2789,17 @@ class IntradayLiveEngine:
         self.entry_mode = os.environ.get('LIVE_ENTRY_MODE', 'model')
         if self.entry_mode not in {'rules', 'model'}:
             raise ValueError('LIVE_ENTRY_MODE must be rules or model')
+        self._runtime_instance_id = None
+        self._process_started_at = datetime.now(TPE).isoformat()
+        try:
+            self._runtime_instance_id = write_runtime_model_status(
+                self.daytrade_model.identity(),
+                entry_mode=self.entry_mode,
+                pid=os.getpid(),
+                process_started_at=self._process_started_at,
+            )
+        except Exception as exc:
+            print(f"[WARN] runtime model status write failed: {type(exc).__name__}: {exc}")
         print(f"[MODEL_BOOT] mode={self.entry_mode} collect_only={self.collect_only} ready={self.daytrade_model.artifact is not None} "
               f"version={self.daytrade_model.model_version} sha256={self.daytrade_model.artifact_sha256} "
               f"threshold={self.daytrade_model.threshold} learning={self.learning.enabled}")
@@ -4832,6 +4843,18 @@ class IntradayLiveEngine:
             self.store,
             self.market_level,
         )
+
+        if self._runtime_instance_id:
+            try:
+                refreshed = refresh_runtime_model_status(
+                    instance_id=self._runtime_instance_id,
+                    process_started_at=self._process_started_at,
+                )
+                if not refreshed:
+                    self._runtime_instance_id = None
+                    print(f"[WARN] runtime model status heartbeat yielded to a newer instance")
+            except Exception as exc:
+                print(f"[WARN] runtime model status refresh failed: {type(exc).__name__}: {exc}")
 
         self._last_heartbeat = (
             now_mono

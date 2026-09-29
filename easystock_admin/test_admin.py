@@ -120,6 +120,32 @@ class StoreTests(unittest.TestCase):
         signal=next(row for row in result['signals'] if row['key']=='model_profile')
         self.assertEqual(signal['state'],'warning');self.assertIn('frozen_baseline',signal['detail'])
 
+    def test_health_reports_model_runtime_consistency(self):
+        from easystock_admin.health import snapshot
+        learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
+        approved={'approved':True,'deployment_allowed':True,'schema_version':'daytrade-research-v1','features':['gain_pct','return_5m_pct','surge_60s','buy_ratio_60s','amount_60s'],'mean':[0]*5,'scale':[1]*5,'coef':[0]*5,'intercept':0,'threshold':.6,'version':'research-2026-09-28','trained_through':'2026-09-28','profile':'profile-a'}
+        (models/'latest-approved.json').write_text(json.dumps(approved))
+        from daytrade_learning.model_runtime import write_runtime_model_status
+        write_runtime_model_status({
+            'version':'research-2026-09-28','trained_through':'2026-09-28','profile':'profile-a','schema_version':'daytrade-research-v1',
+            'loaded_at':'2026-09-29T09:00:00+08:00','artifact_path':str(models/'latest-approved.json'),'artifact_sha256':'a'*64,
+        }, entry_mode='model', pid=1, path=models/'runtime-model-status.json')
+        dummy_market={'key':'market_session','label':'當沖時段','state':'ok','detail':'test','metrics':{}}
+        with patch('easystock_admin.health._market_session', return_value=dummy_market), patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning),'EASYSTOCK_HISTORY_DATA':str(self.path.parent/'history')}):
+            result=snapshot(self.s)
+        self.assertIn('model_runtime_consistency', result)
+        signal=next(row for row in result['signals'] if row['key']=='model_runtime_consistency')
+        self.assertEqual(signal['state'],'warning')
+        self.assertIn('不一致', signal['detail'])
+
+    def test_dashboard_has_runtime_model_section(self):
+        html=(ROOT/'easystock_admin/static/index.html').read_text(encoding='utf-8')
+        self.assertIn('runtimeModelPanel', html)
+        self.assertIn('rtVersion', html)
+        self.assertIn('apVersion', html)
+        self.assertIn('rtConsistency', html)
+        self.assertIn('rtMode', html)
+
     def test_health_treats_pair_limit_as_resumable_success(self):
         from easystock_admin.health import snapshot
         history=self.path.parent/'history';history.mkdir()

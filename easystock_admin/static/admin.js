@@ -38,6 +38,28 @@ function renderHealth(data){
     if(metrics.childNodes.length)card.append(metrics);target.append(card);
   }
   if(!rows.length)target.textContent='尚未收到檢測資料。';
+  if(data.model_runtime_consistency)renderRuntimeModel(data.model_runtime_consistency);
+}
+function renderRuntimeModel(c){
+  const statusIcons={OK:'✅',MISMATCH:'⚠️',RUNTIME_UNKNOWN:'❌',RUNTIME_STALE:'❌',APPROVED_MISSING:'❌',APPROVED_INVALID:'❌',PROFILE_MISMATCH:'⚠️',VERSION_MISMATCH:'⚠️'};
+  const statusText={OK:'Process = Approved',MISMATCH:'Process 與 Approved 不一致',RUNTIME_UNKNOWN:'Runtime Model Unknown',RUNTIME_STALE:'Runtime Status Stale',APPROVED_MISSING:'Approved Artifact Missing',APPROVED_INVALID:'Approved Artifact Invalid',PROFILE_MISMATCH:'Profile Mismatch',VERSION_MISMATCH:'Version Mismatch'};
+  const rt=c.runtime||{};
+  const runtimeStatus=c.runtime_status||{};
+  const ap=(c.approved&&c.approved.error)?{}:c.approved||{};
+  el('runtimeModelStatus').textContent=`狀態：${c.status} · ${c.reason||''}`;
+  el('rtVersion').textContent=rt.version||'--';
+  el('rtProfile').textContent='Profile: '+(rt.profile||'--');
+  el('rtTrained').textContent='Trained Through: '+(rt.trained_through||'--');
+  el('rtLoaded').textContent='Loaded At: '+(rt.loaded_at?new Date(rt.loaded_at).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'--');
+  el('rtSha').textContent='SHA: '+(rt.artifact_sha256||'--').slice(0,12);
+  el('apVersion').textContent=ap.version||'--';
+  el('apProfile').textContent='Profile: '+(ap.profile||'--');
+  el('apTrained').textContent='Trained Through: '+(ap.trained_through||'--');
+  el('apSha').textContent='SHA: '+(ap.artifact_sha256||'--').slice(0,12);
+  el('rtMode').textContent='Entry Mode: '+(runtimeStatus.entry_mode||'--');
+  const rulesDiagnostic=runtimeStatus.entry_mode==='rules'&&c.status==='OK';
+  el('rtConsistency').textContent=(statusIcons[c.status]||'❓')+' '+(rulesDiagnostic?'Rules mode（模型僅供診斷）':(statusText[c.status]||c.status));
+  el('rtReason').textContent=[c.reason,rt.load_reason].filter(Boolean).join(' · ');
 }
 async function loadHealth(){try{renderHealth(await api('health'));}catch(error){el('healthSummary').textContent=error.message;el('healthSignals').replaceChildren();}}
 function logValue(value,digits=0){const number=Number(value);return Number.isFinite(number)?number.toLocaleString('zh-TW',{minimumFractionDigits:digits,maximumFractionDigits:digits}):'—';}

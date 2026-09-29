@@ -88,26 +88,29 @@ python3 - <<'PY'
 from pathlib import Path
 import os
 
-path=Path('/home/ubuntu/easystock/.env')
-lines=path.read_text(encoding='utf-8').splitlines() if path.exists() else []
 updates={
     'LIVE_ENTRY_MODE':'model',
     'AI_PAPER_MODEL_PATH':'/home/ubuntu/easystock-learning-data/models/latest-approved.json',
 }
-seen=set(); out=[]
-for line in lines:
-    key=line.split('=',1)[0].strip() if '=' in line and not line.lstrip().startswith('#') else ''
-    if key in updates:
-        if key not in seen:
-            out.append(f'{key}={updates[key]}'); seen.add(key)
-    else:
-        out.append(line)
-for key,value in updates.items():
-    if key not in seen: out.append(f'{key}={value}')
-temp=path.with_suffix('.env.tmp')
-temp.write_text('\n'.join(out)+'\n',encoding='utf-8')
-temp.chmod(0o600); os.replace(temp,path)
-print('已啟用每日最新模型供次一交易日模擬當沖使用。')
+paths = [Path('/home/ubuntu/easystock/.env'), Path('/home/ubuntu/easystock-ai-paper.env')]
+for path in paths:
+    if not path.exists() and path.name != '.env':
+        continue
+    lines=path.read_text(encoding='utf-8').splitlines() if path.exists() else []
+    seen=set(); out=[]
+    for line in lines:
+        key=line.split('=',1)[0].strip() if '=' in line and not line.lstrip().startswith('#') else ''
+        if key in updates:
+            if key not in seen:
+                out.append(f'{key}={updates[key]}'); seen.add(key)
+        else:
+            out.append(line)
+    for key,value in updates.items():
+        if key not in seen: out.append(f'{key}={value}')
+    temp=path.with_name(path.name+'.env.tmp')
+    temp.write_text('\n'.join(out)+'\n',encoding='utf-8')
+    temp.chmod(0o600); os.replace(temp,path)
+    print('已更新正式 intraday 環境：'+str(path))
 PY
 printf '主線更新完成：'
 git rev-parse --short HEAD
