@@ -1,4 +1,4 @@
-import { SYMBOL, GROUPS, finite, fresh, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, fetchStockClosingQuotes, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, BROKERS, getBroker } from './core.js';
+import { SYMBOL, GROUPS, QUOTE_FRESH_MS, finite, fresh, formatTaipeiQuoteTime, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, fetchStockClosingQuotes, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, BROKERS, getBroker } from './core.js';
 import { icons } from './icons.js';
 
 const $ = id => (typeof document !== 'undefined' && document ? document.getElementById(id) : null);
@@ -18,6 +18,16 @@ function status(text, error = false) {
   $('update-timestamp').classList.toggle('text-red-600', error);
   $('action-message').textContent = text;
   $('action-message').classList.toggle('text-red-600', error);
+}
+
+function quoteDisplayTime(q) {
+  const stamp = q?.quote_at || q?.updated_at;
+  if (typeof stamp === 'string' && /(Z|[+-]\d{2}:\d{2})$/.test(stamp) && Number.isFinite(Date.parse(stamp))) {
+    return formatTaipeiQuoteTime(stamp);
+  }
+  const raw = String(q?.time || '').trim();
+  const match = raw.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
+  return match ? `${String(match[1]).padStart(2, '0')}:${match[2]}` : '--:--';
 }
 
 // 即時 In-App 彈窗通知 (雙重保險：即使 Windows 吃掉通知，小工具內也絕對能看見彈窗！)
@@ -99,6 +109,7 @@ function renderTaiex() {
     $('otc-price').textContent = '-';
     $('otc-price').className = 'font-medium text-slate-700';
     $('otc-change').textContent = '-';
+    if ($('taiex-data-time')) $('taiex-data-time').textContent = '資料時間 --:--:--';
     if (banner) banner.className = 'flex items-center justify-between px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[11px]';
     return;
   }
@@ -108,6 +119,8 @@ function renderTaiex() {
   const sign = isUp ? '+' : '';
   const colorClass = isUp ? 'text-red-600' : (isDown ? 'text-emerald-600' : 'text-slate-600');
 
+  const sourceTime = String(tInfo.time || '').match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/)?.[0] || '--:--:--';
+  if ($('taiex-data-time')) $('taiex-data-time').textContent = `資料時間 ${sourceTime}`;
   $('taiex-price').textContent = tInfo.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   $('taiex-price').className = `font-bold ${colorClass}`;
   $('taiex-change').textContent = `${arrow}${sign}${tInfo.change.toFixed(2)} (${sign}${tInfo.change_pct.toFixed(2)}%)`;
@@ -162,7 +175,7 @@ function applyDarkMode(enabled) {
   const btnIcon = $('theme-btn-icon');
   const toggleCheckbox = $('toggle-dark-mode');
   if (toggleCheckbox) toggleCheckbox.checked = !!enabled;
-  if (tag) tag.textContent = 'v1.01';
+  if (tag) tag.textContent = 'v1.02';
   if (enabled) {
     if (btnIcon) btnIcon.textContent = '☀️';
     if (btnLabel) btnLabel.textContent = '光明';
@@ -622,7 +635,7 @@ function renderWatchlist(list, isCompact, pageSize) {
 
     // 欄位 6：時間 (平時顯示時間，Hover 時切換為紅色刪除按鈕，空間互斥絕不重疊)
     const col6 = el('div', '', 'text-right flex items-center justify-end relative pr-0.5');
-    const timeText = q?.time || (q?.updated_at && Number.isFinite(Date.parse(q.updated_at)) ? new Date(q.updated_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false }) : '13:30');
+    const timeText = quoteDisplayTime(q);
     const timeSpan = el('span', timeText, 'col-time-text stock-sub font-mono text-slate-400');
     const delBtn = el('button', '×', 'btn-row-delete text-slate-400 hover:text-red-600 font-bold text-base px-1 leading-none cursor-pointer bg-slate-100 hover:bg-red-50 rounded');
     delBtn.title = `從自選刪除 ${s.symbol}`;
@@ -1108,9 +1121,11 @@ function render() {
 
 async function enrichMissingQuotes() {
   if (!view || enriching || view.vm) return;
+  const now = Date.now();
   const missing = view.stocks.filter(s => {
     const q = view.quotes?.[s.symbol];
-    return !q || !finite(calcChangePct(q)) || !finite(q.price);
+    const stamp = q?.quote_at || q?.updated_at;
+    return !q || !finite(calcChangePct(q)) || !finite(q.price) || (view.marketOpen && !fresh(stamp, now, QUOTE_FRESH_MS));
   });
   if (!missing.length) return;
   enriching = true;
@@ -1120,13 +1135,18 @@ async function enrichMissingQuotes() {
       if (!view.quotes) view.quotes = {};
       let updated = false;
       for (const [sym, item] of Object.entries(closingMap)) {
-        if (!view.quotes[sym] || !finite(view.quotes[sym].price)) {
-          view.quotes[sym] = item;
+        const old = view.quotes[sym];
+        const oldStamp = old?.quote_at || old?.updated_at;
+        if (!old || !finite(old.price) || (view.marketOpen && !fresh(oldStamp, Date.now(), QUOTE_FRESH_MS))) {
+          view.quotes[sym] = { ...(old || {}), ...item, name: old?.name || item.name };
           updated = true;
-        } else if (!finite(calcChangePct(view.quotes[sym]))) {
-          view.quotes[sym].change_pct = item.change_pct;
-          view.quotes[sym].change = item.change;
-          view.quotes[sym].previous_close = item.previous_close;
+        } else if (!finite(calcChangePct(old))) {
+          old.change_pct = item.change_pct;
+          old.change = item.change;
+          old.previous_close = item.previous_close;
+          old.quote_at = item.quote_at || old.quote_at;
+          old.updated_at = item.updated_at || old.updated_at;
+          old.time = item.time || old.time;
           updated = true;
         }
       }
@@ -1572,4 +1592,22 @@ document.addEventListener('keydown', e => {
 
 icons();
 $('settings-panel').inert = true;
-await act({ type: 'SNAPSHOT', refresh: true });
+
+// Render saved theme/layout and cached market data immediately, then refresh in the background.
+try {
+  const saved = await chrome.storage.local.get('state');
+  const settings = saved?.state?.settings || {};
+  applyDarkMode(settings.darkMode !== false);
+  applyWindowHeight(Number(settings.windowHeight) || 500);
+} catch (_) {
+  applyDarkMode(true);
+  applyWindowHeight(500);
+}
+await act({ type: 'BOOTSTRAP' });
+void act({ type: 'SNAPSHOT', refresh: true });
+
+// Index data is intentionally refreshed more often than the broad five-minute feed.
+const taiexRefreshTimer = setInterval(() => {
+  if (!pending && view?.marketOpen) void act({ type: 'SNAPSHOT', taiexOnly: true });
+}, 30000);
+window.addEventListener('unload', () => clearInterval(taiexRefreshTimer));
