@@ -22,7 +22,7 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
     }
     return { ok: true, value: m.type === 'TEST' ? { sent: true } : structuredClone(state) };
   } }, tabs: { create: async t => { openedTabs.push(t); } } };
-  for (const key of ['SYMBOL', 'GROUPS', 'finite', 'fresh', 'watchlist', 'chartURL', 'searchStocks', 'searchOnlineStocks', 'calcChangePct', 'fetchStockClosingQuotes', 'formatTelegramEntry', 'formatTelegramExit', 'formatTelegramRebound', 'BROKERS', 'getBroker']) w[key] = core[key];
+  for (const key of ['SYMBOL', 'GROUPS', 'QUOTE_FRESH_MS', 'finite', 'fresh', 'formatTaipeiQuoteTime', 'watchlist', 'chartURL', 'searchStocks', 'searchOnlineStocks', 'calcChangePct', 'fetchStockClosingQuotes', 'formatTelegramEntry', 'formatTelegramExit', 'formatTelegramRebound', 'BROKERS', 'getBroker']) w[key] = core[key];
   w.icons = () => {};
   state.taiex = { price: 22800.5, change: 150.2, change_pct: 0.66, otc_price: 270.1, otc_change: 1.2, otc_change_pct: 0.45 };
   await w.eval(`(async()=>{${source.replace(/^import .*;\r?\n/gm, '')}})()`);
@@ -110,7 +110,7 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.equal(w.document.body.classList.contains('dark-mode'), true);
   assert.match(w.document.getElementById('brand-title').textContent, /牛馬自救終端/);
   assert.equal(w.document.getElementById('theme-btn-label').textContent, '光明');
-  assert.equal(w.document.getElementById('brand-tag').textContent, 'v1.01');
+  assert.equal(w.document.getElementById('brand-tag').textContent, 'v1.02');
 
   themeBtn.click();
   await new Promise(r => setTimeout(r, 0));
