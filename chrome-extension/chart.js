@@ -52,7 +52,7 @@ setText('badge-market', market === 'TWO' ? '上櫃' : '上市');
 const stBadge = document.getElementById('badge-strategy');
 if (stBadge) {
   if (strategyType) {
-    stBadge.textContent = strategyType === 'daytrade' ? '當沖策略' : (strategyType === 'rebound' ? '觸底反彈' : strategyType);
+    stBadge.textContent = strategyType === 'daytrade' ? '????' : strategyType;
     stBadge.style.display = 'inline-block';
   } else {
     stBadge.style.display = 'none';
@@ -508,7 +508,7 @@ async function loadData(force = false) {
       }
     }
 
-    // 檢查當沖/反彈即時持倉資訊
+    // 檢查當沖即時持倉資訊
     try {
       const liveRes = await fetch(`${FIREBASE_ROOT}/intraday_live.json`).catch(() => null);
       if (liveRes && liveRes.ok) {

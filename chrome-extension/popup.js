@@ -1,4 +1,4 @@
-import { SYMBOL, GROUPS, QUOTE_FRESH_MS, finite, fresh, formatTaipeiQuoteTime, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, fetchStockClosingQuotes, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, BROKERS, getBroker } from './core.js';
+import { SYMBOL, GROUPS, QUOTE_FRESH_MS, finite, fresh, formatTaipeiQuoteTime, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, fetchStockClosingQuotes, formatTelegramEntry, formatTelegramExit, BROKERS, getBroker } from './core.js';
 import { icons } from './icons.js';
 
 const $ = id => (typeof document !== 'undefined' && document ? document.getElementById(id) : null);
@@ -84,10 +84,8 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       const s = msg.signal;
       const isExit = s.action === 'SELL' || s.id?.startsWith('exit:');
       const isDaytrade = s.strategy === 'daytrade';
-      const isRebound = s.strategy === 'rebound';
       showInAppToast({
-        badgeText: isExit ? '✅ 當沖出場' : (isRebound ? '🛡️ 觸底反彈' : '🚀 當沖進場'),
-        badgeColor: isExit ? 'bg-emerald-600' : (isRebound ? 'bg-purple-600' : 'bg-sky-600'),
+        badgeColor: isExit ? 'bg-emerald-600' : 'bg-sky-600',
         titleText: s.title || `${s.symbol} ${s.name || ''}`,
         bodyText: s.telegramText || `${s.symbol} ${s.name || ''} 現價 ${s.price} 元\n${s.reason || ''}`,
         symbol: s.symbol,
@@ -498,14 +496,6 @@ function renderStrategyBar() {
       const m = s?.market || ((sym.length === 4 && (sym.startsWith('5') || sym.startsWith('6') || sym.startsWith('8'))) ? 'TWO' : 'TW');
       return { symbol: sym, market: m, name: p.name || s?.name || sym, groups: ['watchlist'] };
     });
-  } else if (group === 'rebound') {
-    title = '🛡️ 觸底反彈策略標的';
-    targets = (view.bounce || []).map(b => ({
-      symbol: b.symbol,
-      market: b.market,
-      name: b.name || b.symbol,
-      groups: ['watchlist']
-    }));
   }
 
   if (!targets.length) {
@@ -583,7 +573,6 @@ function renderWatchlist(list, isCompact, pageSize) {
 
     // 系統狀態提示標籤
     const activePos = view.live?.open_positions?.[s.symbol];
-    const isReboundTarget = view.bounce?.some(b => b.symbol === s.symbol);
 
     // 欄位 1：個股 (代號可點開分時線圖 + 中文名稱)
     const col1 = el('div', '', 'text-left min-w-0 pr-1 flex flex-col justify-center');
@@ -592,7 +581,7 @@ function renderWatchlist(list, isCompact, pageSize) {
     symLink.title = `點擊查看 ${s.symbol} 分時走勢圖`;
     symLink.onclick = (e) => {
       e.preventDefault();
-      openChartWindow(s, activePos ? 'daytrade' : (isReboundTarget ? 'rebound' : ''));
+      openChartWindow(s, activePos ? 'daytrade' : '');
     };
     const nameRow = el('div', '', 'flex items-center gap-1 min-w-0');
     const nameSpan = el('span', s.name, 'stock-name text-slate-700 truncate font-medium leading-tight');
@@ -882,108 +871,6 @@ function renderDaytrade(list, isCompact) {
   }
 }
 
-// 渲染系統觸底反彈清單 (獨立策略區塊，同步 jimmyeyes.com/easystock 底部反彈)
-function renderRebound(list, isCompact) {
-  const bounceList = view.bounce || [];
-  if (!bounceList.length) {
-    const emptyBox = el('div', '', 'p-4 text-center space-y-1 bg-white border border-slate-200 rounded-lg');
-    emptyBox.append(el('div', '🛡️', 'text-2xl mb-1'));
-    emptyBox.append(el('h3', '目前無觸底反彈觀察標的', 'text-xs font-bold text-slate-700'));
-    emptyBox.append(el('p', '系統後台定時掃描技術面支撐區、量能回升與超跌指標，出現訊號將自動推播。', 'text-[11px] text-slate-400 leading-relaxed'));
-    list.append(emptyBox);
-    return;
-  }
-
-  const existingSymbols = new Set(view.stocks.map(x => x.symbol));
-
-  // 頂部小橫條
-  const headerSummary = el('div', '', 'flex items-center justify-between text-[11px] text-purple-900 bg-purple-50/80 px-2.5 py-1.5 rounded-lg border border-purple-200/80');
-  headerSummary.append(el('span', `🛡️ 技術面回踩／突破確認 · 共 ${bounceList.length} 檔`, 'font-semibold'));
-  headerSummary.append(el('span', '波段持有數日', 'text-[10px] text-purple-700'));
-  list.append(headerSummary);
-
-  for (const b of bounceList) {
-    const sym = b.symbol;
-    const name = b.name || sym;
-    const m = b.market || 'TW';
-    const q = view.quotes?.[sym];
-    const price = (q && finite(q.price) && q.price > 0) ? q.price : (finite(b.price) ? b.price : 0);
-    const changePctVal = calcChangePct(q) ?? b.change_pct;
-    const validPct = finite(changePctVal);
-    const pct = validPct ? `${changePctVal >= 0 ? '+' : ''}${changePctVal.toFixed(2)}%` : '-';
-    const pctColor = validPct ? (changePctVal >= 0 ? 'text-red-600' : 'text-emerald-600') : 'text-slate-400';
-
-    const card = el('article', '', `stock-card border border-purple-200 bg-purple-50/20 rounded-lg ${isCompact ? 'p-2' : 'p-3'} space-y-1.5 shadow-2xs`);
-
-    // 標題列
-    const top = el('div', '', 'flex items-center justify-between gap-1');
-    const leftTitle = el('div', '', 'flex items-center gap-1.5 min-w-0');
-    leftTitle.append(el('h2', `${sym} ${name}`, 'text-xs font-bold text-slate-900 truncate'));
-    leftTitle.append(el('span', m === 'TWO' ? '上櫃' : '上市', 'text-[9px] text-slate-400 bg-slate-100 px-1 py-0.2 rounded shrink-0'));
-    const badgeLabel = b.confirmation === 'breakout' ? '突破確認' : (b.confirmation === 'pullback' ? '均線回踩' : '反彈觀察');
-    leftTitle.append(el('span', badgeLabel, 'text-[9px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.2 rounded shrink-0'));
-    if (b.score) {
-      leftTitle.append(el('span', `分: ${b.score}`, 'text-[9px] bg-purple-50 text-purple-700 px-1 py-0.2 rounded font-mono shrink-0'));
-    }
-    top.append(leftTitle);
-
-    const inWatch = existingSymbols.has(sym);
-    if (inWatch) {
-      top.append(el('span', '✓ 已在自選', 'text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0'));
-    } else {
-      const addBtn = el('button', '＋加入自選', 'text-[10px] font-semibold text-purple-600 hover:text-purple-800 bg-white hover:bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded shrink-0 transition cursor-pointer');
-      addBtn.addEventListener('click', async () => {
-        await handleAddStock({ symbol: sym, market: m, name });
-      });
-      top.append(addBtn);
-    }
-    card.append(top);
-
-    // 價格與漲跌
-    const priceRow = el('div', '', 'flex items-center justify-between');
-    const leftPrice = el('div', '', 'flex items-baseline gap-2');
-    leftPrice.append(el('strong', price > 0 ? `${price.toFixed(2)} 元` : '尚無報價', 'font-bold text-slate-900 text-sm'));
-    priceRow.append(leftPrice);
-
-    const rightPct = el('div', '', 'flex items-center gap-2');
-    rightPct.append(el('span', pct, `text-xs font-bold ${pctColor}`));
-
-    const chartBtn = el('a', '線圖 ↗', 'text-[11px] text-sky-700 cursor-pointer font-medium hover:underline shrink-0');
-    chartBtn.href = chartURL({ symbol: sym, market: m });
-    chartBtn.target = '_blank';
-    chartBtn.onclick = (e) => {
-      e.preventDefault();
-      openChartWindow({ symbol: sym, market: m, name }, 'rebound');
-    };
-    rightPct.append(chartBtn);
-
-    const broker = getBroker(view.settings?.preferredBroker);
-    const orderBtnText = broker.id === 'observe'
-      ? '👀 觀察中'
-      : (broker.isObserve ? `${broker.icon || '📈'} ${broker.shortName}看盤 ↗` : `${broker.icon || '🚀'} ${broker.shortName}下單 ↗`);
-    const orderBtnTitle = broker.id === 'observe'
-      ? `點擊複製 ${sym}（純觀察模式，不跳轉網頁）`
-      : (broker.isObserve ? `點擊複製 ${sym} 並前往 ${broker.name} 看盤` : `點擊複製 ${sym} 並前往 ${broker.name} 下單`);
-    const orderBtn = el('button', orderBtnText, `btn-broker-order text-[11px] ${broker.badgeColor || 'bg-purple-600'} hover:opacity-90 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0`);
-    orderBtn.title = orderBtnTitle;
-    orderBtn.onclick = (e) => {
-      e.preventDefault();
-      openBrokerOrder(sym, m, name);
-    };
-    rightPct.append(orderBtn);
-
-    priceRow.append(rightPct);
-    card.append(priceRow);
-
-    // 反彈理由
-    if (b.reason) {
-      card.append(el('p', `🛡️ ${b.reason}`, 'text-[10px] text-purple-700 bg-purple-50/80 px-1.5 py-0.5 rounded truncate'));
-    }
-
-    list.append(card);
-  }
-}
-
 function renderBrokerSelector() {
   const currentId = view?.settings?.preferredBroker || 'sinopac';
   const currentBroker = getBroker(currentId);
@@ -1019,7 +906,6 @@ function render() {
     if ($(`toggle-${key}`)) $(`toggle-${key}`).checked = view.settings[key];
   }
   if ($('toggle-all-daytrade')) $('toggle-all-daytrade').checked = view.settings?.allDaytradeAlerts !== false;
-  if ($('toggle-all-rebound')) $('toggle-all-rebound').checked = view.settings?.allReboundAlerts !== false;
   applyDarkMode(view.settings?.darkMode);
 
   // 視窗高度自定義 (比照截圖：預設 500px 即 +20px)
@@ -1102,10 +988,6 @@ function render() {
   }
   if (group === 'daytrade') {
     renderDaytrade(list, isCompact);
-    return;
-  }
-  if (group === 'rebound') {
-    renderRebound(list, isCompact);
     return;
   }
   // 預設為 'watchlist' 自選看股
@@ -1329,7 +1211,7 @@ $('group-tabs').addEventListener('click', e => {
 });
 $('btn-refresh').addEventListener('click', () => act({ type: 'SNAPSHOT', refresh: true }));
 
-for (const strategy of ['daytrade', 'rebound']) {
+for (const strategy of ['daytrade']) {
   $(`toggle-${strategy}`)?.addEventListener('change', async e => {
     await act({ type: 'SETTINGS', strategy, enabled: e.target.checked }); if (view) render();
   });
@@ -1378,30 +1260,8 @@ $('btn-test-exit-notif')?.addEventListener('click', async () => {
   await act({ type: 'TEST', action: 'SELL' }, '已發送 Chrome 賣出推播（桌面通知與即時彈窗雙發送）');
 });
 
-$('btn-test-rebound-notif')?.addEventListener('click', async () => {
-  const fakeRebound = {
-    symbol: '2330', name: '台積電', market: 'TW', price: 1000, change_pct: 1.25,
-    strategy: 'rebound', reason: '技術面支撐區反彈、量能回升、超跌反轉'
-  };
-  const telegramText = formatTelegramRebound(fakeRebound);
-  showInAppToast({
-    badgeText: '🛡️ 觸底反彈訊號',
-    badgeColor: 'bg-purple-600',
-    titleText: '2330 台積電 (反彈觀察測試)',
-    bodyText: telegramText,
-    symbol: '2330',
-    market: 'TW',
-    name: '台積電',
-    strategy: 'rebound'
-  });
-  await act({ type: 'TEST', strategy: 'rebound' }, '已發送 Chrome 反彈推播（桌面通知與即時彈窗雙發送）');
-});
-
 $('toggle-all-daytrade')?.addEventListener('change', async e => {
   await act({ type: 'SETTINGS', strategy: 'allDaytradeAlerts', enabled: e.target.checked }); if (view) render();
-});
-$('toggle-all-rebound')?.addEventListener('change', async e => {
-  await act({ type: 'SETTINGS', strategy: 'allReboundAlerts', enabled: e.target.checked }); if (view) render();
 });
 
 // 視窗高度滑桿監聽 (圖片1效果：即時拉動調整 body 高度與儲存)

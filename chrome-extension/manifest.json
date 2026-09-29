@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "當沖吧！牛馬仔 - 工位摸魚看盤神器 ｜ 台股 AI 量化雷達",
-  "version": "1.0.3",
+  "version": "1.0.2",
   "minimum_chrome_version": "116",
   "description": "上班摸魚不露餡！台股盤中爆量雷達、突破點火即時推播與自救量化分析，打工人專屬的桌面極速看盤室。",
   "permissions": [
@@ -51,5 +51,5 @@
       "run_at": "document_idle"
     }
   ],
-  "version_name": "1.03"
+  "version_name": "1.02"
 }

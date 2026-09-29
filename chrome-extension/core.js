@@ -3,7 +3,7 @@ export const TAIEX_TTL = 30 * 1000;
 export const QUOTE_FRESH_MS = 90 * 1000;
 export const COOLDOWN = 30 * 60 * 1000;
 export const SYMBOL = /^\d{4,6}[A-Z]?$/;
-export const GROUPS = ['daytrade', 'rebound', 'watchlist'];
+export const GROUPS = ['daytrade', 'watchlist'];
 export const plain = v => !!v && typeof v === 'object' && !Array.isArray(v);
 export const finite = v => typeof v === 'number' && Number.isFinite(v);
 
@@ -327,7 +327,6 @@ export function watchlist(value) {
 export function config(value) {
   if (!plain(value) || value.schema_version !== 1 || typeof value.global_vip_switch !== 'boolean') throw new Error('遠端設定格式或版本不符');
   if (!Array.isArray(value.vip_keys_hash) || value.vip_keys_hash.length > 1000 || value.vip_keys_hash.some(x => typeof x !== 'string' || !/^[a-f0-9]{64}$/.test(x))) throw new Error('VIP 設定格式錯誤');
-  if (!Array.isArray(value.bounce_strategy_signals) || value.bounce_strategy_signals.length > 100) throw new Error('反彈設定格式錯誤');
   const daytrade = value.daytrade_strategy_signals ?? [];
   if (!Array.isArray(daytrade) || daytrade.length > 100) throw new Error('當沖設定格式錯誤');
   const holidays = value.market_holidays ?? [];
@@ -339,7 +338,7 @@ export function config(value) {
     payment = url.href;
   }
   return { schema_version: 1, global_vip_switch: value.global_vip_switch, vip_keys_hash: value.vip_keys_hash,
-    bounce_strategy_signals: value.bounce_strategy_signals, daytrade_strategy_signals: daytrade,
+    daytrade_strategy_signals: daytrade,
     payment_gateway_url: payment, market_holidays: holidays };
 }
 export async function sha256(text) {
@@ -424,26 +423,6 @@ export function formatTelegramExit(t) {
     `持有時間：${durText}`,
     ``,
     `出場原因：${reason}`
-  ].join('\n');
-}
-
-export function formatTelegramRebound(s) {
-  const symbol = s.symbol || '';
-  const name = s.name || symbol;
-  const price = finite(s.price) ? s.price.toFixed(2) : '-';
-  const pct = finite(s.change_pct) ? `${s.change_pct >= 0 ? '+' : ''}${s.change_pct.toFixed(2)}%` : '-';
-  const reason = s.reason || '技術面觸底反彈訊號，量能回升';
-
-  return [
-    `🛡️【觸底反彈訊號】`,
-    ``,
-    `${symbol} ${name}`,
-    `現價：${price} 元｜漲跌：${pct}`,
-    ``,
-    `反彈觀察理由：`,
-    `✓ ${reason}`,
-    ``,
-    `狀態：REBOUND (觀察中)`
   ].join('\n');
 }
 
@@ -559,9 +538,7 @@ export function defaultState() {
   return { version: 1, stocks: [stock({ symbol: '2330', name: '台積電', market: 'TW', groups: ['watchlist'] })],
     settings: {
       daytrade: true,
-      rebound: true,
       allDaytradeAlerts: true,
-      allReboundAlerts: true,
       filterMode: 'all',
       minPrice: null,
       maxPrice: null,
