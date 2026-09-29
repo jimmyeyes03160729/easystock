@@ -68,7 +68,7 @@ def shadow(data,day,profile,rows,formal=None):
     entry={'date':day,'profile':profile,'evaluated_at':datetime.now(TPE).isoformat(),'lines':lines,'warnings':warnings}
     existing=jsonl(models/'shadow-log.jsonl')
     if append_once(models/'shadow-log.jsonl',day,entry):existing.append(entry)
-    save(models/'shadow-summary.json',{'through':day,'lines':cumulative(existing),'warnings':warnings})
+    save(models/'shadow-summary.json',{'through':day,'profile':profile,'lines':cumulative(existing),'warnings':warnings})
     return entry
 
 def archive(models,path,prefix,day):

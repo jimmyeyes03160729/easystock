@@ -218,6 +218,9 @@ def _default_models_dir():
 
 def resolve_runtime_status_path(models_dir=None):
     """Return the runtime status path consistent with the active model path."""
+    configured = os.environ.get('MODEL_RUNTIME_STATUS_PATH', '').strip()
+    if configured:
+        return Path(configured)
     if models_dir is None:
         models_dir = _default_models_dir()
     return Path(models_dir) / RUNTIME_STATUS_FILE

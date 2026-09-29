@@ -203,7 +203,13 @@ def snapshot(store) -> dict:
     mismatches = [item for item in (shadow_summary or {}).get('warnings', []) if item.get('type') == 'profile_mismatch']
     if mismatches:
         names = '、'.join(str(item.get('line') or '未知模型') for item in mismatches)
-        signals.append(_signal('model_profile', '模型參數一致性', 'warning', f'目前交易參數與 {names} 不同；該線今日已停止比較，請勿把兩組樣本混合解讀。', _updated_at(shadow_path)))
+        current_profile = (shadow_summary or {}).get('profile') or '未提供'
+        signals.append(_signal(
+            'model_profile', '模型參數一致性', 'warning',
+            f'目前研究 profile={current_profile}；{names} 使用不同 profile，該線已停止比較，請勿混合解讀。',
+            _updated_at(shadow_path),
+            {'current_profile': current_profile, 'mismatched_lines': names},
+        ))
     elif shadow_summary:
         signals.append(_signal('model_profile', '模型參數一致性', 'ok', '今日影子評估的模型與交易參數一致。', _updated_at(shadow_path)))
 

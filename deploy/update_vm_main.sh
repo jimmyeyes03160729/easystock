@@ -100,6 +100,7 @@ import os
 updates={
     'LIVE_ENTRY_MODE':'model',
     'AI_PAPER_MODEL_PATH':'/home/ubuntu/easystock-learning-data/models/latest-approved.json',
+    'MODEL_RUNTIME_STATUS_PATH':'/home/ubuntu/easystock-learning-data/models/runtime-model-status.json',
 }
 paths = [Path('/home/ubuntu/easystock/.env'), Path('/home/ubuntu/easystock-ai-paper.env')]
 for path in paths:
