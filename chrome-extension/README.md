@@ -2,6 +2,19 @@
 
 完整 Manifest V3 原始碼。保留使用者提供的 400 × 600 popup 結構、配色及設定抽屜；Tailwind 編譯為本機 CSS，圖示與 JavaScript 全數隨套件提供。不含券商帳密，不下單，不改動 LINE / Telegram。
 
+## 1.02 Bugfix 重點
+
+1.02 是 1.0X 穩定線，不加入 Google 登入或 Firebase 個人同步；這些大型功能延後到 2.0。
+
+- 加權指數盤中改為獨立 30 秒刷新，並顯示 TWSE 實際資料時間。
+- 手動重新整理真正 bypass 行情快取；自選報價同時依 `quote_at / updated_at` freshness 重抓。
+- Yahoo 報價時間統一轉成帶 offset 的 ISO 8601，前端只做一次 `Asia/Taipei` 顯示，移除重複 +8 風險。
+- 分時 X 軸預設固定 09:00～13:30，未到時間區段保留空白。
+- 盤中日 K 由歷史日 K + 真實當日 1 分 K OHLC 合併，今日棒標記為 partial；不以假資料補 K。
+- Popup 先顯示固定高度 Shell / Skeleton 與已儲存主題，再背景刷新，避免初次白屏與視窗縮小。
+- `market_data/rebound_feed` 成為 range-rebound 單一正式發布來源；Web 與 Chrome 優先讀同一 release / strategy version。
+
+
 ## 安裝與隔離 VM 測試
 
 1. 在 `chrome-extension` 執行 `pnpm install --frozen-lockfile`、`pnpm build`、`pnpm test`。
@@ -43,11 +56,11 @@ GitHub 配置成功或失敗請求都有五分鐘節流，重新整理不繞過 
 - 目前公開 feed 常只有 price/name/updated_at/volume，沒有當日漲跌幅。此時實際訊號顯示「漲跌幅未提供」，絕不以 0% 或相對進場損益冒充。若未來發布 `change_pct` 或 `previous_close`，背景可顯示/計算日漲跌幅。沒有任何訊號時保持安靜。
 - 可以透過配置 `daytrade_strategy_signals` 發布完整訊號；必要欄位與反彈一致。
 
-### 反彈配置
+### 反彈資料
 
-`bounce_strategy_signals` 是後台發布的觀察訊號，不是擴充功能自算的勝率模型。每筆需要 `id, symbol, market, name, price, change_pct, reason, generated_at, quote_at`。id 必須跨輪詢穩定，同一推薦更新報價不得反覆改 id 製造重複事件。過期/不完整/未來時間的資料不推播、不列為當前推薦。自選股票須勾選反彈且開啟策略才通知；推薦顯示不等於交易建議。
+1.02 起優先讀取 Firebase `market_data/rebound_feed`。此 feed 由 `update_market.py` 使用 `range_rebound.py`（`range-rebound-0.3`）發布，網站 `assets/rebound-ui.js` 與 Chrome Extension 共享同一份 `release_id / generated_at / quote_at / strategy_version`，避免首頁有標的而小工具沒有。
 
-空配置代表未發布訊號，不能說沒有機會。本次未部署每日/即時生成 GitHub 反彈 JSON 的新伺服器排程，現有網頁的反彈卡也不會被擴充功能自動抓取。要自動更新該清單，須由現有後台接續發布符合格式的訊號。
+`bounce_strategy_signals` 仍保留為管理端相容 / 覆蓋訊號來源，但不再使用 hard-coded featured symbols 補資料。正式 feed 每筆至少包含 `id, symbol, market, name, price, change_pct, reason, generated_at, quote_at`；不完整或未來時間資料不推播。
 
 ### VIP 與付款安全邊界
 
