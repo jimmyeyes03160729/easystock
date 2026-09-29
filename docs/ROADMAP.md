@@ -25,6 +25,7 @@
     4. 個股列表右側時間疑似時區處理錯誤，需檢查 `q.time` / `updated_at` 與 UTC、Asia/Taipei 是否重複 +8。
     5. 右下角重新整理並非真正強制刷新；`refresh:true` 仍可能直接命中 5 分鐘 `feedCache`，且已有有效 price 的舊報價不會被補抓。
     6. Chrome Popup 開啟時會先出現白色縮小畫面；目前初始載入先 `await SNAPSHOT`，且 Popup 沒有固定 / 最低高度，應先渲染 Skeleton / Shell 再背景載入資料。
+    7. 首頁有觸底反彈標的，但 Chrome 小工具未顯示；目前兩邊使用不同 rebound 資料來源 / 判定邏輯，需統一由同一正式 Rebound 結果供應。
 
 - [ ] **Chrome Extension 1.02：Google 登入 + Firebase 使用者同步**
   - Google Authentication。
@@ -165,6 +166,17 @@
      - 開啟時先立即 render 快取 / placeholder，不阻塞 UI。
      - `SNAPSHOT` 改背景非阻塞更新，資料回來後再局部更新。
      - Loading 階段延續目前深色 / 淺色主題，不應出現突兀純白閃屏。
+
+7. **首頁有觸底反彈但 Chrome 小工具沒有顯示**
+   - 現象：EasyStock 首頁已顯示觸底反彈標的，但 Chrome Extension 的「觸底反彈」頁籤為空或缺少相同標的。
+   - 目前首頁使用 `assets/rebound-engine.js` / `assets/rebound-ui.js` 執行較完整的 range-rebound 邏輯。
+   - Chrome Extension 的 `view.bounce` 則由 `background.js` 合併：
+     - remote config 的 `bounce_strategy_signals`
+     - `fetchSummaryRebound()` 從 `summary.selection.strategies.REBOUND` 產生的標的
+   - 兩邊不是同一資料來源，也不是同一套正式 Rebound 定義，因此首頁有標的時，小工具不一定有。
+   - 修正方向：先依既定 Roadmap 統一正式 Rebound 定義，再由後端發布單一正式 Rebound feed，首頁與 Chrome Extension 都讀同一份結果。
+   - 不應由 Chrome Extension 自己再做另一套反彈判定，也不應靠 hard-coded featured symbols 補資料。
+   - 最終要求：首頁、Chrome Extension、LINE / Telegram（若顯示反彈）必須共享同一 signal id / generated_at / quote_at / strategy_version，避免跨平台結果不一致。
 
 
 ---
