@@ -73,10 +73,10 @@ def main():
         if not active_response.ok:
             raise RuntimeError('Public release pointer denied')
         active = active_response.json()
-        public = ['meta','summary','backtests','kline/2330','intraday_live','intraday_picks',
+        public = ['meta','summary','backtests','rebound_feed','kline/2330','intraday_live','intraday_picks',
                   'premarket_brief','daytrade_learning_status','history_training_status','dual_review_status','public_feed']
         if isinstance(active, str):
-            public += ['releases/'+active+'/'+n for n in ('meta','summary','backtests','kline/2330')]
+            public += ['releases/'+active+'/'+n for n in ('meta','summary','backtests','rebound_feed','kline/2330')]
         for node in public:
             # Shallow reads check authorization without downloading histories or trades.
             status = requests.get(url+'/market_data/'+node+'.json', params={'shallow':'true'}, timeout=20).status_code

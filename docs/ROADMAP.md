@@ -22,6 +22,13 @@
   - 尚需：VM 同步後於完整台股交易時段做 1.02 實盤驗證；若仍發現 BUG，下一版依序使用 1.03、1.04…。
   - 不在 1.02 加入 Google 登入、Firebase 使用者同步或 Migration。
 
+- [x] **Chrome Extension 1.03：觸底反彈空白修正**
+  - 實盤驗證發現：首頁可顯示 3 檔 range-rebound，但 Chrome 小工具仍為空。
+  - 根因：後端已發布 `market_data/rebound_feed`，Firebase 公開讀取 allowlist 卻漏掉該節點；網站會自動改用前端 range-rebound 計算，因此仍有結果，Chrome 原本沒有相同 fallback。
+  - 1.03 補上 root / release rebound feed 唯讀規則，Chrome 也加入與首頁相同的 `range-rebound-0.3` fallback，直接以公開 summary + 同 release K 線計算最多 3 檔。
+  - Chrome 內部版本 `1.0.3`，對外 `version_name = 1.03`。
+  - Google 登入、Firebase 自選股／設定同步、本機 Migration 仍維持 2.0。
+
 - [ ] **Chrome Extension 2.0：Google 登入 + Firebase 使用者同步**
   - Google Authentication。
   - 自選股、當沖監控、提醒條件、群組與設定同步。
@@ -109,7 +116,7 @@
 ### 安全原則
 「社畜後台」即使在前端顯示，也不可因此放寬任何 Admin 驗證；後台仍必須維持原本的 Owner-only / Google 驗證與 Private Admin 權限。
 
-## 目前版本：Chrome Extension 1.02（1.0X Bugfix 線）
+## 目前版本：Chrome Extension 1.03（1.0X Bugfix 線）
 
 ### 目標
 - 1.02 專門處理 1.01 實盤累積 BUG，不加入登入 / 雲端同步等大型功能。

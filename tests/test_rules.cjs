@@ -11,7 +11,7 @@ function allows(parts,operation){
     node=node[key];
   }
 }
-const pub=['active_release','summary','meta','backtests','kline/2330','releases/test/summary','releases/test/meta','releases/test/backtests','releases/test/kline/2330','intraday_live','intraday_picks','premarket_brief','daytrade_learning_status','history_training_status','dual_review_status','public_feed'];
+const pub=['active_release','summary','meta','backtests','rebound_feed','kline/2330','releases/test/summary','releases/test/meta','releases/test/backtests','releases/test/rebound_feed','releases/test/kline/2330','intraday_live','intraday_picks','premarket_brief','daytrade_learning_status','history_training_status','dual_review_status','public_feed'];
 for(const p of pub)assert(allows('market_data/'+p,'.read'),p);
 for(const p of ['','market_data','market_data/releases','market_data/releases/test','market_data/line_groups','market_data/history','market_data/selection_history','market_data/overnight_history','market_data/daytrade_research','market_data/intraday_archive','market_data/unknown'])assert(!allows(p,'.read'),p);
 function check(node){for(const [k,v] of Object.entries(node)){if(k==='.write')assert.equal(v,false);else if(v&&typeof v==='object')check(v);}}

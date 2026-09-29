@@ -2,6 +2,14 @@
 
 完整 Manifest V3 原始碼。保留使用者提供的 400 × 600 popup 結構、配色及設定抽屜；Tailwind 編譯為本機 CSS，圖示與 JavaScript 全數隨套件提供。不含券商帳密，不下單，不改動 LINE / Telegram。
 
+## 1.03 Bugfix 重點
+
+1.03 修正「首頁已有觸底反彈標的，但 Chrome 小工具仍顯示空白」：
+- Firebase 規則補上 `market_data/rebound_feed` 與 release 版 rebound feed 的公開唯讀 allowlist。
+- Chrome 優先讀正式 feed；若節點尚未開放、發布延遲或讀取失敗，改用與首頁完全相同的 `range-rebound-0.3` 引擎，從公開 summary + 同 release K 線計算最多 3 檔。
+- 因此不再依賴 Firebase Rules 是否已同步到正式環境，Web 有候選時 Chrome 不會直接空白。
+- Google 登入、Firebase 個人同步與本機 Migration 仍保留到 2.0。
+
 ## 1.02 Bugfix 重點
 
 1.02 是 1.0X 穩定線，不加入 Google 登入或 Firebase 個人同步；這些大型功能延後到 2.0。

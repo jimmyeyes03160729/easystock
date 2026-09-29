@@ -258,4 +258,40 @@ test('background behavior', async t => {
       /所有股票均已在自選名單中/
     );
   });
+  await t.test('rebound feed denial falls back to shared range-rebound engine', async () => {
+    reset();
+    const asof = '2026-06-11';
+    const fixture = Array.from({ length: 162 }, (_, i) => {
+      let c = 10 + 5 * (1 - Math.abs((i % 40) - 20) / 20), o = c;
+      if (i === 161) { c = 10.5; o = 10.05; }
+      return { time: new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10),
+        open: o, high: c + 0.1, low: Math.min(c, o) - 0.1, close: c };
+    });
+    const stock = {
+      symbol: '2330', name: '測試股', exchange: 'TWSE', price: 10.5, amount: 10000000,
+      updated_at: asof, kline_count: fixture.length, rev_yoy: -15, eps: 1,
+      operating_margin: 4, debt_ratio: 68, revenue_period: '202605',
+      field_meta: Object.fromEntries(['rev_yoy','eps','operating_margin','debt_ratio'].map(
+        k => [k, { source: 'official-api', as_of: asof }]
+      ))
+    };
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async url => {
+      calls.push(String(url));
+      if (String(url).includes('/rebound_feed.json')) return new Response('{}', { status: 403 });
+      if (String(url).endsWith('/meta.json')) return new Response(JSON.stringify({ updated_at: asof, release_id: 'REL', published_at: asof + 'T06:00:00Z' }));
+      if (String(url).endsWith('/summary.json')) return new Response(JSON.stringify({ '2330': stock }));
+      if (String(url).includes('/releases/REL/kline/2330.json')) return new Response(JSON.stringify(fixture));
+      return new Response('{}');
+    };
+    try {
+      const items = await bg.fetchSummaryRebound(now);
+      assert.equal(items.length, 1);
+      assert.equal(items[0].symbol, '2330');
+      assert.equal(items[0].strategy_version, 'range-rebound-0.3');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
 });
