@@ -50,6 +50,14 @@
   - 今日 PnL、單筆交易、Equity Curve 圖表。
   - PAPER vs LIVE 執行差異比較。
 
+- [ ] **首頁 AI 復盤改版：淘汰舊 OpenAI 每日文字復盤**
+  - 現況：首頁仍讀取 `market_data/dual_review_status`，該資料目前停留在 2026-09-22；現行 repo / 排程已沒有明確 producer 持續發布此節點。
+  - 不優先修復舊的每日 OpenAI 文字復盤流程。
+  - 首頁改為「每日盤後研究摘要」，以可驗證的量化資料為主。
+  - 每日顯示：模擬交易筆數、勝負、淨損益、平均單筆、MFE / MAE、樣本數、Label 數、模型版本、驗證狀態、Brier / Drawdown 等。
+  - AI 改為每週 Architecture Review 或異常觸發分析，不再每天固定產生文字復盤。
+  - 清理舊 `dual_review_status` / OpenAI daily review / legacy paper feedback 顯示與相關技術債；若保留歷史資料，只作歷史展示，不得冒充當日結果。
+
 - [ ] **AI Architecture Guardian 系統健檢**
   - 每日 Tests / CodeQL / Secret Scan / Dependabot / Trivy / 自訂安全規則。
   - 每週 AI Architecture Review。
@@ -771,6 +779,59 @@ AI Candidate、Shadow Model、未通過驗證的新 Rebound AI 不得自動取�
 
 公開 repo 只能顯示經過授權後的必要狀態，不包含任何可直接下單的秘密或核心交易邏輯。
 
+
+---
+
+## 首頁 AI 復盤改版規劃
+
+### 問題現況
+- 首頁 `assets/learning-status.js` 目前每 60 秒讀取 Firebase `market_data/dual_review_status`。
+- 前端使用 `cache: 'no-store'`，因此畫面停在 2026-09-22 並非瀏覽器快取造成。
+- 目前 main branch 找不到持續寫入 `dual_review_status` 的正式 producer；Firebase Rules 僅保留公開讀取。
+- 舊 OpenAI-only 每日復盤與 legacy paper feedback 流程屬於 2026-09-21～22 階段的架構，後續現行盤後研究流程已改為 `learning_cycle.py` / `learning_eod.py`。
+- 現行 `deploy/install_research_schedule.sh` 會停用舊 `easystock-paper-train.timer` 與 `easystock-paper-feedback.timer`，改用新的 research-cycle。
+- 舊復盤區沒有像其他狀態面板一樣嚴格檢查 stale `updated_at`，因此可能把舊資料繼續顯示成「OpenAI 復盤完成」。
+
+### 決策
+不優先把舊「OpenAI 每日文字復盤」修回來。
+
+原因：
+- 文字復盤不直接決定 ENTRY / EXIT。
+- 不等於模型已更新或正式套用。
+- 不代表模型績效或勝率提升。
+- 現行五特徵 / 盤後候選模型流程不需要依賴每日文字摘要。
+- 每天固定呼叫 AI 產生文字內容，價值低於可驗證的量化研究指標。
+
+### 首頁替代方案：每日盤後研究摘要
+將原「OpenAI 每日復盤」區塊改成「每日盤後研究摘要」。
+
+建議至少顯示：
+- 當日模擬交易筆數。
+- 獲利 / 虧損筆數。
+- 當日淨損益與報酬率。
+- 平均單筆損益。
+- MFE / MAE。
+- 主要 Exit Reason 分布。
+- 今日新增研究樣本。
+- 今日完成 Label 數。
+- 資料收集完整度 / stale 狀態。
+- 目前載入模型版本。
+- 今日 Candidate / Approved / Shadow / Blocked 狀態。
+- Walk-forward / Holdout 摘要。
+- Brier、Profit Factor、Drawdown 等可驗證研究指標。
+
+### AI 使用方式
+AI 改為「需要時才使用」：
+- 每週：交由 AI Architecture Guardian 做架構 / 模型 / 資料流程 Review。
+- 異常觸發：例如連續虧損、Drawdown 突增、模型表現惡化、資料缺漏、策略漂移或模型 / schema 異常時，再呼叫 AI 深度分析。
+- 每日固定工作以 deterministic / quantitative 計算為主，不讓 AI 文字摘要成為模型狀態或交易狀態的證據。
+
+### 舊功能清理原則
+- 停止把 `dual_review_status` 當成目前每日流程的正式狀態來源。
+- 若保留 2026-09-22 等舊復盤資料，只能標示為歷史紀錄。
+- 移除或停用已無正式 producer 的 OpenAI daily review UI。
+- 清理 legacy paper feedback 在首頁造成的重複 / 誤導顯示，但不得因此刪除真正仍被研究流程使用的資料或模型 artifact。
+- 所有首頁模型狀態必須以實際 runtime / training / validation evidence 為準，不能以文字復盤是否完成推定模型已更新。
 
 ---
 
