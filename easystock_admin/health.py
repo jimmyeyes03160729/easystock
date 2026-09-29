@@ -7,6 +7,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from daytrade_learning.model_runtime import model_runtime_consistency
+from .release import identity as release_identity
+
 
 MAX_STATUS_BYTES = 1024 * 1024
 
@@ -97,6 +100,20 @@ def _worker_signal(key: str, label: str, value: object, timer: object = None, ne
     return _signal(key, label, 'idle', '尚未取得 VM 執行狀態。')
 
 
+def _release_signal() -> dict:
+    release = release_identity()
+    if release['identified']:
+        detail = (
+            f"部署版本 {release['release_id']}；來源 commit "
+            f"{release['source_commit']}。"
+        )
+        state = 'ok'
+    else:
+        detail = '尚未取得可核對的部署版本與來源 commit；不能確認目前執行的是哪一版。'
+        state = 'warning'
+    return _signal('deployment_release', '部署版本', state, detail, metrics=release)
+
+
 def snapshot(store) -> dict:
     """Return safe status summaries only; no secrets, paths, commands or actions."""
     learning = _root('EASYSTOCK_LEARNING_DATA', '/home/ubuntu/easystock-learning-data')
@@ -108,8 +125,10 @@ def snapshot(store) -> dict:
 
     settings = store.get()
     paper_trade = store.get_paper_trade().get('settings', {})
+    market_session = _market_session()
     signals = [
-        _market_session(),
+        market_session,
+        _release_signal(),
         _signal('admin_store', '後台設定資料庫', 'ok', '可讀取目前設定版本。', _timestamp(settings.get('updated_at')), {'setting_version': settings.get('version')}),
         _signal(
             'paper_trade', '模擬買進',
@@ -185,7 +204,13 @@ def snapshot(store) -> dict:
     mismatches = [item for item in (shadow_summary or {}).get('warnings', []) if item.get('type') == 'profile_mismatch']
     if mismatches:
         names = '、'.join(str(item.get('line') or '未知模型') for item in mismatches)
-        signals.append(_signal('model_profile', '模型參數一致性', 'warning', f'目前交易參數與 {names} 不同；該線今日已停止比較，請勿把兩組樣本混合解讀。', _updated_at(shadow_path)))
+        current_profile = (shadow_summary or {}).get('profile') or '未提供'
+        signals.append(_signal(
+            'model_profile', '模型參數一致性', 'warning',
+            f'目前研究 profile={current_profile}；{names} 使用不同 profile，該線已停止比較，請勿混合解讀。',
+            _updated_at(shadow_path),
+            {'current_profile': current_profile, 'mismatched_lines': names},
+        ))
     elif shadow_summary:
         signals.append(_signal('model_profile', '模型參數一致性', 'ok', '今日影子評估的模型與交易參數一致。', _updated_at(shadow_path)))
 
@@ -204,7 +229,83 @@ def snapshot(store) -> dict:
             'failed_stock_days': _positive_int(progress.get('failed_stock_days')),
         }))
 
-    return {'generated_at': datetime.now(timezone.utc).isoformat(), 'signals': signals}
+    try:
+        consistency = model_runtime_consistency(
+            learning_data_dir=str(learning),
+            max_stale_seconds=int(os.environ.get('MODEL_RUNTIME_STALE_SECONDS', '90')),
+        )
+    except Exception as exc:
+        consistency = {
+            'status': 'RUNTIME_UNKNOWN',
+            'runtime': None,
+            'approved': None,
+            'match': False,
+            'reason': 'model_runtime_consistency_check_failed',
+            'error': f'{type(exc).__name__}: {exc}',
+        }
+    status_to_state = {
+        'OK': 'ok',
+        'MISMATCH': 'warning',
+        'RUNTIME_UNKNOWN': 'error',
+        'RUNTIME_STALE': 'error',
+        'APPROVED_MISSING': 'error',
+        'APPROVED_INVALID': 'error',
+    }
+    state = status_to_state.get(consistency['status'], 'error')
+    if consistency['status'] == 'RUNTIME_STALE' and market_session['state'] == 'idle':
+        # The intraday process normally exits after the trading session.  Its
+        # last successful model load remains useful evidence, but a stale
+        # heartbeat after hours is not a runtime failure.
+        state = 'warning'
+    runtime = consistency.get('runtime') or {}
+    runtime_status = consistency.get('runtime_status') or {}
+    approved = consistency.get('approved') or {}
+    if consistency['status'] == 'OK':
+        detail = '盤中 process 實際載入的模型與 latest-approved artifact 一致。'
+    elif consistency['status'] == 'RUNTIME_UNKNOWN':
+        detail = '無法確認盤中 process 目前載入的模型；可能是尚未啟動、狀態遺失或模型載入失敗。'
+        if runtime.get('load_reason'):
+            detail += ' 載入原因：' + str(runtime['load_reason']) + '。'
+    elif consistency['status'] == 'RUNTIME_STALE':
+        detail = (
+            '目前非盤中時段；最後一次盤中服務回報已過期，'
+            '不能視為目前 process 正在執行，但可查看最後載入的模型。'
+        )
+    elif consistency['status'] == 'APPROVED_MISSING':
+        detail = 'latest-approved.json 不存在；無法比對。'
+    elif consistency['status'] == 'APPROVED_INVALID':
+        detail = f'latest-approved.json 無法解析或不符合 schema：{consistency.get("reason")}'
+    else:
+        detail = '盤中 process 使用的模型與 latest-approved artifact 不一致；此為預期監控結果，不會自動重載。'
+    signals.append(_signal(
+        'model_runtime_consistency',
+        '盤中模型狀態',
+        state,
+        detail,
+        metrics={
+            'consistency_status': consistency['status'],
+            'match': bool(consistency.get('match')),
+            'reason': consistency.get('reason'),
+            'runtime_version': runtime.get('version'),
+            'runtime_profile': runtime.get('profile'),
+            'runtime_trained_through': runtime.get('trained_through'),
+            'runtime_loaded_at': runtime.get('loaded_at'),
+            'runtime_load_reason': runtime.get('load_reason'),
+            'runtime_entry_mode': runtime_status.get('entry_mode'),
+            'runtime_artifact_name': runtime.get('artifact_name'),
+            'runtime_sha256_short': (runtime.get('artifact_sha256') or '')[:12],
+            'approved_version': approved.get('version'),
+            'approved_profile': approved.get('profile'),
+            'approved_trained_through': approved.get('trained_through'),
+            'approved_sha256_short': (approved.get('artifact_sha256') or '')[:12],
+        },
+    ))
+
+    return {
+        'generated_at': datetime.now(timezone.utc).isoformat(),
+        'signals': signals,
+        'model_runtime_consistency': consistency,
+    }
 
 
 def model_promotion_log(page: int = 1, page_size: int = 10) -> dict:

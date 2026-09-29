@@ -6,8 +6,8 @@
   <title>StockWatch Pro</title>
   <link rel="stylesheet" href="assets/popup.css">
 </head>
-<body class="bg-slate-50 font-sans text-slate-800 antialiased selection:bg-slate-200">
-  <div id="popup-container" class="w-[440px] flex flex-col bg-white border border-slate-200 shadow-xl overflow-hidden relative">
+<body class="dark-mode bg-slate-50 font-sans text-slate-800 antialiased selection:bg-slate-200" style="min-width:440px;min-height:480px">
+  <div id="popup-container" class="w-[440px] min-h-[480px] flex flex-col bg-white border border-slate-200 shadow-xl overflow-hidden relative">
 
     <!-- 即時 In-App 推播通知彈窗 (點擊測試或即時訊號直接在小工具內彈出，最上層浮動) -->
     <div id="in-app-toast" class="hidden absolute top-2 left-2 right-2 z-50 bg-slate-900 text-white p-3 rounded-lg shadow-2xl border border-slate-700 transition-all duration-200" style="z-index: 9999;">
@@ -31,7 +31,7 @@
           <div id="market-status-dot" class="h-2 w-2 rounded-full bg-slate-400 shrink-0" title="離線 / 休市"></div>
           <img src="assets/icon16.png" class="w-3.5 h-3.5 shrink-0 inline-block" alt="Logo" />
           <h1 id="brand-title" class="text-xs font-bold tracking-tight text-slate-900 truncate whitespace-nowrap">EasyStock · 牛馬自救終端</h1>
-          <span id="brand-tag" class="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 py-0.2 rounded border border-slate-200 shrink-0 whitespace-nowrap">v1.01</span>
+          <span id="brand-tag" class="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 py-0.2 rounded border border-slate-200 shrink-0 whitespace-nowrap">v1.02</span>
         </div>
         <div class="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
           <button id="btn-theme-toggle" aria-label="切換黑暗與光明模式" title="切換黑暗 / 光明模式 (快捷鍵 D)" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 flex items-center gap-1 transition shrink-0 whitespace-nowrap">
@@ -63,6 +63,7 @@
         <span id="taiex-price" class="font-bold text-slate-900">-</span>
         <span id="taiex-change" class="font-semibold text-slate-500">-</span>
       </div>
+      <span id="taiex-data-time" class="text-[9px] text-slate-400 font-mono shrink-0">資料時間 --:--:--</span>
       <div id="otc-container" class="flex items-center gap-1 text-[10px] text-slate-500 shrink-0">
         <span>櫃買</span>
         <span id="otc-price" class="font-medium text-slate-700">-</span>
@@ -74,7 +75,6 @@
     <nav id="group-tabs" class="flex px-3 py-1.5 border-b border-slate-100 gap-1 text-xs bg-slate-50/50">
       <button class="tab-btn px-2 py-1 rounded font-medium text-slate-900 bg-white border border-slate-200 shadow-xs" data-group="watchlist">⭐ 自選</button>
       <button class="tab-btn px-2 py-1 rounded font-medium text-slate-500 hover:text-slate-800" data-group="daytrade">🎯 當沖</button>
-      <button class="tab-btn px-2 py-1 rounded font-medium text-slate-500 hover:text-slate-800" data-group="rebound">🛡️ 觸底反彈</button>
       <button class="tab-btn px-2 py-1 rounded font-medium text-slate-500 hover:text-slate-800" data-group="ai_matrix">🤖 當沖AI架構</button>
     </nav>
 
@@ -102,7 +102,14 @@
 
     <!-- 自選列表容器 (圖片2精緻表格清單) -->
     <main id="stock-list-container" class="flex-1 overflow-y-auto no-scrollbar size-standard divide-y divide-slate-100">
-      <!-- 動態插入表格行 stock-row stock-card -->
+      <!-- 初始 Shell：先固定 Popup 尺寸與主題，再由快取 / 遠端資料取代 -->
+      <div id="initial-loading-shell" class="px-3 py-2 space-y-2" aria-hidden="true">
+        <div class="h-10 rounded-lg bg-slate-100 animate-pulse"></div>
+        <div class="h-10 rounded-lg bg-slate-100 animate-pulse"></div>
+        <div class="h-10 rounded-lg bg-slate-100 animate-pulse"></div>
+        <div class="h-10 rounded-lg bg-slate-100 animate-pulse"></div>
+        <p class="text-[10px] text-slate-400 text-center pt-1">載入最新盤中資料…</p>
+      </div>
     </main>
 
     <!-- 自選分頁控制列 (固定置於休市狀態列正上方) -->
@@ -261,7 +268,7 @@
             </span>
             <span id="current-broker-badge" class="text-[10px] text-white bg-red-600 px-2 py-0.5 rounded-full font-bold shadow-2xs">🔴 永豐金證券</span>
           </div>
-          <p class="text-[10px] text-slate-500 leading-normal">在「當沖」與「觸底反彈」卡片點擊時，直通券商下單或純看盤觀察（自動複製代號）。</p>
+          <p class="text-[10px] text-slate-500 leading-normal">在「當沖」卡片點擊時，直通券商下單或純看盤觀察（自動複製代號）。</p>
 
           <div class="space-y-1.5 pt-0.5">
             <div class="relative">
@@ -288,7 +295,7 @@
             <!-- 即時動態提示盒 -->
             <div id="broker-hint-box" class="bg-slate-50 border border-slate-200/80 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-600 flex items-center gap-1.5 shadow-2xs">
               <span class="text-xs shrink-0">💡</span>
-              <span id="broker-hint-text" class="leading-relaxed">點擊當沖或觸底反彈卡片按鈕，將自動複製股票代號並開啟對應頁面。</span>
+              <span id="broker-hint-text" class="leading-relaxed">點擊當沖卡片按鈕，將自動複製股票代號並開啟對應頁面。</span>
             </div>
           </div>
         </div>
@@ -330,31 +337,7 @@
               </label>
             </div>
 
-            <div class="py-2.5 flex items-center justify-between">
-              <div class="space-y-0.5 pr-2">
-                <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                  <span class="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
-                  觸底反彈推播提醒
-                </span>
-                <span class="block text-[10px] text-slate-500 leading-normal">技術面支撐區反彈與量能回升推播</span>
-              </div>
-              <label class="toggle-switch">
-                <input type="checkbox" id="toggle-rebound" class="accent-purple-600" />
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
 
-            <div class="py-2.5 flex items-center justify-between pl-3 border-l-2 border-l-purple-400">
-              <div class="space-y-0.5 pr-2">
-                <span class="font-semibold text-slate-800 text-xs block">全市場反彈連動</span>
-                <span class="block text-[10px] text-slate-500 leading-normal">不限自選清單，自動接收全市場反彈股</span>
-              </div>
-              <label class="toggle-switch">
-                <input type="checkbox" id="toggle-all-rebound" class="accent-purple-600" />
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-          </div>
 
           <!-- 系統推播測試按鈕 -->
           <div class="pt-2 border-t border-slate-100 space-y-2">
@@ -380,13 +363,7 @@
                 </svg>
                 <span>出場範例</span>
               </button>
-              <button id="btn-test-rebound-notif" class="test-btn test-btn-rebound" title="模擬觸發觸底反彈訊號推播通知">
-                <svg class="test-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  <path d="m9 12 2 2 4-4"/>
-                </svg>
-                <span>反彈範例</span>
-              </button>
+
             </div>
           </div>
 
@@ -441,7 +418,7 @@
             <h3 class="font-bold text-slate-800 text-xs">免責聲明與風險告知 (Disclaimer)</h3>
           </div>
           <div class="text-[10px] text-slate-500 leading-relaxed space-y-1.5">
-            <p>1. <strong>非投資分析或買賣推介</strong>：本小工具所提供之所有即時行情、走勢圖表、策略演算法（包含當沖突破與觸底反彈模型）及券商官方平台跳轉連結，純屬個人量化技術研究與模擬看盤輔助，非屬任何形式之證券投資顧問分析、推介或下單委託建議。</p>
+            <p>1. <strong>非投資分析或買賣推介</strong>：本小工具所提供之所有即時行情、走勢圖表、策略演算法（包含當沖突破模型）及券商官方平台跳轉連結，純屬個人量化技術研究與模擬看盤輔助，非屬任何形式之證券投資顧問分析、推介或下單委託建議。</p>
             <p>2. <strong>獨立判斷與自負盈虧</strong>：金融市場波動劇烈，歷史行情與演算法不保證未來獲利。實際委託下單由使用者於券商官方平台獨立登入進行，使用者應審慎評估個人財務能力與投資風險，並自負一切盈虧，本工具不承擔任何投資損益或衍生法律責任。</p>
             <p>3. <strong>模擬交易與無託管</strong>：本工具嚴格遵循無營業行為與無託管原則，不儲存、不經手任何券商帳號密碼、API 金鑰或委託憑證。</p>
           </div>

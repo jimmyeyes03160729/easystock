@@ -62,8 +62,8 @@ run(main);w.onload=null;
   for(const file of ['learning-status.js','rebound-engine.js','rebound-ui.js','dashboard-layout.js'])
     run(fs.readFileSync(path.join(__dirname,'../assets',file),'utf8'));
   await new Promise(resolve=>setImmediate(resolve));
-  assert(w.document.getElementById('learnModel').textContent.includes('尚未套用'));
-  assert(!w.document.getElementById('learnModel').textContent.includes('採用'));
+   assert(w.document.getElementById('learnModel').textContent.includes('UNKNOWN'));
+   assert(!w.document.getElementById('learnModel').textContent.includes('採用'));
   assert(w.document.getElementById('intradayModelBadge').textContent.includes('規則模式'));
   assert.equal(run('renderLinePickList'),renderer);
   assert(!w.document.getElementById('overnightModule'));

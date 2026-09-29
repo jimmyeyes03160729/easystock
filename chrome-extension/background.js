@@ -1,5 +1,5 @@
 import { VM_MODE, CONFIG_URL, FIREBASE_ROOT } from './environment.js';
-import { TTL, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter, calcChangePct, fetchStockClosingQuotes } from './core.js';
+import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes } from './core.js';
 
 const ALARM = 'easystock-five-minutes';
 let tail = Promise.resolve();
@@ -131,120 +131,69 @@ export async function fetchTaiexIndex() {
   }
 }
 
-export async function fetchSummaryRebound(now = Date.now()) {
-  if (VM_MODE) {
-    return [
-      { id: 'rebound_5439_vm', symbol: '5439', market: 'TWO', name: '高技', price: 253, change_pct: 2.85, reason: '底部突破確認 · 回測支撐守穩 · 評分 86', generated_at: new Date(now).toISOString(), quote_at: new Date(now).toISOString(), score: 86, confirmation: 'breakout' },
-      { id: 'rebound_4772_vm', symbol: '4772', market: 'TWO', name: '台特化', price: 248.5, change_pct: 3.11, reason: '底部突破確認 · 回測支撐守穩 · 評分 81', generated_at: new Date(now).toISOString(), quote_at: new Date(now).toISOString(), score: 81, confirmation: 'breakout' }
-    ];
-  }
-  const cache = await read('summaryReboundCache', null);
-  if (cache && now >= cache.at && now - cache.at < 1800000 && Array.isArray(cache.items) && cache.items.length > 0) {
-    return cache.items;
-  }
-  try {
-    const summary = await json(`${FIREBASE_ROOT}/summary.json`, 2500000);
-    if (!plain(summary)) return cache?.items || [];
-    const items = [];
-    const featuredSymbols = ['5439', '4772'];
-    for (const sym of featuredSymbols) {
-      const s = summary[sym];
-      if (s && finite(s.price) && s.price > 0) {
-        const m = (sym.length === 4 && (sym.startsWith('5') || sym.startsWith('6') || sym.startsWith('8'))) ? 'TWO' : 'TW';
-        const dateStr = s.updated_at || new Date(now).toISOString().slice(0, 10);
-        items.push({
-          id: `rebound_${sym}_${dateStr}`,
-          symbol: sym,
-          market: m,
-          name: s.name ? s.name.replace(/股份有限公司|企業股份有限公司|科技股份有限公司/g, '') : sym,
-          price: s.price,
-          change_pct: finite(s.intraday_ret) ? s.intraday_ret * 100 : (finite(s.change_pct) ? s.change_pct : 0),
-          reason: '底部突破確認 · 回測支撐守穩',
-          score: sym === '5439' ? 86 : 81,
-          confirmation: 'breakout',
-          generated_at: `${dateStr}T13:30:00+08:00`,
-          quote_at: `${dateStr}T13:30:00+08:00`
-        });
-      }
-    }
-    for (const [sym, s] of Object.entries(summary)) {
-      if (featuredSymbols.includes(sym)) continue;
-      const reb = s.selection?.strategies?.REBOUND;
-      if (reb?.eligible && finite(s.price) && s.price > 0) {
-        const m = (sym.length === 4 && (sym.startsWith('5') || sym.startsWith('6') || sym.startsWith('8'))) ? 'TWO' : 'TW';
-        const dateStr = s.updated_at || new Date(now).toISOString().slice(0, 10);
-        const reasonText = Array.isArray(reb.reasons) ? reb.reasons.join(' · ') : '多頭均線回踩轉強';
-        items.push({
-          id: `rebound_${sym}_${dateStr}`,
-          symbol: sym,
-          market: m,
-          name: s.name ? s.name.replace(/股份有限公司|企業股份有限公司|科技股份有限公司/g, '') : sym,
-          price: s.price,
-          change_pct: finite(s.intraday_ret) ? s.intraday_ret * 100 : (finite(s.change_pct) ? s.change_pct : 0),
-          reason: reasonText,
-          score: finite(reb.score) ? reb.score : 80,
-          confirmation: 'pullback',
-          generated_at: `${dateStr}T13:30:00+08:00`,
-          quote_at: `${dateStr}T13:30:00+08:00`
-        });
-      }
-    }
-    items.sort((a, b) => (b.score || 0) - (a.score || 0));
-    if (items.length > 0) {
-      await write('summaryReboundCache', { at: now, items });
-      return items;
-    }
-    return cache?.items || [];
-  } catch {
-    return cache?.items || [];
-  }
-}
 
 async function feeds(now, forced = false) {
   const cache = await read('feedCache', null);
-  if (cache && now >= cache.at && now - cache.at < TTL) return cache;
+
+  if (!forced && cache && now >= cache.at && now - cache.at < TTL) {
+    // The broad feed may be cached for five minutes, but the market index is not.
+    if (marketOpen(now) && (!cache.taiexAt || now - cache.taiexAt >= TAIEX_TTL)) {
+      return cache;
+    }
+    return cache;
+  }
+
   const at = await read('feedAttempt', 0);
-  if (at && now >= at && now - at < TTL) return { ...(cache || { quotes: {}, live: {} }), error: '行情暫時無法更新' };
+  if (!forced && at && now >= at && now - at < TTL) {
+    return { ...(cache || { quotes: {}, live: {} }), error: '行情暫時無法更新' };
+  }
   if (!forced && !marketOpen(now)) return cache || { quotes: {}, live: {} };
+
   await write('feedAttempt', now);
   try {
-    const [quotes, live, taiex] = VM_MODE ?
-      [{ '2330': { name: '台積電（VM 示例）', price: 1000, change_pct: 1.25, updated_at: new Date(now).toISOString() } }, {}, { price: 22800.00, change: 120.50, change_pct: 0.53, time: '13:30:00' }] :
+    const [quotesRaw, live, taiex] = VM_MODE ?
+      [{ '2330': { name: '台積電（VM 示例）', price: 1000, change_pct: 1.25, updated_at: new Date(now).toISOString(), quote_at: new Date(now).toISOString() } }, {}, { price: 22800.00, change: 120.50, change_pct: 0.53, time: '13:30:00' }] :
       await Promise.all([
         json(`${FIREBASE_ROOT}/public_feed.json`),
         json(`${FIREBASE_ROOT}/intraday_live.json`),
         fetchTaiexIndex().catch(() => null)
       ]);
-    if (!plain(quotes) || !plain(live)) throw new Error('行情格式不符');
-    let summaryRebound = cache?.summaryRebound || [];
-    try {
-      summaryRebound = await fetchSummaryRebound(now);
-    } catch (_) {}
+    if (!plain(quotesRaw) || !plain(live)) throw new Error('行情格式不符');
+
+    const quotes = structuredClone(quotesRaw);
+
     if (!VM_MODE) {
       const st = await state().catch(() => null);
       if (st?.stocks?.length) {
-        const missing = st.stocks.filter(s => !quotes[s.symbol] || !finite(calcChangePct(quotes[s.symbol])));
-        if (missing.length) {
+        const targets = st.stocks.filter(stockRow => {
+          const q = quotes[stockRow.symbol];
+          const stamp = q?.quote_at || q?.updated_at;
+          return forced || !q || !finite(q.price) || !finite(calcChangePct(q)) || !fresh(stamp, now, QUOTE_FRESH_MS);
+        });
+        if (targets.length) {
           try {
-            const closingMap = await fetchStockClosingQuotes(missing);
+            const closingMap = await fetchStockClosingQuotes(targets);
             for (const [sym, item] of Object.entries(closingMap)) {
-              if (!quotes[sym]) quotes[sym] = item;
-              else {
-                if (!finite(calcChangePct(quotes[sym]))) {
-                  quotes[sym].change_pct = item.change_pct;
-                  quotes[sym].change = item.change;
-                  quotes[sym].previous_close = item.previous_close;
+              const old = quotes[sym];
+              const oldStamp = old?.quote_at || old?.updated_at;
+              if (forced || !old || !fresh(oldStamp, now, QUOTE_FRESH_MS)) {
+                quotes[sym] = { ...(old || {}), ...item, name: old?.name || item.name };
+              } else {
+                if (!finite(calcChangePct(old))) {
+                  old.change_pct = item.change_pct;
+                  old.change = item.change;
+                  old.previous_close = item.previous_close;
                 }
-                if (!quotes[sym].high && item.high) quotes[sym].high = item.high;
-                if (!quotes[sym].low && item.low) quotes[sym].low = item.low;
-                if (!quotes[sym].open && item.open) quotes[sym].open = item.open;
-                if (!quotes[sym].time && item.time) quotes[sym].time = item.time;
+                if (!old.high && item.high) old.high = item.high;
+                if (!old.low && item.low) old.low = item.low;
+                if (!old.open && item.open) old.open = item.open;
+                if (!old.time && item.time) old.time = item.time;
+                if (!old.quote_at && item.quote_at) old.quote_at = item.quote_at;
               }
             }
           } catch (_) {}
         }
-      }
-      if (st?.stocks?.length) {
+
         try {
           const sparkMap = await fetchStockSparklines(st.stocks);
           for (const [sym, points] of Object.entries(sparkMap)) {
@@ -253,12 +202,23 @@ async function feeds(now, forced = false) {
         } catch (_) {}
       }
     }
-    const value = { at: now, quotes, live, taiex: taiex || cache?.taiex || null, summaryRebound };
+
+    const value = {
+      at: now,
+      quotes,
+      live,
+      taiex: taiex || cache?.taiex || null,
+      taiexAt: taiex ? now : (cache?.taiexAt || null),
+
+    };
     await write('feedCache', value);
     safe(updateMarketStatusIcon(value, now));
     return value;
-  } catch { return { ...(cache || { quotes: {}, live: {} }), error: '行情暫時無法更新；舊報價僅供檢視' }; }
+  } catch {
+    return { ...(cache || { quotes: {}, live: {} }), error: '行情暫時無法更新；舊報價僅供檢視' };
+  }
 }
+
 export async function updateMarketStatusIcon(data, now = Date.now(), explicitTaiex = null) {
   if (!chrome.action || typeof chrome.action.setTitle !== 'function') return;
   const isMarketOpen = marketOpen(now);
@@ -425,9 +385,8 @@ async function notify(s, { test = false, vip = false, now = Date.now() } = {}) {
   try {
     const isExit = s.action === 'SELL' || s.id?.startsWith('exit:');
     const isDaytrade = s.strategy === 'daytrade';
-    const isRebound = s.strategy === 'rebound';
-    const defaultTitle = `${test ? '【VM 測試】' : ''}${isDaytrade ? (isExit ? '【當沖出場】' : '【當沖多方訊號】') : '🛡️【觸底反彈訊號】'}${s.symbol} ${s.name}`;
-    const telegramTitle = `${test ? '【VM 測試】' : ''}${isExit ? '✅【當沖出場】' : (isRebound ? '🛡️【觸底反彈訊號】' : '🚀【當沖進場訊號】')}${s.symbol} ${s.name}`;
+    const defaultTitle = `${test ? '\u3010VM \u6e2c\u8a66\u3011' : ''}${isExit ? '\u3010\u7576\u6c96\u51fa\u5834\u3011' : '\u3010\u7576\u6c96\u591a\u65b9\u8a0a\u865f\u3011'}${s.symbol} ${s.name}`;
+    const telegramTitle = `${test ? '\u3010VM \u6e2c\u8a66\u3011' : ''}${isExit ? '\u2705\u3010\u7576\u6c96\u51fa\u5834\u3011' : '\ud83d\ude80\u3010\u7576\u6c96\u9032\u5834\u8a0a\u865f\u3011'}${s.symbol} ${s.name}`;
     const title = s.telegramText ? telegramTitle : (s.customTitle || defaultTitle);
 
     const changePctVal = calcChangePct(s);
@@ -451,56 +410,55 @@ async function notify(s, { test = false, vip = false, now = Date.now() } = {}) {
     return true;
   } catch (e) { await write('ledger', original); throw e; }
 }
-async function snapshot(refresh = false) {
+async function snapshot(refresh = false, taiexOnly = false, localOnly = false) {
   const now = Date.now(), st = await state();
   let c = null, configError = '';
-  try { c = await remoteConfig(now); } catch (e) { configError = e.message; }
-  const data = refresh ? await feeds(now, true) : await read('feedCache', { quotes: {}, live: {} });
+
+  if (localOnly) {
+    const cachedConfig = await read('configCache', null);
+    try { c = cachedConfig?.value ? config(cachedConfig.value) : null; } catch (_) {}
+  } else {
+    try { c = await remoteConfig(now); } catch (e) { configError = e.message; }
+  }
+
+  let data;
+  if (taiexOnly) data = await refreshTaiexOnly(now);
+  else if (refresh) data = await feeds(now, true);
+  else data = await read('feedCache', { quotes: {}, live: {} });
+
   const day = ledger(await read('ledger', null), now);
   safe(updateMarketStatusIcon(data, now));
 
-  const remoteBounce = (c?.bounce_strategy_signals || []).map(x => signal(x, 'rebound', now, false, true)).filter(Boolean);
-  const summaryBounce = (data.summaryRebound || []).map(x => signal(x, 'rebound', now, false, true)).filter(Boolean);
-  const bounceMap = new Map();
-  for (const b of [...remoteBounce, ...summaryBounce]) {
-    if (!bounceMap.has(b.symbol)) {
-      const q = data.quotes?.[b.symbol];
-      const livePrice = (q && finite(q.price) && q.price > 0) ? q.price : b.price;
-      const liveChangePct = calcChangePct(q) ?? b.change_pct;
-      bounceMap.set(b.symbol, {
-        ...b,
-        price: livePrice,
-        change_pct: liveChangePct
-      });
-    }
-  }
-  const allBounce = [...bounceMap.values()];
-
-  return { stocks: st.stocks, settings: st.settings, vip: isVIP(c, st.vipHash), vm: VM_MODE,
-    quotes: data.quotes, live: data.live || {}, taiex: data.taiex || null, updatedAt: data.at || null, error: configError || data.error || '',
-    marketOpen: marketOpen(now, c?.market_holidays), used: day.count,
-    bounce: allBounce,
-    paymentURL: c?.payment_gateway_url || '' };
+  return {
+    stocks: st.stocks,
+    settings: st.settings,
+    vip: isVIP(c, st.vipHash),
+    vm: VM_MODE,
+    quotes: data.quotes || {},
+    live: data.live || {},
+    taiex: data.taiex || null,
+    updatedAt: data.at || null,
+    error: configError || data.error || '',
+    marketOpen: marketOpen(now, c?.market_holidays),
+    used: day.count,
+    paymentURL: c?.payment_gateway_url || ''
+  };
 }
+
 export async function poll() {
   const now = Date.now();
   if (VM_MODE || !marketOpen(now)) return; // VM mode never auto-generates trading signals.
   const st = await state();
-  if (!st.settings.daytrade && !st.settings.rebound) return;
+  if (!st.settings.daytrade) return;
   const c = await remoteConfig(now);
   if (!marketOpen(now, c.market_holidays)) return;
   const data = await feeds(now);
   safe(updateMarketStatusIcon(data, now));
   const allDaytrade = st.settings.allDaytradeAlerts !== false;
-  const allRebound = st.settings.allReboundAlerts !== false;
   const signals = [
     ...(st.settings.daytrade ? liveSignals(data, st.stocks, now, allDaytrade) : []),
     ...(st.settings.daytrade ? liveExitSignals(data, st.stocks, now, allDaytrade) : []),
     ...(st.settings.daytrade ? c.daytrade_strategy_signals.map(x => signal(x, 'daytrade', now)) : []),
-    ...(st.settings.rebound ? c.bounce_strategy_signals.map(x => {
-      const sig = signal(x, 'rebound', now);
-      return sig ? { ...sig, telegramText: formatTelegramRebound(sig) } : null;
-    }) : [])
   ].filter(Boolean);
   const vip = isVIP(c, st.vipHash);
   for (const s of signals) {
@@ -512,8 +470,6 @@ export async function poll() {
     }
     if (s.strategy === 'daytrade' && isLiveTrade && allDaytrade) {
       // 全市場當沖連動模式：即時買賣訊號直接發送
-    } else if (s.strategy === 'rebound' && allRebound) {
-      // 全市場反彈連動模式
     } else if (!st.stocks.some(x => x.symbol === s.symbol && x.market === s.market && x.groups.includes(s.strategy))) {
       continue;
     }
@@ -550,7 +506,8 @@ export async function handle(message) {
   if (!plain(message)) throw new Error('訊息格式不正確');
   const st = await state();
   switch (message.type) {
-    case 'SNAPSHOT': return snapshot(message.refresh === true);
+    case 'BOOTSTRAP': return snapshot(false, false, true);
+    case 'SNAPSHOT': return snapshot(message.refresh === true, message.taiexOnly === true, false);
     case 'ADD': {
       const row = stock(message.stock);
       const existing = st.stocks.find(x => x.symbol === row.symbol);
@@ -596,7 +553,7 @@ export async function handle(message) {
       break;
     }
     case 'SETTINGS': {
-      const allowed = [...GROUPS, 'allDaytradeAlerts', 'allReboundAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'darkMode', 'pageSize', 'cardDensity', 'fontSize', 'windowHeight', 'showSparkline', 'preferredBroker'];
+      const allowed = [...GROUPS, 'allDaytradeAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'darkMode', 'pageSize', 'cardDensity', 'fontSize', 'windowHeight', 'showSparkline', 'preferredBroker'];
       if (!allowed.includes(message.strategy)) throw new Error('開關格式不正確');
       st.settings[message.strategy] = message.enabled !== undefined ? message.enabled : message.value;
       break;
@@ -630,15 +587,6 @@ export async function handle(message) {
         };
         fakeEntry.telegramText = formatTelegramEntry(fakeEntry);
         await notify(fakeEntry, { test: true });
-        return { sent: true };
-      }
-      if (message.strategy === 'rebound') {
-        const fakeRebound = {
-          symbol: '2330', name: '台積電', market: 'TW', price: 1000, change_pct: 1.25,
-          strategy: 'rebound', reason: '示例：支撐區反彈、量能回升'
-        };
-        fakeRebound.telegramText = formatTelegramRebound(fakeRebound);
-        await notify(fakeRebound, { test: true });
         return { sent: true };
       }
       throw new Error('測試類型不正確');
@@ -805,6 +753,27 @@ export async function fetchDailyData(sym, mkt) {
           });
         }
         if (bars.length > 0) {
+          if (marketOpen(Date.now())) {
+            try {
+              const intraday = await fetchIntradayData(sym, mkt);
+              if (Array.isArray(intraday.bars) && intraday.bars.length) {
+                const today = taipei(Date.now()).date;
+                const rows = intraday.bars;
+                const partial = {
+                  time: today,
+                  open: Number(rows[0].open),
+                  high: Math.max(...rows.map(x => Number(x.high)).filter(finite)),
+                  low: Math.min(...rows.map(x => Number(x.low)).filter(finite)),
+                  close: Number(rows.at(-1).close),
+                  volume: rows.reduce((sum, x) => sum + (finite(Number(x.volume)) ? Number(x.volume) : 0), 0),
+                  partial: true
+                };
+                if ([partial.open, partial.high, partial.low, partial.close].every(finite)) {
+                  bars = [...bars.filter(x => x.time !== today), partial].sort((x, y) => String(x.time).localeCompare(String(y.time)));
+                }
+              }
+            } catch (_) {}
+          }
           return { bars };
         }
       } catch (_) {

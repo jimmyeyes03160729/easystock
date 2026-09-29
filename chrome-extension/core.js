@@ -1,7 +1,9 @@
 export const TTL = 5 * 60 * 1000;
+export const TAIEX_TTL = 30 * 1000;
+export const QUOTE_FRESH_MS = 90 * 1000;
 export const COOLDOWN = 30 * 60 * 1000;
 export const SYMBOL = /^\d{4,6}[A-Z]?$/;
-export const GROUPS = ['daytrade', 'rebound', 'watchlist'];
+export const GROUPS = ['daytrade', 'watchlist'];
 export const plain = v => !!v && typeof v === 'object' && !Array.isArray(v);
 export const finite = v => typeof v === 'number' && Number.isFinite(v);
 
@@ -215,6 +217,33 @@ export async function searchOnlineStocks(query) {
   }
 }
 
+export function normalizeQuoteTimestamp(raw, now = Date.now()) {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    const ms = raw < 1e12 ? raw * 1000 : raw;
+    return new Date(ms).toISOString();
+  }
+  const text = String(raw || '').trim();
+  if (text && /(Z|[+-]\d{2}:\d{2})$/.test(text)) {
+    const parsed = Date.parse(text);
+    if (Number.isFinite(parsed)) return new Date(parsed).toISOString();
+  }
+  const clock = text.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s|$)/);
+  if (clock) {
+    const hh = String(Math.min(23, Number(clock[1]))).padStart(2, '0');
+    const mm = String(Math.min(59, Number(clock[2]))).padStart(2, '0');
+    const ss = String(Math.min(59, Number(clock[3] || 0))).padStart(2, '0');
+    return `${taipei(now).date}T${hh}:${mm}:${ss}+08:00`;
+  }
+  return new Date(now).toISOString();
+}
+
+export function formatTaipeiQuoteTime(raw, now = Date.now()) {
+  const iso = normalizeQuoteTimestamp(raw, now);
+  return new Date(iso).toLocaleTimeString('zh-TW', {
+    timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false
+  });
+}
+
 export async function fetchStockClosingQuotes(symbols) {
   if (!Array.isArray(symbols) || !symbols.length) return {};
   const queryList = symbols.map(s => {
@@ -245,11 +274,8 @@ export async function fetchStockClosingQuotes(symbols) {
       const high = finite(item.regularMarketDayHigh?.sort) ? item.regularMarketDayHigh.sort : (price !== null ? price : 0);
       const low = finite(item.regularMarketDayLow?.sort) ? item.regularMarketDayLow.sort : (price !== null ? price : 0);
       const open = finite(item.regularMarketOpen?.sort) ? item.regularMarketOpen.sort : (prev !== null ? prev : price);
-      let timeStr = '';
-      if (item.regularMarketTime) {
-        const tMatch = String(item.regularMarketTime).match(/(\d{2}:\d{2})/);
-        timeStr = tMatch ? tMatch[1] : String(item.regularMarketTime).slice(0, 5);
-      }
+      const quoteAt = normalizeQuoteTimestamp(item.regularMarketTime, Date.now());
+      const timeStr = formatTaipeiQuoteTime(quoteAt);
       map[sym] = {
         name: item.symbolName || sym,
         price: price || 0,
@@ -261,7 +287,8 @@ export async function fetchStockClosingQuotes(symbols) {
         open: open || 0,
         time: timeStr || '13:30',
         volume: finite(item.volume) ? Math.round(item.volume / 1000) : 0,
-        updated_at: item.regularMarketTime || new Date().toISOString()
+        quote_at: quoteAt,
+        updated_at: quoteAt
       };
     }
     return map;
@@ -300,7 +327,6 @@ export function watchlist(value) {
 export function config(value) {
   if (!plain(value) || value.schema_version !== 1 || typeof value.global_vip_switch !== 'boolean') throw new Error('遠端設定格式或版本不符');
   if (!Array.isArray(value.vip_keys_hash) || value.vip_keys_hash.length > 1000 || value.vip_keys_hash.some(x => typeof x !== 'string' || !/^[a-f0-9]{64}$/.test(x))) throw new Error('VIP 設定格式錯誤');
-  if (!Array.isArray(value.bounce_strategy_signals) || value.bounce_strategy_signals.length > 100) throw new Error('反彈設定格式錯誤');
   const daytrade = value.daytrade_strategy_signals ?? [];
   if (!Array.isArray(daytrade) || daytrade.length > 100) throw new Error('當沖設定格式錯誤');
   const holidays = value.market_holidays ?? [];
@@ -312,7 +338,7 @@ export function config(value) {
     payment = url.href;
   }
   return { schema_version: 1, global_vip_switch: value.global_vip_switch, vip_keys_hash: value.vip_keys_hash,
-    bounce_strategy_signals: value.bounce_strategy_signals, daytrade_strategy_signals: daytrade,
+    daytrade_strategy_signals: daytrade,
     payment_gateway_url: payment, market_holidays: holidays };
 }
 export async function sha256(text) {
@@ -397,26 +423,6 @@ export function formatTelegramExit(t) {
     `持有時間：${durText}`,
     ``,
     `出場原因：${reason}`
-  ].join('\n');
-}
-
-export function formatTelegramRebound(s) {
-  const symbol = s.symbol || '';
-  const name = s.name || symbol;
-  const price = finite(s.price) ? s.price.toFixed(2) : '-';
-  const pct = finite(s.change_pct) ? `${s.change_pct >= 0 ? '+' : ''}${s.change_pct.toFixed(2)}%` : '-';
-  const reason = s.reason || '技術面觸底反彈訊號，量能回升';
-
-  return [
-    `🛡️【觸底反彈訊號】`,
-    ``,
-    `${symbol} ${name}`,
-    `現價：${price} 元｜漲跌：${pct}`,
-    ``,
-    `反彈觀察理由：`,
-    `✓ ${reason}`,
-    ``,
-    `狀態：REBOUND (觀察中)`
   ].join('\n');
 }
 
@@ -532,9 +538,7 @@ export function defaultState() {
   return { version: 1, stocks: [stock({ symbol: '2330', name: '台積電', market: 'TW', groups: ['watchlist'] })],
     settings: {
       daytrade: true,
-      rebound: true,
       allDaytradeAlerts: true,
-      allReboundAlerts: true,
       filterMode: 'all',
       minPrice: null,
       maxPrice: null,

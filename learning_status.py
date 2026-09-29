@@ -110,6 +110,47 @@ def model_application(
         }
 
 
+def _rows(value):
+    if isinstance(value, dict):
+        return [row for row in value.values() if isinstance(row, dict)]
+    if isinstance(value, list):
+        return [row for row in value if isinstance(row, dict)]
+    return []
+
+
+def trade_summary(live, session_date):
+    """Return aggregate paper-trade evidence only; never publish trade rows."""
+    rows = []
+    for row in _rows((live or {}).get("closed_trades")):
+        stamp = str(row.get("exit_time") or row.get("entry_time") or "")
+        if stamp[:10] == session_date:
+            rows.append(row)
+    pnl = [float(row["pnl_pct"]) for row in rows if isinstance(row.get("pnl_pct"), (int, float))]
+    mfe = [float(row["mfe_pct"]) for row in rows if isinstance(row.get("mfe_pct"), (int, float))]
+    mae = [float(row["mae_pct"]) for row in rows if isinstance(row.get("mae_pct"), (int, float))]
+    wins = sum(value > 0 for value in pnl)
+    losses = sum(value < 0 for value in pnl)
+    gross_profit = sum(value for value in pnl if value > 0)
+    gross_loss = -sum(value for value in pnl if value < 0)
+    curve = peak = drawdown = 0.0
+    for value in pnl:
+        curve += value
+        peak = max(peak, curve)
+        drawdown = min(drawdown, curve - peak)
+    balance = (live or {}).get("start_balance")
+    return {
+        "count": len(rows), "wins": wins, "losses": losses,
+        "net_pnl": sum(pnl) if pnl else None,
+        "return_pct": (sum(pnl) / float(balance) * 100) if pnl and isinstance(balance, (int, float)) and balance else None,
+        "avg_pnl_pct": (sum(pnl) / len(pnl)) if pnl else None,
+        "avg_mfe_pct": (sum(mfe) / len(mfe)) if mfe else None,
+        "avg_mae_pct": (sum(mae) / len(mae)) if mae else None,
+        "profit_factor": (gross_profit / gross_loss) if gross_loss else None,
+        "max_drawdown_pct": drawdown if pnl else None,
+        "exit_reasons": dict(Counter(str(row.get("exit_reason") or "UNKNOWN") for row in rows)),
+    }
+
+
 def compute(
     data,
     now,
@@ -117,6 +158,7 @@ def compute(
     engine_hash,
     known_hashes,
     preferred_date=None,
+    live=None,
 ):
     errors = []
     today = now.date().isoformat()
@@ -617,7 +659,7 @@ def compute(
                 "dates",
                 "samples",
                 "deployment_allowed",
-                "trained_through",
+                "trained_through", "validation", "profit_factor", "max_drawdown_pct",
             )
         },
 
@@ -637,6 +679,14 @@ def compute(
                 last_report.get(
                     "status"
                 ),
+        },
+        "research_summary": {
+            "date": session_date,
+            "new_samples": samples_by_date.get(session_date, 0),
+            "labels": labels_by_date.get(session_date, 0),
+            "requested": build_day(session_date).get("requested"),
+            "downloaded": build_day(session_date).get("downloaded"),
+            "trades": trade_summary(live or {}, session_date),
         },
     }
 
@@ -821,6 +871,7 @@ def main():
             )
             else None
         ),
+        live=live,
     )
 
     result["session"].update(
@@ -896,6 +947,13 @@ def main():
             f"{type(exc).__name__}: "
             f"{exc}"
         )
+
+    config = live.get("config") if isinstance(live, dict) else {}
+    closed = _rows(live.get("closed_trades")) if isinstance(live, dict) else []
+    result["model_application"].update({
+        "runtime_loaded": config.get("model_ready") if isinstance(config, dict) else None,
+        "runtime_used": any(row.get("model_version") for row in closed),
+    })
 
     # -----------------------------------------------------
     # Overnight

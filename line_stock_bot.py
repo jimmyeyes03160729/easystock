@@ -34,7 +34,6 @@ from flask import Flask, abort, request, send_from_directory
 
 from line_bot import reply_messages as line_reply
 from line_group_manager import register_group
-from paper_trade_game import handle_game_command
 
 from stock_command_service import (
     CHART_DIR,
@@ -567,26 +566,6 @@ def callback():
             message.get("text")
             or ""
         ).strip()
-
-        # 模擬當沖遊戲指令先處理。
-        game_reply = handle_game_command(
-            text,
-            source,
-        )
-
-        if game_reply is not None:
-            reply_token = event.get("replyToken")
-
-            if reply_token and game_reply:
-                line_reply(
-                    reply_token,
-                    [{
-                        "type": "text",
-                        "text": str(game_reply)[:5000],
-                    }],
-                )
-
-            continue
 
         cmd = parse_command(text)
 

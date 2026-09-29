@@ -1,11 +1,11 @@
-import { mkdir, readFile, writeFile, copyFile } from 'node:fs/promises';
+﻿import { mkdir, readFile, writeFile, copyFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
-// Deterministic self-authored raster icon, no external asset licensing/network.
+// Supplied brand raster assets are checked in; fallback generation only runs when an asset is missing.
 function crc32(bytes) {
   let crc = 0xffffffff;
   for (const byte of bytes) { crc ^= byte; for (let j = 0; j < 8; j++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0); }
@@ -50,7 +50,7 @@ for (const mode of ['production', 'vm']) {
   for (const file of files) await copyFile(join(root, file), join(out, file));
   if (mode === 'vm') {
     const manifest = JSON.parse(await readFile(join(root, 'manifest.json'), 'utf8'));
-    manifest.name = 'EasyStock VM 隔離測試'; manifest.host_permissions = [];
+    manifest.name = 'EasyStock VM ?皜祈岫'; manifest.host_permissions = [];
     await writeFile(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
     await writeFile(join(out, 'environment.js'), "export const VM_MODE = true;\nexport const CONFIG_URL = '';\nexport const FIREBASE_ROOT = '';\n");
     const cfg = JSON.parse(await readFile(join(root, 'config.json'), 'utf8'));

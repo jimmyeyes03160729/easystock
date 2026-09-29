@@ -217,8 +217,20 @@ def install_files() -> None:
         )
 
         tmp.replace(dest)
-
         print("INSTALL", rel)
+
+    # Keep the deployed VM runtime auditable without committing VM-local state.
+    commit = run("git", "rev-parse", "HEAD", capture=True).stdout.strip()
+    marker = ROOT / "release-info.json"
+    marker.write_text(
+        '{\n'
+        f'  "release_id": "vm-{commit[:12]}",\n'
+        f'  "source_commit": "{commit}",\n'
+        '  "channel": "vm-runtime"\n'
+        '}\n',
+        encoding="utf-8",
+    )
+    marker.chmod(0o600)
 
 
 def validate_live() -> None:

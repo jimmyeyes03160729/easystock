@@ -493,11 +493,6 @@ button {
   color: #ffffff !important;
   border-color: #f43f5e !important;
 }
-.test-btn-rebound {
-  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%) !important;
-  color: #ffffff !important;
-  border-color: #8b5cf6 !important;
-}
 .test-btn-icon {
   width: 15px !important;
   height: 15px !important;

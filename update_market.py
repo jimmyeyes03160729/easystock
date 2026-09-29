@@ -15,6 +15,7 @@ import numpy as np
 import requests
 from firebase_admin import credentials, db
 from strategy_rules import RULE_VERSION, technical_decision, stock_decisions
+from range_rebound import build_rebound_feed
 
 # ============================================================
 # Configuration
@@ -1595,6 +1596,7 @@ def main() -> None:
     # but write large stock branches in small PATCH batches.
     from uuid import uuid4
     release_id = latest_day + '_' + datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S') + '_' + uuid4().hex[:6]
+    rebound_feed = build_rebound_feed(summaries, klines, latest_day, release_id, now_utc)
     for row in summaries.values(): row['release_id'] = release_id
     output['meta']['release_id'] = release_id
     output['meta']['rule_version'] = RULE_VERSION
@@ -1609,8 +1611,10 @@ def main() -> None:
         max_items=40, label='release-kline',
     )
     release.child('backtests').set(global_backtests)
+    release.child('rebound_feed').set(rebound_feed)
     release.child('meta').set(output['meta'])
     market_ref.child('active_release').set(release_id)
+    market_ref.child('rebound_feed').set(rebound_feed)
     market_ref.child('selection_history').child(latest_day).set({
         'release_id': release_id, 'as_of': latest_day, 'rule_version': RULE_VERSION,
         'stocks': {symbol: {k: row.get(k) for k in ('symbol','category','price','amount','updated_at','selection','field_meta','roe','fcf','yield_pct','sma20','sma60','sharpe20','near_high_ratio','volume_ratio','institution_flow_ratio')} for symbol,row in summaries.items()}})

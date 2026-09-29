@@ -33,6 +33,7 @@
 `core.py` 的五欄研究原型保留獨立的 legacy schema，不能當成線上模型。歷史文件中的 11 欄 `quote-markout-pilot-1` 不符合此 schema，會被拒絕載入。
 
 `AI_PAPER_MODEL_PATH` 預設指向 `models/latest-approved.json`。載入器驗證 `approved=true`、`deployment_allowed=true`、schema、特徵順序、維度、有限數字及正尺度；標準化後使用 logistic score，並真正比較 `threshold`。
+`MODEL_RUNTIME_STATUS_PATH` 應由盤中服務與後台共用，指向同一個 `runtime-model-status.json`；缺少或過期時，後台只顯示「無法確認」，不推定模型已使用。
 
 - `LEARNING_ENABLED=1` 為預設；明確設成 `0` 才停用紀錄。
 - 雷達樣本按每檔每 5 分鐘記錄，ENTRY／EXIT 記錄包含模擬成交身分及結算結果。
@@ -73,6 +74,11 @@ SQLite 為模擬帳務來源。已啟用交易期間的現金帳本由 `paper_le
 - [VM 來源與環境](vm_runtime/README.md)
 - [系統架構](docs/ARCHITECTURE.md)
 - [2026-09-21 VM 實驗敘述封存（未重新驗證）](docs/README_VM_EXPERIMENT_2026-09-21.md)
+
+後台健康中心的「部署版本」只有在服務取得 `release-info.json`（或
+`EASYSTOCK_RELEASE_ID`／`EASYSTOCK_SOURCE_COMMIT`）時才會顯示可核對；缺少
+release identity 時會標示警告，不把本機 commit、VM 檔案或網站發布互相推定為同一版本。
+VM 部署腳本會在安裝或主線更新後寫入該 marker，並以來源 commit 作為可追溯依據。
 
 ```bash
 python vm_runtime/tests/test_runtime_safety.py

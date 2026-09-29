@@ -91,6 +91,40 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(paper['state'], 'ok')
         self.assertEqual(paper['metrics']['current_capital'], 200000)
 
+    def test_health_reports_unidentified_deployment_as_warning(self):
+        from easystock_admin.health import snapshot
+        with patch.dict(os.environ, {
+            'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'),
+            'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history'),
+        }, clear=False):
+            for key in ('EASYSTOCK_RELEASE_ID', 'EASYSTOCK_SOURCE_COMMIT', 'EASYSTOCK_RELEASE_FILE'):
+                os.environ.pop(key, None)
+            result = snapshot(self.s)
+        signal = next(row for row in result['signals'] if row['key'] == 'deployment_release')
+        self.assertEqual(signal['state'], 'warning')
+        self.assertIn('不能確認', signal['detail'])
+
+    def test_stale_runtime_is_warning_after_market_close(self):
+        from easystock_admin.health import snapshot
+        with patch('easystock_admin.health._market_session', return_value={
+            'key': 'market_session', 'label': '當沖時段', 'state': 'idle', 'detail': '已收盤',
+            'metrics': {},
+        }), patch.dict(os.environ, {
+            'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'),
+            'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history'),
+        }):
+            learning = self.path.parent/'learning'; models = learning/'models'; models.mkdir(parents=True)
+            (models/'runtime-model-status.json').write_text(json.dumps({
+                'reported_at': '2026-09-29T19:00:00+08:00',
+                'entry_mode': 'model',
+                'runtime': {'artifact_sha256': 'a' * 64, 'version': 'fixture'},
+            }))
+            (models/'latest-approved.json').write_text(json.dumps({'approved': False}))
+            result = snapshot(self.s)
+        signal = next(row for row in result['signals'] if row['key'] == 'model_runtime_consistency')
+        self.assertEqual(signal['state'], 'warning')
+        self.assertIn('非盤中', signal['detail'])
+
     def test_health_treats_auto_approved_paper_model_as_healthy(self):
         from easystock_admin.health import snapshot
         learning = self.path.parent/'learning'
@@ -119,6 +153,32 @@ class StoreTests(unittest.TestCase):
             result=snapshot(self.s)
         signal=next(row for row in result['signals'] if row['key']=='model_profile')
         self.assertEqual(signal['state'],'warning');self.assertIn('frozen_baseline',signal['detail'])
+
+    def test_health_reports_model_runtime_consistency(self):
+        from easystock_admin.health import snapshot
+        learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
+        approved={'approved':True,'deployment_allowed':True,'schema_version':'daytrade-research-v1','features':['gain_pct','return_5m_pct','surge_60s','buy_ratio_60s','amount_60s'],'mean':[0]*5,'scale':[1]*5,'coef':[0]*5,'intercept':0,'threshold':.6,'version':'research-2026-09-28','trained_through':'2026-09-28','profile':'profile-a'}
+        (models/'latest-approved.json').write_text(json.dumps(approved))
+        from daytrade_learning.model_runtime import write_runtime_model_status
+        write_runtime_model_status({
+            'version':'research-2026-09-28','trained_through':'2026-09-28','profile':'profile-a','schema_version':'daytrade-research-v1',
+            'loaded_at':'2026-09-29T09:00:00+08:00','artifact_path':str(models/'latest-approved.json'),'artifact_sha256':'a'*64,
+        }, entry_mode='model', pid=1, path=models/'runtime-model-status.json')
+        dummy_market={'key':'market_session','label':'當沖時段','state':'ok','detail':'test','metrics':{}}
+        with patch('easystock_admin.health._market_session', return_value=dummy_market), patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning),'EASYSTOCK_HISTORY_DATA':str(self.path.parent/'history')}):
+            result=snapshot(self.s)
+        self.assertIn('model_runtime_consistency', result)
+        signal=next(row for row in result['signals'] if row['key']=='model_runtime_consistency')
+        self.assertEqual(signal['state'],'warning')
+        self.assertIn('不一致', signal['detail'])
+
+    def test_dashboard_has_runtime_model_section(self):
+        html=(ROOT/'easystock_admin/static/index.html').read_text(encoding='utf-8')
+        self.assertIn('runtimeModelPanel', html)
+        self.assertIn('rtVersion', html)
+        self.assertIn('apVersion', html)
+        self.assertIn('rtConsistency', html)
+        self.assertIn('rtMode', html)
 
     def test_health_treats_pair_limit_as_resumable_success(self):
         from easystock_admin.health import snapshot
@@ -211,6 +271,23 @@ class WebTests(unittest.TestCase):
             self.assertFalse(self.client.get('/admin/config',base_url=ORIGIN).json['ready'])
             self.assertEqual(self.post('challenge',{}).status_code,403)
 
+    def test_real_order_requires_csrf_and_explicit_server_switch(self):
+        response = self.login()
+        csrf = response.json['csrf']
+        with patch.dict(os.environ, {
+            'LIVE_ORDERING_ENABLED': '1',
+            'LIVE_ORDERING_CONFIRMATION': 'wrong',
+        }, clear=False):
+            denied = self.client.post('/admin/api/order/place', base_url=ORIGIN,
+                json={'symbol':'2330','action':'BUY','price':100,'quantity':1},
+                headers={'Origin': ORIGIN, 'X-CSRF-Token': csrf})
+        self.assertEqual(denied.status_code, 400)
+        self.assertIn('隔離', denied.json['message'])
+        denied_no_csrf = self.client.post('/admin/api/order/place', base_url=ORIGIN,
+            json={'symbol':'2330','action':'BUY','price':100,'quantity':1},
+            headers={'Origin': ORIGIN})
+        self.assertEqual(denied_no_csrf.status_code, 403)
+
 class GoogleCryptoTests(unittest.TestCase):
     def test_real_signature_audience_and_expiry_verification(self):
         from cryptography.hazmat.primitives.asymmetric import rsa
@@ -239,10 +316,9 @@ class WebhookTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             fake_line=types.ModuleType('line_bot');fake_line.reply_messages=Mock()
             groups=types.ModuleType('line_group_manager');groups.register_group=Mock()
-            game=types.ModuleType('paper_trade_game');game.handle_game_command=lambda *a:None
             stock=types.ModuleType('stock_command_service');stock.CHART_DIR=Path(temp)/'cards';stock.handle_command=lambda *a:[];stock.parse_command=lambda *a:None
             env={'EASYSTOCK_ADMIN_DB':str(Path(temp)/'db'),'LINE_CHANNEL_SECRET':'TEST_ONLY_SECRET'}
-            with patch.dict(os.environ,env),patch.dict(sys.modules,{'line_bot':fake_line,'line_group_manager':groups,'paper_trade_game':game,'stock_command_service':stock}):
+            with patch.dict(os.environ,env),patch.dict(sys.modules,{'line_bot':fake_line,'line_group_manager':groups,'stock_command_service':stock}):
                 spec=importlib.util.spec_from_file_location('tested_webhook',ROOT/'line_stock_bot.py')
                 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
                 code=module.ADMIN_STORE.bind_code()

@@ -15,15 +15,34 @@
   - 桌機版不強制套用同一底部導覽樣式。
   - iPhone 需支援 `safe-area-inset-bottom`，避免 Home Indicator 擠壓。
 
-- [ ] **Chrome Extension 1.01 實盤驗證**
-  - 等待完整台股交易時段驗證盤中掃描、通知、刷新、API / Firebase / VM 穩定性。
-  - 目前原則：先修實盤 BUG，不加入大型架構變更。
+- [x] **Chrome Extension 1.02：1.01 實盤 BUG 一次性修正**
+  - 版本規則確認：1.0X 系列只做 BUG 修正、穩定性與相容性改善；大型新功能不塞入 1.0X。
+  - 1.02 已完成程式修正並更新 GitHub main：加權指數高頻刷新、盤中今日未完成日 K、固定分時 X 軸、台北時區、強制刷新、Popup Shell / Skeleton、Web / Chrome 共用正式 Rebound feed。
+  - Chrome 內部版本為 `1.0.2`，對外 `version_name = 1.02`。
+  - 尚需：VM 同步後於完整台股交易時段做 1.02 實盤驗證；若仍發現 BUG，下一版依序使用 1.03、1.04…。
+  - 不在 1.02 加入 Google 登入、Firebase 使用者同步或 Migration。
 
-- [ ] **Chrome Extension 1.02：Google 登入 + Firebase 使用者同步**
+- [x] **Chrome Extension 1.03：觸底反彈空白修正**
+  - 實盤驗證發現：首頁可顯示 3 檔 range-rebound，但 Chrome 小工具仍為空。
+  - 根因：後端已發布 `market_data/rebound_feed`，Firebase 公開讀取 allowlist 卻漏掉該節點；網站會自動改用前端 range-rebound 計算，因此仍有結果，Chrome 原本沒有相同 fallback。
+  - 1.03 補上 root / release rebound feed 唯讀規則，Chrome 也加入與首頁相同的 `range-rebound-0.3` fallback，直接以公開 summary + 同 release K 線計算最多 3 檔。
+  - Chrome 內部版本 `1.0.3`，對外 `version_name = 1.03`。
+  - Google 登入、Firebase 自選股／設定同步、本機 Migration 仍維持 2.0。
+
+- [ ] **Chrome Extension 2.0：Google 登入 + Firebase 使用者同步**
   - Google Authentication。
   - 自選股、當沖監控、提醒條件、群組與設定同步。
   - 第一次登入執行本機資料 Migration。
   - 核心原則：只合併、不覆蓋、不刪除。
+  - 2.0 才進行登入 / 雲端同步等大型架構變更；1.0X 維持 Bugfix 線。
+
+- [ ] **玉山 API 行情資料源整合（只讀，不交易）**
+  - 玉山 API 僅作為行情 / 市場資料來源，不做自動交易、不送單、不管理持倉。
+  - 第一階段補強 AI 當沖即時市場 context：加權指數、櫃買、電子、半導體、金融、電子零組件、航運等市場 / 類股指數。
+  - 後續延伸市場廣度、類股強弱、領漲 / 領跌、資金輪動與市場 regime 特徵。
+  - 與既有 Shioaji / Fugle / Firebase 資料分層，保留 source / quote_at / received_at / freshness，禁止來源混淆。
+  - 新增資料先進 Dataset / Shadow 驗證，不可因接上玉山 API 就直接改變正式 ENTRY / EXIT。
+  - 不保存或建立任何玉山交易憑證 / 下單能力；權限以行情唯讀最小化為原則。
 
 - [ ] **觸底反彈 AI 學習**
   - 統一正式 Rebound 定義。
@@ -41,6 +60,13 @@
   - 今日交易、損益、手續費、稅與歷史報表。
   - 今日 PnL、單筆交易、Equity Curve 圖表。
   - PAPER vs LIVE 執行差異比較。
+
+- [x] **首頁 AI 復盤改版：淘汰舊 OpenAI 每日文字復盤**
+  - 已完成：首頁改為「每日盤後研究摘要」，主要讀取 `daytrade_learning_status` / `research_summary`，不再以 `dual_review_status` 作為主要狀態來源。
+  - 已加入 stale / freshness 判斷，過期資料不再顯示成目前正常狀態。
+  - 已顯示可驗證的交易、樣本、Label、模型、runtime 與 validation 指標；沒有資料時明確顯示待資料 / 待確認。
+  - AI 改為每週 Architecture Review 或異常觸發分析，不再每天固定產生文字復盤。
+  - 已完成 GitHub main → VM canonical deploy 與 release identity 驗收；VM / origin/main / GitHub main SHA 已一致。
 
 - [ ] **AI Architecture Guardian 系統健檢**
   - 每日 Tests / CodeQL / Secret Scan / Dependabot / Trivy / 自訂安全規則。
@@ -97,12 +123,18 @@
 ### 安全原則
 「社畜後台」即使在前端顯示，也不可因此放寬任何 Admin 驗證；後台仍必須維持原本的 Owner-only / Google 驗證與 Private Admin 權限。
 
-## 目前版本：Chrome Extension 1.01
+## 目前版本：Chrome Extension 1.03（1.0X Bugfix 線）
 
 ### 目標
-- 先讓 1.01 經歷實際開盤。
-- 優先觀察與修正實盤 BUG。
-- 暫時不加入大型架構變更，避免在尚未完成開盤驗證前增加變數。
+- 1.02 專門處理 1.01 實盤累積 BUG，不加入登入 / 雲端同步等大型功能。
+- GitHub main 完成修正後同步 VM，再以完整交易時段做實盤驗證。
+- 若實盤仍出現 BUG，沿用 1.03、1.04…逐版修正，直到 1.0X 穩定線完成。
+
+### 版本編號規則
+- `1.01 / 1.02 / 1.03 / 1.04 ...`：Bugfix / 穩定性 / 資料正確性 / UI 相容性修正。
+- 1.0X 不加入 Google 登入、Firebase 個人資料同步等大型架構功能。
+- `2.0`：Google 登入 + Firebase 使用者同步 + 第一次登入本機資料 Migration。
+- 未來若 2.0 上線後仍只是修 BUG，再依既定版本策略使用對應 patch 版本，不把 BUG 修正與大型功能混在同一版。
 
 ### 優先驗證項目
 - 盤中掃描是否正常。
@@ -112,9 +144,61 @@
 - VM / Firebase / API / Chrome Extension 間資料同步是否穩定。
 - 開盤時可能出現的效能、延遲與例外狀況。
 
+### 1.02 已修正的 1.01 Chrome 小工具 BUG
+> 下列保留 1.01 的問題背景與 1.02 修正方向。程式修正已進 GitHub main；完成 VM 同步後再做開盤實測。
+\n1. ✅ **加權指數更新時間**
+   - 目前 `fetchTaiexIndex()` 雖直接抓 TWSE MIS，但 `feedCache` 共用 `TTL = 5 分鐘`。
+   - 盤中加權指數不應使用 5 分鐘快取。
+   - 修正方向：盤中獨立成約 10～30 秒更新頻率。
+   - UI 顯示實際來源時間，例如 `資料時間 09:08:25`，避免只顯示畫面刷新時間。
+\n2. ✅ **個股日 K 盤中仍顯示昨日**
+   - 目前歷史日 K 優先使用 Yahoo `interval=1d`，盤中不保證提供今日尚未完成的日 K。
+   - 修正方向：歷史日 K + 今日即時 / 分時 OHLC 合併。
+   - 09:00～13:30 顯示「今日未完成 K 棒」；收盤後再轉成正式日 K。
+   - 不可用假資料補今日 K。
+\n3. ✅ **分時走勢圖 X 軸跟著目前資料長度拉伸**
+   - 現在 `drawIntraday()` 依 `visibleCount` 計算 X 軸，所以早盤幾分鐘資料會撐滿整張圖。
+   - 修正方向：台股日盤 X 軸固定 `09:00～13:30`。
+   - 09:30 永遠落在固定時間位置，不因目前只有 30 分鐘資料而跑到最右端。
+   - 現在時間之後的區段保持空白，直到新資料逐步填入。
+   - 建議固定主要刻度：`09:00 / 10:00 / 11:00 / 12:00 / 13:00 / 13:30`。
+\n4. ✅ **個股列表右側時間疑似 +8 時區錯誤**
+   - 現象：個股右側時間與台灣實際時間不一致，疑似多加 8 小時。
+   - 前端目前優先使用 `q.time`，否則才解析 `updated_at`。
+   - 後端 `public_feed.py` 的 `updated_at` 已使用 `datetime.now(TPE).isoformat()`，本身已帶 `+08:00`。
+   - 檢查方向：確認 `q.time` 來源、UTC / TPE 是否被重複轉換，以及前端是否對已帶 `+08:00` 的時間再次手動加時區。
+   - 修正原則：後端輸出明確含 offset 的 ISO 8601；前端統一只轉一次 `Asia/Taipei`，禁止手動再 +8。
+\n5. ✅ **右下角重新整理不是實際強制刷新**
+   - 現象：例如 00878 可能有更新，但 2330 台積電按重新整理沒有反應。
+   - `btn-refresh` 會送 `SNAPSHOT refresh:true`，但 `feeds(now, true)` 進入後仍先檢查 5 分鐘 `feedCache`，所以可能直接回舊資料。
+   - `enrichMissingQuotes()` 目前只補缺報價 / 缺漲跌幅；若舊報價的 `price` 與 `change_pct` 仍是有效數字，即使已過期也不會重新抓。
+   - 修正方向：使用者手動按重新整理時必須真正 bypass cache，重新抓 public feed / 大盤，並依每檔股票 freshness 判斷是否需要重抓即時行情。
+   - 不可只判斷欄位「有值」，還必須判斷 `updated_at / quote_at` 是否新鮮。
+\n6. ✅ **Chrome Popup 初次開啟白屏並縮到最小**
+   - 現象：點擊 Chrome 小工具後，資料讀取期間整個介面先呈現白色、很小的 Popup，等資料回來後才恢復完整尺寸。
+   - 目前 `popup.js` 初始化最後直接 `await act({ type: 'SNAPSHOT', refresh: true })`，完整畫面要等待遠端資料後才 render。
+   - Popup CSS 目前固定寬度約 440px，但沒有固定 / 最低高度，因此資料尚未渲染時 Chrome 會依當下少量內容縮小 Popup。
+   - 修正方向：
+     - HTML 初始即提供完整 Shell / Skeleton 畫面。
+     - 設定合理 `min-height` 或固定初始高度，避免 Popup 尺寸跳動。
+     - 開啟時先立即 render 快取 / placeholder，不阻塞 UI。
+     - `SNAPSHOT` 改背景非阻塞更新，資料回來後再局部更新。
+     - Loading 階段延續目前深色 / 淺色主題，不應出現突兀純白閃屏。
+\n7. ✅ **首頁有觸底反彈但 Chrome 小工具沒有顯示**
+   - 現象：EasyStock 首頁已顯示觸底反彈標的，但 Chrome Extension 的「觸底反彈」頁籤為空或缺少相同標的。
+   - 目前首頁使用 `assets/rebound-engine.js` / `assets/rebound-ui.js` 執行較完整的 range-rebound 邏輯。
+   - Chrome Extension 的 `view.bounce` 則由 `background.js` 合併：
+     - remote config 的 `bounce_strategy_signals`
+     - `fetchSummaryRebound()` 從 `summary.selection.strategies.REBOUND` 產生的標的
+   - 兩邊不是同一資料來源，也不是同一套正式 Rebound 定義，因此首頁有標的時，小工具不一定有。
+   - 修正方向：先依既定 Roadmap 統一正式 Rebound 定義，再由後端發布單一正式 Rebound feed，首頁與 Chrome Extension 都讀同一份結果。
+   - 不應由 Chrome Extension 自己再做另一套反彈判定，也不應靠 hard-coded featured symbols 補資料。
+   - 最終要求：首頁、Chrome Extension、LINE / Telegram（若顯示反彈）必須共享同一 signal id / generated_at / quote_at / strategy_version，避免跨平台結果不一致。
+
+
 ---
 
-## Chrome Extension 1.02 規劃
+## Chrome Extension 2.0 規劃
 
 ### Google 登入
 - 加入 Google 登入。
@@ -181,6 +265,98 @@ auth.uid == {uid}
 - 最後同步時間。
 - 雲端同步成功 / 失敗狀態。
 
+
+---
+
+## 玉山 API 行情資料源整合規劃
+
+### 定位
+玉山 API 在 EasyStock 中只扮演「行情 / 市場資料供應者」，不做交易。
+
+禁止用途：
+- 不送出買進 / 賣出委託。
+- 不建立自動交易。
+- 不管理券商持倉。
+- 不把玉山帳戶憑證做成交易權限。
+- 不因資料源接通而直接改變正式 ENTRY / EXIT。
+
+### 第一階段資料
+優先收集：
+- 加權指數。
+- 櫃買指數。
+- 電子類。
+- 半導體類。
+- 金融類。
+- 電子零組件類。
+- 航運類。
+- 其他後續確認對當沖有價值的市場 / 類股指數。
+
+### AI 用途
+玉山資料先作為市場 context / feature，不直接作為交易訊號。
+
+初期可加入：
+- index_return_1m / 5m / 15m。
+- sector_return_1m / 5m / 15m。
+- sector_vs_market_strength。
+- intraday_market_regime。
+- 大盤 / 櫃買同步或背離。
+- 個股相對所屬類股強弱。
+
+後續延伸：
+- 上漲 / 下跌家數。
+- 漲停 / 跌停家數。
+- 創高 / 創低家數。
+- 成交量 / 成交金額廣度。
+- 類股領漲 / 領跌排名。
+- 資金輪動。
+- 市場 breadth / risk-on / risk-off。
+- 類股 regime 與強弱切換。
+
+### 資料治理
+不同來源必須保留來源身分，不可混成「同一筆行情」：
+- source
+- symbol / index_code
+- quote_at
+- received_at
+- freshness
+- sequence / event id（若來源提供）
+- schema_version
+
+與既有 Shioaji / Fugle / Firebase 整合時，必須能知道：
+- 哪一個來源提供哪一欄。
+- 哪個來源優先。
+- 來源失效時是否 fallback。
+- fallback 後 UI / AI 是否能辨識來源已改變。
+
+### AI 導入原則
+流程：
+```text
+玉山即時市場資料
+      ↓
+標準化 Market Context
+      ↓
+Dataset 記錄
+      ↓
+離線研究 / Shadow
+      ↓
+確認有增益
+      ↓
+才考慮加入正式模型 Feature
+```
+
+禁止：
+```text
+接上玉山 API
+→ 當天直接改模型
+→ 當天直接影響 ENTRY
+```
+
+所有新增 Feature 必須經過：
+- point-in-time 檢查
+- missing / stale 處理
+- walk-forward / holdout
+- 與現有 baseline 比較
+- Shadow 驗證
 
 ---
 
@@ -707,6 +883,59 @@ AI Candidate、Shadow Model、未通過驗證的新 Rebound AI 不得自動取�
 
 ---
 
+## 首頁 AI 復盤改版規劃
+
+### 問題現況
+- 首頁 `assets/learning-status.js` 目前每 60 秒讀取 Firebase `market_data/dual_review_status`。
+- 前端使用 `cache: 'no-store'`，因此畫面停在 2026-09-22 並非瀏覽器快取造成。
+- 目前 main branch 找不到持續寫入 `dual_review_status` 的正式 producer；Firebase Rules 僅保留公開讀取。
+- 舊 OpenAI-only 每日復盤與 legacy paper feedback 流程屬於 2026-09-21～22 階段的架構，後續現行盤後研究流程已改為 `learning_cycle.py` / `learning_eod.py`。
+- 現行 `deploy/install_research_schedule.sh` 會停用舊 `easystock-paper-train.timer` 與 `easystock-paper-feedback.timer`，改用新的 research-cycle。
+- 舊復盤區沒有像其他狀態面板一樣嚴格檢查 stale `updated_at`，因此可能把舊資料繼續顯示成「OpenAI 復盤完成」。
+
+### 決策
+不優先把舊「OpenAI 每日文字復盤」修回來。
+
+原因：
+- 文字復盤不直接決定 ENTRY / EXIT。
+- 不等於模型已更新或正式套用。
+- 不代表模型績效或勝率提升。
+- 現行五特徵 / 盤後候選模型流程不需要依賴每日文字摘要。
+- 每天固定呼叫 AI 產生文字內容，價值低於可驗證的量化研究指標。
+
+### 首頁替代方案：每日盤後研究摘要
+將原「OpenAI 每日復盤」區塊改成「每日盤後研究摘要」。
+
+建議至少顯示：
+- 當日模擬交易筆數。
+- 獲利 / 虧損筆數。
+- 當日淨損益與報酬率。
+- 平均單筆損益。
+- MFE / MAE。
+- 主要 Exit Reason 分布。
+- 今日新增研究樣本。
+- 今日完成 Label 數。
+- 資料收集完整度 / stale 狀態。
+- 目前載入模型版本。
+- 今日 Candidate / Approved / Shadow / Blocked 狀態。
+- Walk-forward / Holdout 摘要。
+- Brier、Profit Factor、Drawdown 等可驗證研究指標。
+
+### AI 使用方式
+AI 改為「需要時才使用」：
+- 每週：交由 AI Architecture Guardian 做架構 / 模型 / 資料流程 Review。
+- 異常觸發：例如連續虧損、Drawdown 突增、模型表現惡化、資料缺漏、策略漂移或模型 / schema 異常時，再呼叫 AI 深度分析。
+- 每日固定工作以 deterministic / quantitative 計算為主，不讓 AI 文字摘要成為模型狀態或交易狀態的證據。
+
+### 舊功能清理原則
+- 停止把 `dual_review_status` 當成目前每日流程的正式狀態來源。
+- 若保留 2026-09-22 等舊復盤資料，只能標示為歷史紀錄。
+- 移除或停用已無正式 producer 的 OpenAI daily review UI。
+- 清理 legacy paper feedback 在首頁造成的重複 / 誤導顯示，但不得因此刪除真正仍被研究流程使用的資料或模型 artifact。
+- 所有首頁模型狀態必須以實際 runtime / training / validation evidence 為準，不能以文字復盤是否完成推定模型已更新。
+
+---
+
 ## AI Architecture Guardian 系統健檢規劃
 
 ### 功能定位
@@ -948,7 +1177,7 @@ AI Architecture Guardian 第一階段只做：
 
 ## GitHub / 模型核心保護規劃
 
-目前先不動 1.01，下一次較大改版再處理。
+目前不併入 1.0X Bugfix 線；規劃於 2.0 或後續較大架構版本再處理。
 
 ### 已確認風險
 目前 public repository 中已有相當完整的策略與模型相關程式，例如：

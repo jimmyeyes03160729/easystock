@@ -1,7 +1,7 @@
 const fixture = {
-  stocks: [{ symbol: '2330', name: '台積電', market: 'TW', groups: ['daytrade'] }, { symbol: '8299', name: '群聯', market: 'TWO', groups: ['rebound'] }],
+  stocks: [{ symbol: '2330', name: '台積電', market: 'TW', groups: ['daytrade'] }],
   quotes: { '2330': { price: 1000, change_pct: 1.25, updated_at: new Date().toISOString() }, '8299': { price: 500, change_pct: -0.8, updated_at: new Date().toISOString() } },
-  settings: { daytrade: true, rebound: true }, bounce: [], used: 0, vip: false, vm: true, marketOpen: false, updatedAt: Date.now(), paymentURL: '', error: ''
+  settings: { daytrade: true }, used: 0, vip: false, vm: true, marketOpen: false, updatedAt: Date.now(), paymentURL: '', error: ''
 };
 window.chrome = {
   runtime: { sendMessage: async m => {

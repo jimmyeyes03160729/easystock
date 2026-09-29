@@ -52,7 +52,7 @@ setText('badge-market', market === 'TWO' ? '上櫃' : '上市');
 const stBadge = document.getElementById('badge-strategy');
 if (stBadge) {
   if (strategyType) {
-    stBadge.textContent = strategyType === 'daytrade' ? '當沖策略' : (strategyType === 'rebound' ? '觸底反彈' : strategyType);
+    stBadge.textContent = strategyType === 'daytrade' ? '????' : strategyType;
     stBadge.style.display = 'inline-block';
   } else {
     stBadge.style.display = 'none';
@@ -332,6 +332,51 @@ async function fetchYahooIntradayDirect() {
   }
 }
 
+function taipeiSessionNow(now = Date.now()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  }).formatToParts(new Date(now));
+  const value = key => parts.find(p => p.type === key)?.value || '';
+  const date = `${value('year')}-${value('month')}-${value('day')}`;
+  const minute = Number(value('hour')) * 60 + Number(value('minute'));
+  const weekday = new Date(`${date}T00:00:00+08:00`).getDay();
+  return { date, minute, weekday, open: weekday > 0 && weekday < 6 && minute >= 540 && minute <= 810 };
+}
+
+async function mergeTodayPartialDailyBar(bars) {
+  if (!Array.isArray(bars)) return [];
+  const session = taipeiSessionNow();
+  if (!session.open) return bars;
+  let intraday = null;
+  try {
+    if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+      intraday = await chrome.runtime.sendMessage({ type: 'FETCH_INTRADAY', symbol, market });
+      if (intraday?.value) intraday = intraday.value;
+    }
+  } catch (_) {}
+  if (!intraday?.bars?.length) {
+    try { intraday = await fetchYahooIntradayDirect(); } catch (_) {}
+  }
+  const rows = intraday?.bars;
+  if (!Array.isArray(rows) || !rows.length) return bars;
+  const highs = rows.map(x => Number(x.high)).filter(finite);
+  const lows = rows.map(x => Number(x.low)).filter(finite);
+  if (!highs.length || !lows.length) return bars;
+  const partial = {
+    time: session.date,
+    open: Number(rows[0].open),
+    high: Math.max(...highs),
+    low: Math.min(...lows),
+    close: Number(rows.at(-1).close),
+    volume: rows.reduce((sum, x) => sum + (finite(Number(x.volume)) ? Number(x.volume) : 0), 0),
+    partial: true
+  };
+  if (![partial.open, partial.high, partial.low, partial.close].every(finite)) return bars;
+  return [...bars.filter(x => (x.time || x.date) !== session.date), partial]
+    .sort((a, b) => String(a.time || a.date).localeCompare(String(b.time || b.date)));
+}
+
 // 載入資料
 async function loadData(force = false) {
   loadingMask.classList.remove('hidden');
@@ -440,13 +485,15 @@ async function loadData(force = false) {
       }
 
       if (Array.isArray(bars) && bars.length) {
+        bars = await mergeTodayPartialDailyBar(bars);
         dailyData = bars.map(b => ({
           time: b.time || b.date,
           open: Number(b.open),
           high: Number(b.high),
           low: Number(b.low),
           close: Number(b.close),
-          volume: Number(b.volume || b.amount || 0)
+          volume: Number(b.volume || b.amount || 0),
+          partial: b.partial === true
         })).filter(b => finite(b.open) && finite(b.close) && b.time);
       } else {
         const realBase = currentStockInfo.price > 0 ? currentStockInfo.price : (previousClose > 0 ? previousClose : 50);
@@ -461,7 +508,7 @@ async function loadData(force = false) {
       }
     }
 
-    // 檢查當沖/反彈即時持倉資訊
+    // 檢查當沖即時持倉資訊
     try {
       const liveRes = await fetch(`${FIREBASE_ROOT}/intraday_live.json`).catch(() => null);
       if (liveRes && liveRes.ok) {
@@ -665,9 +712,23 @@ function drawIntraday(width, height) {
   }
   const priceRange = maxPrice - minPrice;
 
-  // 座標映射
-  const barStep = plotWidth / (visibleCount - 1 || 1);
-  const getX = i => i * barStep;
+  // 座標映射：預設固定台股日盤 09:00～13:30，未到時間區段保持空白。
+  const SESSION_START = 9 * 60;
+  const SESSION_END = 13 * 60 + 30;
+  const SESSION_SPAN = SESSION_END - SESSION_START;
+  const minuteOf = value => {
+    const m = String(value || '').match(/(\d{1,2}):(\d{2})/);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  };
+  const fixedSessionAxis = viewOffset === 0 && viewBarsCount >= 270;
+  const dynamicStep = plotWidth / (visibleCount - 1 || 1);
+  const barStep = fixedSessionAxis ? (plotWidth / SESSION_SPAN) : dynamicStep;
+  const getX = i => {
+    if (!fixedSessionAxis) return i * dynamicStep;
+    const minute = minuteOf(visible[i]?.time);
+    if (!Number.isFinite(minute)) return i * dynamicStep;
+    return Math.max(0, Math.min(plotWidth, ((minute - SESSION_START) / SESSION_SPAN) * plotWidth));
+  };
   const getY = p => Math.floor(mainHeight - ((p - minPrice) / priceRange) * mainHeight);
   const getVolY = v => Math.floor(height - paddingBottom - (maxVol > 0 ? (v / maxVol) * volHeight : 0));
 
@@ -805,15 +866,22 @@ function drawIntraday(width, height) {
   // 繪製 X 軸時間標籤
   ctx.fillStyle = '#87929a';
   ctx.textAlign = 'center';
-  const labelInterval = Math.max(1, Math.floor(visibleCount / 6));
-  for (let i = 0; i < visibleCount; i += labelInterval) {
-    const b = visible[i];
-    const x = getX(i);
-    ctx.fillText(b.time || '', x, height - 6);
-  }
-  if (visibleCount > 1) {
-    const lastB = visible[visibleCount - 1];
-    ctx.fillText(lastB.time || '', getX(visibleCount - 1), height - 6);
+  if (fixedSessionAxis) {
+    for (const label of ['09:00', '10:00', '11:00', '12:00', '13:00', '13:30']) {
+      const minute = minuteOf(label);
+      const x = ((minute - SESSION_START) / SESSION_SPAN) * plotWidth;
+      ctx.fillText(label, x, height - 6);
+    }
+  } else {
+    const labelInterval = Math.max(1, Math.floor(visibleCount / 6));
+    for (let i = 0; i < visibleCount; i += labelInterval) {
+      const b = visible[i];
+      ctx.fillText(b.time || '', getX(i), height - 6);
+    }
+    if (visibleCount > 1) {
+      const lastB = visible[visibleCount - 1];
+      ctx.fillText(lastB.time || '', getX(visibleCount - 1), height - 6);
+    }
   }
 
   // 十字游標與 Tooltip 連動
@@ -1122,8 +1190,23 @@ window.addEventListener('mousemove', e => {
   const n = Math.min(total, Math.max(15, viewBarsCount));
 
   if (x >= 0 && x <= plotWidth && n > 0) {
-    const barStep = plotWidth / (n || 1);
-    const idx = Math.min(n - 1, Math.max(0, Math.floor(x / barStep)));
+    let idx;
+    if (currentMode === 'intraday' && viewOffset === 0 && viewBarsCount >= 270) {
+      const targetMinute = 540 + (x / plotWidth) * 270;
+      const visibleRows = currentData.slice(Math.max(0, total - n), total);
+      let best = Infinity;
+      idx = 0;
+      for (let i = 0; i < visibleRows.length; i++) {
+        const m = String(visibleRows[i]?.time || '').match(/(\d{1,2}):(\d{2})/);
+        if (!m) continue;
+        const minute = Number(m[1]) * 60 + Number(m[2]);
+        const dist = Math.abs(minute - targetMinute);
+        if (dist < best) { best = dist; idx = i; }
+      }
+    } else {
+      const step = plotWidth / (n || 1);
+      idx = Math.min(n - 1, Math.max(0, Math.floor(x / step)));
+    }
     if (idx >= 0 && idx < n) {
       if (hoverIndex !== idx) {
         hoverIndex = idx;

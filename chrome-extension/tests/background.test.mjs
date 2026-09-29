@@ -68,11 +68,6 @@ test('background behavior', async t => {
     // Persisted routing, not an in-memory map, also works after service-worker reload.
     assert.equal(db.ledger.routes[id].symbol, '2330');
   });
-  await t.test('test ignore does not mute production ticker', async () => {
-    reset(); await bg.serial(() => bg.handle({ type: 'TEST', strategy: 'rebound' }));
-    chrome.notifications.onButtonClicked.listeners[0](notifications[0].id, 1); await bg.serial(async () => {});
-    assert.equal(db.ledger.ignored['2330'], undefined);
-  });
   await t.test('outside session has zero network activity; holiday no feed fetch', async () => {
     reset(); now = Date.parse('2026-09-17T13:30:00+08:00'); await bg.serial(bg.poll); assert.equal(calls.length, 0);
     reset(); cfg.market_holidays = ['2026-09-17']; await bg.serial(bg.poll); assert.equal(calls.length, 1);
@@ -169,24 +164,6 @@ test('background behavior', async t => {
     await bg.serial(() => bg.processLiveData(matchedStock));
     assert.equal(notifications.length, 1);
   });
-  await t.test('rebound push respects independent switch and sends telegram format', async () => {
-    reset(); db.state = defaultState();
-    db.state.settings.daytrade = false;
-    db.state.settings.rebound = false;
-    cfg.bounce_strategy_signals.push(makeSignal('2330'));
-    await bg.serial(bg.poll);
-    assert.equal(notifications.length, 0);
-
-    reset(); db.state = defaultState();
-    db.state.stocks[0].groups = ['rebound'];
-    db.state.settings.daytrade = false;
-    db.state.settings.rebound = true;
-    cfg.bounce_strategy_signals.push(makeSignal('2330'));
-    await bg.serial(bg.poll);
-    assert.equal(notifications.length, 1);
-    assert.ok(notifications[0].options.title.includes('🛡️【觸底反彈訊號】'));
-    assert.ok(notifications[0].options.message.includes('2330'));
-  });
   await t.test('clicking notification opens standalone chart popup window if supported', async () => {
     reset();
     let winOpened = null;
@@ -246,7 +223,7 @@ test('background behavior', async t => {
     reset(); db.state = defaultState();
     const batch = [
       { symbol: '2454', market: 'TW', name: '聯發科', groups: ['daytrade'] },
-      { symbol: '2317', market: 'TW', name: '鴻海', groups: ['rebound'] }
+      { symbol: '2317', market: 'TW', name: '鴻海', groups: ['daytrade'] }
     ];
     await bg.serial(() => bg.handle({ type: 'ADD_BATCH', stocks: batch }));
     assert.ok(db.state.stocks.some(s => s.symbol === '2454'));

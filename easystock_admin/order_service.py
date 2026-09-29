@@ -19,6 +19,22 @@ if env_file.exists():
                 os.environ[k] = v
 
 CA_DEFAULT_PATH = os.environ.get("CA_PATH", "/home/ubuntu/easystock/cert/Sinopac.pfx")
+LIVE_ORDERING_ENABLED = "LIVE_ORDERING_ENABLED"
+LIVE_ORDERING_CONFIRMATION = "LIVE_ORDERING_CONFIRMATION"
+LIVE_ORDERING_CONFIRMATION_VALUE = "I_UNDERSTAND_LIVE_ORDERING"
+
+
+def live_ordering_enabled() -> bool:
+    """Require an explicit, two-factor environment switch for real orders.
+
+    The application is paper-first.  Credentials alone must never make the
+    admin endpoint capable of placing a broker order.
+    """
+    return (
+        os.environ.get(LIVE_ORDERING_ENABLED, "").strip().lower() in {"1", "true", "yes"}
+        and os.environ.get(LIVE_ORDERING_CONFIRMATION, "")
+        == LIVE_ORDERING_CONFIRMATION_VALUE
+    )
 
 
 class OrderService:
@@ -183,6 +199,11 @@ class OrderService:
         }
 
     def place_order(self, symbol: str, action: str, price: float, quantity: int, is_odd_lot: bool, ca_passwd: str, ca_path: str = None):
+        if not live_ordering_enabled():
+            raise PermissionError(
+                "真實下單入口目前已隔離；需由伺服器明確啟用 LIVE_ORDERING_ENABLED "
+                "及 LIVE_ORDERING_CONFIRMATION 才能送出委託。"
+            )
         self.ensure_ready()
 
         ca_path = ca_path or CA_DEFAULT_PATH

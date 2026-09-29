@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { taipei, marketOpen, fresh, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter, BUILTIN_STOCKS, searchStocks, searchOnlineStocks, calcChangePct, BROKERS, getBroker } from '../core.js';
+import { taipei, marketOpen, fresh, normalizeQuoteTimestamp, formatTaipeiQuoteTime, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, matchFilter, BUILTIN_STOCKS, searchStocks, searchOnlineStocks, calcChangePct, BROKERS, getBroker } from '../core.js';
 const at = s => Date.parse(s);
 const now = at('2026-09-17T09:30:00+08:00');
 const sample = { id: 'a', symbol: '2330', market: 'TW', name: '台積電', price: 1000, change_pct: 1, reason: '爆量', generated_at: '2026-09-17T09:29:00+08:00', quote_at: '2026-09-17T09:29:00+08:00' };
@@ -19,6 +19,15 @@ test('freshness rejects future, naive, stale and invalid timestamps', () => {
   for (const stamp of ['2026-09-17T09:31:00+08:00', '2026-09-17T09:29:00', '2026-09-16T09:29:00+08:00', 'garbage']) assert.equal(fresh(stamp, now), false);
   assert.equal(fresh(sample.quote_at, now + TTL), false);
 });
+test('quote timestamps are normalized once into Taiwan time', () => {
+  const sampleNow = at('2026-09-29T09:20:00+08:00');
+  const local = normalizeQuoteTimestamp('09:15:30', sampleNow);
+  assert.equal(local, '2026-09-29T09:15:30+08:00');
+  assert.equal(formatTaipeiQuoteTime(local), '09:15');
+  const utc = normalizeQuoteTimestamp('2026-09-29T01:15:30Z', sampleNow);
+  assert.equal(formatTaipeiQuoteTime(utc), '09:15');
+});
+
 test('signal schema blocks incomplete or dangerous values', () => {
   assert.equal(signal(sample, 'daytrade', now).symbol, '2330');
   for (const patch of [{ market: 'EVIL' }, { symbol: '../x' }, { price: 0 }, { change_pct: null }, { id: '' }, { reason: 123 }, { generated_at: '2000-01-01T09:00:00+08:00' }]) assert.equal(signal({ ...sample, ...patch }, 'daytrade', now), null);
@@ -58,13 +67,15 @@ test('VIP revalidated against config, not a stored boolean', async () => {
 test('production has narrow permissions, packaged resources, no test VIP', async () => {
   const m = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url)));
   assert.equal(m.manifest_version, 3);
+  assert.equal(m.version, '1.0.2');
+  assert.equal(m.version_name, '1.02');
   assert.deepEqual(m.permissions, ['storage', 'alarms', 'notifications']);
   assert.equal(m.host_permissions.some(x => x.includes('<all_urls>')), false);
   const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
   assert.doesNotMatch(html, /<script[^>]+src="https?:/);
   const cfg = JSON.parse(await readFile(new URL('../config.json', import.meta.url)));
   assert.equal(cfg.vip_keys_hash.includes(await sha256('VIP888')), false);
-  assert.deepEqual(cfg.bounce_strategy_signals, []);
+  assert.equal(Object.prototype.hasOwnProperty.call(cfg, 'bounce_strategy_signals'), false);
 });
 test('telegram format generates matching entry and exit messages', () => {
   const entryMsg = formatTelegramEntry({
@@ -104,16 +115,6 @@ test('matchFilter supports all-pass, price-range, and change-percentage criteria
   assert.equal(matchFilter(40, 2.5, customSettings), false);
   assert.equal(matchFilter(250, 2.5, customSettings), false);
   assert.equal(matchFilter(100, 1.5, customSettings), false);
-});
-test('telegram rebound formatting outputs complete signal message', () => {
-  const reboundMsg = formatTelegramRebound({
-    symbol: '2330', name: '台積電', price: 1000, change_pct: 2.5, reason: '底部出量紅K確認'
-  });
-  assert.match(reboundMsg, /🛡️【觸底反彈訊號】/);
-  assert.match(reboundMsg, /2330 台積電/);
-  assert.match(reboundMsg, /現價：1000\.00 元｜漲跌：\+2\.50%/);
-  assert.match(reboundMsg, /底部出量紅K確認/);
-  assert.match(reboundMsg, /狀態：REBOUND/);
 });
 test('searchStocks finds stocks by Chinese name, code, prefix, and dynamic codes', () => {
   assert.ok(BUILTIN_STOCKS.length >= 70);

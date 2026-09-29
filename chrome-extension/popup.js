@@ -1,4 +1,4 @@
-import { SYMBOL, GROUPS, finite, fresh, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, fetchStockClosingQuotes, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, BROKERS, getBroker } from './core.js';
+import { SYMBOL, GROUPS, QUOTE_FRESH_MS, finite, fresh, formatTaipeiQuoteTime, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, fetchStockClosingQuotes, formatTelegramEntry, formatTelegramExit, BROKERS, getBroker } from './core.js';
 import { icons } from './icons.js';
 
 const $ = id => (typeof document !== 'undefined' && document ? document.getElementById(id) : null);
@@ -18,6 +18,16 @@ function status(text, error = false) {
   $('update-timestamp').classList.toggle('text-red-600', error);
   $('action-message').textContent = text;
   $('action-message').classList.toggle('text-red-600', error);
+}
+
+function quoteDisplayTime(q) {
+  const stamp = q?.quote_at || q?.updated_at;
+  if (typeof stamp === 'string' && /(Z|[+-]\d{2}:\d{2})$/.test(stamp) && Number.isFinite(Date.parse(stamp))) {
+    return formatTaipeiQuoteTime(stamp);
+  }
+  const raw = String(q?.time || '').trim();
+  const match = raw.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
+  return match ? `${String(match[1]).padStart(2, '0')}:${match[2]}` : '--:--';
 }
 
 // 即時 In-App 彈窗通知 (雙重保險：即使 Windows 吃掉通知，小工具內也絕對能看見彈窗！)
@@ -74,10 +84,8 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       const s = msg.signal;
       const isExit = s.action === 'SELL' || s.id?.startsWith('exit:');
       const isDaytrade = s.strategy === 'daytrade';
-      const isRebound = s.strategy === 'rebound';
       showInAppToast({
-        badgeText: isExit ? '✅ 當沖出場' : (isRebound ? '🛡️ 觸底反彈' : '🚀 當沖進場'),
-        badgeColor: isExit ? 'bg-emerald-600' : (isRebound ? 'bg-purple-600' : 'bg-sky-600'),
+        badgeColor: isExit ? 'bg-emerald-600' : 'bg-sky-600',
         titleText: s.title || `${s.symbol} ${s.name || ''}`,
         bodyText: s.telegramText || `${s.symbol} ${s.name || ''} 現價 ${s.price} 元\n${s.reason || ''}`,
         symbol: s.symbol,
@@ -99,6 +107,7 @@ function renderTaiex() {
     $('otc-price').textContent = '-';
     $('otc-price').className = 'font-medium text-slate-700';
     $('otc-change').textContent = '-';
+    if ($('taiex-data-time')) $('taiex-data-time').textContent = '資料時間 --:--:--';
     if (banner) banner.className = 'flex items-center justify-between px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[11px]';
     return;
   }
@@ -108,6 +117,8 @@ function renderTaiex() {
   const sign = isUp ? '+' : '';
   const colorClass = isUp ? 'text-red-600' : (isDown ? 'text-emerald-600' : 'text-slate-600');
 
+  const sourceTime = String(tInfo.time || '').match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/)?.[0] || '--:--:--';
+  if ($('taiex-data-time')) $('taiex-data-time').textContent = `資料時間 ${sourceTime}`;
   $('taiex-price').textContent = tInfo.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   $('taiex-price').className = `font-bold ${colorClass}`;
   $('taiex-change').textContent = `${arrow}${sign}${tInfo.change.toFixed(2)} (${sign}${tInfo.change_pct.toFixed(2)}%)`;
@@ -162,7 +173,7 @@ function applyDarkMode(enabled) {
   const btnIcon = $('theme-btn-icon');
   const toggleCheckbox = $('toggle-dark-mode');
   if (toggleCheckbox) toggleCheckbox.checked = !!enabled;
-  if (tag) tag.textContent = 'v1.01';
+  if (tag) tag.textContent = 'v1.02';
   if (enabled) {
     if (btnIcon) btnIcon.textContent = '☀️';
     if (btnLabel) btnLabel.textContent = '光明';
@@ -485,14 +496,6 @@ function renderStrategyBar() {
       const m = s?.market || ((sym.length === 4 && (sym.startsWith('5') || sym.startsWith('6') || sym.startsWith('8'))) ? 'TWO' : 'TW');
       return { symbol: sym, market: m, name: p.name || s?.name || sym, groups: ['watchlist'] };
     });
-  } else if (group === 'rebound') {
-    title = '🛡️ 觸底反彈策略標的';
-    targets = (view.bounce || []).map(b => ({
-      symbol: b.symbol,
-      market: b.market,
-      name: b.name || b.symbol,
-      groups: ['watchlist']
-    }));
   }
 
   if (!targets.length) {
@@ -570,7 +573,6 @@ function renderWatchlist(list, isCompact, pageSize) {
 
     // 系統狀態提示標籤
     const activePos = view.live?.open_positions?.[s.symbol];
-    const isReboundTarget = view.bounce?.some(b => b.symbol === s.symbol);
 
     // 欄位 1：個股 (代號可點開分時線圖 + 中文名稱)
     const col1 = el('div', '', 'text-left min-w-0 pr-1 flex flex-col justify-center');
@@ -579,7 +581,7 @@ function renderWatchlist(list, isCompact, pageSize) {
     symLink.title = `點擊查看 ${s.symbol} 分時走勢圖`;
     symLink.onclick = (e) => {
       e.preventDefault();
-      openChartWindow(s, activePos ? 'daytrade' : (isReboundTarget ? 'rebound' : ''));
+      openChartWindow(s, activePos ? 'daytrade' : '');
     };
     const nameRow = el('div', '', 'flex items-center gap-1 min-w-0');
     const nameSpan = el('span', s.name, 'stock-name text-slate-700 truncate font-medium leading-tight');
@@ -622,7 +624,7 @@ function renderWatchlist(list, isCompact, pageSize) {
 
     // 欄位 6：時間 (平時顯示時間，Hover 時切換為紅色刪除按鈕，空間互斥絕不重疊)
     const col6 = el('div', '', 'text-right flex items-center justify-end relative pr-0.5');
-    const timeText = q?.time || (q?.updated_at && Number.isFinite(Date.parse(q.updated_at)) ? new Date(q.updated_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false }) : '13:30');
+    const timeText = quoteDisplayTime(q);
     const timeSpan = el('span', timeText, 'col-time-text stock-sub font-mono text-slate-400');
     const delBtn = el('button', '×', 'btn-row-delete text-slate-400 hover:text-red-600 font-bold text-base px-1 leading-none cursor-pointer bg-slate-100 hover:bg-red-50 rounded');
     delBtn.title = `從自選刪除 ${s.symbol}`;
@@ -869,108 +871,6 @@ function renderDaytrade(list, isCompact) {
   }
 }
 
-// 渲染系統觸底反彈清單 (獨立策略區塊，同步 jimmyeyes.com/easystock 底部反彈)
-function renderRebound(list, isCompact) {
-  const bounceList = view.bounce || [];
-  if (!bounceList.length) {
-    const emptyBox = el('div', '', 'p-4 text-center space-y-1 bg-white border border-slate-200 rounded-lg');
-    emptyBox.append(el('div', '🛡️', 'text-2xl mb-1'));
-    emptyBox.append(el('h3', '目前無觸底反彈觀察標的', 'text-xs font-bold text-slate-700'));
-    emptyBox.append(el('p', '系統後台定時掃描技術面支撐區、量能回升與超跌指標，出現訊號將自動推播。', 'text-[11px] text-slate-400 leading-relaxed'));
-    list.append(emptyBox);
-    return;
-  }
-
-  const existingSymbols = new Set(view.stocks.map(x => x.symbol));
-
-  // 頂部小橫條
-  const headerSummary = el('div', '', 'flex items-center justify-between text-[11px] text-purple-900 bg-purple-50/80 px-2.5 py-1.5 rounded-lg border border-purple-200/80');
-  headerSummary.append(el('span', `🛡️ 技術面回踩／突破確認 · 共 ${bounceList.length} 檔`, 'font-semibold'));
-  headerSummary.append(el('span', '波段持有數日', 'text-[10px] text-purple-700'));
-  list.append(headerSummary);
-
-  for (const b of bounceList) {
-    const sym = b.symbol;
-    const name = b.name || sym;
-    const m = b.market || 'TW';
-    const q = view.quotes?.[sym];
-    const price = (q && finite(q.price) && q.price > 0) ? q.price : (finite(b.price) ? b.price : 0);
-    const changePctVal = calcChangePct(q) ?? b.change_pct;
-    const validPct = finite(changePctVal);
-    const pct = validPct ? `${changePctVal >= 0 ? '+' : ''}${changePctVal.toFixed(2)}%` : '-';
-    const pctColor = validPct ? (changePctVal >= 0 ? 'text-red-600' : 'text-emerald-600') : 'text-slate-400';
-
-    const card = el('article', '', `stock-card border border-purple-200 bg-purple-50/20 rounded-lg ${isCompact ? 'p-2' : 'p-3'} space-y-1.5 shadow-2xs`);
-
-    // 標題列
-    const top = el('div', '', 'flex items-center justify-between gap-1');
-    const leftTitle = el('div', '', 'flex items-center gap-1.5 min-w-0');
-    leftTitle.append(el('h2', `${sym} ${name}`, 'text-xs font-bold text-slate-900 truncate'));
-    leftTitle.append(el('span', m === 'TWO' ? '上櫃' : '上市', 'text-[9px] text-slate-400 bg-slate-100 px-1 py-0.2 rounded shrink-0'));
-    const badgeLabel = b.confirmation === 'breakout' ? '突破確認' : (b.confirmation === 'pullback' ? '均線回踩' : '反彈觀察');
-    leftTitle.append(el('span', badgeLabel, 'text-[9px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.2 rounded shrink-0'));
-    if (b.score) {
-      leftTitle.append(el('span', `分: ${b.score}`, 'text-[9px] bg-purple-50 text-purple-700 px-1 py-0.2 rounded font-mono shrink-0'));
-    }
-    top.append(leftTitle);
-
-    const inWatch = existingSymbols.has(sym);
-    if (inWatch) {
-      top.append(el('span', '✓ 已在自選', 'text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0'));
-    } else {
-      const addBtn = el('button', '＋加入自選', 'text-[10px] font-semibold text-purple-600 hover:text-purple-800 bg-white hover:bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded shrink-0 transition cursor-pointer');
-      addBtn.addEventListener('click', async () => {
-        await handleAddStock({ symbol: sym, market: m, name });
-      });
-      top.append(addBtn);
-    }
-    card.append(top);
-
-    // 價格與漲跌
-    const priceRow = el('div', '', 'flex items-center justify-between');
-    const leftPrice = el('div', '', 'flex items-baseline gap-2');
-    leftPrice.append(el('strong', price > 0 ? `${price.toFixed(2)} 元` : '尚無報價', 'font-bold text-slate-900 text-sm'));
-    priceRow.append(leftPrice);
-
-    const rightPct = el('div', '', 'flex items-center gap-2');
-    rightPct.append(el('span', pct, `text-xs font-bold ${pctColor}`));
-
-    const chartBtn = el('a', '線圖 ↗', 'text-[11px] text-sky-700 cursor-pointer font-medium hover:underline shrink-0');
-    chartBtn.href = chartURL({ symbol: sym, market: m });
-    chartBtn.target = '_blank';
-    chartBtn.onclick = (e) => {
-      e.preventDefault();
-      openChartWindow({ symbol: sym, market: m, name }, 'rebound');
-    };
-    rightPct.append(chartBtn);
-
-    const broker = getBroker(view.settings?.preferredBroker);
-    const orderBtnText = broker.id === 'observe'
-      ? '👀 觀察中'
-      : (broker.isObserve ? `${broker.icon || '📈'} ${broker.shortName}看盤 ↗` : `${broker.icon || '🚀'} ${broker.shortName}下單 ↗`);
-    const orderBtnTitle = broker.id === 'observe'
-      ? `點擊複製 ${sym}（純觀察模式，不跳轉網頁）`
-      : (broker.isObserve ? `點擊複製 ${sym} 並前往 ${broker.name} 看盤` : `點擊複製 ${sym} 並前往 ${broker.name} 下單`);
-    const orderBtn = el('button', orderBtnText, `btn-broker-order text-[11px] ${broker.badgeColor || 'bg-purple-600'} hover:opacity-90 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0`);
-    orderBtn.title = orderBtnTitle;
-    orderBtn.onclick = (e) => {
-      e.preventDefault();
-      openBrokerOrder(sym, m, name);
-    };
-    rightPct.append(orderBtn);
-
-    priceRow.append(rightPct);
-    card.append(priceRow);
-
-    // 反彈理由
-    if (b.reason) {
-      card.append(el('p', `🛡️ ${b.reason}`, 'text-[10px] text-purple-700 bg-purple-50/80 px-1.5 py-0.5 rounded truncate'));
-    }
-
-    list.append(card);
-  }
-}
-
 function renderBrokerSelector() {
   const currentId = view?.settings?.preferredBroker || 'sinopac';
   const currentBroker = getBroker(currentId);
@@ -1006,7 +906,6 @@ function render() {
     if ($(`toggle-${key}`)) $(`toggle-${key}`).checked = view.settings[key];
   }
   if ($('toggle-all-daytrade')) $('toggle-all-daytrade').checked = view.settings?.allDaytradeAlerts !== false;
-  if ($('toggle-all-rebound')) $('toggle-all-rebound').checked = view.settings?.allReboundAlerts !== false;
   applyDarkMode(view.settings?.darkMode);
 
   // 視窗高度自定義 (比照截圖：預設 500px 即 +20px)
@@ -1091,10 +990,6 @@ function render() {
     renderDaytrade(list, isCompact);
     return;
   }
-  if (group === 'rebound') {
-    renderRebound(list, isCompact);
-    return;
-  }
   // 預設為 'watchlist' 自選看股
   renderWatchlist(list, isCompact, pageSize);
 
@@ -1108,9 +1003,11 @@ function render() {
 
 async function enrichMissingQuotes() {
   if (!view || enriching || view.vm) return;
+  const now = Date.now();
   const missing = view.stocks.filter(s => {
     const q = view.quotes?.[s.symbol];
-    return !q || !finite(calcChangePct(q)) || !finite(q.price);
+    const stamp = q?.quote_at || q?.updated_at;
+    return !q || !finite(calcChangePct(q)) || !finite(q.price) || (view.marketOpen && !fresh(stamp, now, QUOTE_FRESH_MS));
   });
   if (!missing.length) return;
   enriching = true;
@@ -1120,13 +1017,18 @@ async function enrichMissingQuotes() {
       if (!view.quotes) view.quotes = {};
       let updated = false;
       for (const [sym, item] of Object.entries(closingMap)) {
-        if (!view.quotes[sym] || !finite(view.quotes[sym].price)) {
-          view.quotes[sym] = item;
+        const old = view.quotes[sym];
+        const oldStamp = old?.quote_at || old?.updated_at;
+        if (!old || !finite(old.price) || (view.marketOpen && !fresh(oldStamp, Date.now(), QUOTE_FRESH_MS))) {
+          view.quotes[sym] = { ...(old || {}), ...item, name: old?.name || item.name };
           updated = true;
-        } else if (!finite(calcChangePct(view.quotes[sym]))) {
-          view.quotes[sym].change_pct = item.change_pct;
-          view.quotes[sym].change = item.change;
-          view.quotes[sym].previous_close = item.previous_close;
+        } else if (!finite(calcChangePct(old))) {
+          old.change_pct = item.change_pct;
+          old.change = item.change;
+          old.previous_close = item.previous_close;
+          old.quote_at = item.quote_at || old.quote_at;
+          old.updated_at = item.updated_at || old.updated_at;
+          old.time = item.time || old.time;
           updated = true;
         }
       }
@@ -1309,7 +1211,7 @@ $('group-tabs').addEventListener('click', e => {
 });
 $('btn-refresh').addEventListener('click', () => act({ type: 'SNAPSHOT', refresh: true }));
 
-for (const strategy of ['daytrade', 'rebound']) {
+for (const strategy of ['daytrade']) {
   $(`toggle-${strategy}`)?.addEventListener('change', async e => {
     await act({ type: 'SETTINGS', strategy, enabled: e.target.checked }); if (view) render();
   });
@@ -1358,30 +1260,8 @@ $('btn-test-exit-notif')?.addEventListener('click', async () => {
   await act({ type: 'TEST', action: 'SELL' }, '已發送 Chrome 賣出推播（桌面通知與即時彈窗雙發送）');
 });
 
-$('btn-test-rebound-notif')?.addEventListener('click', async () => {
-  const fakeRebound = {
-    symbol: '2330', name: '台積電', market: 'TW', price: 1000, change_pct: 1.25,
-    strategy: 'rebound', reason: '技術面支撐區反彈、量能回升、超跌反轉'
-  };
-  const telegramText = formatTelegramRebound(fakeRebound);
-  showInAppToast({
-    badgeText: '🛡️ 觸底反彈訊號',
-    badgeColor: 'bg-purple-600',
-    titleText: '2330 台積電 (反彈觀察測試)',
-    bodyText: telegramText,
-    symbol: '2330',
-    market: 'TW',
-    name: '台積電',
-    strategy: 'rebound'
-  });
-  await act({ type: 'TEST', strategy: 'rebound' }, '已發送 Chrome 反彈推播（桌面通知與即時彈窗雙發送）');
-});
-
 $('toggle-all-daytrade')?.addEventListener('change', async e => {
   await act({ type: 'SETTINGS', strategy: 'allDaytradeAlerts', enabled: e.target.checked }); if (view) render();
-});
-$('toggle-all-rebound')?.addEventListener('change', async e => {
-  await act({ type: 'SETTINGS', strategy: 'allReboundAlerts', enabled: e.target.checked }); if (view) render();
 });
 
 // 視窗高度滑桿監聽 (圖片1效果：即時拉動調整 body 高度與儲存)
@@ -1572,4 +1452,22 @@ document.addEventListener('keydown', e => {
 
 icons();
 $('settings-panel').inert = true;
-await act({ type: 'SNAPSHOT', refresh: true });
+
+// Render saved theme/layout and cached market data immediately, then refresh in the background.
+try {
+  const saved = await chrome.storage.local.get('state');
+  const settings = saved?.state?.settings || {};
+  applyDarkMode(settings.darkMode !== false);
+  applyWindowHeight(Number(settings.windowHeight) || 500);
+} catch (_) {
+  applyDarkMode(true);
+  applyWindowHeight(500);
+}
+await act({ type: 'BOOTSTRAP' });
+void act({ type: 'SNAPSHOT', refresh: true });
+
+// Index data is intentionally refreshed more often than the broad five-minute feed.
+const taiexRefreshTimer = setInterval(() => {
+  if (!pending && view?.marketOpen) void act({ type: 'SNAPSHOT', taiexOnly: true });
+}, 30000);
+window.addEventListener('unload', () => clearInterval(taiexRefreshTimer));

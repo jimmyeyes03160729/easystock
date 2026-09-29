@@ -20,7 +20,8 @@ function showAdminTab(id){
 }
 const healthLabels={ok:'正常',warning:'注意',error:'異常',idle:'等待'};
 function healthBadge(row){if(row.key==='paper_trade')return row.state==='ok'?'已啟用・等待交易時段':'已暫停';if(row.key==='market_session'&&row.state==='idle')return '今日休市';if(['market_credentials','firebase'].includes(row.key)&&row.state==='ok')return '已設定';if(row.key==='admin_store'&&row.state==='ok')return '可讀取';if(['training_worker','daily_learning_worker','download_worker'].includes(row.key)&&row.state==='idle')return '排程中';if(row.key==='candidate_model'&&row.state==='idle')return '尚無模型';if(row.key==='history_collection'&&row.state==='idle')return '等待時段';return healthLabels[row.state]||'未知';}
-function healthMetric(label,value){if(value===null||value===undefined)return null;const node=document.createElement('span');node.textContent=`${label} ${Number(value).toLocaleString('zh-TW')}`;return node;}
+function healthMetric(label,value){if(value===null||value===undefined)return null;const node=document.createElement('span');const number=Number(value);node.textContent=`${label} ${typeof value==='number'&&Number.isFinite(number)?number.toLocaleString('zh-TW'):String(value)}`;return node;}
+function runtimeFallback(reason='後端尚未提供盤中模型狀態'){return {status:'RUNTIME_UNKNOWN',reason,runtime:null,runtime_status:null,approved:null,match:false};}
 function renderHealth(data){
   const rows=Array.isArray(data.signals)?data.signals:[];const target=el('healthSignals');target.replaceChildren();
   const counts=rows.reduce((out,row)=>{out[row.state]=(out[row.state]||0)+1;return out;},{});
@@ -38,14 +39,36 @@ function renderHealth(data){
     if(metrics.childNodes.length)card.append(metrics);target.append(card);
   }
   if(!rows.length)target.textContent='尚未收到檢測資料。';
+  renderRuntimeModel(data.model_runtime_consistency||runtimeFallback());
 }
-async function loadHealth(){try{renderHealth(await api('health'));}catch(error){el('healthSummary').textContent=error.message;el('healthSignals').replaceChildren();}}
+function renderRuntimeModel(c){
+  const statusIcons={OK:'✅',MISMATCH:'⚠️',RUNTIME_UNKNOWN:'❌',RUNTIME_STALE:'❌',APPROVED_MISSING:'❌',APPROVED_INVALID:'❌',PROFILE_MISMATCH:'⚠️',VERSION_MISMATCH:'⚠️'};
+  const statusText={OK:'一致：盤中使用目前核准模型',MISMATCH:'注意：盤中仍使用另一版本模型',RUNTIME_UNKNOWN:'無法確認盤中模型',RUNTIME_STALE:'盤後：最後一次盤中載入狀態',APPROVED_MISSING:'找不到目前核准模型',APPROVED_INVALID:'目前核准模型格式無效',PROFILE_MISMATCH:'模型設定不一致',VERSION_MISMATCH:'模型版本資訊不一致'};
+  const rt=c.runtime||{};
+  const runtimeStatus=c.runtime_status||{};
+  const ap=(c.approved&&c.approved.error)?{}:c.approved||{};
+  el('runtimeModelStatus').textContent=`${statusIcons[c.status]||'❓'} ${statusText[c.status]||'模型狀態未知'}${c.reason?`（${c.reason}）`:''}`;
+  el('rtVersion').textContent=rt.version||'--';
+  el('rtProfile').textContent='模型設定：'+(rt.profile||'--');
+  el('rtTrained').textContent='訓練截至：'+(rt.trained_through||'--');
+  el('rtLoaded').textContent='載入時間：'+(rt.loaded_at?new Date(rt.loaded_at).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'--');
+  el('rtSha').textContent='檔案指紋：'+(rt.artifact_sha256||'--').slice(0,12);
+  el('apVersion').textContent=ap.version||'--';
+  el('apProfile').textContent='模型設定：'+(ap.profile||'--');
+  el('apTrained').textContent='訓練截至：'+(ap.trained_through||'--');
+  el('apSha').textContent='檔案指紋：'+(ap.artifact_sha256||'--').slice(0,12);
+  el('rtMode').textContent='決策模式：'+(runtimeStatus.entry_mode==='rules'?'規則模式（模型僅供診斷）':runtimeStatus.entry_mode==='model'?'模型模式':'--');
+  const rulesDiagnostic=runtimeStatus.entry_mode==='rules'&&c.status==='OK';
+  el('rtConsistency').textContent=(statusIcons[c.status]||'❓')+' '+(rulesDiagnostic?'Rules mode（模型僅供診斷）':(statusText[c.status]||c.status));
+  el('rtReason').textContent=[c.reason,rt.load_reason].filter(Boolean).join('；')||'目前沒有其他說明';
+}
+async function loadHealth(){try{renderHealth(await api('health'));}catch(error){el('healthSummary').textContent=error.message;el('healthSignals').replaceChildren();renderRuntimeModel(runtimeFallback('健康檢查 API 無法取得'));}}
 function logValue(value,digits=0){const number=Number(value);return Number.isFinite(number)?number.toLocaleString('zh-TW',{minimumFractionDigits:digits,maximumFractionDigits:digits}):'—';}
 function logMetric(label,value){const box=document.createElement('div');box.className='model-log-metric';const name=document.createElement('span'),strong=document.createElement('strong');name.textContent=label;strong.textContent=value;box.append(name,strong);return box;}
 function renderModelLog(data){
   const rows=Array.isArray(data.entries)?data.entries:[],target=el('modelLogEntries');target.replaceChildren();
   modelLogPage=Number(data.page)||1;
-  el('modelLogSummary').textContent=rows.length?`本頁 ${rows.length} 筆，最新紀錄在最上方。`:'這一頁沒有模型晉升紀錄。';
+  el('modelLogSummary').textContent=rows.length?(data.has_more?`本頁 ${rows.length} 筆，還有下一頁；最新紀錄在最上方。`:`目前共有 ${rows.length} 筆模型晉升紀錄。這是稽核紀錄數量，不代表只能使用一個模型。`):'目前沒有模型晉升紀錄；這不會阻止目前 approved model 使用。';
   el('modelLogPage').textContent=`第 ${modelLogPage} 頁`;
   el('modelLogPrevious').disabled=!data.has_previous;
   el('modelLogNext').disabled=!data.has_more;

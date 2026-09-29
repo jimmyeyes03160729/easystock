@@ -335,7 +335,9 @@ def register_admin(app, store=None, verifier=None):
     @bp.post('/admin/api/order/place')
     def post_order_place():
         try:
-            authenticated()
+            # This endpoint can call the broker.  It must use the same
+            # Origin/CSRF protection as every state-changing admin action.
+            authenticated(True)
             data = request.get_json(silent=True) or {}
             res = order_service.place_order(
                 symbol=data.get('symbol'),

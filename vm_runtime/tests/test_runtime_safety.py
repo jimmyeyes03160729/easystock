@@ -29,7 +29,9 @@ NOW = datetime(2026,9,24,10,tzinfo=TPE)
 def artifact(**overrides):
     return dict(dict(approved=True,deployment_allowed=True,schema_version=SCHEMA_VERSION,
                      features=list(FEATURES),mean=[0]*5,scale=[1]*5,coef=[0]*5,
-                     intercept=0,threshold=.6,version='fixture'),**overrides)
+                     intercept=0,threshold=.6,version='fixture',
+                     trained_through=datetime.now(TPE).date().isoformat(),
+                     profile='fixture-profile'),**overrides)
 
 
 class ModelTests(unittest.TestCase):
@@ -164,7 +166,7 @@ class EngineTests(unittest.TestCase):
             in_entry_window=lambda _:True,now_tpe=lambda:NOW,MAX_DAILY_ENTRIES=5,
             live_features=Mock(return_value=dict.fromkeys(FEATURES,1)),
             read_live_settings=lambda:dict(min_price=1,max_price=200,max_gain_pct=5),
-            register_signal=Mock(),push_line_text=Mock(),format_entry_message=Mock(return_value='entry'))
+            push_line_text=Mock(),format_entry_message=Mock(return_value='entry'))
         exec(compile(ast.Module(body=[method],type_ignores=[]),'<engine>','exec'),self.ns)
         self.manager=PositionManager(before_open=Mock(return_value=dict(status='insufficient_cash',shares=0)))
         self.engine=types.SimpleNamespace(bars=types.SimpleNamespace(rows5=lambda _: [{}],rows15=lambda _:[{}]),
