@@ -53,3 +53,4 @@ node_modules/
 *.zip
 tools/sample_cards/
 runtime-model-status.json
+release-info.json

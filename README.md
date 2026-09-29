@@ -74,6 +74,11 @@ SQLite 為模擬帳務來源。已啟用交易期間的現金帳本由 `paper_le
 - [系統架構](docs/ARCHITECTURE.md)
 - [2026-09-21 VM 實驗敘述封存（未重新驗證）](docs/README_VM_EXPERIMENT_2026-09-21.md)
 
+後台健康中心的「部署版本」只有在服務取得 `release-info.json`（或
+`EASYSTOCK_RELEASE_ID`／`EASYSTOCK_SOURCE_COMMIT`）時才會顯示可核對；缺少
+release identity 時會標示警告，不把本機 commit、VM 檔案或網站發布互相推定為同一版本。
+VM 部署腳本會在安裝或主線更新後寫入該 marker，並以來源 commit 作為可追溯依據。
+
 ```bash
 python vm_runtime/tests/test_runtime_safety.py
 python vm_runtime/daytrade_learning/test_integration.py

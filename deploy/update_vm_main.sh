@@ -78,6 +78,15 @@ if [[ "$current" != main ]]; then
   git branch -m main
 fi
 git branch --set-upstream-to=origin/main main
+commit="$(git rev-parse HEAD)"
+cat > release-info.json <<EOF
+{
+  "release_id": "main-${commit:0:12}",
+  "source_commit": "${commit}",
+  "channel": "main"
+}
+EOF
+chmod 600 release-info.json
 .venv/bin/python3 vm_runtime/tests/test_cash_ledger.py -q
 .venv/bin/python3 vm_runtime/tests/test_runtime_safety.py -q
 .venv/bin/python3 history/test_daily_history.py -q

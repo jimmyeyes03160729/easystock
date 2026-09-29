@@ -91,6 +91,19 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(paper['state'], 'ok')
         self.assertEqual(paper['metrics']['current_capital'], 200000)
 
+    def test_health_reports_unidentified_deployment_as_warning(self):
+        from easystock_admin.health import snapshot
+        with patch.dict(os.environ, {
+            'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'),
+            'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history'),
+        }, clear=False):
+            for key in ('EASYSTOCK_RELEASE_ID', 'EASYSTOCK_SOURCE_COMMIT', 'EASYSTOCK_RELEASE_FILE'):
+                os.environ.pop(key, None)
+            result = snapshot(self.s)
+        signal = next(row for row in result['signals'] if row['key'] == 'deployment_release')
+        self.assertEqual(signal['state'], 'warning')
+        self.assertIn('不能確認', signal['detail'])
+
     def test_health_treats_auto_approved_paper_model_as_healthy(self):
         from easystock_admin.health import snapshot
         learning = self.path.parent/'learning'
@@ -236,6 +249,23 @@ class WebTests(unittest.TestCase):
         with patch.dict(os.environ,{'ADMIN_GOOGLE_CLIENT_ID':''}):
             self.assertFalse(self.client.get('/admin/config',base_url=ORIGIN).json['ready'])
             self.assertEqual(self.post('challenge',{}).status_code,403)
+
+    def test_real_order_requires_csrf_and_explicit_server_switch(self):
+        response = self.login()
+        csrf = response.json['csrf']
+        with patch.dict(os.environ, {
+            'LIVE_ORDERING_ENABLED': '1',
+            'LIVE_ORDERING_CONFIRMATION': 'wrong',
+        }, clear=False):
+            denied = self.client.post('/admin/api/order/place', base_url=ORIGIN,
+                json={'symbol':'2330','action':'BUY','price':100,'quantity':1},
+                headers={'Origin': ORIGIN, 'X-CSRF-Token': csrf})
+        self.assertEqual(denied.status_code, 400)
+        self.assertIn('隔離', denied.json['message'])
+        denied_no_csrf = self.client.post('/admin/api/order/place', base_url=ORIGIN,
+            json={'symbol':'2330','action':'BUY','price':100,'quantity':1},
+            headers={'Origin': ORIGIN})
+        self.assertEqual(denied_no_csrf.status_code, 403)
 
 class GoogleCryptoTests(unittest.TestCase):
     def test_real_signature_audience_and_expiry_verification(self):

@@ -8,6 +8,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from daytrade_learning.model_runtime import model_runtime_consistency
+from .release import identity as release_identity
 
 
 MAX_STATUS_BYTES = 1024 * 1024
@@ -99,6 +100,20 @@ def _worker_signal(key: str, label: str, value: object, timer: object = None, ne
     return _signal(key, label, 'idle', '尚未取得 VM 執行狀態。')
 
 
+def _release_signal() -> dict:
+    release = release_identity()
+    if release['identified']:
+        detail = (
+            f"部署版本 {release['release_id']}；來源 commit "
+            f"{release['source_commit']}。"
+        )
+        state = 'ok'
+    else:
+        detail = '尚未取得可核對的部署版本與來源 commit；不能確認目前執行的是哪一版。'
+        state = 'warning'
+    return _signal('deployment_release', '部署版本', state, detail, metrics=release)
+
+
 def snapshot(store) -> dict:
     """Return safe status summaries only; no secrets, paths, commands or actions."""
     learning = _root('EASYSTOCK_LEARNING_DATA', '/home/ubuntu/easystock-learning-data')
@@ -112,6 +127,7 @@ def snapshot(store) -> dict:
     paper_trade = store.get_paper_trade().get('settings', {})
     signals = [
         _market_session(),
+        _release_signal(),
         _signal('admin_store', '後台設定資料庫', 'ok', '可讀取目前設定版本。', _timestamp(settings.get('updated_at')), {'setting_version': settings.get('version')}),
         _signal(
             'paper_trade', '模擬買進',
