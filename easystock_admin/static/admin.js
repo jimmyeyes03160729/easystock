@@ -43,7 +43,7 @@ function renderHealth(data){
 }
 function renderRuntimeModel(c){
   const statusIcons={OK:'✅',MISMATCH:'⚠️',RUNTIME_UNKNOWN:'❌',RUNTIME_STALE:'❌',APPROVED_MISSING:'❌',APPROVED_INVALID:'❌',PROFILE_MISMATCH:'⚠️',VERSION_MISMATCH:'⚠️'};
-  const statusText={OK:'一致：盤中使用目前核准模型',MISMATCH:'注意：盤中仍使用另一版本模型',RUNTIME_UNKNOWN:'無法確認盤中模型',RUNTIME_STALE:'盤中模型狀態已過期',APPROVED_MISSING:'找不到目前核准模型',APPROVED_INVALID:'目前核准模型格式無效',PROFILE_MISMATCH:'模型設定不一致',VERSION_MISMATCH:'模型版本資訊不一致'};
+  const statusText={OK:'一致：盤中使用目前核准模型',MISMATCH:'注意：盤中仍使用另一版本模型',RUNTIME_UNKNOWN:'無法確認盤中模型',RUNTIME_STALE:'盤後：最後一次盤中載入狀態',APPROVED_MISSING:'找不到目前核准模型',APPROVED_INVALID:'目前核准模型格式無效',PROFILE_MISMATCH:'模型設定不一致',VERSION_MISMATCH:'模型版本資訊不一致'};
   const rt=c.runtime||{};
   const runtimeStatus=c.runtime_status||{};
   const ap=(c.approved&&c.approved.error)?{}:c.approved||{};

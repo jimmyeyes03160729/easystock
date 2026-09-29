@@ -104,6 +104,27 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(signal['state'], 'warning')
         self.assertIn('不能確認', signal['detail'])
 
+    def test_stale_runtime_is_warning_after_market_close(self):
+        from easystock_admin.health import snapshot
+        with patch('easystock_admin.health._market_session', return_value={
+            'key': 'market_session', 'label': '當沖時段', 'state': 'idle', 'detail': '已收盤',
+            'metrics': {},
+        }), patch.dict(os.environ, {
+            'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'),
+            'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history'),
+        }):
+            learning = self.path.parent/'learning'; models = learning/'models'; models.mkdir(parents=True)
+            (models/'runtime-model-status.json').write_text(json.dumps({
+                'reported_at': '2026-09-29T19:00:00+08:00',
+                'entry_mode': 'model',
+                'runtime': {'artifact_sha256': 'a' * 64, 'version': 'fixture'},
+            }))
+            (models/'latest-approved.json').write_text(json.dumps({'approved': False}))
+            result = snapshot(self.s)
+        signal = next(row for row in result['signals'] if row['key'] == 'model_runtime_consistency')
+        self.assertEqual(signal['state'], 'warning')
+        self.assertIn('非盤中', signal['detail'])
+
     def test_health_treats_auto_approved_paper_model_as_healthy(self):
         from easystock_admin.health import snapshot
         learning = self.path.parent/'learning'

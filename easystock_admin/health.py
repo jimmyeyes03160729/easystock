@@ -125,8 +125,9 @@ def snapshot(store) -> dict:
 
     settings = store.get()
     paper_trade = store.get_paper_trade().get('settings', {})
+    market_session = _market_session()
     signals = [
-        _market_session(),
+        market_session,
         _release_signal(),
         _signal('admin_store', '後台設定資料庫', 'ok', '可讀取目前設定版本。', _timestamp(settings.get('updated_at')), {'setting_version': settings.get('version')}),
         _signal(
@@ -251,6 +252,11 @@ def snapshot(store) -> dict:
         'APPROVED_INVALID': 'error',
     }
     state = status_to_state.get(consistency['status'], 'error')
+    if consistency['status'] == 'RUNTIME_STALE' and market_session['state'] == 'idle':
+        # The intraday process normally exits after the trading session.  Its
+        # last successful model load remains useful evidence, but a stale
+        # heartbeat after hours is not a runtime failure.
+        state = 'warning'
     runtime = consistency.get('runtime') or {}
     runtime_status = consistency.get('runtime_status') or {}
     approved = consistency.get('approved') or {}
@@ -261,7 +267,10 @@ def snapshot(store) -> dict:
         if runtime.get('load_reason'):
             detail += ' 載入原因：' + str(runtime['load_reason']) + '。'
     elif consistency['status'] == 'RUNTIME_STALE':
-        detail = '盤中模型狀態太久未更新，不能視為目前正在使用的模型。'
+        detail = (
+            '目前非盤中時段；最後一次盤中服務回報已過期，'
+            '不能視為目前 process 正在執行，但可查看最後載入的模型。'
+        )
     elif consistency['status'] == 'APPROVED_MISSING':
         detail = 'latest-approved.json 不存在；無法比對。'
     elif consistency['status'] == 'APPROVED_INVALID':
