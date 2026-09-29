@@ -22,6 +22,9 @@
     1. 加權指數目前共用 5 分鐘快取，盤中更新太慢；改為約 10～30 秒並顯示實際資料時間。
     2. 個股日 K 盤中仍停在昨日；改為歷史日 K + 今日即時 OHLC，盤中形成「今日未完成 K 棒」。
     3. 分時走勢圖 X 軸目前會依已有資料拉滿；改為固定 09:00～13:30，未到時間區段保持空白。
+    4. 個股列表右側時間疑似時區處理錯誤，需檢查 `q.time` / `updated_at` 與 UTC、Asia/Taipei 是否重複 +8。
+    5. 右下角重新整理並非真正強制刷新；`refresh:true` 仍可能直接命中 5 分鐘 `feedCache`，且已有有效 price 的舊報價不會被補抓。
+    6. Chrome Popup 開啟時會先出現白色縮小畫面；目前初始載入先 `await SNAPSHOT`，且 Popup 沒有固定 / 最低高度，應先渲染 Skeleton / Shell 再背景載入資料。
 
 - [ ] **Chrome Extension 1.02：Google 登入 + Firebase 使用者同步**
   - Google Authentication。
@@ -137,6 +140,32 @@
    - 09:30 永遠落在固定時間位置，不因目前只有 30 分鐘資料而跑到最右端。
    - 現在時間之後的區段保持空白，直到新資料逐步填入。
    - 建議固定主要刻度：`09:00 / 10:00 / 11:00 / 12:00 / 13:00 / 13:30`。
+
+4. **個股列表右側時間疑似 +8 時區錯誤**
+   - 現象：個股右側時間與台灣實際時間不一致，疑似多加 8 小時。
+   - 前端目前優先使用 `q.time`，否則才解析 `updated_at`。
+   - 後端 `public_feed.py` 的 `updated_at` 已使用 `datetime.now(TPE).isoformat()`，本身已帶 `+08:00`。
+   - 檢查方向：確認 `q.time` 來源、UTC / TPE 是否被重複轉換，以及前端是否對已帶 `+08:00` 的時間再次手動加時區。
+   - 修正原則：後端輸出明確含 offset 的 ISO 8601；前端統一只轉一次 `Asia/Taipei`，禁止手動再 +8。
+
+5. **右下角重新整理不是實際強制刷新**
+   - 現象：例如 00878 可能有更新，但 2330 台積電按重新整理沒有反應。
+   - `btn-refresh` 會送 `SNAPSHOT refresh:true`，但 `feeds(now, true)` 進入後仍先檢查 5 分鐘 `feedCache`，所以可能直接回舊資料。
+   - `enrichMissingQuotes()` 目前只補缺報價 / 缺漲跌幅；若舊報價的 `price` 與 `change_pct` 仍是有效數字，即使已過期也不會重新抓。
+   - 修正方向：使用者手動按重新整理時必須真正 bypass cache，重新抓 public feed / 大盤，並依每檔股票 freshness 判斷是否需要重抓即時行情。
+   - 不可只判斷欄位「有值」，還必須判斷 `updated_at / quote_at` 是否新鮮。
+
+6. **Chrome Popup 初次開啟白屏並縮到最小**
+   - 現象：點擊 Chrome 小工具後，資料讀取期間整個介面先呈現白色、很小的 Popup，等資料回來後才恢復完整尺寸。
+   - 目前 `popup.js` 初始化最後直接 `await act({ type: 'SNAPSHOT', refresh: true })`，完整畫面要等待遠端資料後才 render。
+   - Popup CSS 目前固定寬度約 440px，但沒有固定 / 最低高度，因此資料尚未渲染時 Chrome 會依當下少量內容縮小 Popup。
+   - 修正方向：
+     - HTML 初始即提供完整 Shell / Skeleton 畫面。
+     - 設定合理 `min-height` 或固定初始高度，避免 Popup 尺寸跳動。
+     - 開啟時先立即 render 快取 / placeholder，不阻塞 UI。
+     - `SNAPSHOT` 改背景非阻塞更新，資料回來後再局部更新。
+     - Loading 階段延續目前深色 / 淺色主題，不應出現突兀純白閃屏。
+
 
 ---
 
