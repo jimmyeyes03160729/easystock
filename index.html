@@ -404,12 +404,12 @@
        STITCH FIXED GLASSMORPHIC HEADER
        ===================================================== -->
   <header class="fixed top-0 left-0 right-0 z-50 bg-[#0B0F17]/90 backdrop-blur-xl border-b border-[#232F42] shadow-[0_1px_8px_rgba(0,0,0,0.3)]">
-    <div class="h-20 max-w-[1440px] mx-auto px-4 md:px-8 flex items-center justify-between gap-4">
-      <a class="flex items-center text-decoration-none group" href="#dashboard" aria-label="當沖吧！牛馬仔首頁">
-        <img src="icon/BANNER.png" alt="EasyStock 當沖吧！牛馬仔" class="w-[300px] max-w-[42vw] max-h-16 object-contain object-left" />
+    <div class="h-20 max-w-[1440px] mx-auto px-3 md:px-6 xl:px-8 flex items-center gap-3 xl:gap-4">
+      <a class="flex items-center flex-none w-[190px] xl:w-[205px] text-decoration-none group" href="#dashboard" aria-label="當沖吧！牛馬仔首頁">
+        <img src="icon/BANNER.png" alt="EasyStock 當沖吧！牛馬仔" class="w-[188px] h-[62px] object-contain object-left" />
       </a>
 
-      <div class="hidden xl:flex items-center gap-3">
+      <div class="hidden lg:flex items-center gap-2 xl:gap-3 shrink-0">
         <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-[#1A2234] border border-[#232F42]">
           <span class="relative flex h-2 w-2">
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -423,20 +423,20 @@
         </button>
       </div>
 
-      <nav class="hidden lg:flex items-center gap-1 bg-[#131A26] p-1 rounded-xl border border-[#232F42] text-xs font-semibold section-nav" style="border-bottom:none; margin-bottom:0; padding:4px;" aria-label="首頁區域">
-        <a href="#intraday-strategies" class="px-3 py-1.5 rounded-lg text-[#F1F5F9] hover:bg-[#1C2B3C] transition-colors">01 盤中摸魚</a>
-        <a href="#bottom-rebound" class="px-3 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors">02 底部反彈</a>
-        <a href="#learningSection" class="px-3 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors">03 牛馬 AI 加班進修</a>
-        <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener" class="px-3 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors flex items-center gap-1">社畜後台 ↗</a>
+      <nav class="hidden lg:flex min-w-0 flex-1 items-center justify-center gap-0.5 bg-[#131A26] p-1 rounded-xl border border-[#232F42] text-xs font-semibold section-nav overflow-hidden" style="border-bottom:none; margin-bottom:0; padding:4px;" aria-label="首頁區域">
+        <a href="#intraday-strategies" class="px-2.5 py-1.5 rounded-lg text-[#F1F5F9] hover:bg-[#1C2B3C] transition-colors whitespace-nowrap">01 盤中摸魚</a>
+        <a href="#bottom-rebound" class="px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">02 底部反彈</a>
+        <a href="#learningSection" class="px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">03 牛馬 AI 加班進修</a>
+        <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener" class="px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors flex items-center gap-1 whitespace-nowrap">社畜後台 ↗</a>
       </nav>
 
-      <div class="flex items-center gap-3">
-        <button type="button" id="themeToggleBtn" onclick="toggleTheme()" class="btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#232F42] bg-[#1A2234] text-[#F1F5F9] hover:bg-[#262C3E] text-xs font-semibold cursor-pointer transition-all shadow-sm" title="切換明暗主題">
+      <div class="ml-auto flex items-center gap-2 xl:gap-3 shrink-0">
+        <button type="button" id="themeToggleBtn" onclick="toggleTheme()" class="btn flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-xl border border-[#232F42] bg-[#1A2234] text-[#F1F5F9] hover:bg-[#262C3E] text-xs font-semibold cursor-pointer transition-all shadow-sm" title="切換明暗主題">
           <span class="material-symbols-outlined text-[16px]" id="themeToggleIcon">dark_mode</span>
           <span id="themeToggleLabel">深色模式</span>
         </button>
 
-        <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0D1C2D] border border-[#232F42]">
+        <div class="hidden sm:flex items-center gap-2 px-2.5 xl:px-3 py-1.5 rounded-xl bg-[#0D1C2D] border border-[#232F42]">
           <span class="material-symbols-outlined text-[#F59E0B] text-[18px]">coffee</span>
           <div class="flex flex-col text-left">
             <span class="font-mono text-xs text-[#F1F5F9] leading-none">工位摸魚工程師</span>
