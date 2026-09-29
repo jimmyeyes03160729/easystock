@@ -36,6 +36,14 @@
   - 核心原則：只合併、不覆蓋、不刪除。
   - 2.0 才進行登入 / 雲端同步等大型架構變更；1.0X 維持 Bugfix 線。
 
+- [ ] **玉山 API 行情資料源整合（只讀，不交易）**
+  - 玉山 API 僅作為行情 / 市場資料來源，不做自動交易、不送單、不管理持倉。
+  - 第一階段補強 AI 當沖即時市場 context：加權指數、櫃買、電子、半導體、金融、電子零組件、航運等市場 / 類股指數。
+  - 後續延伸市場廣度、類股強弱、領漲 / 領跌、資金輪動與市場 regime 特徵。
+  - 與既有 Shioaji / Fugle / Firebase 資料分層，保留 source / quote_at / received_at / freshness，禁止來源混淆。
+  - 新增資料先進 Dataset / Shadow 驗證，不可因接上玉山 API 就直接改變正式 ENTRY / EXIT。
+  - 不保存或建立任何玉山交易憑證 / 下單能力；權限以行情唯讀最小化為原則。
+
 - [ ] **觸底反彈 AI 學習**
   - 統一正式 Rebound 定義。
   - 建立 `rebound_learning/`。
@@ -53,13 +61,12 @@
   - 今日 PnL、單筆交易、Equity Curve 圖表。
   - PAPER vs LIVE 執行差異比較。
 
-- [ ] **首頁 AI 復盤改版：淘汰舊 OpenAI 每日文字復盤**
-  - 現況：首頁仍讀取 `market_data/dual_review_status`，該資料目前停留在 2026-09-22；現行 repo / 排程已沒有明確 producer 持續發布此節點。
-  - 不優先修復舊的每日 OpenAI 文字復盤流程。
-  - 首頁改為「每日盤後研究摘要」，以可驗證的量化資料為主。
-  - 每日顯示：模擬交易筆數、勝負、淨損益、平均單筆、MFE / MAE、樣本數、Label 數、模型版本、驗證狀態、Brier / Drawdown 等。
+- [x] **首頁 AI 復盤改版：淘汰舊 OpenAI 每日文字復盤**
+  - 已完成：首頁改為「每日盤後研究摘要」，主要讀取 `daytrade_learning_status` / `research_summary`，不再以 `dual_review_status` 作為主要狀態來源。
+  - 已加入 stale / freshness 判斷，過期資料不再顯示成目前正常狀態。
+  - 已顯示可驗證的交易、樣本、Label、模型、runtime 與 validation 指標；沒有資料時明確顯示待資料 / 待確認。
   - AI 改為每週 Architecture Review 或異常觸發分析，不再每天固定產生文字復盤。
-  - 清理舊 `dual_review_status` / OpenAI daily review / legacy paper feedback 顯示與相關技術債；若保留歷史資料，只作歷史展示，不得冒充當日結果。
+  - 已完成 GitHub main → VM canonical deploy 與 release identity 驗收；VM / origin/main / GitHub main SHA 已一致。
 
 - [ ] **AI Architecture Guardian 系統健檢**
   - 每日 Tests / CodeQL / Secret Scan / Dependabot / Trivy / 自訂安全規則。
@@ -258,6 +265,98 @@ auth.uid == {uid}
 - 最後同步時間。
 - 雲端同步成功 / 失敗狀態。
 
+
+---
+
+## 玉山 API 行情資料源整合規劃
+
+### 定位
+玉山 API 在 EasyStock 中只扮演「行情 / 市場資料供應者」，不做交易。
+
+禁止用途：
+- 不送出買進 / 賣出委託。
+- 不建立自動交易。
+- 不管理券商持倉。
+- 不把玉山帳戶憑證做成交易權限。
+- 不因資料源接通而直接改變正式 ENTRY / EXIT。
+
+### 第一階段資料
+優先收集：
+- 加權指數。
+- 櫃買指數。
+- 電子類。
+- 半導體類。
+- 金融類。
+- 電子零組件類。
+- 航運類。
+- 其他後續確認對當沖有價值的市場 / 類股指數。
+
+### AI 用途
+玉山資料先作為市場 context / feature，不直接作為交易訊號。
+
+初期可加入：
+- index_return_1m / 5m / 15m。
+- sector_return_1m / 5m / 15m。
+- sector_vs_market_strength。
+- intraday_market_regime。
+- 大盤 / 櫃買同步或背離。
+- 個股相對所屬類股強弱。
+
+後續延伸：
+- 上漲 / 下跌家數。
+- 漲停 / 跌停家數。
+- 創高 / 創低家數。
+- 成交量 / 成交金額廣度。
+- 類股領漲 / 領跌排名。
+- 資金輪動。
+- 市場 breadth / risk-on / risk-off。
+- 類股 regime 與強弱切換。
+
+### 資料治理
+不同來源必須保留來源身分，不可混成「同一筆行情」：
+- source
+- symbol / index_code
+- quote_at
+- received_at
+- freshness
+- sequence / event id（若來源提供）
+- schema_version
+
+與既有 Shioaji / Fugle / Firebase 整合時，必須能知道：
+- 哪一個來源提供哪一欄。
+- 哪個來源優先。
+- 來源失效時是否 fallback。
+- fallback 後 UI / AI 是否能辨識來源已改變。
+
+### AI 導入原則
+流程：
+```text
+玉山即時市場資料
+      ↓
+標準化 Market Context
+      ↓
+Dataset 記錄
+      ↓
+離線研究 / Shadow
+      ↓
+確認有增益
+      ↓
+才考慮加入正式模型 Feature
+```
+
+禁止：
+```text
+接上玉山 API
+→ 當天直接改模型
+→ 當天直接影響 ENTRY
+```
+
+所有新增 Feature 必須經過：
+- point-in-time 檢查
+- missing / stale 處理
+- walk-forward / holdout
+- 與現有 baseline 比較
+- Shadow 驗證
 
 ---
 
