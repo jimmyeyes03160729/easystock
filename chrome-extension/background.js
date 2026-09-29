@@ -1,4 +1,5 @@
 import { VM_MODE, CONFIG_URL, FIREBASE_ROOT } from './environment.js';
+import './rebound-engine.js';
 import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, formatTelegramRebound, matchFilter, calcChangePct, fetchStockClosingQuotes } from './core.js';
 
 const ALARM = 'easystock-five-minutes';
@@ -131,6 +132,63 @@ export async function fetchTaiexIndex() {
   }
 }
 
+
+async function computeSharedReboundFallback(now = Date.now()) {
+  const R = globalThis.RangeRebound;
+  if (!R || typeof R.financial !== 'function' || typeof R.technical !== 'function') return [];
+  const [meta, summary] = await Promise.all([
+    json(`${FIREBASE_ROOT}/meta.json`, 300000),
+    json(`${FIREBASE_ROOT}/summary.json`, 3000000)
+  ]);
+  if (!plain(meta) || !plain(summary)) return [];
+  const asof = String(meta.updated_at || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asof)) return [];
+  const releaseId = typeof meta.release_id === 'string' && /^[0-9A-Za-z_-]+$/.test(meta.release_id) ? meta.release_id : '';
+  const generatedAt = meta.published_at || meta.generated_at_utc || new Date(now).toISOString();
+  const candidates = [];
+  for (const [symbol, raw] of Object.entries(summary)) {
+    if (!/^\d{4}$/.test(String(symbol)) || !plain(raw)) continue;
+    const stockRow = { ...raw, symbol: String(symbol) };
+    if (String(stockRow.updated_at || '') !== asof) continue;
+    if (!finite(Number(stockRow.amount)) || Number(stockRow.amount) < 5000000) continue;
+    if (finite(Number(stockRow.kline_count)) && Number(stockRow.kline_count) < R.RULES.minBars) continue;
+    const financial = R.financial(stockRow, asof);
+    if (!financial || ['failed','unsupported'].includes(financial.status)) continue;
+    candidates.push({symbol:String(symbol),stockRow,financial});
+  }
+  const rows=[]; let cursor=0;
+  async function worker(){
+    while(cursor<candidates.length){
+      const item=candidates[cursor++];
+      const base=releaseId ? `${FIREBASE_ROOT}/releases/${releaseId}` : FIREBASE_ROOT;
+      let bars;
+      try { bars=await json(`${base}/kline/${encodeURIComponent(item.symbol)}.json`,900000); }
+      catch(_){
+        if(!releaseId) continue;
+        try { bars=await json(`${FIREBASE_ROOT}/kline/${encodeURIComponent(item.symbol)}.json`,900000); }
+        catch(_){ continue; }
+      }
+      const technical=R.technical(bars,asof,item.stockRow.price);
+      if(!technical?.eligible || item.financial.status!=='passed') continue;
+      const exchange=String(item.stockRow.exchange||'').toUpperCase();
+      rows.push({
+        id:`range-rebound:${asof}:${item.symbol}`,symbol:item.symbol,
+        market:['TPEX','TWO','OTC'].includes(exchange)?'TWO':'TW',
+        name:String(item.stockRow.name||item.symbol),price:Number(item.stockRow.price),
+        change_pct:finite(technical.dailyChangePct)?technical.dailyChangePct:0,
+        reason:Array.isArray(technical.reasons)?technical.reasons.join(' · '):'底部反彈觀察',
+        score:finite(technical.score)?technical.score:undefined,
+        confirmation:technical.confirmation||'pullback',generated_at:generatedAt,
+        quote_at:`${asof}T13:30:00+08:00`,strategy_version:'range-rebound-0.3'
+      });
+    }
+  }
+  await Promise.all([worker(),worker(),worker(),worker()]);
+  rows.sort((a,b)=>Number(a.confirmation!=='breakout')-Number(b.confirmation!=='breakout')||
+    (Number(b.score)||0)-(Number(a.score)||0)||a.symbol.localeCompare(b.symbol));
+  return rows.slice(0,3);
+}
+
 export async function fetchSummaryRebound(now = Date.now()) {
   if (VM_MODE) {
     return [
@@ -142,7 +200,7 @@ export async function fetchSummaryRebound(now = Date.now()) {
     return cache.items;
   }
 
-  // 1.02: prefer the single published range-rebound feed shared with the web UI.
+  // 1.03: prefer the published feed; if it is unreadable, compute the same range-rebound rules as the web UI.
   try {
     const feed = await json(`${FIREBASE_ROOT}/rebound_feed.json`, 900000);
     if (plain(feed) && Array.isArray(feed.signals)) {
@@ -164,6 +222,17 @@ export async function fetchSummaryRebound(now = Date.now()) {
         await write('summaryReboundCache', { at: now, items });
         return items;
       }
+    }
+  } catch (_) {}
+
+
+  // The website already falls back to local range-rebound calculation when the
+  // published feed cannot be read. Chrome must do the same instead of showing empty.
+  try {
+    const computed = await computeSharedReboundFallback(now);
+    if (computed.length) {
+      await write('summaryReboundCache', { at: now, items: computed });
+      return computed;
     }
   } catch (_) {}
 

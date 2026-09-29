@@ -110,7 +110,7 @@ test('popup preserves IDs, safe rendering, groups, controls and message wiring',
   assert.equal(w.document.body.classList.contains('dark-mode'), true);
   assert.match(w.document.getElementById('brand-title').textContent, /牛馬自救終端/);
   assert.equal(w.document.getElementById('theme-btn-label').textContent, '光明');
-  assert.equal(w.document.getElementById('brand-tag').textContent, 'v1.02');
+  assert.equal(w.document.getElementById('brand-tag').textContent, 'v1.03');
 
   themeBtn.click();
   await new Promise(r => setTimeout(r, 0));

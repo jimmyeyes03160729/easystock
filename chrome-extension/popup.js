@@ -175,7 +175,7 @@ function applyDarkMode(enabled) {
   const btnIcon = $('theme-btn-icon');
   const toggleCheckbox = $('toggle-dark-mode');
   if (toggleCheckbox) toggleCheckbox.checked = !!enabled;
-  if (tag) tag.textContent = 'v1.02';
+  if (tag) tag.textContent = 'v1.03';
   if (enabled) {
     if (btnIcon) btnIcon.textContent = '☀️';
     if (btnLabel) btnLabel.textContent = '光明';
