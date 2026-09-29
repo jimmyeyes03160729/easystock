@@ -52,12 +52,42 @@ async function fetchBars(stock){
  try {const r=await fetch(stockKlineUrl(stock),{cache:'no-store',signal:ctrl.signal});if(!r.ok)throw new Error('kline');return await r.json();}
  finally{clearTimeout(timeout);}
 }
+async function renderPublishedFeed(pool,meta){
+ if(typeof FIREBASE_ROOT==='undefined'||!meta?.release_id)return false;
+ const ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),6000);
+ try{
+  const response=await fetch(`${FIREBASE_ROOT}/rebound_feed.json`,{cache:'no-store',signal:ctrl.signal});
+  if(!response.ok)return false;
+  const feed=await response.json();
+  if(!feed||feed.schema_version!==1||feed.release_id!==meta.release_id||feed.as_of!==meta.updated_at||feed.strategy_version!=='range-rebound-0.3')return false;
+  const bySymbol=new Map((pool||[]).map(stock=>[String(stock.symbol),stock]));
+  const mapRows=list=>(Array.isArray(list)?list:[]).map(signal=>{
+   const stock=bySymbol.get(String(signal.symbol));if(!stock||!signal.technical||!signal.financial)return null;
+   return {stock,technical:signal.technical,financial:signal.financial};
+  }).filter(Boolean);
+  const selected=mapRows(feed.signals),pending=mapRows(feed.pending);
+  const key=`published:${feed.release_id}:${selected.map(x=>x.stock.symbol).join(',')}:${pending.map(x=>x.stock.symbol).join(',')}`;
+  if(key===lastKey)return true;
+  lastKey=key;++generation;
+  const picks=el('reboundPicks'),watch=el('reboundWatch'),status=el('reboundStatus'),progress=el('reboundProgress');
+  picks.replaceChildren();watch.replaceChildren();el('reboundWatchSection').hidden=!pending.length;
+  selected.forEach((row,index)=>picks.append(card(row,index,false)));
+  pending.forEach((row,index)=>watch.append(card(row,index,true)));
+  if(selected.length)status.textContent=`本次 ${selected.length} 檔通過正式 range-rebound 規則；Web / Chrome 共用同一結果。`;
+  else if(pending.length)status.textContent='有股票形成底部止跌型態，但基本面資料仍不完整，暫不列入正式推薦。';
+  else status.textContent='今天沒有符合正式底部反彈規則的股票，不硬湊標的。';
+  progress.textContent=`資料 ${feed.as_of} · 正式發布 ${selected.length} 檔 · 策略 ${feed.strategy_version}`;
+  el('reboundDiagnostics').textContent='此區目前使用後端發布的單一正式 Rebound feed，與 Chrome Extension 共用 signal / release / strategy version。';
+  return true;
+ }finally{clearTimeout(timeout);}
+}
 async function refresh(pool,meta){
  if(!meta?.updated_at||!Array.isArray(pool)||!pool.length){
   ++generation;lastKey='';el('reboundPicks').replaceChildren();el('reboundWatch').replaceChildren();
   el('reboundWatchSection').hidden=true;el('reboundProgress').textContent='';el('reboundDiagnostics').textContent='';
   el('reboundStatus').textContent=meta?.updated_at?'目前價格篩選範圍內沒有股票。':'等待股票池與日線資料…';return;
  }
+ try{if(await renderPublishedFeed(pool,meta))return;}catch(_){}
  const asof=meta.updated_at,key=[meta.release_id,asof,...pool.map(s=>s.symbol)].join('|');
  if(key===lastKey)return;lastKey=key;const mine=++generation;
  const status=el('reboundStatus'),picks=el('reboundPicks'),watch=el('reboundWatch'),progress=el('reboundProgress');
