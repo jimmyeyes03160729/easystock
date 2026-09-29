@@ -26,6 +26,7 @@ jobs:
       - run: python tests/test_parsers.py
       - run: python tests/test_selection.py
       - run: python tests/test_market_calendar.py
+      - run: python tests/test_range_rebound.py
       - run: python tests/test_ai_history_audit.py
       - run: python tests/test_paper_legacy.py
       - run: python tests/test_research_schedule.py
