@@ -1,4 +1,6 @@
 export const TTL = 5 * 60 * 1000;
+export const TAIEX_TTL = 30 * 1000;
+export const QUOTE_FRESH_MS = 90 * 1000;
 export const COOLDOWN = 30 * 60 * 1000;
 export const SYMBOL = /^\d{4,6}[A-Z]?$/;
 export const GROUPS = ['daytrade', 'rebound', 'watchlist'];
@@ -215,6 +217,33 @@ export async function searchOnlineStocks(query) {
   }
 }
 
+export function normalizeQuoteTimestamp(raw, now = Date.now()) {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    const ms = raw < 1e12 ? raw * 1000 : raw;
+    return new Date(ms).toISOString();
+  }
+  const text = String(raw || '').trim();
+  if (text && /(Z|[+-]\d{2}:\d{2})$/.test(text)) {
+    const parsed = Date.parse(text);
+    if (Number.isFinite(parsed)) return new Date(parsed).toISOString();
+  }
+  const clock = text.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s|$)/);
+  if (clock) {
+    const hh = String(Math.min(23, Number(clock[1]))).padStart(2, '0');
+    const mm = String(Math.min(59, Number(clock[2]))).padStart(2, '0');
+    const ss = String(Math.min(59, Number(clock[3] || 0))).padStart(2, '0');
+    return `${taipei(now).date}T${hh}:${mm}:${ss}+08:00`;
+  }
+  return new Date(now).toISOString();
+}
+
+export function formatTaipeiQuoteTime(raw, now = Date.now()) {
+  const iso = normalizeQuoteTimestamp(raw, now);
+  return new Date(iso).toLocaleTimeString('zh-TW', {
+    timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false
+  });
+}
+
 export async function fetchStockClosingQuotes(symbols) {
   if (!Array.isArray(symbols) || !symbols.length) return {};
   const queryList = symbols.map(s => {
@@ -245,11 +274,8 @@ export async function fetchStockClosingQuotes(symbols) {
       const high = finite(item.regularMarketDayHigh?.sort) ? item.regularMarketDayHigh.sort : (price !== null ? price : 0);
       const low = finite(item.regularMarketDayLow?.sort) ? item.regularMarketDayLow.sort : (price !== null ? price : 0);
       const open = finite(item.regularMarketOpen?.sort) ? item.regularMarketOpen.sort : (prev !== null ? prev : price);
-      let timeStr = '';
-      if (item.regularMarketTime) {
-        const tMatch = String(item.regularMarketTime).match(/(\d{2}:\d{2})/);
-        timeStr = tMatch ? tMatch[1] : String(item.regularMarketTime).slice(0, 5);
-      }
+      const quoteAt = normalizeQuoteTimestamp(item.regularMarketTime, Date.now());
+      const timeStr = formatTaipeiQuoteTime(quoteAt);
       map[sym] = {
         name: item.symbolName || sym,
         price: price || 0,
@@ -261,7 +287,8 @@ export async function fetchStockClosingQuotes(symbols) {
         open: open || 0,
         time: timeStr || '13:30',
         volume: finite(item.volume) ? Math.round(item.volume / 1000) : 0,
-        updated_at: item.regularMarketTime || new Date().toISOString()
+        quote_at: quoteAt,
+        updated_at: quoteAt
       };
     }
     return map;
