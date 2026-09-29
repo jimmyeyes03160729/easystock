@@ -15,23 +15,19 @@
   - 桌機版不強制套用同一底部導覽樣式。
   - iPhone 需支援 `safe-area-inset-bottom`，避免 Home Indicator 擠壓。
 
-- [ ] **Chrome Extension 1.01 實盤驗證**
-  - 等待完整台股交易時段驗證盤中掃描、通知、刷新、API / Firebase / VM 穩定性。
-  - 目前原則：先累積實盤 BUG，確認後再一次性修改，避免頻繁變更正式版本。
-  - 已記錄 BUG：
-    1. 加權指數目前共用 5 分鐘快取，盤中更新太慢；改為約 10～30 秒並顯示實際資料時間。
-    2. 個股日 K 盤中仍停在昨日；改為歷史日 K + 今日即時 OHLC，盤中形成「今日未完成 K 棒」。
-    3. 分時走勢圖 X 軸目前會依已有資料拉滿；改為固定 09:00～13:30，未到時間區段保持空白。
-    4. 個股列表右側時間疑似時區處理錯誤，需檢查 `q.time` / `updated_at` 與 UTC、Asia/Taipei 是否重複 +8。
-    5. 右下角重新整理並非真正強制刷新；`refresh:true` 仍可能直接命中 5 分鐘 `feedCache`，且已有有效 price 的舊報價不會被補抓。
-    6. Chrome Popup 開啟時會先出現白色縮小畫面；目前初始載入先 `await SNAPSHOT`，且 Popup 沒有固定 / 最低高度，應先渲染 Skeleton / Shell 再背景載入資料。
-    7. 首頁有觸底反彈標的，但 Chrome 小工具未顯示；目前兩邊使用不同 rebound 資料來源 / 判定邏輯，需統一由同一正式 Rebound 結果供應。
+- [x] **Chrome Extension 1.02：1.01 實盤 BUG 一次性修正**
+  - 版本規則確認：1.0X 系列只做 BUG 修正、穩定性與相容性改善；大型新功能不塞入 1.0X。
+  - 1.02 已完成程式修正並更新 GitHub main：加權指數高頻刷新、盤中今日未完成日 K、固定分時 X 軸、台北時區、強制刷新、Popup Shell / Skeleton、Web / Chrome 共用正式 Rebound feed。
+  - Chrome 內部版本為 `1.0.2`，對外 `version_name = 1.02`。
+  - 尚需：VM 同步後於完整台股交易時段做 1.02 實盤驗證；若仍發現 BUG，下一版依序使用 1.03、1.04…。
+  - 不在 1.02 加入 Google 登入、Firebase 使用者同步或 Migration。
 
-- [ ] **Chrome Extension 1.02：Google 登入 + Firebase 使用者同步**
+- [ ] **Chrome Extension 2.0：Google 登入 + Firebase 使用者同步**
   - Google Authentication。
   - 自選股、當沖監控、提醒條件、群組與設定同步。
   - 第一次登入執行本機資料 Migration。
   - 核心原則：只合併、不覆蓋、不刪除。
+  - 2.0 才進行登入 / 雲端同步等大型架構變更；1.0X 維持 Bugfix 線。
 
 - [ ] **觸底反彈 AI 學習**
   - 統一正式 Rebound 定義。
@@ -113,12 +109,18 @@
 ### 安全原則
 「社畜後台」即使在前端顯示，也不可因此放寬任何 Admin 驗證；後台仍必須維持原本的 Owner-only / Google 驗證與 Private Admin 權限。
 
-## 目前版本：Chrome Extension 1.01
+## 目前版本：Chrome Extension 1.02（1.0X Bugfix 線）
 
 ### 目標
-- 先讓 1.01 經歷實際開盤。
-- 優先觀察與修正實盤 BUG。
-- 暫時不加入大型架構變更，避免在尚未完成開盤驗證前增加變數。
+- 1.02 專門處理 1.01 實盤累積 BUG，不加入登入 / 雲端同步等大型功能。
+- GitHub main 完成修正後同步 VM，再以完整交易時段做實盤驗證。
+- 若實盤仍出現 BUG，沿用 1.03、1.04…逐版修正，直到 1.0X 穩定線完成。
+
+### 版本編號規則
+- `1.01 / 1.02 / 1.03 / 1.04 ...`：Bugfix / 穩定性 / 資料正確性 / UI 相容性修正。
+- 1.0X 不加入 Google 登入、Firebase 個人資料同步等大型架構功能。
+- `2.0`：Google 登入 + Firebase 使用者同步 + 第一次登入本機資料 Migration。
+- 未來若 2.0 上線後仍只是修 BUG，再依既定版本策略使用對應 patch 版本，不把 BUG 修正與大型功能混在同一版。
 
 ### 優先驗證項目
 - 盤中掃描是否正常。
@@ -128,43 +130,37 @@
 - VM / Firebase / API / Chrome Extension 間資料同步是否穩定。
 - 開盤時可能出現的效能、延遲與例外狀況。
 
-### 已累積的 1.01 Chrome 小工具 BUG
-目前先記錄，不立即修改；累積一批後再一次性處理與測試。
-
-1. **加權指數更新時間**
+### 1.02 已修正的 1.01 Chrome 小工具 BUG
+> 下列保留 1.01 的問題背景與 1.02 修正方向。程式修正已進 GitHub main；完成 VM 同步後再做開盤實測。
+\n1. ✅ **加權指數更新時間**
    - 目前 `fetchTaiexIndex()` 雖直接抓 TWSE MIS，但 `feedCache` 共用 `TTL = 5 分鐘`。
    - 盤中加權指數不應使用 5 分鐘快取。
    - 修正方向：盤中獨立成約 10～30 秒更新頻率。
    - UI 顯示實際來源時間，例如 `資料時間 09:08:25`，避免只顯示畫面刷新時間。
-
-2. **個股日 K 盤中仍顯示昨日**
+\n2. ✅ **個股日 K 盤中仍顯示昨日**
    - 目前歷史日 K 優先使用 Yahoo `interval=1d`，盤中不保證提供今日尚未完成的日 K。
    - 修正方向：歷史日 K + 今日即時 / 分時 OHLC 合併。
    - 09:00～13:30 顯示「今日未完成 K 棒」；收盤後再轉成正式日 K。
    - 不可用假資料補今日 K。
-
-3. **分時走勢圖 X 軸跟著目前資料長度拉伸**
+\n3. ✅ **分時走勢圖 X 軸跟著目前資料長度拉伸**
    - 現在 `drawIntraday()` 依 `visibleCount` 計算 X 軸，所以早盤幾分鐘資料會撐滿整張圖。
    - 修正方向：台股日盤 X 軸固定 `09:00～13:30`。
    - 09:30 永遠落在固定時間位置，不因目前只有 30 分鐘資料而跑到最右端。
    - 現在時間之後的區段保持空白，直到新資料逐步填入。
    - 建議固定主要刻度：`09:00 / 10:00 / 11:00 / 12:00 / 13:00 / 13:30`。
-
-4. **個股列表右側時間疑似 +8 時區錯誤**
+\n4. ✅ **個股列表右側時間疑似 +8 時區錯誤**
    - 現象：個股右側時間與台灣實際時間不一致，疑似多加 8 小時。
    - 前端目前優先使用 `q.time`，否則才解析 `updated_at`。
    - 後端 `public_feed.py` 的 `updated_at` 已使用 `datetime.now(TPE).isoformat()`，本身已帶 `+08:00`。
    - 檢查方向：確認 `q.time` 來源、UTC / TPE 是否被重複轉換，以及前端是否對已帶 `+08:00` 的時間再次手動加時區。
    - 修正原則：後端輸出明確含 offset 的 ISO 8601；前端統一只轉一次 `Asia/Taipei`，禁止手動再 +8。
-
-5. **右下角重新整理不是實際強制刷新**
+\n5. ✅ **右下角重新整理不是實際強制刷新**
    - 現象：例如 00878 可能有更新，但 2330 台積電按重新整理沒有反應。
    - `btn-refresh` 會送 `SNAPSHOT refresh:true`，但 `feeds(now, true)` 進入後仍先檢查 5 分鐘 `feedCache`，所以可能直接回舊資料。
    - `enrichMissingQuotes()` 目前只補缺報價 / 缺漲跌幅；若舊報價的 `price` 與 `change_pct` 仍是有效數字，即使已過期也不會重新抓。
    - 修正方向：使用者手動按重新整理時必須真正 bypass cache，重新抓 public feed / 大盤，並依每檔股票 freshness 判斷是否需要重抓即時行情。
    - 不可只判斷欄位「有值」，還必須判斷 `updated_at / quote_at` 是否新鮮。
-
-6. **Chrome Popup 初次開啟白屏並縮到最小**
+\n6. ✅ **Chrome Popup 初次開啟白屏並縮到最小**
    - 現象：點擊 Chrome 小工具後，資料讀取期間整個介面先呈現白色、很小的 Popup，等資料回來後才恢復完整尺寸。
    - 目前 `popup.js` 初始化最後直接 `await act({ type: 'SNAPSHOT', refresh: true })`，完整畫面要等待遠端資料後才 render。
    - Popup CSS 目前固定寬度約 440px，但沒有固定 / 最低高度，因此資料尚未渲染時 Chrome 會依當下少量內容縮小 Popup。
@@ -174,8 +170,7 @@
      - 開啟時先立即 render 快取 / placeholder，不阻塞 UI。
      - `SNAPSHOT` 改背景非阻塞更新，資料回來後再局部更新。
      - Loading 階段延續目前深色 / 淺色主題，不應出現突兀純白閃屏。
-
-7. **首頁有觸底反彈但 Chrome 小工具沒有顯示**
+\n7. ✅ **首頁有觸底反彈但 Chrome 小工具沒有顯示**
    - 現象：EasyStock 首頁已顯示觸底反彈標的，但 Chrome Extension 的「觸底反彈」頁籤為空或缺少相同標的。
    - 目前首頁使用 `assets/rebound-engine.js` / `assets/rebound-ui.js` 執行較完整的 range-rebound 邏輯。
    - Chrome Extension 的 `view.bounce` 則由 `background.js` 合併：
@@ -189,7 +184,7 @@
 
 ---
 
-## Chrome Extension 1.02 規劃
+## Chrome Extension 2.0 規劃
 
 ### Google 登入
 - 加入 Google 登入。
@@ -1076,7 +1071,7 @@ AI Architecture Guardian 第一階段只做：
 
 ## GitHub / 模型核心保護規劃
 
-目前先不動 1.01，下一次較大改版再處理。
+目前不併入 1.0X Bugfix 線；規劃於 2.0 或後續較大架構版本再處理。
 
 ### 已確認風險
 目前 public repository 中已有相當完整的策略與模型相關程式，例如：
