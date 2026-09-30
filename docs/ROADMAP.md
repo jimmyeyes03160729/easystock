@@ -17,16 +17,17 @@
 
 - [x] **Chrome Extension 1.02：1.01 實盤 BUG 一次性修正**
   - 版本規則確認：1.0X 系列只做 BUG 修正、穩定性與相容性改善；大型新功能不塞入 1.0X。
-  - 1.02 已完成程式修正並更新 GitHub main：加權指數高頻刷新、盤中今日未完成日 K、固定分時 X 軸、台北時區、強制刷新、Popup Shell / Skeleton、Web / Chrome 共用正式 Rebound feed。
+  - 1.02 已完成程式修正並更新 GitHub main：加權指數高頻刷新、盤中今日未完成日 K、固定分時 X 軸、台北時區、強制刷新、Popup Shell / Skeleton；Chrome 端觸底反彈功能已移除。
   - Chrome 內部版本為 `1.0.2`，對外 `version_name = 1.02`。
   - 尚需：VM 同步後於完整台股交易時段做 1.02 實盤驗證；若仍發現 BUG，下一版依序使用 1.03、1.04…。
   - 不在 1.02 加入 Google 登入、Firebase 使用者同步或 Migration。
 
-- [x] **Chrome Extension 1.03：觸底反彈空白修正**
-  - 實盤驗證發現：首頁可顯示 3 檔 range-rebound，但 Chrome 小工具仍為空。
-  - 根因：後端已發布 `market_data/rebound_feed`，Firebase 公開讀取 allowlist 卻漏掉該節點；網站會自動改用前端 range-rebound 計算，因此仍有結果，Chrome 原本沒有相同 fallback。
-  - 1.03 補上 root / release rebound feed 唯讀規則，Chrome 也加入與首頁相同的 `range-rebound-0.3` fallback，直接以公開 summary + 同 release K 線計算最多 3 檔。
-  - Chrome 內部版本 `1.0.3`，對外 `version_name = 1.03`。
+- [x] **Chrome Extension 1.03：Google 上架包重整**
+  - 以目前正式 Chrome 小工具功能重新打包並升版為 1.03。
+  - Chrome 小工具不含觸底反彈；目前主入口為自選、當沖、當沖 AI 架構。
+  - 觸底反彈保留在 EasyStock Web 首頁，避免把已移除功能誤加回 Chrome。
+  - 使用目前已更新的品牌 ICON，並延續 1.02 既有 Bugfix。
+  - Chrome 內部版本為 `1.0.3`，對外 `version_name = 1.03`。
   - Google 登入、Firebase 自選股／設定同步、本機 Migration 仍維持 2.0。
 
 - [ ] **Chrome Extension 2.0：Google 登入 + Firebase 使用者同步**

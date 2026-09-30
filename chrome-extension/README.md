@@ -2,10 +2,15 @@
 
 完整 Manifest V3 原始碼。保留使用者提供的 400 × 600 popup 結構、配色及設定抽屜；Tailwind 編譯為本機 CSS，圖示與 JavaScript 全數隨套件提供。不含券商帳密，不下單，不改動 LINE / Telegram。
 
-## 1.03 Bugfix 重點
+## 1.03 Bugfix / 上架重整
 
-- 因此不再依賴 Firebase Rules 是否已同步到正式環境，Web 有候選時 Chrome 不會直接空白。
-- Google 登入、Firebase 個人同步與本機 Migration 仍保留到 2.0。
+1.03 以目前正式 Chrome 小工具功能重新打包，不把已移除的「觸底反彈」功能加回來。
+
+- Chrome 小工具目前只保留：自選、當沖、當沖 AI 架構。
+- 觸底反彈維持在 EasyStock Web 首頁，不屬於本版 Chrome 小工具功能。
+- 使用目前 repo 內已更新的 EasyStock 品牌 ICON（16 / 48 / 128）。
+- 延續 1.02 的行情刷新、盤中 K 線、固定分時軸、時區與 Popup 載入修正。
+- Google 登入、Firebase 使用者同步與本機 Migration 仍保留到 2.0。
 
 ## 1.02 Bugfix 重點
 
