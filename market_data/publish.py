@@ -8,12 +8,14 @@ from .health import aggregate, atomic, data_dir, observe, read_json, timestamp, 
 
 def probe_fugle(now, session):
     import os
+    key = os.environ.get('FUGLE_API_KEY', '').strip()
+    if not key:
+        observe('fugle', ok=False, error_code='not_configured', configured=False)
+        return
     previous = read_json(data_dir() / 'fugle.json')
     last = timestamp(previous.get('checked_at'))
     cadence = 300 if session == 'OPEN' else 900
     if last and 0 <= (now - last).total_seconds() < cadence: return
-    key = os.environ.get('FUGLE_API_KEY', '').strip()
-    if not key: return
     start = time.monotonic()
     try:
         response = requests.get('https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/2330',
@@ -24,9 +26,9 @@ def probe_fugle(now, session):
         at = float(payload['lastUpdated']) / 1e6
         if payload.get('symbol') != '2330' or not math.isfinite(value) or not math.isfinite(at) or value <= 0 or at > now.timestamp() + 2: raise ValueError()
         observe('fugle', ok=True, quote_at=datetime.fromtimestamp(at, TPE).isoformat(),
-                latency_ms=round((time.monotonic() - start) * 1000), connected=True)
+                latency_ms=round((time.monotonic() - start) * 1000), connected=True, configured=True)
     except (requests.RequestException, ValueError, TypeError, KeyError, OverflowError):
-        observe('fugle', ok=False, error_code='request_failed')
+        observe('fugle', ok=False, error_code='request_failed', configured=True)
 
 
 def main():

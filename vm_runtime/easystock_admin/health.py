@@ -311,7 +311,10 @@ def snapshot(store) -> dict:
 
 def provider_diagnostics():
     from market_data.health import aggregate
-    return aggregate()[1]
+    from market_data.diagnostics import read_gate
+    details = aggregate()[1]
+    details['market_gate'] = read_gate()
+    return details
 
 
 def model_promotion_log(page: int = 1, page_size: int = 10) -> dict:

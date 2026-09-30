@@ -73,7 +73,6 @@ class MarketGate:
     def update(self, brief, sources, now):
         premarket, premarket_reason = premarket_context(brief, now)
         usable = [risk for risk in sources.values() if risk.get('valid') and risk.get('level') in LEVELS]
-        newest = max(usable, key=lambda risk: risk['observed_at']) if usable else {}
         health = ('HEALTHY' if len(usable) == len(sources) and usable else
                   'DEGRADED' if usable else
                   'UNAVAILABLE' if sources else 'UNKNOWN')
@@ -81,20 +80,23 @@ class MarketGate:
             self._candidate, self._count, self._last_confirmation_quote = None, 0, None
             effective, live = 'UNKNOWN', 'UNKNOWN'
             reason = 'market_data_unavailable'
+            selected = {}
         else:
             live = max((risk['level'] for risk in usable), key=RANK.__getitem__)
+            selected = max((risk for risk in usable if risk['level'] == live),
+                           key=lambda risk: risk['observed_at'])
             if self.level == 'UNKNOWN':
                 self.level = premarket if premarket in LEVELS else live
             if live == 'RED' or RANK[live] > RANK[self.level]:
                 self.level, self._candidate, self._count, self._last_confirmation_quote = live, None, 0, None
             elif RANK[live] < RANK[self.level]:
                 if self._candidate == live:
-                    if newest['observed_at'] != self._last_confirmation_quote:
+                    if selected['observed_at'] != self._last_confirmation_quote:
                         self._count += 1
-                        self._last_confirmation_quote = newest['observed_at']
+                        self._last_confirmation_quote = selected['observed_at']
                 else:
                     self._candidate, self._count = live, 1
-                    self._last_confirmation_quote = newest['observed_at']
+                    self._last_confirmation_quote = selected['observed_at']
                 if self._count >= self.confirmations:
                     self.level = LEVELS[RANK[self.level] - 1]
                     self._candidate, self._count, self._last_confirmation_quote = None, 0, None
@@ -102,15 +104,26 @@ class MarketGate:
                 self._candidate, self._count, self._last_confirmation_quote = None, 0, None
             effective = self.level
             reason = 'market_risk_red' if effective == 'RED' else 'market_risk_pass'
+        condition_reason = ('no_fresh_market_data' if not usable else
+                            'fresh_live_red' if live == 'RED' else
+                            'premarket_red_pending_confirmation' if effective == 'RED' else
+                            'recent_risk_pending_confirmation' if effective != live else
+                            'fresh_live_' + live.lower())
+        data_reason = ('all_sources_fresh' if health == 'HEALTHY' else
+                       'one_source_fresh' if health == 'DEGRADED' else
+                       'market_data_unavailable')
         return dict(level=effective, market_risk=effective, live_risk=live,
+                    market_condition_reason=condition_reason, data_reason=data_reason,
+                    selected_source=selected.get('source'),
                     premarket_level=premarket, premarket_risk=premarket,
-                    premarket_health='HEALTHY' if premarket_reason == 'valid' else 'STALE',
+                    premarket_health='HEALTHY' if premarket_reason == 'valid' else
+                    'STALE' if premarket_reason == 'premarket_missing_or_stale' else 'UNAVAILABLE',
                     premarket_reason=premarket_reason, data_health=health,
                     gate_action='BLOCK' if effective in ('RED', 'UNKNOWN') else 'PASS',
                     gate_reason=reason, source=','.join(sorted(risk['source'] for risk in usable)),
-                    source_count=len(usable), observed_at=newest.get('observed_at'),
-                    quote_at=newest.get('observed_at'), received_at=now.isoformat(),
-                    age_seconds=newest.get('age_seconds'), valid=bool(usable),
+                    source_count=len(usable), observed_at=selected.get('observed_at'),
+                    quote_at=selected.get('observed_at'), received_at=now.isoformat(),
+                    age_seconds=selected.get('age_seconds'), valid=bool(usable),
                     sources={name: dict(status=risk.get('data_health', 'UNKNOWN'),
                                         quote_at=risk.get('observed_at'), age_seconds=risk.get('age_seconds'),
                                         usable=bool(risk.get('valid')))

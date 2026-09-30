@@ -27,11 +27,18 @@ test('authenticated admin renderer shows safe diagnostics as text',async()=>{
     if(url.endsWith('/settings'))data={values:{min_price:1,max_price:100,max_gain_pct:5},version:1};
     if(url.endsWith('/health'))data={signals:[],generated_at:new Date().toISOString(),provider_health:{market_state:'OPEN',
       market_data:{usable:true},providers:{esun:{status:'ONLINE',latency_ms:12,reconnect_count:2,
-        error_code:'<img src=x onerror=alert(1)>',connected:true,subscribed:true}}}};
+        error_code:'<img src=x onerror=alert(1)>',connected:true,subscribed:true},
+        fugle:{status:'UNKNOWN',error_code:'not_configured',configured:false}},
+      market_gate:{status:'current',market_level:'GREEN',data_health:'DEGRADED',selected_source:'esun',
+        model_ready:true,radar_candidate_count:3,entry_block_evaluations:{market_data_unavailable:8},
+        sources:{esun:{age_seconds:5},shioaji:{age_seconds:90}}}}};
     return {ok:true,json:async()=>data};
   };
   run('easystock_admin/static/admin.js');await settle();await settle();
   const target=w.document.getElementById('providerHealthDetails');
   assert(target.textContent.includes('延遲 ms 12'));assert(target.textContent.includes('重連次數 2'));
+  assert(target.textContent.includes('未設定探測金鑰'));
+  assert(target.textContent.includes('當沖市場閘門'));
+  assert(target.textContent.includes('資料不可用攔截 8'));
   assert.equal(target.querySelectorAll('img').length,0);w.close();
 });

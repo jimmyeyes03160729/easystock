@@ -1348,13 +1348,23 @@ def build_brief() -> dict:
         base_risk_score(snapshot)
     )
 
-    ai = call_ai(
-        snapshot=snapshot,
-        news=news,
-        base_score=base_score,
-        supports=deterministic_supports,
-        risks=deterministic_risks,
-    )
+    try:
+        ai = call_ai(
+            snapshot=snapshot,
+            news=news,
+            base_score=base_score,
+            supports=deterministic_supports,
+            risks=deterministic_risks,
+        )
+        if not isinstance(ai, dict):
+            raise TypeError('invalid_advisory_result')
+    except Exception as exc:
+        # Advisory failures must not suppress the deterministic morning brief.
+        from market_data.health import observe
+        observe('gemini', ok=False, error_code='request_failed')
+        print('[WARN] Gemini advisory unavailable:', type(exc).__name__)
+        ai = {'ai_used': False, 'provider': 'gemini_rest', 'model': GEMINI_MODEL,
+              'headline_risk_adjustment': 0, 'error': 'advisory_unavailable'}
 
     adjustment = int(
         clamp(
@@ -1715,24 +1725,34 @@ def print_brief(brief: dict) -> None:
 
 
 def main() -> None:
+    no_line = "--no-line" in sys.argv
+    no_firebase = "--no-firebase" in sys.argv
     # 開盤日自動檢核（排除週末、國定假日與台北市颱風停班）
     try:
         from market_calendar import is_market_open
         is_open, reason, _ = is_market_open()
         if not is_open and os.environ.get("FORCE_PREMARKET_AI", "0") != "1":
             print(f"🛑 [MARKET CLOSED] 今日台股休市 ({reason})，盤前晨報排程跳過。")
-            write_premarket_status("skipped_closed", "market_closed")
+            if not no_firebase:
+                write_premarket_status("skipped_closed", "market_closed")
             return
     except Exception as _cal_exc:
         print(f"🛑 [CALENDAR ERROR] 開盤日檢查例外: {_cal_exc}，停止盤前晨報。")
-        write_premarket_status("failed", "calendar_error")
+        if not no_firebase:
+            write_premarket_status("failed", "calendar_error")
         raise RuntimeError("premarket_calendar_error") from _cal_exc
-
-    no_line = "--no-line" in sys.argv
-    no_firebase = "--no-firebase" in sys.argv
 
     try:
         brief = build_brief()
+        today = now_tpe().date()
+        try:
+            generated = datetime.fromisoformat(str(brief['generated_at']))
+            current = (brief.get('scan_date') == today.isoformat() and
+                       generated.tzinfo is not None and generated.astimezone(TPE).date() == today)
+        except (KeyError, TypeError, ValueError):
+            current = False
+        if not current:
+            raise RuntimeError('premarket_brief_date_mismatch')
         print_brief(brief)
 
         if not no_firebase:

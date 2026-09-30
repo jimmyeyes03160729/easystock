@@ -56,8 +56,25 @@ function renderProviderHealth(data){
     for(const [name,text] of Object.entries({last_ok_at:'最近成功',last_data_at:'最近收件',quote_at:'報價時間',last_error_at:'最近錯誤'})){
       if(row[name]){const node=document.createElement('span');node.textContent=text+' '+new Date(row[name]).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'});details.append(node);}
     }
-    const flags=document.createElement('p');flags.textContent=`連線 ${row.connected===true?'已連線':row.connected===false?'斷線':'待確認'} · 訂閱 ${row.subscribed===true?'完成':row.subscribed===false?'未完成':'不適用'} · 錯誤 ${row.error_code||'無'}`;
+    const flags=document.createElement('p');flags.textContent=`連線 ${row.connected===true?'已連線':row.connected===false?'斷線':'待確認'} · 訂閱 ${row.subscribed===true?'完成':row.subscribed===false?'未完成':'不適用'} · 錯誤 ${row.error_code==='not_configured'?'未設定探測金鑰':row.error_code||'無'}`;
     card.append(details,flags);target.append(card);
+  }
+  const gate=data?.market_gate;
+  if(gate && gate.status!=='not_observed'){
+    const card=document.createElement('article');card.className='health-card';
+    const title=document.createElement('h4');title.textContent='當沖市場閘門 · '+(gate.status==='current'?'盤中狀態':'上次狀態／已過時');card.append(title);
+    const details=document.createElement('div');details.className='health-metrics';
+    const values={market_level:'市場燈號',data_health:'資料品質',selected_source:'採用來源',
+      premarket_date:'盤前資料日',model_ready:'模型就緒',radar_candidate_count:'雷達候選',
+      market_condition_reason:'市場判定',gate_reason:'進場閘門',
+      shioaji_age: '永豐報價秒數',esun_age:'玉山報價秒數',
+      market_red_blocks:'市場紅燈攔截',data_unavailable_blocks:'資料不可用攔截'};
+    const row={...gate,model_ready:gate.model_ready?'是':'否',
+      shioaji_age:gate.sources?.shioaji?.age_seconds,esun_age:gate.sources?.esun?.age_seconds,
+      market_red_blocks:gate.entry_block_evaluations?.market_risk_red,
+      data_unavailable_blocks:gate.entry_block_evaluations?.market_data_unavailable};
+    for(const [key,label] of Object.entries(values)){const node=healthMetric(label,row[key]);if(node)details.append(node);}
+    card.append(details);target.append(card);
   }
 }
 function renderRuntimeModel(c){

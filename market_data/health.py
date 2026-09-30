@@ -20,10 +20,11 @@ LABELS = {'shioaji': '永豐行情', 'esun': '玉山行情', 'fugle': 'Fugle',
           'firebase': 'Firebase', 'gemini': 'Gemini', 'openai': 'OpenAI'}
 ERRORS = {'connection_failed', 'authentication_failed', 'disconnected', 'websocket_error',
           'heartbeat_timeout', 'timeout', 'parser_invalid', 'subscription_error',
-          'request_failed', 'quote_request_failed', 'http_error', 'publish_failed', 'calendar_error', 'future_timestamp'}
+          'request_failed', 'quote_request_failed', 'quote_stale', 'not_configured',
+          'http_error', 'publish_failed', 'calendar_error', 'future_timestamp'}
 DIAGNOSTICS = {'connected', 'authenticated', 'subscribed', 'parser_ok', 'last_ok_at',
                'last_data_at', 'last_event_at', 'last_error_at', 'quote_at', 'checked_at', 'last_heartbeat_at',
-               'latency_ms', 'consecutive_failures', 'reconnect_count', 'subscription_count',
+               'configured', 'latency_ms', 'consecutive_failures', 'reconnect_count', 'subscription_count',
                'error_code', 'provider_version', 'retry_after_seconds', 'reconnect_state'}
 
 
@@ -53,7 +54,7 @@ def sanitize(value):
         if key.endswith('_at'):
             at = timestamp(item)
             if at: result[key] = at.isoformat()
-        elif key in ('connected', 'authenticated', 'subscribed', 'parser_ok'):
+        elif key in ('connected', 'authenticated', 'subscribed', 'parser_ok', 'configured'):
             if isinstance(item, bool): result[key] = item
         elif key == 'error_code':
             if item in ERRORS: result[key] = item
@@ -138,13 +139,17 @@ def provider_health(provider, evidence, now, session):
     if not row: status = 'UNKNOWN'
     elif future: status = 'DEGRADED'
     elif kind == 'on_demand' and (worker_age is None or worker_age > policy['max_age']): status = 'UNKNOWN'
-    elif failed and row.get('error_code') == 'parser_invalid': status = 'DEGRADED'
+    elif provider == 'fugle' and row.get('configured') is False: status = 'UNKNOWN'
+    elif failed and row.get('error_code') in ('parser_invalid', 'quote_stale'): status = 'DEGRADED'
     elif failed or row.get('connected') is False: status = 'OFFLINE'
     elif kind == 'stream' and (worker_age is None or worker_age > policy['worker_age']): status = 'OFFLINE'
     elif kind == 'stream' and (row.get('authenticated') is not True or row.get('subscribed') is not True): status = 'DEGRADED'
     elif kind == 'stream' and (heartbeat_age is None or heartbeat_age > 90): status = 'DEGRADED'
     elif row.get('parser_ok') is not True: status = 'DEGRADED'
-    elif kind in ('quote', 'stream') and session == 'CLOSED': status = 'MARKET_CLOSED'
+    elif kind == 'quote' and session == 'CLOSED':
+        status = 'MARKET_CLOSED' if quote and (quote.date() == now.date() or
+                  (provider == 'fugle' and ok_age is not None and ok_age <= policy['worker_age'])) else 'UNKNOWN'
+    elif kind == 'stream' and session == 'CLOSED': status = 'MARKET_CLOSED'
     elif kind in ('quote', 'stream'): status = 'ONLINE' if fresh and worker_age is not None and worker_age <= policy['worker_age'] else 'DEGRADED'
     else: status = 'ONLINE' if ok_age is not None and ok_age <= policy['max_age'] else 'UNKNOWN' if kind == 'on_demand' else 'DEGRADED'
     diagnostic = {**row, 'status': status, 'age_seconds': quote_age if kind in ('quote', 'stream') else ok_age,

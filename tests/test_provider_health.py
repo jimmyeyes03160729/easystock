@@ -81,7 +81,53 @@ def test_stale_but_parsed_response_has_market_closed_semantics(tmp_path,monkeypa
     row=json.loads((tmp_path/'shioaji.json').read_text())
     row['checked_at']=NOW.isoformat();row['last_ok_at']=NOW.isoformat();row['last_data_at']=NOW.isoformat()
     assert provider_health('shioaji',row,NOW,'OPEN')['status']=='DEGRADED'
-    assert provider_health('shioaji',row,NOW,'CLOSED')['status']=='MARKET_CLOSED'
+    assert provider_health('shioaji',row,NOW,'CLOSED')['status']=='UNKNOWN'
+    today={**good(),'quote_at':NOW.isoformat()}
+    assert provider_health('shioaji',today,NOW.replace(hour=15),'CLOSED')['status']=='MARKET_CLOSED'
+
+
+def test_missing_fugle_key_is_private_unknown_not_offline(tmp_path,monkeypatch):
+    from market_data.publish import probe_fugle
+    monkeypatch.setenv('EASYSTOCK_MARKET_DATA_DIR',str(tmp_path))
+    monkeypatch.delenv('FUGLE_API_KEY',raising=False)
+    probe_fugle(NOW,'OPEN')
+    row=json.loads((tmp_path/'fugle.json').read_text())
+    assert row['configured'] is False
+    assert row['error_code']=='not_configured'
+    public,private=aggregate(datetime.now(TPE),'OPEN',tmp_path)
+    assert public['providers']['fugle']['status']=='UNKNOWN'
+    assert 'configured' not in public['providers']['fugle']
+    assert private['providers']['fugle']['configured'] is False
+
+
+def test_fugle_valid_quote_closed_is_market_closed(tmp_path,monkeypatch):
+    from market_data.publish import probe_fugle
+    monkeypatch.setenv('EASYSTOCK_MARKET_DATA_DIR',str(tmp_path))
+    monkeypatch.setenv('FUGLE_API_KEY','test-only')
+    class Response:
+        def raise_for_status(self):pass
+        def json(self):return {'symbol':'2330','lastPrice':100,'lastUpdated':NOW.timestamp()*1e6}
+    with patch('market_data.publish.requests.get',return_value=Response()):probe_fugle(NOW,'OPEN')
+    row=json.loads((tmp_path/'fugle.json').read_text())
+    row['last_ok_at']=NOW.isoformat();row['checked_at']=NOW.isoformat();row['last_data_at']=NOW.isoformat()
+    assert provider_health('fugle',row,NOW.replace(hour=15),'CLOSED')['status']=='MARKET_CLOSED'
+
+
+def test_market_gate_diagnostics_are_private_and_sanitized(tmp_path,monkeypatch):
+    from market_data.diagnostics import save_gate, read_gate
+    monkeypatch.setenv('EASYSTOCK_MARKET_DATA_DIR',str(tmp_path))
+    gate={'level':'GREEN','market_condition_reason':'fresh_live_green','data_health':'DEGRADED',
+          'gate_reason':'market_risk_pass','selected_source':'esun','premarket_level':'UNKNOWN',
+          'premarket_reason':'premarket_missing_or_stale',
+          'sources':{'esun':{'status':'HEALTHY','quote_at':NOW.isoformat(),'age_seconds':0,
+                             'usable':True,'api_key':'test-secret'}}}
+    save_gate(gate,now=NOW,premarket_date='2026-09-29',model_ready=True,
+              radar_candidate_count=3,block_counts={'market_data_unavailable':8})
+    assert 'test-secret' not in (tmp_path/'market-gate.json').read_text()
+    data=read_gate()
+    assert data['selected_source']=='esun'
+    assert data['entry_block_evaluations']['market_data_unavailable']==8
+    assert 'test-secret' not in json.dumps(data)
 
 def test_context_never_uses_receipt_as_quote_time(tmp_path,monkeypatch):
     monkeypatch.setenv('EASYSTOCK_MARKET_DATA_DIR',str(tmp_path))

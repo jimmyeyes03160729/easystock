@@ -2,9 +2,11 @@
 import importlib.util
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 SPEC = importlib.util.spec_from_file_location('market_risk_under_test', ROOT / 'market_risk.py')
 RISK = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(RISK)
@@ -29,12 +31,20 @@ class MarketRiskGateTests(unittest.TestCase):
     def test_stale_premarket_does_not_turn_fresh_live_red(self):
         gate = RISK.MarketGate().update(brief(day='2026-09-29'), {'shioaji': quote('shioaji')}, NOW)
         self.assertEqual((gate['premarket_risk'], gate['market_risk']), ('UNKNOWN', 'GREEN'))
+        self.assertEqual((gate['market_condition_reason'],gate['selected_source']),('fresh_live_green','shioaji'))
+
+    def test_stale_premarket_still_blocks_a_real_fresh_red(self):
+        gate = RISK.MarketGate().update(brief(day='2026-09-29'),
+                                        {'shioaji': quote('shioaji',change=-2.1)},NOW)
+        self.assertEqual((gate['market_risk'],gate['gate_reason'],gate['market_condition_reason']),
+                         ('RED','market_risk_red','fresh_live_red'))
 
     def test_esun_fresh_when_shioaji_stale(self):
         sources = {'shioaji': quote('shioaji', seconds=-91), 'esun': quote('esun')}
         gate = RISK.MarketGate().update(brief(day='2026-09-29'), sources, NOW)
         self.assertEqual((gate['market_risk'], gate['source_count'], gate['source']), ('GREEN', 1, 'esun'))
         self.assertEqual(gate['data_health'], 'DEGRADED')
+        self.assertEqual((gate['data_reason'],gate['selected_source']),('one_source_fresh','esun'))
 
     def test_shioaji_fresh_when_esun_unavailable(self):
         sources = {'shioaji': quote('shioaji'), 'esun': RISK.snapshot_risk(None, NOW, source='esun')}
@@ -49,6 +59,7 @@ class MarketRiskGateTests(unittest.TestCase):
         gate = RISK.MarketGate().update(brief(), sources, NOW)
         self.assertEqual((gate['market_risk'], gate['gate_action'], gate['gate_reason']),
                          ('UNKNOWN', 'BLOCK', 'market_data_unavailable'))
+        self.assertEqual(gate['market_condition_reason'],'no_fresh_market_data')
 
     def test_premarket_red_yields_to_confirmed_live_recovery(self):
         machine = RISK.MarketGate(confirmations=2)
@@ -93,6 +104,23 @@ class MarketRiskGateTests(unittest.TestCase):
         gate = RISK.MarketGate().update(brief(),
             {'shioaji': quote('shioaji', change=-2.1), 'esun': quote('esun')}, NOW)
         self.assertEqual(gate['market_risk'], 'RED')
+        self.assertEqual(gate['selected_source'],'shioaji')
+
+    def test_modern_shioaji_index_contract_is_preferred(self):
+        from market_data.shioaji import taiex_contract
+        class Modern:
+            contracts={'IX0001':'modern-price-index'}
+            @property
+            def Contracts(self):
+                raise AssertionError('deprecated access')
+        self.assertEqual(taiex_contract(Modern()),'modern-price-index')
+
+    def test_legacy_shioaji_index_contract_remains_compatible(self):
+        from market_data.shioaji import taiex_contract
+        class Legacy:
+            contracts={}
+            Contracts=type('Contracts',(),{'Indexs':type('Indexs',(),{'TSE':{'001':'legacy-price-index'}})})()
+        self.assertEqual(taiex_contract(Legacy()),'legacy-price-index')
 
 
 if __name__ == '__main__':

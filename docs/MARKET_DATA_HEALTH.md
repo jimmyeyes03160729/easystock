@@ -27,6 +27,12 @@
 
 ONLINE=有效的新鮮證據；DEGRADED=延遲、解析或部分訂閱異常；OFFLINE=已觀察到失敗 / 連線斷開；UNKNOWN=缺乏證據 / AI 待命；MARKET_CLOSED=市場休市或盤後，沒有新 tick 不是故障。已知失敗仍保留，休市不掩蓋故障。
 
+永豐加權指數使用 Shioaji 1.7 的 `api.contracts.get('IX0001')`，並保留舊版合約存取回退。報價解析成功但時間過舊時記為 `quote_stale`，不標示 ONLINE；休市的 MARKET_CLOSED 需要當日有效報價證據。Fugle 未設定 `FUGLE_API_KEY` 時，後台診斷記 `not_configured`，首頁維持 UNKNOWN，不假稱正常或故障。若要啟用，只在 VM 的 provider-health service 既有環境檔中安全配置金鑰，不能寫入 repo 或 Firebase。
+
+市場風控分開記錄 `market_condition_reason`、`data_reason`、`selected_source` 及 `gate_reason`。任一來源有新鮮有效指數報價即可判市場狀態；兩來源都不可用則標記 `market_data_unavailable` 並安全阻止新進場，不能誤稱真實市場 RED。真正 RED 仍阻止進場；盤前 RED 需要連續不同時間的即時報價才能逐步校正。盤中每 30 秒將脫敏的市場閘門摘要寫到私有 `market-gate.json`，後台可看資料源時間、雷達候選數及「真 RED／資料不可用」各自的攔截評估數。這些計數不是成交或買單數。
+
+盤前排程若日曆失敗會以錯誤狀態結束；Gemini 建議失敗仍可產生確定性晨報，但發布前必須核對 `scan_date` 和 `generated_at` 都是台北當日。`--no-firebase --no-line` 的驗證模式不寫正式狀態，也不傳訊息。盤前 brief 過期不能代替當日資料，更不能被當成真實市場紅燈。
+
 首頁只讀 `/market_data/provider_health`：schema_version、generated_at、market_state、六個固定 provider 的 status / last_checked_at。沒有 LINE / Telegram、錯誤內文、端點、路徑、帳號或金鑰。摘要超過 180 秒，前端降為 UNKNOWN。
 
 詳細診斷保留於本機，透過現有 Google Owner 登入後的 `/admin/health` 提供，包含資料與心跳秒數、延遲、重連、訂閱、成功 / 失敗時間與 allowlist error code。Firebase 客戶端禁止寫入；部署只合併兩個 health 節點的讀取規則，保存及核對舊規則，不覆蓋其他政策。

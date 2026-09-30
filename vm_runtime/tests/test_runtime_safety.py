@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import threading
@@ -215,9 +216,22 @@ class EngineTests(unittest.TestCase):
         self.engine.entry_mode='model'
         self.engine.market_level='UNKNOWN'
         self.engine.market_gate={'gate_action':'BLOCK','gate_reason':'market_data_unavailable'}
+        self.engine._market_block_counts={'market_risk_red':0,'market_data_unavailable':0}
         self.engine.daytrade_model=Mock()
         self.run_engine()
         self.engine.daytrade_model.evaluate.assert_not_called()
+        self.assertEqual(self.engine._market_block_counts['market_data_unavailable'],1)
+
+    def test_real_red_is_counted_separately_from_missing_data(self):
+        self.engine.entry_mode='model'
+        self.engine.market_level='RED'
+        self.engine.market_gate={'gate_action':'BLOCK','gate_reason':'market_risk_red'}
+        self.engine._market_block_counts={'market_risk_red':0,'market_data_unavailable':0}
+        self.engine.daytrade_model=Mock()
+        self.run_engine()
+        self.engine.daytrade_model.evaluate.assert_not_called()
+        self.assertEqual(self.engine._market_block_counts,
+                         {'market_risk_red':1,'market_data_unavailable':0})
 
     def test_market_pass_reaches_model_evaluation(self):
         self.engine.entry_mode='model'
@@ -314,7 +328,9 @@ class DeploymentTests(unittest.TestCase):
         tree = ast.parse((ROOT/'premarket_ai.py').read_text())
         main = next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')
         status = Mock()
-        ns = {'os':os, 'sys':sys, 'build_brief':Mock(return_value={'scan_date':'2026-09-30'}),
+        ns = {'os':os, 'sys':sys, 'datetime':datetime,'TPE':TPE,'now_tpe':lambda:NOW,
+              'build_brief':Mock(return_value={'scan_date':NOW.date().isoformat(),
+                                              'generated_at':NOW.isoformat()}),
               'print_brief':Mock(), 'write_firebase':Mock(side_effect=RuntimeError('publish failed')),
               'write_premarket_status':status}
         exec(compile(ast.Module(body=[main],type_ignores=[]),'<premarket-main>','exec'),ns)
@@ -324,6 +340,64 @@ class DeploymentTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'publish failed'):
                 ns['main']()
         status.assert_called_once_with('failed','build_or_publish_error')
+
+    def test_root_calendar_import_works_under_scheduled_runtime_path(self):
+        script = ("import sys;sys.path.insert(0,"+repr(str(ROOT))+" );"
+                  "from market_calendar import now_tpe,is_market_open;"
+                  "assert callable(now_tpe) and callable(is_market_open)")
+        result=subprocess.run([sys.executable,'-c',script],cwd=ROOT.parent,
+                              capture_output=True,text=True,timeout=20)
+        self.assertEqual(result.returncode,0,result.stderr)
+
+    def test_premarket_rejects_wrong_day_before_publishing(self):
+        tree=ast.parse((ROOT/'premarket_ai.py').read_text())
+        main=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')
+        publish=Mock();status=Mock()
+        ns={'os':os,'sys':sys,'datetime':datetime,'TPE':TPE,'now_tpe':lambda:NOW,
+            'build_brief':Mock(return_value={'scan_date':'2026-09-23','generated_at':NOW.isoformat()}),
+            'write_firebase':publish,'write_premarket_status':status}
+        exec(compile(ast.Module(body=[main],type_ignores=[]),'<premarket-main>','exec'),ns)
+        calendar=types.ModuleType('market_calendar')
+        calendar.is_market_open=Mock(return_value=(True,'open',{}))
+        with patch.dict(sys.modules,{'market_calendar':calendar}),patch.object(sys,'argv',['premarket_ai.py']):
+            with self.assertRaisesRegex(RuntimeError,'premarket_brief_date_mismatch'):
+                ns['main']()
+        publish.assert_not_called()
+        status.assert_called_once_with('failed','build_or_publish_error')
+
+    def test_premarket_dry_run_does_not_publish_status(self):
+        tree=ast.parse((ROOT/'premarket_ai.py').read_text())
+        main=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')
+        status=Mock();build=Mock()
+        ns={'os':os,'sys':sys,'write_premarket_status':status,'build_brief':build}
+        exec(compile(ast.Module(body=[main],type_ignores=[]),'<premarket-main>','exec'),ns)
+        calendar=types.ModuleType('market_calendar')
+        calendar.is_market_open=Mock(return_value=(False,'holiday',{}))
+        with patch.dict(sys.modules,{'market_calendar':calendar}),patch.object(sys,'argv',['premarket_ai.py','--no-firebase','--no-line']):
+            ns['main']()
+        status.assert_not_called();build.assert_not_called()
+
+    def test_premarket_ai_exception_keeps_deterministic_brief(self):
+        tree=ast.parse((ROOT/'premarket_ai.py').read_text())
+        build=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='build_brief')
+        ns={'now_tpe':lambda:NOW,'fetch_market_snapshot':lambda:{},
+            'fetch_taiwan_futures':lambda:{},'fetch_news':lambda **_:[],
+            'base_risk_score':lambda _:(50,[],[]),
+            'call_ai':Mock(side_effect=RuntimeError('advisory failed')),
+            'GEMINI_MODEL':'test','WEBSITE_URL':'https://example.test',
+            'clamp':lambda value,low,high:max(low,min(high,value)),
+            'num':lambda value:float(value) if value is not None else None,
+            'market_level_from_score':lambda _:'YELLOW',
+            'expected_volatility':lambda *_:'normal',
+            'default_sector_bias':lambda _:{},
+            'build_fallback_summary':lambda **_:'deterministic summary'}
+        exec(compile(ast.Module(body=[build],type_ignores=[]),'<premarket-build>','exec'),ns)
+        with patch('market_data.health.observe') as observed:
+            brief=ns['build_brief']()
+        self.assertEqual(brief['scan_date'],NOW.date().isoformat())
+        self.assertEqual(brief['summary'],'deterministic summary')
+        self.assertEqual(brief['ai']['used'],False)
+        observed.assert_called_once_with('gemini',ok=False,error_code='request_failed')
 
 
 if __name__=='__main__':unittest.main()

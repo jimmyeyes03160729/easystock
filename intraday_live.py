@@ -81,6 +81,8 @@ from public_feed import write_public_tick
 from position_manager import PositionManager
 from daytrade_learning.runtime import Recorder
 from market_risk import MarketGate, premarket_context, snapshot_risk
+from market_data.shioaji import taiex_contract
+from market_data.diagnostics import save_gate
 from market_data.context import esun_index_snapshot
 from market_data.health import observe as observe_provider
 from daytrade_learning.model_runtime import DaytradeModel, live_features, write_runtime_model_status, refresh_runtime_model_status
@@ -2807,6 +2809,7 @@ class IntradayLiveEngine:
               f"version={self.daytrade_model.model_version} sha256={self.daytrade_model.artifact_sha256} "
               f"threshold={self.daytrade_model.threshold} learning={self.learning.enabled}")
         self._market_checked_at = 0.0
+        self._market_block_counts = {'market_risk_red': 0, 'market_data_unavailable': 0}
         self.market_valid_until = 0.0
         self.market_risk = {'valid': False, 'gate_reason': 'not_checked'}
         self.manager.before_open = lambda **kw: None if self.collect_only else paper_wallet.open_fill(**kw)
@@ -2838,17 +2841,7 @@ class IntradayLiveEngine:
         base, brief = load_market_context()
         shioaji = snapshot_risk(None, current, source='shioaji')
         try:
-            # Shioaji >=1.7 uses IX0001; older SDKs use 001.
-            contract = None
-            for code in ('IX0001', '001'):
-                try:
-                    contract = self.api.Contracts.Indexs.TSE[code]
-                except (KeyError, AttributeError, TypeError):
-                    continue
-                if contract is not None:
-                    break
-            if contract is None:
-                raise LookupError('index_contract_unavailable')
+            contract = taiex_contract(self.api)
             quotes = self.api.snapshots([contract], timeout=3000)
             if quotes:
                 shioaji = snapshot_risk(quotes[0], current, source='shioaji',
@@ -2856,10 +2849,11 @@ class IntradayLiveEngine:
                     red_pct=float(os.environ.get('LIVE_INDEX_RED_PCT', '-2')))
         except Exception as exc:
             shioaji['reason'] = 'index_unavailable:' + type(exc).__name__
-        parsed = shioaji.get('data_health') in ('HEALTHY', 'STALE')
-        observe_provider('shioaji', ok=parsed,
-            quote_at=shioaji.get('observed_at'), connected=parsed,
-            error_code='request_failed')
+        state = shioaji.get('data_health')
+        observe_provider('shioaji', ok=state == 'HEALTHY',
+            quote_at=shioaji.get('observed_at') if state == 'HEALTHY' else None,
+            connected=state in ('HEALTHY', 'STALE'),
+            error_code='quote_stale' if state == 'STALE' else 'request_failed')
         esun = snapshot_risk(esun_index_snapshot(), current, source='esun',
             yellow_pct=float(os.environ.get('LIVE_INDEX_YELLOW_PCT', '-1')),
             red_pct=float(os.environ.get('LIVE_INDEX_RED_PCT', '-2')))
@@ -2871,10 +2865,17 @@ class IntradayLiveEngine:
         if gate['gate_action'] == 'PASS':
             self.market_valid_until = min(current.timestamp()+45,
                 datetime.fromisoformat(gate['quote_at']).timestamp()+90)
+        save_gate(gate, now=current, premarket_date=brief.get('scan_date') if isinstance(brief, dict) else None,
+                  model_ready=self.daytrade_model.artifact is not None,
+                  radar_candidate_count=len(self.scanner_top_symbols),
+                  block_counts=self._market_block_counts)
+        veto = ('市場紅燈' if gate['gate_reason'] == 'market_risk_red' else
+                '市場資料不可用' if gate['gate_action'] == 'BLOCK' else '-')
         print('[MARKET_DATA] shioaji={} esun={} premarket={}'.format(
             shioaji['data_health'], esun['data_health'], gate['premarket_health']))
-        print('[MARKET_RISK] premarket={} live={} effective={} gate={} reason={}'.format(
-            base, gate['live_risk'], self.market_level, gate['gate_action'], gate['gate_reason']))
+        print('[MARKET_RISK] premarket={} live={} effective={} gate={} reason={} veto={} radar_candidates={}'.format(
+            base, gate['live_risk'], self.market_level, gate['gate_action'], gate['gate_reason'],
+            veto, len(self.scanner_top_symbols)))
         try:
             db.reference('/market_data/intraday_live/market_risk').set(dict(gate,
                 market_level=self.market_level, checked_at=current.isoformat()))
@@ -4047,6 +4048,12 @@ class IntradayLiveEngine:
             return
 
         if getattr(self, 'market_gate', {}).get('gate_action', 'PASS') != 'PASS' or now_tpe().timestamp() > self.market_valid_until:
+            reason = ('market_risk_red' if getattr(self, 'market_gate', {}).get('gate_reason') == 'market_risk_red'
+                      else 'market_data_unavailable')
+            counts = getattr(self, '_market_block_counts', None)
+            if isinstance(counts, dict):
+                with self._lock:
+                    counts[reason] = min(1_000_000_000, counts.get(reason, 0) + 1)
             return
         if self.entry_mode == 'rules' and not eligible:
             return
@@ -4184,6 +4191,12 @@ class IntradayLiveEngine:
                 self.entry_symbols.discard(symbol)
             return
         if getattr(self, 'market_gate', {}).get('gate_action', 'PASS') != 'PASS' or now_tpe().timestamp() > self.market_valid_until:
+            reason = ('market_risk_red' if getattr(self, 'market_gate', {}).get('gate_reason') == 'market_risk_red'
+                      else 'market_data_unavailable')
+            counts = getattr(self, '_market_block_counts', None)
+            if isinstance(counts, dict):
+                with self._lock:
+                    counts[reason] = min(1_000_000_000, counts.get(reason, 0) + 1)
             with self._lock:
                 self.entry_symbols.discard(symbol)
             return
