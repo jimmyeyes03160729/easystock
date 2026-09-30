@@ -8,6 +8,18 @@
 > 這一區固定放在 Roadmap 最前面，用來快速確認「還有哪些功能尚未執行」。  
 > 完成後改成 `[x]`；尚未開始或尚未完成維持 `[ ]`。細節保留在下方對應章節。
 
+- [ ] **【最高優先】Market Risk Gate 修正：資料異常不得等同市場 RED**
+  - 2026-09-30 實盤確認：0 ENTRY 並非 AI 模型判錯，而是市場風控層先將候選全部 veto。
+  - 盤前 brief 停留在 2026-09-25，9/30 判定 `premarket_missing_or_stale`；盤中即時大盤風控同時出現 `index_quote_missing_or_stale` / `valid=False`。
+  - 雷達本身正常，盤中持續有 2～9 檔候選；模型 `research-2026-09-24`、`mode=model`、`ready=True`、threshold 0.6 皆正常。
+  - 已確認大量 veto 來自「市場紅燈」，代表目前把資料 stale / API snapshot 無效 / 真實市場風險三種不同情況壓成同一個 RED。
+  - 今晚修正方向：盤前資料只做初始風險；09:00 後改由即時市場風控重新判定。
+  - Shioaji 與玉山行情需互為 fallback：任一正常就不能因另一個失效而鎖盤；兩者都失效才進 fail-safe RED。
+  - 盤前 RED 若盤中連續即時資料證實轉強，可重新校正為 YELLOW / GREEN。
+  - 必須將「資料異常」與「市場真的危險」拆成不同狀態，不得共用 RED。
+  - 不調整模型 threshold 0.6、不放寬雷達條件；今天資料完整保留作研究樣本，修正後自下一交易日重新驗證。
+  - 同步追查 `easystock-premarket.timer/service` 為何 9/29、9/30 未更新盤前 brief。
+
 - [ ] **手機版底部導覽列改版**
   - 手機版底部改成固定式 5 個主入口。
   - 主入口：盤中摸魚、底部反彈、牛馬 AI、Chrome 小工具、社畜後台。
@@ -114,6 +126,100 @@
   - Public repo 採乾淨 Git history，避免舊 commit 持續暴露核心程式。
 
 
+
+---
+
+## Market Risk Gate 修正（2026-09-30）
+
+### 問題定義
+本次屬於 Market Risk Gate bug，不是 AI 模型 performance 問題。
+
+2026-09-30 的實盤證據顯示：
+- 盤前資料仍停留在 2026-09-25。
+- 9/30 沒有新的 premarket brief，導致 `premarket_missing_or_stale`。
+- 盤中即時市場風控另出現 `index_quote_missing_or_stale` / `valid=False`。
+- 雷達 11:07～11:10 持續可抓到 2～9 檔候選，Shioaji 個股行情、爆量雷達、Top 候選流程正常。
+- 模型為 `research-2026-09-24`，`mode=model`、`ready=True`、threshold 0.6，模型本身正常啟動。
+- 大量策略評估在進入模型前就被「市場紅燈」 veto，因此最終 0 ENTRY。
+
+### 已確認的錯誤行為
+目前系統把以下不同事件壓成同一個 RED：
+1. 盤前資料 stale。
+2. 即時 index quote 缺失 / stale / snapshot 無效。
+3. 市場本身真的進入高風險狀態。
+
+這三者不應共享同一個交易語意。
+
+核心原則：
+> 資料異常 != 市場真的危險。
+
+### 正確架構
+```text
+08:35 盤前資料
+   │
+   └── 只做初始風險
+             ↓
+09:00 開盤
+             ↓
+      即時市場風控
+       ↙          ↘
+ Shioaji       玉山 API
+ 加權指數      加權 / 櫃買 / 類股
+       ↘          ↙
+       資料品質檢查
+             ↓
+       Market Risk
+             ↓
+ GREEN / YELLOW / RED
+```
+
+### Fallback 規則
+- 盤前資料 stale：
+  - 不直接等同市場 RED。
+  - 標示資料品質異常 / UNKNOWN / DEGRADED。
+- Shioaji 大盤失效但玉山正常：
+  - 使用玉山。
+  - 不鎖盤。
+- 玉山失效但 Shioaji 正常：
+  - 使用 Shioaji。
+  - 不鎖盤。
+- Shioaji + 玉山都失效：
+  - 才進 fail-safe RED / BLOCK。
+- 盤前 RED，但盤中連續即時資料證實市場轉強：
+  - 允許重新校正成 YELLOW / GREEN。
+- 所有 Market Risk 狀態都需保留來源、quote_at、freshness 與判定原因。
+
+### 本次不調整
+不要因 0 ENTRY 去改：
+- 模型 threshold 0.6。
+- 爆量 >= 1.4x。
+- 主動買盤 >= 52%。
+- 60 秒量 >= 10。
+- 60 秒成交額 >= 150 萬。
+- 漲幅上限 8%。
+
+雷達與模型不是本次根因。
+
+### 盤前任務追查
+需檢查：
+- `easystock-premarket.timer`
+- `easystock-premarket.service`
+- 9/29、9/30 是否有執行失敗。
+- calendar gate 是否誤判。
+- Firebase publish 是否失敗。
+- premarket brief 是否寫入了其他節點 / release。
+- credential / network / API error。
+- service exit code 與 journal。
+
+### 驗收條件
+修正完成後至少確認：
+1. premarket stale 不會直接造成全市場 RED。
+2. Shioaji / 玉山任一來源正常即可提供市場 context。
+3. 兩個即時來源都失效才觸發 fail-safe。
+4. 盤前風險可以被盤中可靠資料重新校正。
+5. RED 必須代表真實市場風險，而不是單純資料缺失。
+6. 今日 9/30 資料完整保留作研究樣本。
+7. 下一交易日重新做完整盤中驗證。
 
 ---
 
