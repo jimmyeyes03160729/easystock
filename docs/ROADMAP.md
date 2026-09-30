@@ -37,6 +37,11 @@
   - X 軸位置以交易分鐘為準，不可再用資料筆數平均分配；中午沒有休市，不需切段。
   - 休市／歷史資料顯示時，需明確定義使用完整交易日比例或最後交易日完整資料，避免盤中與收盤後顯示邏輯混淆。
   - 此項列為 1.0X Bugfix 線下一版候選，暫定 1.04，不併入 2.0 功能開發。
+  - 2026-09-30 追加實盤問題：點進個股 K 線頁後，日 K 最後一根仍停在昨天，盤中沒有顯示今天尚未完成的日 K。
+  - 現況雖已有 `mergeTodayPartialDailyBar()` / `FETCH_DAILY` 嘗試用 1 分 K 組今日 OHLC，但實盤仍未成功；需檢查 Yahoo 1m 回傳是否真為今日、marketOpen / holiday gate、Service Worker 回傳格式，以及 fallback 時是否因拿不到今日分時而直接保留昨日最後一根。
+  - 修正要求：交易日 09:00 後，只要已有今日有效成交 / 1 分 K，就必須在日 K 模式追加「今日未完成 K 棒」；OHLC / volume 由今日真實分時彙整，不得用昨日資料或假資料補值。
+  - 今日 partial K 必須隨盤中刷新更新；收盤後再由正式日 K 取代，且 UI 可標示 partial / 盤中未完成。
+  - 需保留每筆 intraday 的交易日期或完整 timestamp，不能只留下 HH:mm，避免把前一交易日的 1 分 K 誤當今日資料。
 
 - [ ] **Chrome Extension 2.0：Google 登入 + Firebase 使用者同步**
   - Google Authentication。
