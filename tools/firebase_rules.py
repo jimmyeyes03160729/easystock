@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from uuid import uuid4
 
 import requests
 from dotenv import dotenv_values
@@ -121,9 +122,21 @@ def main():
         status = requests.get(url+'/market_data/line_groups.json', headers=headers, params={'shallow':'true'}, timeout=20).status_code
         if status != 200:
             raise RuntimeError('Service account private read failed')
-        # An impossible ETag guards against mutation even if the rules are unexpectedly permissive.
-        status = requests.put(url+'/market_data/provider_health/__deny_probe.json',
-                              headers={'If-Match': '"easystock-never-match"'}, json=False, timeout=20).status_code
+        # Firebase evaluates a false ETag before Security Rules (HTTP 412), so
+        # a conditional write cannot prove denial. Use a unique absent child;
+        # the candidate and readback above both prove .write=false first.
+        if candidate['rules']['market_data']['provider_health'] != {'.read': True, '.write': False}:
+            raise RuntimeError('Health write rule is not explicitly denied')
+        probe_url = url+'/market_data/provider_health/__deny_probe_'+uuid4().hex+'.json'
+        probe_before = requests.get(probe_url, timeout=20)
+        if probe_before.status_code != 200 or probe_before.json() is not None:
+            raise RuntimeError('Write probe target is not empty and public-readable')
+        status = requests.put(probe_url, json=False, timeout=20).status_code
+        if status == 200:
+            # Defensive recovery if the server violates the read-back rules.
+            restored_probe = requests.delete(probe_url, headers=headers, timeout=20)
+            if not restored_probe.ok:
+                raise RuntimeError('Unexpected client write and probe cleanup failed')
         if status not in (401,403):
             raise RuntimeError('Public health client-write denial not confirmed: HTTP '+str(status))
     except Exception:
