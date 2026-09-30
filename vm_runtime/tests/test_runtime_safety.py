@@ -392,12 +392,14 @@ class DeploymentTests(unittest.TestCase):
             'default_sector_bias':lambda _:{},
             'build_fallback_summary':lambda **_:'deterministic summary'}
         exec(compile(ast.Module(body=[build],type_ignores=[]),'<premarket-build>','exec'),ns)
-        with patch('market_data.health.observe') as observed:
+        package=types.ModuleType('market_data');package.__path__=[]
+        health=types.ModuleType('market_data.health');health.observe=Mock()
+        with patch.dict(sys.modules,{'market_data':package,'market_data.health':health}):
             brief=ns['build_brief']()
         self.assertEqual(brief['scan_date'],NOW.date().isoformat())
         self.assertEqual(brief['summary'],'deterministic summary')
         self.assertEqual(brief['ai']['used'],False)
-        observed.assert_called_once_with('gemini',ok=False,error_code='request_failed')
+        health.observe.assert_called_once_with('gemini',ok=False,error_code='request_failed')
 
 
 if __name__=='__main__':unittest.main()
