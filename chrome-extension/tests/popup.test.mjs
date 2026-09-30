@@ -35,3 +35,12 @@ test('popup v1.03 renders safely and wires current controls', async () => {
   assert.ok(w.document.getElementById('watchlist-pagination-bar'));
   dom.window.close();
 });
+
+
+test('1.04 restores rebound tab and renders shared rebound results', async () => {
+  const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../popup.js', import.meta.url), 'utf8');
+  assert.match(html, /data-group="rebound"/);
+  assert.match(source, /function renderRebound\(list, isCompact\)/);
+  assert.match(source, /view\.bounce/);
+});
