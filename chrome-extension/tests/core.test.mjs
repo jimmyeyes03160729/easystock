@@ -67,8 +67,8 @@ test('VIP revalidated against config, not a stored boolean', async () => {
 test('production has narrow permissions, packaged resources, no test VIP', async () => {
   const m = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url)));
   assert.equal(m.manifest_version, 3);
-  assert.equal(m.version, '1.0.3');
-  assert.equal(m.version_name, '1.03');
+  assert.equal(m.version, '1.0.4');
+  assert.equal(m.version_name, '1.04');
   assert.deepEqual(m.permissions, ['storage', 'alarms', 'notifications']);
   assert.equal(m.host_permissions.some(x => x.includes('<all_urls>')), false);
   const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
