@@ -52,7 +52,7 @@ setText('badge-market', market === 'TWO' ? '上櫃' : '上市');
 const stBadge = document.getElementById('badge-strategy');
 if (stBadge) {
   if (strategyType) {
-    stBadge.textContent = strategyType === 'daytrade' ? '????' : strategyType;
+    stBadge.textContent = strategyType === 'daytrade' ? '當沖策略' : strategyType;
     stBadge.style.display = 'inline-block';
   } else {
     stBadge.style.display = 'none';

@@ -83,8 +83,8 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
     if (msg?.type === 'LIVE_SIGNAL' && msg.signal) {
       const s = msg.signal;
       const isExit = s.action === 'SELL' || s.id?.startsWith('exit:');
-      const isDaytrade = s.strategy === 'daytrade';
       showInAppToast({
+        badgeText: isExit ? '✅ 當沖出場' : '🚀 當沖進場',
         badgeColor: isExit ? 'bg-emerald-600' : 'bg-sky-600',
         titleText: s.title || `${s.symbol} ${s.name || ''}`,
         bodyText: s.telegramText || `${s.symbol} ${s.name || ''} 現價 ${s.price} 元\n${s.reason || ''}`,
