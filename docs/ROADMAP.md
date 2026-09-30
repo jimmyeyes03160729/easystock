@@ -58,12 +58,14 @@
   - 2.0 才進行登入 / 雲端同步等大型架構變更；1.0X 維持 Bugfix 線。
 
 - [ ] **玉山 API 行情資料源整合（只讀，不交易）**
+  - [x] 玉山 API 已完成登入 / WebSocket 連線驗證，可成功訂閱並收到市場資料事件。
   - 玉山 API 僅作為行情 / 市場資料來源，不做自動交易、不送單、不管理持倉。
   - 第一階段補強 AI 當沖即時市場 context：加權指數、櫃買、電子、半導體、金融、電子零組件、航運等市場 / 類股指數。
   - 後續延伸市場廣度、類股強弱、領漲 / 領跌、資金輪動與市場 regime 特徵。
   - 與既有 Shioaji / Fugle / Firebase 資料分層，保留 source / quote_at / received_at / freshness，禁止來源混淆。
   - 新增資料先進 Dataset / Shadow 驗證，不可因接上玉山 API 就直接改變正式 ENTRY / EXIT。
   - 不保存或建立任何玉山交易憑證 / 下單能力；權限以行情唯讀最小化為原則。
+  - 尚待完成：正式 provider 模組、資料標準化 / 落地、freshness、API Health 燈號、Dataset / Shadow 整合。
 
 - [ ] **觸底反彈 AI 學習**
   - 統一正式 Rebound 定義。
@@ -309,6 +311,13 @@ auth.uid == {uid}
 - 不管理券商持倉。
 - 不把玉山帳戶憑證做成交易權限。
 - 不因資料源接通而直接改變正式 ENTRY / EXIT。
+
+### 目前狀態
+- 已完成玉山 API 登入驗證。
+- WebSocket 已成功連線。
+- 已成功送出市場資料訂閱並收到 subscribed / heartbeat 等事件。
+- 目前僅視為「連線層已打通」，尚未等同正式資料管線完成。
+- 下一步才是將玉山資料正式接入 EasyStock provider / market context / dataset 流程。
 
 ### 第一階段資料
 優先收集：
