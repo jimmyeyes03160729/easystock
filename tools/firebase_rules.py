@@ -123,7 +123,7 @@ def main():
             raise RuntimeError('Service account private read failed')
         # An impossible ETag guards against mutation even if the rules are unexpectedly permissive.
         status = requests.put(url+'/market_data/provider_health/__deny_probe.json',
-                              headers={'If-Match': '"easystock-never-match"'}, json=None, timeout=20).status_code
+                              headers={'If-Match': '"easystock-never-match"'}, json=False, timeout=20).status_code
         if status not in (401,403):
             raise RuntimeError('Public health client-write denial not confirmed: HTTP '+str(status))
     except Exception:
