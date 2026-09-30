@@ -82,6 +82,15 @@
   - AI 改為每週 Architecture Review 或異常觸發分析，不再每天固定產生文字復盤。
   - 已完成 GitHub main → VM canonical deploy 與 release identity 驗收；VM / origin/main / GitHub main SHA 已一致。
 
+- [ ] **API / 資料源健康燈號**
+  - 首頁新增脫敏後的 API / 資料源狀態，只顯示核心行情與資料服務。
+  - 第一階段包含：永豐行情、玉山行情、Fugle、Firebase，以及必要的 AI Provider 狀態。
+  - LINE / Telegram 不放首頁公開燈號，僅保留在 Owner / Admin 後台自行查看。
+  - 公開狀態統一為 ONLINE / DEGRADED / OFFLINE / UNKNOWN；收盤後行情源可顯示 MARKET CLOSED，不誤判離線。
+  - 判定以實際資料 freshness / 最近成功資料時間為主，不只看 HTTP 200 或 WebSocket 是否仍連線。
+  - 首頁只顯示脫敏摘要；詳細 latency、error code、reconnect、連續失敗等資訊只放後台。
+  - 不公開 API Key、Token、帳號、broker account、完整 endpoint、VM / IP、憑證細節、stack trace 或精確 quota。
+
 - [ ] **AI Architecture Guardian 系統健檢**
   - 每日 Tests / CodeQL / Secret Scan / Dependabot / Trivy / 自訂安全規則。
   - 每週 AI Architecture Review。
@@ -947,6 +956,125 @@ AI 改為「需要時才使用」：
 - 移除或停用已無正式 producer 的 OpenAI daily review UI。
 - 清理 legacy paper feedback 在首頁造成的重複 / 誤導顯示，但不得因此刪除真正仍被研究流程使用的資料或模型 artifact。
 - 所有首頁模型狀態必須以實際 runtime / training / validation evidence 為準，不能以文字復盤是否完成推定模型已更新。
+
+---
+
+## API / 資料源健康燈號規劃
+
+### 公開首頁定位
+首頁只顯示可公開、脫敏後的健康摘要，不直接暴露後台診斷資料。
+
+第一階段顯示：
+- 永豐行情
+- 玉山行情
+- Fugle
+- Firebase
+- 必要的 AI Provider
+
+不放首頁：
+- LINE Bot
+- Telegram Bot
+
+LINE / Telegram 狀態只在 Owner / Admin 後台查看。
+
+### 公開狀態
+統一使用：
+- ONLINE
+- DEGRADED
+- OFFLINE
+- UNKNOWN
+- MARKET CLOSED（行情來源在非交易時段使用）
+
+### 判定原則
+不要只看「API 有沒有回 200」或「WebSocket 是否 connected」。
+
+行情資料源至少綜合：
+- 連線狀態
+- last_ok_at
+- last_data_at
+- quote_at
+- freshness
+- parser 是否成功
+- 是否連續失敗
+
+盤中可依資料延遲判定，例如：
+- <= 30 秒：ONLINE
+- 30～120 秒：DEGRADED
+- > 120 秒：OFFLINE / STALE
+
+實際門檻依不同 provider 與資料頻率調整，不能所有來源硬套同一秒數。
+
+盤後不應因沒有新 Tick 直接判 OFFLINE；應顯示 MARKET CLOSED，並保留最後正常資料時間。
+
+### 首頁公開資料
+建議只發布類似：
+
+```json
+{
+  "generated_at": "2026-09-30T09:24:18+08:00",
+  "providers": {
+    "shioaji": {
+      "status": "ONLINE",
+      "last_ok_at": "2026-09-30T09:24:16+08:00",
+      "last_data_at": "2026-09-30T09:24:15+08:00"
+    },
+    "esun": {
+      "status": "ONLINE",
+      "last_ok_at": "2026-09-30T09:24:17+08:00",
+      "last_data_at": "2026-09-30T09:24:17+08:00"
+    },
+    "fugle": {
+      "status": "DEGRADED",
+      "last_ok_at": "2026-09-30T09:22:40+08:00",
+      "last_data_at": "2026-09-30T09:22:40+08:00"
+    },
+    "firebase": {
+      "status": "ONLINE",
+      "last_ok_at": "2026-09-30T09:24:18+08:00"
+    }
+  }
+}
+```
+
+公開 summary 不直接打各家 API，而由後端 / VM 統一產生後再發布。
+
+### 後台詳細資訊
+Owner / Admin 才能查看：
+- latency_ms
+- last_error_code
+- last_error_at
+- consecutive_failures
+- reconnect_count
+- last_quote_at
+- source_version
+- provider-specific diagnostics
+- LINE / Telegram 狀態
+
+### 不可公開
+- API Key
+- Token
+- broker account
+- person_id / account_id
+- 完整 endpoint
+- request headers
+- VM hostname / private IP / path
+- 憑證內容與憑證失敗細節
+- stack trace
+- 精確 quota / credential 狀態
+
+### 與 Guardian 整合
+API Health 第一版可先獨立完成，後續再併入 AI Architecture Guardian 的資料品質 / 外部依賴監控。
+
+建議施工順序：
+```text
+玉山 API 基礎接入
+      ↓
+API / 資料源健康燈號
+      ↓
+Rebound Dataset
+      ↓
+AI Architecture Guardian
+```
 
 ---
 
