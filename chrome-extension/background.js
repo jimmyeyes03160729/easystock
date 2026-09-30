@@ -1,6 +1,6 @@
 import { VM_MODE, CONFIG_URL, FIREBASE_ROOT } from './environment.js';
 import './rebound-engine.js';
-import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes } from './core.js';
+import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes, buildPartialDailyBar } from './core.js';
 
 const ALARM = 'easystock-five-minutes';
 let tail = Promise.resolve();
@@ -826,8 +826,11 @@ export async function fetchIntradayData(sym, mkt) {
         const vwap = cumVol > 0 ? cumAmount / cumVol : c;
         const d = new Date(ts * 1000);
         const timeStr = d.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+        const dateStr = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' });
 
         bars.push({
+          timestamp: Number(ts),
+          date: dateStr,
           time: timeStr,
           open: Number(o),
           high: Number(h),
@@ -923,21 +926,10 @@ export async function fetchDailyData(sym, mkt) {
           if (marketOpen(Date.now())) {
             try {
               const intraday = await fetchIntradayData(sym, mkt);
-              if (Array.isArray(intraday.bars) && intraday.bars.length) {
-                const today = taipei(Date.now()).date;
-                const rows = intraday.bars;
-                const partial = {
-                  time: today,
-                  open: Number(rows[0].open),
-                  high: Math.max(...rows.map(x => Number(x.high)).filter(finite)),
-                  low: Math.min(...rows.map(x => Number(x.low)).filter(finite)),
-                  close: Number(rows.at(-1).close),
-                  volume: rows.reduce((sum, x) => sum + (finite(Number(x.volume)) ? Number(x.volume) : 0), 0),
-                  partial: true
-                };
-                if ([partial.open, partial.high, partial.low, partial.close].every(finite)) {
-                  bars = [...bars.filter(x => x.time !== today), partial].sort((x, y) => String(x.time).localeCompare(String(y.time)));
-                }
+              const today = taipei(Date.now()).date;
+              const partial = buildPartialDailyBar(intraday?.bars, today);
+              if (partial) {
+                bars = [...bars.filter(x => x.time !== today), partial].sort((x, y) => String(x.time).localeCompare(String(y.time)));
               }
             } catch (_) {}
           }
@@ -973,12 +965,25 @@ export async function fetchStockSparklines(stocks) {
     for (const item of results) {
       if (!item?.symbol) continue;
       const rawSym = item.symbol.split('.')[0].toUpperCase();
-      const closes = item.response?.[0]?.indicators?.quote?.[0]?.close;
+      const response = item.response?.[0];
+      const closes = response?.indicators?.quote?.[0]?.close;
+      const timestamps = response?.timestamp;
       if (Array.isArray(closes)) {
-        const validPoints = closes.filter(v => typeof v === 'number' && Number.isFinite(v));
-        if (validPoints.length > 0) {
-          map[rawSym] = validPoints;
+        const validPoints = [];
+        for (let i = 0; i < closes.length; i++) {
+          const close = Number(closes[i]);
+          if (!finite(close)) continue;
+          const point = { close };
+          const ts = Array.isArray(timestamps) ? Number(timestamps[i]) : NaN;
+          if (finite(ts)) {
+            point.timestamp = ts;
+            const d = new Date(ts * 1000);
+            point.date = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' });
+            point.time = d.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+          }
+          validPoints.push(point);
         }
+        if (validPoints.length > 0) map[rawSym] = validPoints;
       }
     }
     return map;

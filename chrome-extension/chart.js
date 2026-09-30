@@ -1,5 +1,5 @@
 import { VM_MODE, FIREBASE_ROOT } from './environment.js';
-import { chartURL, finite } from './core.js';
+import { chartURL, finite, buildPartialDailyBar } from './core.js';
 
 const params = new URLSearchParams(window.location.search);
 const symbol = (params.get('symbol') || '2330').toUpperCase();
@@ -310,8 +310,11 @@ async function fetchYahooIntradayDirect() {
 
       const d = new Date(ts * 1000);
       const timeStr = d.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+      const dateStr = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' });
 
       bars.push({
+        timestamp: Number(ts),
+        date: dateStr,
         time: timeStr,
         open: Number(o),
         high: Number(h),
@@ -359,20 +362,8 @@ async function mergeTodayPartialDailyBar(bars) {
     try { intraday = await fetchYahooIntradayDirect(); } catch (_) {}
   }
   const rows = intraday?.bars;
-  if (!Array.isArray(rows) || !rows.length) return bars;
-  const highs = rows.map(x => Number(x.high)).filter(finite);
-  const lows = rows.map(x => Number(x.low)).filter(finite);
-  if (!highs.length || !lows.length) return bars;
-  const partial = {
-    time: session.date,
-    open: Number(rows[0].open),
-    high: Math.max(...highs),
-    low: Math.min(...lows),
-    close: Number(rows.at(-1).close),
-    volume: rows.reduce((sum, x) => sum + (finite(Number(x.volume)) ? Number(x.volume) : 0), 0),
-    partial: true
-  };
-  if (![partial.open, partial.high, partial.low, partial.close].every(finite)) return bars;
+  const partial = buildPartialDailyBar(rows, session.date);
+  if (!partial) return bars;
   return [...bars.filter(x => (x.time || x.date) !== session.date), partial]
     .sort((a, b) => String(a.time || a.date).localeCompare(String(b.time || b.date)));
 }
@@ -452,8 +443,9 @@ async function loadData(force = false) {
       try {
         if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
           const bgDaily = await chrome.runtime.sendMessage({ type: 'FETCH_DAILY', symbol, market });
-          if (bgDaily && Array.isArray(bgDaily.bars) && bgDaily.bars.length > 0) {
-            bars = bgDaily.bars;
+          const dailyPayload = bgDaily?.value ?? bgDaily;
+          if (dailyPayload && Array.isArray(dailyPayload.bars) && dailyPayload.bars.length > 0) {
+            bars = dailyPayload.bars;
           }
         }
       } catch (_) {}

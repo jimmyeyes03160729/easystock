@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { taipei, marketOpen, fresh, normalizeQuoteTimestamp, formatTaipeiQuoteTime, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, matchFilter, BUILTIN_STOCKS, searchStocks, searchOnlineStocks, calcChangePct, BROKERS, getBroker } from '../core.js';
+import { taipei, marketOpen, fresh, normalizeQuoteTimestamp, formatTaipeiQuoteTime, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, matchFilter, BUILTIN_STOCKS, searchStocks, searchOnlineStocks, calcChangePct, BROKERS, getBroker, sparklineSessionX, buildPartialDailyBar } from '../core.js';
 const at = s => Date.parse(s);
 const now = at('2026-09-17T09:30:00+08:00');
 const sample = { id: 'a', symbol: '2330', market: 'TW', name: '台積電', price: 1000, change_pct: 1, reason: '爆量', generated_at: '2026-09-17T09:29:00+08:00', quote_at: '2026-09-17T09:29:00+08:00' };
@@ -26,6 +26,25 @@ test('quote timestamps are normalized once into Taiwan time', () => {
   assert.equal(formatTaipeiQuoteTime(local), '09:15');
   const utc = normalizeQuoteTimestamp('2026-09-29T01:15:30Z', sampleNow);
   assert.equal(formatTaipeiQuoteTime(utc), '09:15');
+});
+
+test('1.05 sparkline uses fixed Taiwan 09:00-13:30 time axis', () => {
+  const ts = value => Date.parse(value) / 1000;
+  assert.equal(sparklineSessionX({ timestamp: ts('2026-09-30T09:00:00+08:00') }), 2);
+  assert.equal(sparklineSessionX({ timestamp: ts('2026-09-30T09:17:00+08:00') }), 5.3);
+  assert.equal(sparklineSessionX({ timestamp: ts('2026-09-30T13:30:00+08:00') }), 54);
+  assert.equal(sparklineSessionX({ timestamp: ts('2026-09-30T08:59:00+08:00') }), null);
+});
+test('1.05 partial daily K only aggregates valid bars from Taiwan today', () => {
+  const rows = [
+    { date: '2026-09-29', open: 99, high: 100, low: 98, close: 99, volume: 10 },
+    { date: '2026-09-30', open: 100, high: 103, low: 99, close: 102, volume: 20 },
+    { date: '2026-09-30', open: 102, high: 105, low: 101, close: 104, volume: 30 }
+  ];
+  assert.deepEqual(buildPartialDailyBar(rows, '2026-09-30'), {
+    time: '2026-09-30', open: 100, high: 105, low: 99, close: 104, volume: 50, partial: true
+  });
+  assert.equal(buildPartialDailyBar(rows, '2026-10-01'), null);
 });
 
 test('signal schema blocks incomplete or dangerous values', () => {
@@ -67,8 +86,8 @@ test('VIP revalidated against config, not a stored boolean', async () => {
 test('production has narrow permissions, packaged resources, no test VIP', async () => {
   const m = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url)));
   assert.equal(m.manifest_version, 3);
-  assert.equal(m.version, '1.0.4');
-  assert.equal(m.version_name, '1.04');
+  assert.equal(m.version, '1.0.5');
+  assert.equal(m.version_name, '1.05');
   assert.deepEqual(m.permissions, ['storage', 'alarms', 'notifications']);
   assert.equal(m.host_permissions.some(x => x.includes('<all_urls>')), false);
   const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');

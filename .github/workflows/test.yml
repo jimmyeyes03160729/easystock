@@ -54,10 +54,10 @@ jobs:
       - name: Test extension state, notification, and UI behavior
         run: pnpm --dir chrome-extension test
 
-      - name: Upload Chrome Web Store 1.04 package
+      - name: Upload Chrome Web Store 1.05 package
         uses: actions/upload-artifact@v4
         with:
-          name: easystock-chrome-extension-v1.04-google
+          name: easystock-chrome-extension-v1.05-google
           path: chrome-extension/dist/production/*
           if-no-files-found: error
           retention-days: 14

@@ -6,6 +6,49 @@ export const SYMBOL = /^\d{4,6}[A-Z]?$/;
 export const GROUPS = ['daytrade', 'watchlist'];
 export const plain = v => !!v && typeof v === 'object' && !Array.isArray(v);
 export const finite = v => typeof v === 'number' && Number.isFinite(v);
+export const TW_SESSION_START_MINUTE = 9 * 60;
+export const TW_SESSION_END_MINUTE = 13 * 60 + 30;
+export const TW_SESSION_SPAN_MINUTES = TW_SESSION_END_MINUTE - TW_SESSION_START_MINUTE;
+
+export function taipeiTradingMinute(point) {
+  if (point && typeof point === 'object' && finite(Number(point.timestamp))) {
+    const raw = Number(point.timestamp);
+    const ms = raw > 1e12 ? raw : raw * 1000;
+    const d = new Date(ms + 8 * 60 * 60 * 1000);
+    return d.getUTCHours() * 60 + d.getUTCMinutes();
+  }
+  const raw = String(point?.time ?? point ?? '').trim();
+  const match = raw.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
+
+export function sparklineSessionX(point, width = 56, padding = 2) {
+  const minute = taipeiTradingMinute(point);
+  if (!finite(minute) || minute < TW_SESSION_START_MINUTE || minute > TW_SESSION_END_MINUTE) return null;
+  const usable = Math.max(1, Number(width) - Number(padding) * 2);
+  return Number((Number(padding) + ((minute - TW_SESSION_START_MINUTE) / TW_SESSION_SPAN_MINUTES) * usable).toFixed(1));
+}
+
+export function buildPartialDailyBar(rows, today) {
+  if (!Array.isArray(rows) || !today) return null;
+  const current = rows.filter(row => String(row?.date || '').slice(0, 10) === String(today));
+  if (!current.length) return null;
+  const clean = current.filter(row => [row?.open, row?.high, row?.low, row?.close].every(v => finite(Number(v))));
+  if (!clean.length) return null;
+  const highs = clean.map(row => Number(row.high));
+  const lows = clean.map(row => Number(row.low));
+  const first = clean[0];
+  const last = clean.at(-1);
+  return {
+    time: String(today),
+    open: Number(first.open),
+    high: Math.max(...highs),
+    low: Math.min(...lows),
+    close: Number(last.close),
+    volume: clean.reduce((sum, row) => sum + (finite(Number(row.volume)) ? Number(row.volume) : 0), 0),
+    partial: true
+  };
+}
 
 export const BUILTIN_STOCKS = [
   { symbol: '2330', name: '台積電', market: 'TW' },

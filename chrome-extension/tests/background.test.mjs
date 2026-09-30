@@ -38,6 +38,27 @@ test('background behavior', async t => {
     now += TTL; await bg.remoteConfig(now); assert.equal(calls.length, 2);
     now += TTL; fail = true; await assert.rejects(bg.remoteConfig(now)); await assert.rejects(bg.remoteConfig(now + 1)); assert.equal(calls.length, 3);
   });
+  await t.test('1.05 sparkline feed preserves timestamps for fixed session positioning', async () => {
+    reset();
+    const oldFetch = globalThis.fetch;
+    const t0 = Date.parse('2026-09-30T09:00:00+08:00') / 1000;
+    const t1 = Date.parse('2026-09-30T09:15:00+08:00') / 1000;
+    globalThis.fetch = async () => new Response(JSON.stringify({
+      spark: { result: [{ symbol: '2330.TW', response: [{
+        timestamp: [t0, t1],
+        indicators: { quote: [{ close: [100, 101] }] }
+      }] }] }
+    }));
+    try {
+      const map = await bg.fetchStockSparklines([{ symbol: '2330', market: 'TW' }]);
+      assert.equal(map['2330'].length, 2);
+      assert.equal(map['2330'][1].timestamp, t1);
+      assert.equal(map['2330'][1].time, '09:15');
+      assert.equal(map['2330'][1].date, '2026-09-30');
+    } finally {
+      globalThis.fetch = oldFetch;
+    }
+  });
   await t.test('parallel polls cannot overrun three-notification quota', async () => {
     reset(); setupSignals(); await Promise.all([bg.serial(bg.poll), bg.serial(bg.poll), bg.serial(bg.poll)]);
     assert.equal(notifications.length, 3); assert.equal(db.ledger.count, 3);

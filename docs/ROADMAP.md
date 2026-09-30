@@ -49,7 +49,7 @@
   - Chrome 內部版本 `1.0.4`，對外 `version_name = 1.04`。
   - Google 登入、Firebase 使用者同步、本機 Migration 仍維持 2.0。
 
-- [ ] **Chrome Extension 1.05：列表迷你走勢圖時間刻度與盤中日 K 修正**
+- [x] **Chrome Extension 1.05：列表迷你走勢圖時間刻度與盤中日 K 修正**
   - 2026-09-30 實盤確認：自選股列表「走勢」迷你圖仍會把目前已取得的分時資料平均拉滿整個 56px 寬度，沒有依台股交易時段 09:00～13:30 的實際時間位置繪製。
   - 現況程式 `createSparklineSvg()` 使用 `x = 2 + (idx / (count - 1)) * (w - 4)`，因此例如 09:17 只有十幾分鐘資料時，最後一點仍會畫到最右端，看起來像已經走完整天。
   - 修正方向：Sparkline 必須保留每筆分時資料的 timestamp，以固定 09:00～13:30（270 分鐘）換算 X 座標；09:17 的最後一點只能落在整條時間軸前段，未到時段保持空白。
@@ -61,6 +61,9 @@
   - 修正要求：交易日 09:00 後，只要已有今日有效成交 / 1 分 K，就必須在日 K 模式追加「今日未完成 K 棒」；OHLC / volume 由今日真實分時彙整，不得用昨日資料或假資料補值。
   - 今日 partial K 必須隨盤中刷新更新；收盤後再由正式日 K 取代，且 UI 可標示 partial / 盤中未完成。
   - 需保留每筆 intraday 的交易日期或完整 timestamp，不能只留下 HH:mm，避免把前一交易日的 1 分 K 誤當今日資料。
+  - 1.05 完成：Sparkline 改以 09:00～13:30 固定交易時間軸；Yahoo spark / 1 分 K 保留 timestamp、date、time。
+  - 1.05 完成：修正 Chrome runtime `{ ok, value }` 的 `FETCH_DAILY` 解包，今日 partial K 僅聚合台北今日有效分時資料。
+  - Chrome 內部版本 `1.0.5`，對外 `version_name = 1.05`；重新產生透明紅色「沖」字 16/48/128 PNG，並加入 PNG CRC / zlib 完整性測試。
 
 - [ ] **Chrome Extension 2.0：Google 登入 + Firebase 使用者同步**
   - Google Authentication。

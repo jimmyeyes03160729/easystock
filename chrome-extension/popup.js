@@ -1,4 +1,4 @@
-import { SYMBOL, GROUPS, QUOTE_FRESH_MS, finite, fresh, formatTaipeiQuoteTime, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, fetchStockClosingQuotes, formatTelegramEntry, formatTelegramExit, BROKERS, getBroker } from './core.js';
+import { SYMBOL, GROUPS, QUOTE_FRESH_MS, finite, fresh, formatTaipeiQuoteTime, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, fetchStockClosingQuotes, formatTelegramEntry, formatTelegramExit, BROKERS, getBroker, sparklineSessionX } from './core.js';
 import { icons } from './icons.js';
 
 const $ = id => (typeof document !== 'undefined' && document ? document.getElementById(id) : null);
@@ -173,7 +173,7 @@ function applyDarkMode(enabled) {
   const btnIcon = $('theme-btn-icon');
   const toggleCheckbox = $('toggle-dark-mode');
   if (toggleCheckbox) toggleCheckbox.checked = !!enabled;
-  if (tag) tag.textContent = 'v1.04';
+  if (tag) tag.textContent = 'v1.05';
   if (enabled) {
     if (btnIcon) btnIcon.textContent = '☀️';
     if (btnLabel) btnLabel.textContent = '光明';
@@ -259,74 +259,47 @@ function createSparklineSvg(open, high, low, close, prevClose, isUp, sparkPoints
   const pClose = (finite(close) && close > 0) ? close : 100;
   const pPrev = (finite(prevClose) && prevClose > 0) ? prevClose : pClose;
   const pOpen = (finite(open) && open > 0) ? open : pPrev;
-
   let pts = [];
   if (Array.isArray(sparkPoints) && sparkPoints.length >= 2) {
-    const minVal = Math.min(...sparkPoints);
-    const maxVal = Math.max(...sparkPoints);
-    const span = Math.max(0.01, maxVal - minVal);
-    const getY = val => Math.max(2, Math.min(h - 2, (h - 2) - ((val - minVal) / span) * (h - 6)));
-
-    const count = sparkPoints.length;
-    pts = sparkPoints.map((val, idx) => {
-      const x = 2 + (idx / (count - 1)) * (w - 4);
-      return { x: Number(x.toFixed(1)), y: Number(getY(val).toFixed(1)) };
-    });
-  } else {
-    // 當無分時陣列時，依真實行情平滑過渡（不偽造假下凹/假上凸）
+    const normalized = sparkPoints.map((item, idx) => {
+      const value = typeof item === 'number' ? item : Number(item?.close ?? item?.value);
+      if (!finite(value)) return null;
+      const timedX = typeof item === 'object' ? sparklineSessionX(item, w, 2) : null;
+      return { value, timedX, idx };
+    }).filter(Boolean);
+    const timed = normalized.filter(row => finite(row.timedX));
+    const rows = timed.length >= 2 ? timed : normalized;
+    if (rows.length >= 2) {
+      const minVal = Math.min(...rows.map(row => row.value));
+      const maxVal = Math.max(...rows.map(row => row.value));
+      const span = Math.max(0.01, maxVal - minVal);
+      const getY = val => Math.max(2, Math.min(h - 2, (h - 2) - ((val - minVal) / span) * (h - 6)));
+      pts = rows.map((row, idx) => {
+        const x = timed.length >= 2 ? row.timedX : 2 + (idx / (rows.length - 1)) * (w - 4);
+        return { x: Number(x.toFixed(1)), y: Number(getY(row.value).toFixed(1)) };
+      });
+    }
+  }
+  if (pts.length < 2) {
     const pHigh = (finite(high) && high > 0) ? Math.max(high, pOpen, pClose, pPrev) : Math.max(pOpen, pClose, pPrev) * 1.002;
     const pLow = (finite(low) && low > 0) ? Math.min(low, pOpen, pClose, pPrev) : Math.min(pOpen, pClose, pPrev) * 0.998;
     const span = Math.max(0.01, pHigh - pLow);
     const getY = val => Math.max(2, Math.min(h - 2, (h - 2) - ((val - pLow) / span) * (h - 6)));
-
-    const y0 = getY(pOpen);
-    const y1 = getY(isUp ? (pOpen * 0.6 + pHigh * 0.4) : (pOpen * 0.6 + pLow * 0.4));
-    const y2 = getY(isUp ? pHigh : pLow);
-    const y3 = getY(isUp ? (pHigh * 0.5 + pClose * 0.5) : (pLow * 0.5 + pClose * 0.5));
-    const y4 = getY(pClose);
-
-    pts = [
-      { x: 2, y: Number(y0.toFixed(1)) },
-      { x: 15, y: Number(y1.toFixed(1)) },
-      { x: 28, y: Number(y2.toFixed(1)) },
-      { x: 42, y: Number(y3.toFixed(1)) },
-      { x: 54, y: Number(y4.toFixed(1)) }
-    ];
+    const y0 = getY(pOpen), y1 = getY(isUp ? (pOpen * 0.6 + pHigh * 0.4) : (pOpen * 0.6 + pLow * 0.4));
+    const y2 = getY(isUp ? pHigh : pLow), y3 = getY(isUp ? (pHigh * 0.5 + pClose * 0.5) : (pLow * 0.5 + pClose * 0.5)), y4 = getY(pClose);
+    pts = [{x:2,y:Number(y0.toFixed(1))},{x:15,y:Number(y1.toFixed(1))},{x:28,y:Number(y2.toFixed(1))},{x:42,y:Number(y3.toFixed(1))},{x:54,y:Number(y4.toFixed(1))}];
   }
-
   const lastPt = pts.at(-1) || { x: 54, y: h / 2 };
   const pathD = `M ${pts[0].x} ${pts[0].y} ` + pts.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
   const areaD = `${pathD} L ${lastPt.x} ${h} L ${pts[0].x} ${h} Z`;
-
   const strokeColor = isUp ? '#ef4444' : '#22c55e';
   const fillColor = isUp ? 'rgba(239, 68, 68, 0.18)' : 'rgba(34, 197, 94, 0.18)';
-
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  svg.setAttribute('width', String(w));
-  svg.setAttribute('height', String(h));
-  svg.setAttribute('class', 'overflow-visible inline-block');
-
-  const area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  area.setAttribute('d', areaD);
-  area.setAttribute('fill', fillColor);
-
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', pathD);
-  path.setAttribute('fill', 'none');
-  path.setAttribute('stroke', strokeColor);
-  path.setAttribute('stroke-width', '1.5');
-  path.setAttribute('stroke-linecap', 'round');
-  path.setAttribute('stroke-linejoin', 'round');
-
-  const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  dot.setAttribute('cx', String(lastPt.x));
-  dot.setAttribute('cy', String(lastPt.y));
-  dot.setAttribute('r', '2');
-  dot.setAttribute('fill', strokeColor);
-
-  svg.append(area, path, dot);
-  return svg;
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.setAttribute('width', String(w)); svg.setAttribute('height', String(h)); svg.setAttribute('class', 'overflow-visible inline-block');
+  const area = document.createElementNS('http://www.w3.org/2000/svg', 'path'); area.setAttribute('d', areaD); area.setAttribute('fill', fillColor);
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', pathD); path.setAttribute('fill', 'none'); path.setAttribute('stroke', strokeColor); path.setAttribute('stroke-width', '1.5'); path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round');
+  const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); dot.setAttribute('cx', String(lastPt.x)); dot.setAttribute('cy', String(lastPt.y)); dot.setAttribute('r', '2'); dot.setAttribute('fill', strokeColor);
+  svg.append(area, path, dot); return svg;
 }
 
 // 動態列表高度設定 (真實改變整體視窗尺寸：同時設定 html, body 與 container，預設 500px 即 +20px，上限至 +100px 即 580px)
