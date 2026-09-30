@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import * as core from '../core.js';
 
-test('popup v1.03 renders safely and wires current controls', async () => {
+test('popup v1.04 renders safely and wires current controls', async () => {
   const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
   const source = await readFile(new URL('../popup.js', import.meta.url), 'utf8');
   const dom = new JSDOM(html, { url: 'https://example.test', runScripts: 'outside-only' });
@@ -24,7 +24,7 @@ test('popup v1.03 renders safely and wires current controls', async () => {
   await new Promise(resolve => setTimeout(resolve, 10));
   assert.ok(w.document.getElementById('stock-list-container'));
   assert.equal(w.document.querySelectorAll('.stock-card img').length, 0);
-  assert.equal(w.document.getElementById('brand-tag').textContent, 'v1.03');
+  assert.equal(w.document.getElementById('brand-tag').textContent, 'v1.04');
   assert.ok(w.document.querySelector('[data-group="watchlist"]'));
   assert.ok(w.document.querySelector('[data-group="daytrade"]'));
   assert.ok(w.document.querySelector('[data-group="ai_matrix"]'));
