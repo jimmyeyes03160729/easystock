@@ -2304,6 +2304,12 @@ def main() -> None:
         print('[skip] Overnight runs only 13:00–13:50 Taiwan weekdays; outside time does not overwrite picks.')
         return
 
+    from market_calendar import is_market_open
+    market_open, _, _ = is_market_open(started.date())
+    if not market_open:
+        print('[skip] TWSE/TPEx closed; overnight scan does not overwrite the last trading-day picks.')
+        return
+
     root = init_firebase()
 
 
@@ -2896,6 +2902,11 @@ def main() -> None:
     # 絕對不碰 intraday_live。
     # =====================================================
 
+    # Per-symbol errors are tolerated, but an entire non-empty Fugle pool failing
+    # must not publish a healthy batch or replace the last usable scan.
+    if candidates and not scanned:
+        raise RuntimeError('fugle_scan_no_valid_candles')
+
     root.child('overnight_history').child(scan_date).child(now.strftime('%H%M%S')).set({
         'generated_at': generated_at, 'scan_started_at': started.isoformat(),
         'daily_source_date': asof, 'rule_version': MODEL_VERSION,
@@ -2912,6 +2923,10 @@ def main() -> None:
             payload
         )
     )
+
+    # Only a completed, validated GitHub scan may attest to Fugle health.
+    from market_data.fugle_pipeline import record_success
+    record_success(root, payload, now=datetime.now(TPE))
 
 
     # =====================================================

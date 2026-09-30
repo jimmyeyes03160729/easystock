@@ -11,7 +11,7 @@ DEFAULT_DIR = '/home/ubuntu/easystock-market-data'
 POLICIES = {
     'shioaji': {'kind': 'quote', 'max_age': 90, 'worker_age': 120},
     'esun': {'kind': 'stream', 'max_age': 90, 'worker_age': 120},
-    'fugle': {'kind': 'quote', 'max_age': 360, 'worker_age': 900},
+    'fugle': {'kind': 'scheduled', 'max_age': 180},
     'firebase': {'kind': 'request', 'max_age': 180},
     'gemini': {'kind': 'on_demand', 'max_age': 86400},
     'openai': {'kind': 'on_demand', 'max_age': 86400},
@@ -125,6 +125,9 @@ def market_session(now=None, calendar=None):
 
 
 def provider_health(provider, evidence, now, session):
+    if provider == 'fugle':
+        from .fugle_pipeline import cached_health
+        return cached_health(evidence, now)
     row = sanitize(evidence)
     policy = POLICIES[provider]
     kind = policy['kind']
@@ -139,7 +142,6 @@ def provider_health(provider, evidence, now, session):
     if not row: status = 'UNKNOWN'
     elif future: status = 'DEGRADED'
     elif kind == 'on_demand' and (worker_age is None or worker_age > policy['max_age']): status = 'UNKNOWN'
-    elif provider == 'fugle' and row.get('configured') is False: status = 'UNKNOWN'
     elif failed and row.get('error_code') in ('parser_invalid', 'quote_stale'): status = 'DEGRADED'
     elif failed or row.get('connected') is False: status = 'OFFLINE'
     elif kind == 'stream' and (worker_age is None or worker_age > policy['worker_age']): status = 'OFFLINE'
@@ -147,8 +149,7 @@ def provider_health(provider, evidence, now, session):
     elif kind == 'stream' and (heartbeat_age is None or heartbeat_age > 90): status = 'DEGRADED'
     elif row.get('parser_ok') is not True: status = 'DEGRADED'
     elif kind == 'quote' and session == 'CLOSED':
-        status = 'MARKET_CLOSED' if quote and (quote.date() == now.date() or
-                  (provider == 'fugle' and ok_age is not None and ok_age <= policy['worker_age'])) else 'UNKNOWN'
+        status = 'MARKET_CLOSED' if quote and quote.date() == now.date() else 'UNKNOWN'
     elif kind == 'stream' and session == 'CLOSED': status = 'MARKET_CLOSED'
     elif kind in ('quote', 'stream'): status = 'ONLINE' if fresh and worker_age is not None and worker_age <= policy['worker_age'] else 'DEGRADED'
     else: status = 'ONLINE' if ok_age is not None and ok_age <= policy['max_age'] else 'UNKNOWN' if kind == 'on_demand' else 'DEGRADED'

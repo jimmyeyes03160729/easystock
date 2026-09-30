@@ -86,31 +86,12 @@ def test_stale_but_parsed_response_has_market_closed_semantics(tmp_path,monkeypa
     assert provider_health('shioaji',today,NOW.replace(hour=15),'CLOSED')['status']=='MARKET_CLOSED'
 
 
-def test_missing_fugle_key_is_private_unknown_not_offline(tmp_path,monkeypatch):
-    from market_data.publish import probe_fugle
-    monkeypatch.setenv('EASYSTOCK_MARKET_DATA_DIR',str(tmp_path))
+def test_fugle_is_a_scheduled_provider_without_vm_key(tmp_path,monkeypatch):
     monkeypatch.delenv('FUGLE_API_KEY',raising=False)
-    probe_fugle(NOW,'OPEN')
-    row=json.loads((tmp_path/'fugle.json').read_text())
-    assert row['configured'] is False
-    assert row['error_code']=='not_configured'
-    public,private=aggregate(datetime.now(TPE),'OPEN',tmp_path)
+    public,private=aggregate(NOW,'CLOSED',tmp_path)
     assert public['providers']['fugle']['status']=='UNKNOWN'
+    assert private['providers']['fugle']['kind']=='scheduled'
     assert 'configured' not in public['providers']['fugle']
-    assert private['providers']['fugle']['configured'] is False
-
-
-def test_fugle_valid_quote_closed_is_market_closed(tmp_path,monkeypatch):
-    from market_data.publish import probe_fugle
-    monkeypatch.setenv('EASYSTOCK_MARKET_DATA_DIR',str(tmp_path))
-    monkeypatch.setenv('FUGLE_API_KEY','test-only')
-    class Response:
-        def raise_for_status(self):pass
-        def json(self):return {'symbol':'2330','lastPrice':100,'lastUpdated':NOW.timestamp()*1e6}
-    with patch('market_data.publish.requests.get',return_value=Response()):probe_fugle(NOW,'OPEN')
-    row=json.loads((tmp_path/'fugle.json').read_text())
-    row['last_ok_at']=NOW.isoformat();row['checked_at']=NOW.isoformat();row['last_data_at']=NOW.isoformat()
-    assert provider_health('fugle',row,NOW.replace(hour=15),'CLOSED')['status']=='MARKET_CLOSED'
 
 
 def test_market_gate_diagnostics_are_private_and_sanitized(tmp_path,monkeypatch):
@@ -156,13 +137,13 @@ def test_vm_admin_provider_views_match_canonical_source():
     for name in ('intraday_live.py','easystock_admin/health.py','easystock_admin/static/admin.js','easystock_admin/static/index.html'):
         assert (root/name).read_bytes()==(root/'vm_runtime'/name).read_bytes()
 
-def test_invalid_fugle_payload_does_not_report_online(tmp_path,monkeypatch):
-    from market_data.publish import probe_fugle
-    monkeypatch.setenv('EASYSTOCK_MARKET_DATA_DIR',str(tmp_path));monkeypatch.setenv('FUGLE_API_KEY','test-only')
-    class Response:
-        def raise_for_status(self):pass
-        def json(self):return {'symbol':'2330','lastPrice':'nan','lastUpdated':NOW.timestamp()*1e6}
-    with patch('market_data.publish.requests.get',return_value=Response()):probe_fugle(NOW,'OPEN')
-    data=json.loads((tmp_path/'fugle.json').read_text())
-    assert data['parser_ok'] is False
-    assert 'test-only' not in json.dumps(data)
+def test_fugle_cache_does_not_expose_unlisted_fields(tmp_path):
+    (tmp_path/'fugle.json').write_text(json.dumps({'status':'ONLINE','checked_at':NOW.isoformat(),
+        'kind':'scheduled','workflow_source':'github_actions','api_key':'test-only',
+        'exception':'private-error','run_id':'123','expected_scan_date':'2026-09-30',
+        'scan_date':'2026-09-30','last_success_at':NOW.isoformat(),
+        'data_generated_at':NOW.isoformat(),'freshness':'on_schedule'}))
+    public,private=aggregate(NOW,'CLOSED',tmp_path)
+    assert public['providers']['fugle']=={'status':'ONLINE','last_checked_at':NOW.isoformat()}
+    assert 'test-only' not in json.dumps(private)
+    assert 'private-error' not in json.dumps(private)

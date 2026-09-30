@@ -56,7 +56,14 @@ function renderProviderHealth(data){
     for(const [name,text] of Object.entries({last_ok_at:'最近成功',last_data_at:'最近收件',quote_at:'報價時間',last_error_at:'最近錯誤'})){
       if(row[name]){const node=document.createElement('span');node.textContent=text+' '+new Date(row[name]).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'});details.append(node);}
     }
-    const flags=document.createElement('p');flags.textContent=`連線 ${row.connected===true?'已連線':row.connected===false?'斷線':'待確認'} · 訂閱 ${row.subscribed===true?'完成':row.subscribed===false?'未完成':'不適用'} · 錯誤 ${row.error_code==='not_configured'?'未設定探測金鑰':row.error_code||'無'}`;
+    if(key==='fugle'&&row.kind==='scheduled'){
+      for(const [name,text] of Object.entries({scan_date:'掃描日期',expected_scan_date:'應完成日期',data_generated_at:'資料產生',last_success_at:'最近成功',next_due_at:'下次期限',workflow_source:'排程來源',freshness:'新鮮度',run_id:'執行編號',run_attempt:'嘗試次數'})){
+        const node=healthMetric(text,row[name]);if(node)details.append(node);
+      }
+    }
+    const flags=document.createElement('p');flags.textContent=key==='fugle'&&row.kind==='scheduled'
+      ?`批次排程 · 狀態原因 ${row.error_code||'無'}`
+      :`連線 ${row.connected===true?'已連線':row.connected===false?'斷線':'待確認'} · 訂閱 ${row.subscribed===true?'完成':row.subscribed===false?'未完成':'不適用'} · 錯誤 ${row.error_code||'無'}`;
     card.append(details,flags);target.append(card);
   }
   const gate=data?.market_gate;

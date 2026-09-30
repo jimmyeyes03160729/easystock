@@ -20,14 +20,16 @@
 |---|---|
 |永豐|盤中引擎實際指數 snapshot，90 秒報價、120 秒服務證據|
 |玉山|連線、認證、七個訂閱、心跳、解析、90 秒報價、120 秒服務證據|
-|Fugle|每 5 分鐘的唯讀個股 quote，360 秒報價；盤後每 15 分鐘|
+|Fugle|GitHub Actions 每交易日的隔日衝批次掃描；13:35 台北時間後要求當日成功證據及相符的 `intraday_picks`|
 |Firebase|實際讀取及 health 發布，180 秒|
 |Gemini|盤前實際解析成功 / 失敗，24 小時；無近期請求顯示待命|
 |OpenAI|無觀察到呼叫時顯示待命，不發送付費測試请求|
 
 ONLINE=有效的新鮮證據；DEGRADED=延遲、解析或部分訂閱異常；OFFLINE=已觀察到失敗 / 連線斷開；UNKNOWN=缺乏證據 / AI 待命；MARKET_CLOSED=市場休市或盤後，沒有新 tick 不是故障。已知失敗仍保留，休市不掩蓋故障。
 
-永豐加權指數使用 Shioaji 1.7 的 `api.contracts.get('IX0001')`，並保留舊版合約存取回退。報價解析成功但時間過舊時記為 `quote_stale`，不標示 ONLINE；休市的 MARKET_CLOSED 需要當日有效報價證據。Fugle 未設定 `FUGLE_API_KEY` 時，後台診斷記 `not_configured`，首頁維持 UNKNOWN，不假稱正常或故障。若要啟用，只在 VM 的 provider-health service 既有環境檔中安全配置金鑰，不能寫入 repo 或 Firebase。
+永豐加權指數使用 Shioaji 1.7 的 `api.contracts.get('IX0001')`，並保留舊版合約存取回退。報價解析成功但時間過舊時記為 `quote_stale`，不標示 ONLINE；休市的 MARKET_CLOSED 需要當日有效報價證據。
+
+Fugle 不是 VM 上持續報價的 provider。`scan_intraday.py` 於 GitHub Actions 成功寫入 `/market_data/intraday_picks` 且核對當日掃描內容後，將不含憑證的成功證據寫入私有 `/market_data/provider_evidence/fugle`。VM health publisher 使用 Firebase Admin SDK 讀取該證據與資料，核對日期、來源、產生／完成時間及市場行事曆，再發布固定格式的公開摘要。VM 不需要 `FUGLE_API_KEY`；金鑰仍只在 GitHub Actions Secrets。13:35 前沿用上一個應完成交易日的成功結果；到期缺少新成功證據標示 DEGRADED，明確失敗證據標示 OFFLINE，沒有任何可信證據標示 UNKNOWN。零檔候選不視為失敗。Fugle 批次成功即顯示 ONLINE，夜間不改標「休市」。私有證據節點維持 Firebase Rules 預設拒絕瀏覽器讀取。
 
 市場風控分開記錄 `market_condition_reason`、`data_reason`、`selected_source` 及 `gate_reason`。任一來源有新鮮有效指數報價即可判市場狀態；兩來源都不可用則標記 `market_data_unavailable` 並安全阻止新進場，不能誤稱真實市場 RED。真正 RED 仍阻止進場；盤前 RED 需要連續不同時間的即時報價才能逐步校正。盤中每 30 秒將脫敏的市場閘門摘要寫到私有 `market-gate.json`，後台可看資料源時間、雷達候選數及「真 RED／資料不可用」各自的攔截評估數。這些計數不是成交或買單數。
 
