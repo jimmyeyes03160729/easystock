@@ -18,3 +18,12 @@ try:
 finally:
     sys.path[:] = before
 print('PASS premarket entry: runtime imports and existing env location, no external calls')
+
+# Loading the runtime calendar by its public module name must resolve the root
+# implementation without recursively importing the runtime wrapper itself.
+calendar_spec = importlib.util.spec_from_file_location('market_calendar', root/'vm_runtime/market_calendar.py')
+calendar = importlib.util.module_from_spec(calendar_spec)
+with patch.dict(sys.modules, {'market_calendar': calendar}):
+    calendar_spec.loader.exec_module(calendar)
+    assert callable(calendar.is_market_open)
+    assert calendar.now_tpe().tzinfo is not None

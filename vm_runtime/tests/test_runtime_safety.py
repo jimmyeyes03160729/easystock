@@ -66,10 +66,10 @@ class ModelTests(unittest.TestCase):
 
 class RiskTests(unittest.TestCase):
     def test_ai_advisory_cannot_flip_gate(self):
-        brief=dict(scan_date='2026-09-24',base_risk_score=64,risk_score=69,market_level='RED')
+        brief=dict(scan_date='2026-09-24',generated_at=NOW.isoformat(),base_risk_score=64,risk_score=69,market_level='RED')
         self.assertEqual(premarket_context(brief,NOW)[0],'YELLOW')
         brief['scan_date']='2026-09-23'
-        self.assertEqual(premarket_context(brief,NOW)[0],'RED')
+        self.assertEqual(premarket_context(brief,NOW)[0],'UNKNOWN')
 
     def test_live_index_stale_future_missing_and_crash(self):
         for seconds in (-91,1):
@@ -211,6 +211,22 @@ class EngineTests(unittest.TestCase):
         self.ns['evaluate_daytrade'].return_value['vetoes']=['市場紅燈']
         self.run_engine();self.manager.before_open.assert_not_called()
 
+    def test_unknown_market_blocks_before_model_evaluation(self):
+        self.engine.entry_mode='model'
+        self.engine.market_level='UNKNOWN'
+        self.engine.market_gate={'gate_action':'BLOCK','gate_reason':'market_data_unavailable'}
+        self.engine.daytrade_model=Mock()
+        self.run_engine()
+        self.engine.daytrade_model.evaluate.assert_not_called()
+
+    def test_market_pass_reaches_model_evaluation(self):
+        self.engine.entry_mode='model'
+        self.engine.market_gate={'gate_action':'PASS','gate_reason':'market_risk_pass'}
+        self.engine.daytrade_model=Mock(evaluate=Mock(return_value=dict(active=True,evaluated=True,
+            approved=True,accepted=False,probability=.4,threshold=.6,model_version='fixture')))
+        self.run_engine()
+        self.engine.daytrade_model.evaluate.assert_called_once()
+
     def test_successful_fill_emits_one_entry(self):
         self.manager.before_open.return_value=dict(status='bought',shares=1000,trade_id='test')
         self.run_engine()
@@ -283,13 +299,31 @@ class DeploymentTests(unittest.TestCase):
         tree = ast.parse((ROOT/'premarket_ai.py').read_text())
         main = next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')
         build_brief = Mock()
-        ns = {'os':os, 'sys':sys, 'build_brief':build_brief}
+        status = Mock()
+        ns = {'os':os, 'sys':sys, 'build_brief':build_brief, 'write_premarket_status':status}
         exec(compile(ast.Module(body=[main],type_ignores=[]),'<premarket-main>','exec'),ns)
         calendar = types.ModuleType('market_calendar')
         calendar.is_market_open = Mock(side_effect=RuntimeError('calendar unavailable'))
         with patch.dict(sys.modules,{'market_calendar':calendar}), patch.dict(os.environ,{'FORCE_PREMARKET_AI':'0'}):
-            ns['main']()
+            with self.assertRaisesRegex(RuntimeError, 'premarket_calendar_error'):
+                ns['main']()
         build_brief.assert_not_called()
+        status.assert_called_once_with('failed', 'calendar_error')
+
+    def test_premarket_publish_failure_reports_failure_not_success(self):
+        tree = ast.parse((ROOT/'premarket_ai.py').read_text())
+        main = next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')
+        status = Mock()
+        ns = {'os':os, 'sys':sys, 'build_brief':Mock(return_value={'scan_date':'2026-09-30'}),
+              'print_brief':Mock(), 'write_firebase':Mock(side_effect=RuntimeError('publish failed')),
+              'write_premarket_status':status}
+        exec(compile(ast.Module(body=[main],type_ignores=[]),'<premarket-main>','exec'),ns)
+        calendar = types.ModuleType('market_calendar')
+        calendar.is_market_open = Mock(return_value=(True,'open',{}))
+        with patch.dict(sys.modules,{'market_calendar':calendar}), patch.object(sys,'argv',['premarket_ai.py']):
+            with self.assertRaisesRegex(RuntimeError,'publish failed'):
+                ns['main']()
+        status.assert_called_once_with('failed','build_or_publish_error')
 
 
 if __name__=='__main__':unittest.main()

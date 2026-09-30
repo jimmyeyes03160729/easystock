@@ -1400,6 +1400,11 @@ def build_brief() -> dict:
         "source": "public_market_data_plus_ai",
         "generated_at": now.isoformat(timespec="seconds"),
         "scan_date": now.date().isoformat(),
+        "freshness": "current_trading_day",
+        "source_status": {
+            name: ("available" if isinstance(value, dict) and not value.get("error") else "unavailable")
+            for name, value in snapshot.items()
+        },
         "risk_score": final_score,
         "base_risk_score": base_score,
         "headline_risk_adjustment": adjustment,
@@ -1439,6 +1444,21 @@ def write_firebase(brief: dict) -> None:
     db.reference(
         "/market_data/premarket_brief"
     ).set(brief)
+
+
+def write_premarket_status(status: str, reason: str = "") -> None:
+    """Publish job health separately from the last successful brief."""
+    try:
+        FirebaseStore()
+        now = now_tpe()
+        db.reference("/market_data/premarket_status").set({
+            "scan_date": now.date().isoformat(),
+            "checked_at": now.isoformat(timespec="seconds"),
+            "status": status,
+            "reason": reason,
+        })
+    except Exception as exc:
+        print(f"[PREMARKET STATUS ERROR] {type(exc).__name__}")
 
 
 def format_number(value: Any, digits: int = 2) -> str:
@@ -1696,20 +1716,28 @@ def main() -> None:
         is_open, reason, _ = is_market_open()
         if not is_open and os.environ.get("FORCE_PREMARKET_AI", "0") != "1":
             print(f"🛑 [MARKET CLOSED] 今日台股休市 ({reason})，盤前晨報排程跳過。")
+            write_premarket_status("skipped_closed", "market_closed")
             return
     except Exception as _cal_exc:
         print(f"🛑 [CALENDAR ERROR] 開盤日檢查例外: {_cal_exc}，停止盤前晨報。")
-        return
+        write_premarket_status("failed", "calendar_error")
+        raise RuntimeError("premarket_calendar_error") from _cal_exc
 
     no_line = "--no-line" in sys.argv
     no_firebase = "--no-firebase" in sys.argv
 
-    brief = build_brief()
-    print_brief(brief)
+    try:
+        brief = build_brief()
+        print_brief(brief)
 
-    if not no_firebase:
-        write_firebase(brief)
-        print("✅ Firebase /market_data/premarket_brief updated")
+        if not no_firebase:
+            write_firebase(brief)
+            write_premarket_status("ready", "published")
+            print("✅ Firebase /market_data/premarket_brief updated")
+    except Exception as exc:
+        if not no_firebase:
+            write_premarket_status("failed", "build_or_publish_error")
+        raise
 
     if not no_line:
         ok = push_line_text(format_line_message(brief))

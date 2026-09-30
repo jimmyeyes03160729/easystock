@@ -54,9 +54,11 @@ from __future__ import annotations
 from position_manager import PaperWallet
 
 import inspect
+import json
 import math
 import os
 import requests
+import subprocess
 
 from line_group_manager import get_active_groups
 
@@ -80,7 +82,7 @@ from firebase_store import FirebaseStore
 from public_feed import write_public_tick
 from position_manager import PositionManager
 from daytrade_learning.runtime import Recorder
-from market_risk import premarket_context, snapshot_risk, combine
+from market_risk import MarketGate, premarket_context, snapshot_risk
 from daytrade_learning.model_runtime import DaytradeModel, live_features, write_runtime_model_status, refresh_runtime_model_status
 from easystock_admin.store import read_live_settings
 from strategy_engine import evaluate_daytrade, clamp
@@ -1572,8 +1574,7 @@ def firebase_heartbeat(
 def load_market_context() -> tuple[str, dict]:
     """
     FirebaseStore 初始化後 firebase_admin 已可用。
-    優先用 premarket_brief.market_level，
-    再 fallback intraday_picks.market_level。
+    The brief is an initial context. A stale brief is UNKNOWN, not RED.
     """
     brief: dict = {}
 
@@ -1592,6 +1593,25 @@ def load_market_context() -> tuple[str, dict]:
     brief = dict(brief, runtime_risk_reason=reason)
 
     return level, brief
+
+
+def esun_index_snapshot() -> dict | None:
+    """Fetch one read-only index quote; missing SDK/credentials leave this source unavailable."""
+    root = Path(__file__).resolve().parent
+    helper = root / 'esun_marketdata' / 'quote_snapshot.js'
+    if not helper.is_file():
+        helper = root / 'vm_runtime' / 'esun_marketdata' / 'quote_snapshot.js'
+    if not helper.is_file():
+        return None
+    try:
+        result = subprocess.run(['node', str(helper)], cwd=str(helper.parent),
+                                capture_output=True, text=True, timeout=7, check=False)
+        if result.returncode:
+            return None
+        value = json.loads(result.stdout.strip().splitlines()[-1])
+        return value if isinstance(value, dict) else None
+    except (OSError, subprocess.TimeoutExpired, ValueError, IndexError):
+        return None
 
 
 def load_candidates_from_firebase(
@@ -2703,6 +2723,8 @@ class IntradayLiveEngine:
 
         self.market_level = "YELLOW"
         self.premarket_brief: dict = {}
+        self._market_gate_machine = MarketGate()
+        self.market_gate = {'gate_action': 'BLOCK', 'gate_reason': 'market_data_unavailable'}
 
         self.candidates: dict[
             str,
@@ -2805,7 +2827,7 @@ class IntradayLiveEngine:
               f"threshold={self.daytrade_model.threshold} learning={self.learning.enabled}")
         self._market_checked_at = 0.0
         self.market_valid_until = 0.0
-        self.market_risk = {'valid': False, 'reason': 'not_checked'}
+        self.market_risk = {'valid': False, 'gate_reason': 'not_checked'}
         self.manager.before_open = lambda **kw: None if self.collect_only else paper_wallet.open_fill(**kw)
         self.manager.before_close = lambda **kw: paper_wallet.close_and_settle(**kw)
         self._previous_closes = {}
@@ -2832,9 +2854,8 @@ class IntradayLiveEngine:
             return
         self._market_checked_at = mono
         self.market_valid_until = 0.0
-        self.market_level = 'RED'
         base, brief = load_market_context()
-        risk = {'level': 'RED', 'valid': False, 'reason': 'index_unavailable'}
+        shioaji = snapshot_risk(None, current, source='shioaji')
         try:
             # Shioaji >=1.7 uses IX0001; older SDKs use 001.
             contract = None
@@ -2849,21 +2870,29 @@ class IntradayLiveEngine:
                 raise LookupError('index_contract_unavailable')
             quotes = self.api.snapshots([contract], timeout=3000)
             if quotes:
-                risk = snapshot_risk(quotes[0], current,
+                shioaji = snapshot_risk(quotes[0], current, source='shioaji',
                     yellow_pct=float(os.environ.get('LIVE_INDEX_YELLOW_PCT', '-1')),
                     red_pct=float(os.environ.get('LIVE_INDEX_RED_PCT', '-2')))
         except Exception as exc:
-            risk['reason'] = 'index_unavailable:' + type(exc).__name__
+            shioaji['reason'] = 'index_unavailable:' + type(exc).__name__
+        esun = snapshot_risk(esun_index_snapshot(), current, source='esun',
+            yellow_pct=float(os.environ.get('LIVE_INDEX_YELLOW_PCT', '-1')),
+            red_pct=float(os.environ.get('LIVE_INDEX_RED_PCT', '-2')))
+        gate = self._market_gate_machine.update(brief, {'shioaji': shioaji, 'esun': esun}, current)
         self.premarket_brief = brief
-        self.market_risk = risk
-        self.market_level = combine(base, risk['level'])
-        if risk.get('valid') and brief.get('runtime_risk_reason') == 'valid':
+        self.market_risk = gate
+        self.market_gate = gate
+        self.market_level = gate['level']
+        if gate['gate_action'] == 'PASS':
             self.market_valid_until = min(current.timestamp()+45,
-                datetime.fromisoformat(risk['observed_at']).timestamp()+90)
+                datetime.fromisoformat(gate['quote_at']).timestamp()+90)
+        print('[MARKET_DATA] shioaji={} esun={} premarket={}'.format(
+            shioaji['data_health'], esun['data_health'], gate['premarket_health']))
+        print('[MARKET_RISK] premarket={} live={} effective={} gate={} reason={}'.format(
+            base, gate['live_risk'], self.market_level, gate['gate_action'], gate['gate_reason']))
         try:
-            db.reference('/market_data/intraday_live/market_risk').set(dict(
-                risk, market_level=self.market_level, premarket_level=base,
-                premarket_reason=brief.get('runtime_risk_reason'), checked_at=current.isoformat()))
+            db.reference('/market_data/intraday_live/market_risk').set(dict(gate,
+                market_level=self.market_level, checked_at=current.isoformat()))
         except Exception as exc:
             print('[RISK] status publish failed:', type(exc).__name__)
 
@@ -4032,7 +4061,7 @@ class IntradayLiveEngine:
         ):
             return
 
-        if self.market_level == 'RED' or now_tpe().timestamp() > self.market_valid_until:
+        if getattr(self, 'market_gate', {}).get('gate_action', 'PASS') != 'PASS' or now_tpe().timestamp() > self.market_valid_until:
             return
         if self.entry_mode == 'rules' and not eligible:
             return
@@ -4169,7 +4198,7 @@ class IntradayLiveEngine:
             with self._lock:
                 self.entry_symbols.discard(symbol)
             return
-        if self.market_level == 'RED' or now_tpe().timestamp() > self.market_valid_until:
+        if getattr(self, 'market_gate', {}).get('gate_action', 'PASS') != 'PASS' or now_tpe().timestamp() > self.market_valid_until:
             with self._lock:
                 self.entry_symbols.discard(symbol)
             return
