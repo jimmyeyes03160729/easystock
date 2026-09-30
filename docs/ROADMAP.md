@@ -99,6 +99,11 @@
   - 先 Shadow，再決定是否 Applied。
 
 - [ ] **永豐實盤當沖後台（Owner-only）**
+  - 第一階段先建立獨立「永豐實盤當沖」分頁 / Tab，僅在 Google 登入且通過既有 Owner/Admin 驗證後顯示。
+  - 未登入時首頁 / 後台導覽都不顯示入口；即使直接輸入 route 或呼叫 API，也必須由後端強制回 401 / 403，不能只靠前端隱藏。
+  - 第一版只做安全入口與 UI / backend skeleton：券商狀態、實盤模式 OFF、AUTO OFF、今日持倉 / 委託 / 成交 / 損益、帳戶設定與 KILL SWITCH placeholder。
+  - 第一版所有交易按鈕預設 disabled，不處理真實 API Key / CA、不啟用 LIVE AUTO、不送任何真實委託。
+  - 預留未來模式：OFF / SHADOW / PAPER / LIVE AUTO。
   - 永豐 API / CA 憑證安全持久化。
   - AUTO ON / OFF、Auto Resume、KILL SWITCH。
   - 真實委託 / 成交 / 持倉 Reconcile。
@@ -793,6 +798,64 @@ EasyStock Admin
    └─ KILL SWITCH
 ⚙️ 系統設定
 ```
+
+### 第一階段：Google Owner 登入後才可見的實盤分頁
+
+先建立「永豐實盤當沖」獨立分頁 / Tab，作為未來真正接永豐線上當沖的固定入口。
+
+顯示與存取原則：
+- 未登入 Google：不顯示此分頁入口。
+- 已登入 Google 但不是既有 Owner / Admin：不顯示且不可進入。
+- Google Owner 登入成功：才顯示「永豐實盤當沖」。
+- 不可只靠前端 `display:none`；直接輸入 route 仍必須驗證 session / Owner。
+- 所有未來 `/api/live/*` 或等價實盤 API 都必須再次由後端驗證 Owner 權限。
+- 未登入應回 401；已登入但非 Owner 應回 403。
+
+第一版 UI 骨架：
+
+```text
+永豐實盤當沖
+
+券商狀態        尚未啟用
+實盤模式        OFF
+自動交易        OFF
+
+帳戶設定        尚未開放
+連線永豐        尚未開放
+
+今日持倉        --
+今日委託        --
+今日成交        --
+今日淨損益      --
+
+KILL SWITCH     placeholder / disabled
+```
+
+第一版安全限制：
+- 所有可能造成券商動作的按鈕預設 disabled。
+- 不保存或要求真實 Shioaji API Key / Secret / CA。
+- 不登入實際券商交易 session。
+- 不啟用 `LIVE AUTO`。
+- 不送出任何真實委託。
+- 不因此修改現行 Paper / Shadow / AI ENTRY 邏輯。
+
+未來模式預留：
+
+```text
+OFF
+SHADOW
+PAPER
+LIVE AUTO
+```
+
+回歸測試至少覆蓋：
+1. 未登入時 Tab 不可見。
+2. 未登入直接開 route 被拒。
+3. 非 Owner 被拒。
+4. Owner 登入後才可見。
+5. 未授權直接呼叫 live API 被拒。
+6. 預設 `LIVE AUTO=false` / OFF。
+7. 第一版不存在任何可成功送出真實委託的執行路徑。
 
 ### 永豐帳戶憑證持久化
 第一次在後台完成：
