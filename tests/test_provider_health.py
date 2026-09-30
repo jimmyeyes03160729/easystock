@@ -62,6 +62,18 @@ def test_idle_ai_is_standby_not_offline():
     assert provider_health('openai',{},NOW,'OPEN')['status']=='UNKNOWN'
     assert provider_health('gemini',{'last_ok_at':(NOW-timedelta(days=3)).isoformat()},NOW,'OPEN')['status']=='UNKNOWN'
 
+
+def test_health_only_rule_merge_preserves_private_feeds():
+    from tools.firebase_rules import preserved_public_paths
+    from types import SimpleNamespace
+    statuses = iter([200, 401, 401, 401])
+    with patch('tools.firebase_rules.requests.get', side_effect=lambda *a, **k: SimpleNamespace(status_code=next(statuses))):
+        assert preserved_public_paths('https://example.test', ['summary', 'rebound_feed', 'provider_health', 'premarket_status']) == ['summary', 'provider_health', 'premarket_status']
+
+
+def test_esun_event_timestamp_and_quote_error_are_safe_diagnostics():
+    assert sanitize({'last_event_at':NOW.isoformat(), 'error_code':'quote_request_failed'}) == {'last_event_at':NOW.isoformat(), 'error_code':'quote_request_failed'}
+
 def test_stale_but_parsed_response_has_market_closed_semantics(tmp_path,monkeypatch):
     monkeypatch.setenv('EASYSTOCK_MARKET_DATA_DIR',str(tmp_path))
     stale=NOW-timedelta(days=1)

@@ -20,9 +20,9 @@ LABELS = {'shioaji': '永豐行情', 'esun': '玉山行情', 'fugle': 'Fugle',
           'firebase': 'Firebase', 'gemini': 'Gemini', 'openai': 'OpenAI'}
 ERRORS = {'connection_failed', 'authentication_failed', 'disconnected', 'websocket_error',
           'heartbeat_timeout', 'timeout', 'parser_invalid', 'subscription_error',
-          'request_failed', 'http_error', 'publish_failed', 'calendar_error', 'future_timestamp'}
+          'request_failed', 'quote_request_failed', 'http_error', 'publish_failed', 'calendar_error', 'future_timestamp'}
 DIAGNOSTICS = {'connected', 'authenticated', 'subscribed', 'parser_ok', 'last_ok_at',
-               'last_data_at', 'last_error_at', 'quote_at', 'checked_at', 'last_heartbeat_at',
+               'last_data_at', 'last_event_at', 'last_error_at', 'quote_at', 'checked_at', 'last_heartbeat_at',
                'latency_ms', 'consecutive_failures', 'reconnect_count', 'subscription_count',
                'error_code', 'provider_version', 'retry_after_seconds', 'reconnect_state'}
 

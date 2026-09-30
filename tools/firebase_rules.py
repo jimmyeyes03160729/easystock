@@ -20,6 +20,28 @@ def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
+def public_paths(url, active):
+    paths = ['meta','summary','backtests','rebound_feed','kline/2330','intraday_live','intraday_picks',
+             'premarket_brief','premarket_status','provider_health','daytrade_learning_status',
+             'history_training_status','dual_review_status','public_feed']
+    if isinstance(active, str):
+        paths += ['releases/'+active+'/'+name for name in ('meta','summary','backtests','rebound_feed','kline/2330')]
+    return paths
+
+
+def preserved_public_paths(url, paths):
+    """A health-only merge must not require opening formerly private feed nodes."""
+    required = {'provider_health', 'premarket_status'}
+    result = []
+    for node in paths:
+        status = requests.get(url+'/market_data/'+node+'.json', params={'shallow':'true'}, timeout=20).status_code
+        if status not in (200, 401, 403):
+            raise RuntimeError('Cannot inspect existing public policy: HTTP '+str(status))
+        if node in required or status == 200:
+            result.append(node)
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--env-file', required=True)
@@ -60,6 +82,12 @@ def main():
         return
     if not args.expected_sha256 or digest(before) != args.expected_sha256:
         raise RuntimeError('Rules changed or no expected digest supplied; inspect again')
+    active_response = requests.get(url+'/market_data/active_release.json', timeout=20)
+    if not active_response.ok:
+        raise RuntimeError('Public release pointer denied')
+    public = public_paths(url, active_response.json())
+    if args.merge_health:
+        public = preserved_public_paths(url, public)
     backup_dir = Path(args.backup_dir).resolve()
     backup_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     backup = backup_dir / ('firebase-rules-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '.json')
@@ -79,11 +107,6 @@ def main():
         active_response = requests.get(url+'/market_data/active_release.json', timeout=20)
         if not active_response.ok:
             raise RuntimeError('Public release pointer denied')
-        active = active_response.json()
-        public = ['meta','summary','backtests','rebound_feed','kline/2330','intraday_live','intraday_picks',
-                  'premarket_brief','premarket_status','provider_health','daytrade_learning_status','history_training_status','dual_review_status','public_feed']
-        if isinstance(active, str):
-            public += ['releases/'+active+'/'+n for n in ('meta','summary','backtests','rebound_feed','kline/2330')]
         for node in public:
             # Shallow reads check authorization without downloading histories or trades.
             status = requests.get(url+'/market_data/'+node+'.json', params={'shallow':'true'}, timeout=20).status_code
