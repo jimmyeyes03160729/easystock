@@ -1,4 +1,4 @@
-// Read-only market index quote for the paper-entry risk gate.
+// Legacy one-shot read-only diagnostic; the production gate reads Provider's cache.
 // stdout contains only one normalized JSON object; credentials stay local.
 const fs = require('fs');
 const { EsunMarketdata } = require('@esun/marketdata');

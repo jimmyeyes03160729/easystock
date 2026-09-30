@@ -349,6 +349,8 @@ def register_admin(app, store=None, verifier=None):
                 ca_path=data.get('ca_path')
             )
             return jsonify({'ok': True, 'trade': res})
+        except Denied:
+            raise
         except Exception as e:
             return jsonify({'ok': False, 'message': str(e)}), 400
 

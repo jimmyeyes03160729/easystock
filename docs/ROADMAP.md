@@ -425,8 +425,7 @@ auth.uid == {uid}
 - 已完成玉山 API 登入驗證。
 - WebSocket 已成功連線。
 - 已成功送出市場資料訂閱並收到 subscribed / heartbeat 等事件。
-- 目前僅視為「連線層已打通」，尚未等同正式資料管線完成。
-- 下一步才是將玉山資料正式接入 EasyStock provider / market context / dataset 流程。
+- 2026-09-30：正式只讀 Provider、七個已驗證價格指數、重連與 freshness、本機 market context / Dataset snapshot 已完成；詳見 [行情與健康狀態](MARKET_DATA_HEALTH.md)。新 feature 尚未加入正式模型。
 
 ### 第一階段資料
 優先收集：
@@ -1085,6 +1084,8 @@ AI 改為「需要時才使用」：
 ---
 
 ## API / 資料源健康燈號規劃
+
+2026-09-30：第一版已實作六個來源的公開摘要、首頁小卡、Owner 詳細診斷及 Firebase 客戶端寫入拒絕。實際請求 / 報價證據控制狀態；未觀察到的 AI 呼叫顯示待命。部署與測試方式見 [行情與健康狀態](MARKET_DATA_HEALTH.md)。
 
 ### 公開首頁定位
 首頁只顯示可公開、脫敏後的健康摘要，不直接暴露後台診斷資料。

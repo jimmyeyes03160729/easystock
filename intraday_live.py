@@ -54,11 +54,9 @@ from __future__ import annotations
 from position_manager import PaperWallet
 
 import inspect
-import json
 import math
 import os
 import requests
-import subprocess
 
 from line_group_manager import get_active_groups
 
@@ -83,6 +81,8 @@ from public_feed import write_public_tick
 from position_manager import PositionManager
 from daytrade_learning.runtime import Recorder
 from market_risk import MarketGate, premarket_context, snapshot_risk
+from market_data.context import esun_index_snapshot
+from market_data.health import observe as observe_provider
 from daytrade_learning.model_runtime import DaytradeModel, live_features, write_runtime_model_status, refresh_runtime_model_status
 from easystock_admin.store import read_live_settings
 from strategy_engine import evaluate_daytrade, clamp
@@ -1595,25 +1595,6 @@ def load_market_context() -> tuple[str, dict]:
     return level, brief
 
 
-def esun_index_snapshot() -> dict | None:
-    """Fetch one read-only index quote; missing SDK/credentials leave this source unavailable."""
-    root = Path(__file__).resolve().parent
-    helper = root / 'esun_marketdata' / 'quote_snapshot.js'
-    if not helper.is_file():
-        helper = root / 'vm_runtime' / 'esun_marketdata' / 'quote_snapshot.js'
-    if not helper.is_file():
-        return None
-    try:
-        result = subprocess.run(['node', str(helper)], cwd=str(helper.parent),
-                                capture_output=True, text=True, timeout=7, check=False)
-        if result.returncode:
-            return None
-        value = json.loads(result.stdout.strip().splitlines()[-1])
-        return value if isinstance(value, dict) else None
-    except (OSError, subprocess.TimeoutExpired, ValueError, IndexError):
-        return None
-
-
 def load_candidates_from_firebase(
     max_symbols: int,
 ) -> list[dict]:
@@ -2875,6 +2856,10 @@ class IntradayLiveEngine:
                     red_pct=float(os.environ.get('LIVE_INDEX_RED_PCT', '-2')))
         except Exception as exc:
             shioaji['reason'] = 'index_unavailable:' + type(exc).__name__
+        parsed = shioaji.get('data_health') in ('HEALTHY', 'STALE')
+        observe_provider('shioaji', ok=parsed,
+            quote_at=shioaji.get('observed_at'), connected=parsed,
+            error_code='request_failed')
         esun = snapshot_risk(esun_index_snapshot(), current, source='esun',
             yellow_pct=float(os.environ.get('LIVE_INDEX_YELLOW_PCT', '-1')),
             red_pct=float(os.environ.get('LIVE_INDEX_RED_PCT', '-2')))

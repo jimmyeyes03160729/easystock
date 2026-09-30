@@ -1237,6 +1237,9 @@ def call_ai(
                     "Gemini summary empty"
                 )
 
+            from market_data.health import observe
+            observe('gemini', ok=True)
+
             return {
                 "ai_used": True,
                 "provider": "gemini_rest",
@@ -1287,6 +1290,8 @@ def call_ai(
             )
             break
 
+    from market_data.health import observe
+    observe('gemini', ok=False, error_code='request_failed')
     return {
         "ai_used": False,
         "provider": "gemini_rest",

@@ -22,6 +22,7 @@
       "intraday_picks": {".read": true},
       "premarket_brief": {".read": true},
       "premarket_status": {".read": true},
+      "provider_health": {".read": true},
       "daytrade_learning_status": {".read": true},
       "history_training_status": {".read": true},
       "dual_review_status": {".read": true},

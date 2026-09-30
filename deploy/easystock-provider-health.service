@@ -1,0 +1,16 @@
+[Unit]
+Description=EasyStock sanitized public provider health
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+EnvironmentFile=/home/ubuntu/easystock/.env
+Environment=EASYSTOCK_MARKET_DATA_DIR=/home/ubuntu/easystock-market-data
+ExecStart=/home/ubuntu/easystock/.venv/bin/python -m market_data.publish
+TimeoutStartSec=60
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true

@@ -23,6 +23,9 @@
   <div class="health-heading"><div><p class="eyebrow">系統健康中心</p><h2 id="healthTitle">當沖設定及健檢</h2><p class="hint">檢查訓練、資料與當沖服務狀態；設定調整在選股設定頁，維護操作有安全限制。</p></div><button id="reloadHealth" type="button">重新檢查</button></div>
   <div id="healthSummary" class="health-summary" role="status" aria-live="polite">正在檢查系統狀態…</div>
   <div id="healthSignals" class="health-signals" aria-live="polite"></div>
+  <h3>API／資料來源診斷</h3>
+  <p id="providerHealthSummary" class="hint" role="status">等待資料來源檢查。</p>
+  <div id="providerHealthDetails" class="health-signals"></div>
   <p class="hint health-note">綠燈：可用或完成；黃燈：等待條件、時段或額度；紅燈：需要處理；灰燈：尚未開始或未啟用。</p>
   <section class="panel health-panel" id="runtimeModelPanel" aria-labelledby="runtimeModelTitle">
      <div class="health-heading"><div><p class="eyebrow">盤中模型狀態</p><h2 id="runtimeModelTitle">盤中模型一致性</h2><p class="hint">確認盤中實際載入的模型，是否就是目前核准、供下一次啟動使用的模型。注意：模型晉升後，現有 process 不會自動換模型。</p></div></div>

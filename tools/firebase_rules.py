@@ -3,6 +3,7 @@
 No market data writes or messaging. --apply requires the current rules digest.
 """
 import argparse
+import copy
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -27,6 +28,7 @@ def main():
     parser.add_argument('--backup-dir', required=True)
     parser.add_argument('--apply', action='store_true')
     parser.add_argument('--expected-sha256')
+    parser.add_argument('--merge-health', action='store_true', help='Preserve current rules and add only health read grants')
     args = parser.parse_args()
     candidate = json.loads(Path(args.candidate).read_text())
     root = candidate['rules']
@@ -48,6 +50,11 @@ def main():
             raise RuntimeError('Rules read HTTP ' + str(response.status_code))
         return response.json()
     before = current_rules()
+    if args.merge_health:
+        candidate = copy.deepcopy(before)
+        market = candidate['rules'].setdefault('market_data', {})
+        for node in ('provider_health', 'premarket_status'):
+            market[node] = {'.read': True, '.write': False}
     print(json.dumps({'current_rules_sha256': digest(before), 'candidate_sha256': digest(candidate)}))
     if not args.apply:
         return
@@ -74,7 +81,7 @@ def main():
             raise RuntimeError('Public release pointer denied')
         active = active_response.json()
         public = ['meta','summary','backtests','rebound_feed','kline/2330','intraday_live','intraday_picks',
-                  'premarket_brief','daytrade_learning_status','history_training_status','dual_review_status','public_feed']
+                  'premarket_brief','premarket_status','provider_health','daytrade_learning_status','history_training_status','dual_review_status','public_feed']
         if isinstance(active, str):
             public += ['releases/'+active+'/'+n for n in ('meta','summary','backtests','rebound_feed','kline/2330')]
         for node in public:
@@ -91,6 +98,11 @@ def main():
         status = requests.get(url+'/market_data/line_groups.json', headers=headers, params={'shallow':'true'}, timeout=20).status_code
         if status != 200:
             raise RuntimeError('Service account private read failed')
+        # An impossible ETag guards against mutation even if the rules are unexpectedly permissive.
+        status = requests.put(url+'/market_data/provider_health/__deny_probe.json',
+                              headers={'If-Match': '"easystock-never-match"'}, json=None, timeout=20).status_code
+        if status not in (401,403):
+            raise RuntimeError('Public health client-write denial not confirmed: HTTP '+str(status))
     except Exception:
         # Restore only our own failed deployment, never overwrite a concurrent change.
         if current_rules() == candidate:

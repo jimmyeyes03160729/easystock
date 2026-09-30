@@ -96,8 +96,9 @@ class StoreTests(unittest.TestCase):
         with patch.dict(os.environ, {
             'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'),
             'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history'),
+            'EASYSTOCK_RELEASE_FILE': str(self.path.parent/'missing-release.json'),
         }, clear=False):
-            for key in ('EASYSTOCK_RELEASE_ID', 'EASYSTOCK_SOURCE_COMMIT', 'EASYSTOCK_RELEASE_FILE'):
+            for key in ('EASYSTOCK_RELEASE_ID', 'EASYSTOCK_SOURCE_COMMIT'):
                 os.environ.pop(key, None)
             result = snapshot(self.s)
         signal = next(row for row in result['signals'] if row['key'] == 'deployment_release')

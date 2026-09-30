@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "verified_at": "2026-09-30",
+  "verification": "E.SUN stock.intraday.tickers(type=INDEX, exchange=TWSE/TPEx)",
+  "indices": {
+    "taiex": {"symbol": "IX0001", "name": "發行量加權股價指數", "exchange": "TWSE", "enabled": true},
+    "otc": {"symbol": "IX0043", "name": "櫃買指數", "exchange": "TPEx", "enabled": true},
+    "electronics": {"symbol": "IX0027", "name": "電子工業類指數", "exchange": "TWSE", "enabled": true},
+    "semiconductor": {"symbol": "IX0028", "name": "半導體類指數", "exchange": "TWSE", "enabled": true},
+    "financial": {"symbol": "IX0039", "name": "金融保險類指數", "exchange": "TWSE", "enabled": true},
+    "electronic_components": {"symbol": "IX0032", "name": "電子零組件類指數", "exchange": "TWSE", "enabled": true},
+    "shipping": {"symbol": "IX0037", "name": "航運類指數", "exchange": "TWSE", "enabled": true}
+  }
+}

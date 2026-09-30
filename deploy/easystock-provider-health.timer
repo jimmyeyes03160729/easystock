@@ -1,0 +1,11 @@
+[Unit]
+Description=EasyStock provider health every minute
+
+[Timer]
+OnBootSec=30
+OnUnitInactiveSec=60
+AccuracySec=5
+Unit=easystock-provider-health.service
+
+[Install]
+WantedBy=timers.target

@@ -122,6 +122,7 @@ for path in paths:
     temp.chmod(0o600); os.replace(temp,path)
     print('已更新正式 intraday 環境：'+str(path))
 PY
+bash deploy/install_market_data.sh
 printf '主線更新完成：'
 git rev-parse --short HEAD
 printf '備份位置：%s\n' "$backup"

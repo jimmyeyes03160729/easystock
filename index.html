@@ -483,6 +483,11 @@
     <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener">社畜後台 ↗</a>
   </nav>
 
+  <section id="providerHealthCard" class="panel" aria-labelledby="providerHealthTitle">
+    <div class="provider-health-heading"><h2 id="providerHealthTitle">資料來源狀態</h2><span id="providerHealthChecked" role="status">正在檢查…</span></div>
+    <div id="providerHealthRows" class="provider-health-rows" aria-live="polite"></div>
+  </section>
+
   <!-- =====================================================
        8-METRIC PULSE STREAM BAR
        ===================================================== -->
@@ -5029,5 +5034,6 @@
 <script src="assets/rebound-ui.js?v=a9426e6df711"></script>
 <script src="assets/dashboard-layout.js?v=ab06770c6379"></script>
 <script src="assets/intraday-chart.js?v=3c6fa9154797"></script>
+<script src="assets/provider-health.js?v=1fe93b458146"></script>
 </body>
 </html>
