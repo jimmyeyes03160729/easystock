@@ -496,7 +496,6 @@ function renderStrategyBar() {
       const m = s?.market || ((sym.length === 4 && (sym.startsWith('5') || sym.startsWith('6') || sym.startsWith('8'))) ? 'TWO' : 'TW');
       return { symbol: sym, market: m, name: p.name || s?.name || sym, groups: ['watchlist'] };
     });
-  }
   } else if (group === 'rebound') {
     title = '🛡️ 觸底反彈策略標的';
     targets = (view.bounce || []).map(b => ({
