@@ -3,9 +3,26 @@ import argparse
 import fcntl
 import hashlib
 import json
+import time as time_module
 from pathlib import Path
 import uuid
 from datetime import datetime,time
+
+
+def _record_line_delivery(store, key, status):
+    """Make the legacy 13:30 summary visible in the admin delivery ledger."""
+    if store is None:
+        return
+    try:
+        with store.tx() as db:
+            db.execute(
+                'INSERT OR REPLACE INTO notification_receipts(key,channel,status,created) VALUES(?,?,?,?)',
+                (key, 'line', status, time_module.time()),
+            )
+    except Exception as exc:
+        # Delivery must not be turned into a failure merely because the audit
+        # ledger is temporarily unavailable.
+        print(f'[WARN] notification receipt unavailable: {type(exc).__name__}')
 
 
 def main():
@@ -32,6 +49,14 @@ def main():
         import requests
         from line_bot import access_token, default_target
         from line_group_manager import get_active_groups
+        from easystock_admin.store import Store
+        try:
+            store = Store()
+        except Exception as exc:
+            # The notification itself must not be lost because the optional
+            # admin audit database is unavailable.
+            print(f'[WARN] admin notification ledger unavailable: {type(exc).__name__}')
+            store = None
         targets = set(get_active_groups())
         user_tgt = default_target()
         if user_tgt:
@@ -57,11 +82,14 @@ def main():
                 accepted=200<=response.status_code<300 or (response.status_code==409 and bool(response.headers.get('x-line-accepted-request-id')))
                 if accepted:
                     record['sent']=True;save(path,record);sent+=1
+                    _record_line_delivery(store, 'summary:' + day + ':' + tag, 'sent')
                 else:
                     failures+=1
+                    _record_line_delivery(store, 'summary:' + day + ':' + tag, 'failed')
                     print(f"[WARN] LINE push to {gid[:8]} failed HTTP {response.status_code}: {response.text[:200]}")
             except requests.RequestException as exc:
                 failures+=1
+                _record_line_delivery(store, 'summary:' + day + ':' + tag, 'unknown')
                 print(f"[ERROR] LINE push to {gid[:8]} exception: {exc}")
         print(f'Summary requests accepted: {sent}; failed: {failures}')
         if failures and not sent:raise SystemExit(1)

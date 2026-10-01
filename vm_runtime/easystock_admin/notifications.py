@@ -42,7 +42,8 @@ def state(store):
     token, group = telegram_config()
     groups.append({'id': 'configured', 'platform': 'telegram', 'kind': 'group',
                    'label': 'Telegram 當沖群組', 'configured': bool(token and group),
-                   'push': bool(push), 'replies': bool(replies), 'version': version})
+                   'push': bool(push and token and group),
+                   'replies': bool(replies and token and group), 'version': version})
     return {'groups': groups, 'deliveries': deliveries}
 
 

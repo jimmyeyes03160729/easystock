@@ -256,7 +256,14 @@ def register_admin(app, store=None, verifier=None):
             used.raise_for_status()
             q = quota.json()
             u = used.json()['totalUsage']
+            if isinstance(u, bool) or not isinstance(u, (int, float)) or u < 0:
+                raise ValueError('invalid LINE usage')
+            u = int(u)
             limit = q.get('value') if q.get('type') == 'limited' else None
+            if limit is not None:
+                if isinstance(limit, bool) or not isinstance(limit, (int, float)) or limit < 0:
+                    raise ValueError('invalid LINE quota')
+                limit = int(limit)
             return jsonify(used=u, limit=limit, remaining=max(0, limit - u) if limit is not None else None)
         except (requests.RequestException, ValueError, KeyError, TypeError):
             return jsonify(error='LINE 用量暫時無法取得，請稍後重試。'), 503
