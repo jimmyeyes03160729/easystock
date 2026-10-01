@@ -80,6 +80,7 @@ from firebase_store import FirebaseStore
 from public_feed import write_public_tick
 from position_manager import PositionManager
 from daytrade_learning.runtime import Recorder
+from daytrade_learning.episodes import ResearchStore
 from market_risk import MarketGate, premarket_context, snapshot_risk
 from market_data.shioaji import taiex_contract
 from market_data.diagnostics import save_gate
@@ -1247,6 +1248,7 @@ def build_position_manager() -> PositionManager:
         trailing_activate_pct=TRAILING_ACTIVATE_PCT,
         trailing_pullback_pct=TRAILING_PULLBACK_PCT,
         allow_reentry=False,
+        research_mode=True,
         exit_mode=os.environ.get('LIVE_EXIT_MODE', 'hybrid'),
         breakeven_activate_pct=float(os.environ.get('LIVE_BREAKEVEN_ACTIVATE_PCT', '.006')),
         breakeven_floor_pct=float(os.environ.get('LIVE_BREAKEVEN_FLOOR_PCT', '.0035')),
@@ -2814,6 +2816,8 @@ class IntradayLiveEngine:
         self.market_risk = {'valid': False, 'gate_reason': 'not_checked'}
         self.manager.before_open = lambda **kw: None if self.collect_only else paper_wallet.open_fill(**kw)
         self.manager.before_close = lambda **kw: paper_wallet.close_and_settle(**kw)
+        self.manager.research_store = ResearchStore()
+        self.manager.paper_max_daily_entries = MAX_DAILY_ENTRIES
         self._previous_closes = {}
         self._previous_close_retry = {}
 
@@ -2837,6 +2841,7 @@ class IntradayLiveEngine:
         if not force and mono - self._market_checked_at < 30:
             return
         self._market_checked_at = mono
+        self.manager.retry_paper_settlements()
         self.market_valid_until = 0.0
         base, brief = load_market_context()
         shioaji = snapshot_risk(None, current, source='shioaji')
@@ -2949,6 +2954,7 @@ class IntradayLiveEngine:
 
         # 重啟保護：
         # 已 CLOSED + 仍 OPEN 的股票全部算進「今日已 ENTRY」。
+        legacy_closed = []
         for node_name in (
             "closed_trades",
             "open_positions",
@@ -2991,16 +2997,17 @@ class IntradayLiveEngine:
                     from daytrade_learning.daily_state import on_day
                     if not on_day(row, now_tpe().date().isoformat()):
                         continue
+                    if node_name == 'closed_trades':
+                        legacy_closed.append(row)
                     symbol = str(
                         row.get("symbol")
                         or ""
                     ).strip()
 
                     if symbol:
-                        self.entry_symbols.add(
-                            symbol
-                        )
-                        self.manager.traded_symbols.add(symbol)
+                        if row.get('execution_kind') == 'paper_fill' or row.get('paper_execution') == 'FILLED':
+                            self.entry_symbols.add(symbol)
+                            self.manager.paper_traded_symbols.add(symbol)
                         if node_name == "open_positions":
                             restored = dict(row)
                             for key in ("entry_time", "last_update_at"):
@@ -3014,12 +3021,41 @@ class IntradayLiveEngine:
                 raise RuntimeError("Cannot restore daily state: " + node_name) from exc
 
         # Recover committed wallet fills even if a previous Firebase publish failed.
-        from paper_account import open_positions
+        from paper_account import open_positions, daily_bought_symbols, settlement_receipt
+        self.manager.paper_traded_symbols.update(daily_bought_symbols(now_tpe().date().isoformat()))
         fills = {p['symbol']:p for p in open_positions()}
-        for symbol in set(self.manager.positions)-set(fills):
-            del self.manager.positions[symbol]  # old signal or already-settled mirror
+        legacy_mirror = dict(self.manager.positions)
+        self.manager.positions.clear()  # Firebase is a mirror, never research truth.
+        self.manager.migrate_closed_paper(legacy_closed, now_tpe().date().isoformat(), settlement_receipt)
+        self.manager.restore_research(now_tpe().date().isoformat())
+        pending_symbols = {trade['symbol'] for trade in self.manager.pending_paper_settlements.values()}
+        for symbol, position in list(self.manager.positions.items()):
+            if position.get('paper_execution') == 'FILLED' and symbol not in fills:
+                raise RuntimeError('Research/Paper fill needs reconciliation: ' + symbol)
+            if position.get('paper_execution') == 'FILLED' and position.get('paper_trade_id') != fills[symbol]['trade_id']:
+                raise RuntimeError('Research/Paper identity mismatch: ' + symbol)
+            if symbol in fills and position.get('paper_execution') != 'FILLED':
+                if symbol in pending_symbols:
+                    continue  # This wallet fill belongs to the already-closed older episode.
+                fill = fills[symbol]
+                fill_at = as_datetime(fill['entry_time'])
+                if (position.get('paper_skip_reason') != 'execution_unconfirmed'
+                        or not position.get('paper_attempted') or fill_at is None
+                        or not 0 <= (fill_at-position['entry_time']).total_seconds() <= 30
+                        or float(fill['entry_price']) != float(position['entry_price'])):
+                    raise RuntimeError('Unconfirmed research execution needs reconciliation: ' + symbol)
+                position.update(paper_execution='FILLED', paper_skip_reason=None,
+                    paper_trade_id=fill['trade_id'], trade_id=fill['trade_id'],
+                    shares=fill['shares'], execution_kind='paper_fill')
+                self.manager._persist(position)
+                self.manager.paper_traded_symbols.add(symbol)
+            elif position.get('paper_attempted') and position.get('paper_execution') == 'NOT_ATTEMPTED':
+                position.update(paper_execution='SKIPPED', paper_skip_reason='execution_unconfirmed')
+                self.manager._persist(position)
         for symbol, fill in fills.items():
-            previous = self.manager.positions.get(symbol, {})
+            if any(t['symbol'] == symbol for t in self.manager.pending_paper_settlements.values()):
+                continue
+            previous = self.manager.positions.get(symbol, legacy_mirror.get(symbol, {}))
             at = as_datetime(fill['entry_time'])
             if at is None and previous:
                 at = previous.get('entry_time')
@@ -3036,10 +3072,26 @@ class IntradayLiveEngine:
                 stop_price=entry*(1-self.manager.stop_loss_pct),
                 take_profit_price=entry*(1+self.manager.take_profit_pct),
                 trailing_stop=previous.get('trailing_stop'),
-                last_update_at=at)
+                last_update_at=previous.get('last_update_at', at))
+            if not restored.get('research_trade_id'):
+                # Preserve pre-upgrade real paper positions without fabricating prior research-only fills.
+                identity = 'legacy-paper-' + fill['trade_id']
+                restored.update(research_trade_id=identity, episode_id=identity,
+                    research_execution='TRACKED', paper_execution='FILLED', paper_skip_reason=None,
+                    paper_trade_id=fill['trade_id'], paper_attempted=True, entry_gate_evidence={'legacy_paper_fill': True})
+                self.manager._persist(restored)
             self.manager.positions[symbol] = restored
             self.manager.traded_symbols.add(symbol)
+            self.manager.paper_traded_symbols.add(symbol)
             self.entry_symbols.add(symbol)
+
+        self.manager.retry_paper_settlements()
+        self.entry_symbols.update(self.manager.paper_traded_symbols)
+        # Rebuild derived mirrors from durable evidence, including unpublished exits.
+        for trade in self.manager.closed_trades:
+            self.store.write_exit({'type': 'EXIT', 'trade': trade})
+        for position in self.manager.positions.values():
+            self.store.write_entry({'type': 'ENTRY', 'position': position})
 
         if self.entry_symbols:
             print(
@@ -3787,10 +3839,15 @@ class IntradayLiveEngine:
         The instant surge is the trigger. 5m/15m completed bars remain the
         trend/quality confirmation background. This avoids waiting until the
         next 5-minute boundary while keeping the original strategy vetoes and
-        daily max-entry protection.
+        paper execution limits inside PositionManager.
         """
         if not in_entry_window(strategy_time):
             return
+
+        # An observed radar exclusion is a real false setup, not a cooldown.
+        for (day, symbol), (armed, _) in list(self.manager.rearm_states.items()):
+            if day == strategy_time.date().isoformat() and not armed and symbol not in self.scanner_top_symbols:
+                self.manager.observe_entry_predicate(symbol, False, strategy_time)
 
         for row in top_rows:
             symbol = str(row.get("symbol") or "").strip()
@@ -3800,13 +3857,6 @@ class IntradayLiveEngine:
             if self._is_open_position(symbol):
                 continue
 
-            with self._lock:
-                if symbol in self.entry_symbols:
-                    continue
-
-                if len(self.entry_symbols) >= MAX_DAILY_ENTRIES:
-                    return
-
             previous = self._last_instant_entry_eval.get(symbol, 0.0)
             if (
                 now_mono - previous
@@ -3814,8 +3864,8 @@ class IntradayLiveEngine:
             ):
                 continue
 
-            # Reserve only the evaluation timestamp here; actual ENTRY
-            # reservation remains inside evaluate_symbol().
+            # Reserve the evaluation timestamp; PositionManager serializes the
+            # accepted research episode and its one-time paper execution attempt.
             self._last_instant_entry_eval[symbol] = now_mono
 
             # A newly-entered radar symbol may not have enough historical
@@ -4056,11 +4106,14 @@ class IntradayLiveEngine:
                     counts[reason] = min(1_000_000_000, counts.get(reason, 0) + 1)
             return
         if self.entry_mode == 'rules' and not eligible:
+            self.manager.observe_entry_predicate(symbol, False, strategy_time)
             return
         if self.entry_mode == 'model' and vetoes:
+            self.manager.observe_entry_predicate(symbol, False, strategy_time)
             return
 
         if symbol not in self.scanner_top_symbols:
+            self.manager.observe_entry_predicate(symbol, False, strategy_time)
             return
         checked = self.fresh_entry_quote(symbol, allow_lookup=True)
         if checked is None:
@@ -4094,8 +4147,11 @@ class IntradayLiveEngine:
                   f"version={model_decision.get('model_version')}")
             if not (model_decision.get('active') and model_decision.get('evaluated')
                     and model_decision.get('approved') and model_decision.get('accepted')):
+                if model_decision.get('evaluated'):
+                    self.manager.observe_entry_predicate(symbol, False, strategy_time)
                 return
             if float(model_decision['probability']) < float(model_decision['threshold']):
+                self.manager.observe_entry_predicate(symbol, False, strategy_time)
                 return
             model_reason = f"模型分數 {model_decision['probability']:.3f} ({model_decision['model_version']})"
 
@@ -4104,41 +4160,14 @@ class IntradayLiveEngine:
             limits = read_live_settings()
             gain = (price / previous_close - 1) * 100 if previous_close else None
             if gain is None or not limits['min_price'] <= price <= limits['max_price'] or gain > limits['max_gain_pct']:
+                self.manager.observe_entry_predicate(symbol, False, strategy_time)
                 return
         except Exception as exc:
             print('[ENTRY] settings unavailable:', type(exc).__name__)
             return
 
-        # 硬性限制：一天最多 5 檔。
-        # 用 lock 先 reservation，避免多個 Tick callback 同時通過而超過3檔。
-        reserved = False
-
-        with self._lock:
-            if symbol in self.entry_symbols:
-                return
-
-            if (
-                len(
-                    self.entry_symbols
-                )
-                >=
-                MAX_DAILY_ENTRIES
-            ):
-                if not self._entry_limit_logged:
-                    print(
-                        "🛑 今日 ENTRY 已達上限 "
-                        f"{MAX_DAILY_ENTRIES} 檔，"
-                        "不再新增股票。"
-                    )
-                    self._entry_limit_logged = True
-
-                return
-
-            self.entry_symbols.add(
-                symbol
-            )
-
-            reserved = True
+        # Research episodes are serialized by PositionManager; paper-only daily
+        # and symbol limits are enforced by its execution adapter policy.
 
         stock = self.candidates.get(
             symbol,
@@ -4191,14 +4220,10 @@ class IntradayLiveEngine:
         evaluated_price = price
         checked = self.fresh_entry_quote(symbol)
         if checked is None:
-            with self._lock:
-                self.entry_symbols.discard(symbol)
             return
         price, strategy_time = checked
         if self.entry_mode == 'model' and price != evaluated_price:
             # The score belonged to a different tick; evaluate anew on the next pass.
-            with self._lock:
-                self.entry_symbols.discard(symbol)
             return
         if getattr(self, 'market_gate', {}).get('gate_action', 'PASS') != 'PASS' or now_tpe().timestamp() > self.market_valid_until:
             reason = ('market_risk_red' if getattr(self, 'market_gate', {}).get('gate_reason') == 'market_risk_red'
@@ -4207,18 +4232,13 @@ class IntradayLiveEngine:
             if isinstance(counts, dict):
                 with self._lock:
                     counts[reason] = min(1_000_000_000, counts.get(reason, 0) + 1)
-            with self._lock:
-                self.entry_symbols.discard(symbol)
             return
         try:
             limits = read_live_settings()
             if not previous_close or not limits['min_price'] <= price <= limits['max_price'] or (price/previous_close-1)*100 > limits['max_gain_pct']:
-                with self._lock:
-                    self.entry_symbols.discard(symbol)
+                self.manager.observe_entry_predicate(symbol, False, strategy_time)
                 return
         except Exception:
-            with self._lock:
-                self.entry_symbols.discard(symbol)
             return
         try:
             event = self.manager.open_position(
@@ -4229,15 +4249,21 @@ class IntradayLiveEngine:
                 score=score,
                 reasons=entry_reasons,
                 vwap=result.get("vwap"),
+                decision_evidence={
+                    'decision_mode': self.entry_mode,
+                    'model_version': model_decision.get('model_version') if self.entry_mode == 'model' else None,
+                    'model_artifact_sha256': model_decision.get('artifact_sha256') if self.entry_mode == 'model' else None,
+                    'model_score': model_decision.get('probability') if self.entry_mode == 'model' else None,
+                    'model_threshold': model_decision.get('threshold') if self.entry_mode == 'model' else None,
+                    'entry_features': feature_row,
+                    'entry_gate_evidence': {'market_gate': 'PASS', 'strategy_vetoes': list(vetoes),
+                        'radar_selected': True, 'fresh_quote_at': strategy_time.isoformat(),
+                        'entry_window': True, 'user_settings': dict(limits),
+                        'rule_eligible': eligible, 'model_accepted': model_decision.get('accepted')},
+                },
             )
 
         except Exception as exc:
-            if reserved:
-                with self._lock:
-                    self.entry_symbols.discard(
-                        symbol
-                    )
-
             print(
                 f"[ERROR] open_position "
                 f"{symbol}: "
@@ -4246,15 +4272,14 @@ class IntradayLiveEngine:
             return
 
         if event is None:
-            if reserved:
-                with self._lock:
-                    self.entry_symbols.discard(
-                        symbol
-                    )
             return
 
-        # Persist the actual decision source with the filled ENTRY, never infer it
-        # later from a training date or the status panel's latest model name.
+        if event['position'].get('paper_execution') == 'FILLED' or event['position'].get('execution_kind') == 'paper_fill':
+            with self._lock:
+                self.entry_symbols.add(symbol)
+
+        # Record accepted research independently of the paper execution outcome.
+        # Never infer model identity from a training date or the latest panel name.
         used_model = self.entry_mode == 'model'
         event['position'].update({
             'decision_mode': self.entry_mode,
@@ -4264,8 +4289,13 @@ class IntradayLiveEngine:
             'model_threshold': model_decision.get('threshold') if used_model else None,
         })
         self.learning.entry(event)
-        print(f"[ENTRY_DECISION] mode={self.entry_mode} "
-              f"version={event['position']['model_version']} sha256={event['position']['model_artifact_sha256']}")
+        paper_filled = event['position'].get('paper_execution') == 'FILLED'
+        print(f"[RESEARCH_ENTRY] symbol={symbol} episode={event['position'].get('episode_id')} "
+              f"paper_execution={event['position'].get('paper_execution')} "
+              f"paper_skip_reason={event['position'].get('paper_skip_reason')}")
+        if paper_filled:
+            print(f"[ENTRY_DECISION] mode={self.entry_mode} "
+                  f"version={event['position']['model_version']} sha256={event['position']['model_artifact_sha256']}")
 
         try:
             self.store.write_entry(
@@ -4280,20 +4310,18 @@ class IntradayLiveEngine:
             )
 
 
-        push_line_text(
-            format_entry_message(
-                event,
-                self.market_level,
-            ),
-            entry_check=lambda: self.fresh_entry_quote(symbol) is not None,
-            event=event,
-        )
+        if paper_filled:
+            push_line_text(
+                format_entry_message(event, self.market_level),
+                entry_check=lambda: self.fresh_entry_quote(symbol) is not None,
+                event=event,
+            )
 
         print(
-            f"✅ ENTRY {symbol} "
+            f"✅ RESEARCH ENTRY {symbol} "
             f"{price:.2f} "
             f"score={score} "
-            f"daily={len(self.entry_symbols)}/"
+            f"paper_daily={len(self.entry_symbols)}/"
             f"{MAX_DAILY_ENTRIES}"
         )
 
@@ -4326,15 +4354,11 @@ class IntradayLiveEngine:
                 f"{type(exc).__name__}: {exc}"
             )
 
-        # Wallet settlement was committed before PositionManager emitted EXIT.
+        # Research CLOSE is durable; pending paper settlement remains independent.
 
 
-        push_line_text(
-            format_exit_message(
-                event
-            ),
-            event=event,
-        )
+        if event['trade'].get('paper_execution') == 'FILLED' and not event['trade'].get('paper_settlement_pending'):
+            push_line_text(format_exit_message(event), event=event)
 
         print(
             f"✅ EXIT {symbol}"

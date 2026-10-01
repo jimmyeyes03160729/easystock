@@ -6,6 +6,7 @@ Paper Trade Position & Capital Manager
 
 from __future__ import annotations
 import math
+import uuid
 from datetime import datetime, timezone, timedelta
 
 try:
@@ -75,8 +76,9 @@ class PositionManager:
     """
     Easystock 當沖部位管理器 V2
 
-    Runtime 注入紙上帳務 callbacks，成交／結算成功後才提交部位事件。
-    離線研究可不注入 callbacks，此時明確標記 strategy_signal。
+    research_mode separates accepted strategy episodes from paper execution.
+    Paper callbacks retain cash/re-entry constraints; research closes independently.
+    Legacy callers can retain fill-only behavior with research_mode=False.
     不呼叫 Shioaji Order / Deal。
     """
 
@@ -98,6 +100,9 @@ class PositionManager:
         technical_exit_enabled=True,
         before_open=None,
         before_close=None,
+        research_mode=False,
+        research_store=None,
+        paper_max_daily_entries=5,
     ):
         if exit_mode not in {'fixed', 'trailing', 'hybrid'}:
             raise ValueError('invalid_exit_mode')
@@ -113,6 +118,12 @@ class PositionManager:
         self.breakeven_floor_pct = breakeven_floor_pct
         self.technical_exit_enabled = technical_exit_enabled
         self.before_open, self.before_close = before_open, before_close
+        self.research_mode = research_mode
+        self.research_store = research_store
+        self.paper_max_daily_entries = paper_max_daily_entries
+        self.paper_traded_symbols = set()
+        self.rearm_states = {}
+        self.pending_paper_settlements = {}
         self.stop_loss_pct = stop_loss_pct
         self.take_profit_pct = take_profit_pct
 
@@ -193,6 +204,10 @@ class PositionManager:
         if self.has_open_position(symbol):
             return False
 
+        if self.research_mode:
+            armed, observed = self.rearm_states.get((dt.date().isoformat(), str(symbol)), (True, None))
+            return armed and (observed is None or dt > observed)
+
         if (
             not self.allow_reentry
             and symbol
@@ -201,6 +216,91 @@ class PositionManager:
             return False
 
         return True
+
+    @synchronized
+    def observe_entry_predicate(self, symbol, accepted, at):
+        """Re-arm only after a post-close false predicate, never on a timer."""
+        symbol = str(symbol)
+        if not self.research_mode or self.has_open_position(symbol) or accepted:
+            return
+        key = (at.date().isoformat(), symbol)
+        armed, closed_at = self.rearm_states.get(key, (True, None))
+        if not armed and closed_at is not None and at > closed_at:
+            if self.research_store:
+                self.research_store.arm(symbol, at)
+            self.rearm_states[key] = (True, at)
+
+    def _persist(self, position, armed=None):
+        if self.research_store:
+            self.research_store.save(position, armed)
+
+    @synchronized
+    def migrate_closed_paper(self, rows, day, receipt_lookup):
+        """Preserve verified pre-upgrade fills; never invent unfunded research."""
+        if not self.research_store:
+            return
+        known = {row.get('paper_trade_id') for row in self.research_store.trades(day)}
+        for source in sorted(rows, key=lambda row: str(row.get('exit_time', ''))):
+            paper_id = source.get('trade_id')
+            if (not paper_id or paper_id in known or source.get('research_trade_id')
+                    or source.get('execution_kind') != 'paper_fill'):
+                continue
+            receipt = receipt_lookup(paper_id)
+            if not isinstance(receipt, dict) or receipt.get('status') != 'sold' or receipt.get('trade_id') != paper_id:
+                continue
+            entry = datetime.fromisoformat(str(source['entry_time']))
+            exit_at = datetime.fromisoformat(str(source['exit_time']))
+            if (entry.tzinfo is None or exit_at.tzinfo is None or entry.date().isoformat() != day
+                    or exit_at.date().isoformat() != day or exit_at < entry):
+                raise RuntimeError('Invalid verified legacy paper timestamps')
+            identity = 'legacy-paper-' + paper_id
+            row = dict(source, research_trade_id=identity, episode_id=identity,
+                research_execution='TRACKED', paper_execution='FILLED', paper_skip_reason=None,
+                paper_trade_id=paper_id, paper_attempted=True, paper_settlement_pending=False,
+                status='CLOSED', entry_time=entry, exit_time=exit_at, settlement=receipt,
+                entry_gate_evidence={'legacy_verified_paper_settlement': True})
+            if receipt.get('shares'):
+                row['research_net_pnl_pct'] = float(receipt['net_pnl'])/(float(row['entry_price'])*receipt['shares'])*100
+                row['research_cost_basis'] = 'legacy_verified_paper_settlement'
+            self._persist(row, armed=False)
+            known.add(paper_id)
+
+    @synchronized
+    def restore_research(self, day):
+        if not self.research_store:
+            return
+        rows = self.research_store.trades(status='OPEN')
+        for row in rows:
+            if row['status'] == 'OPEN' and str(row['entry_time'])[:10] != day:
+                raise RuntimeError('Overnight research position needs reconciliation: ' + row['symbol'])
+        for row in self.research_store.trades(day):
+            for key in ('entry_time', 'last_update_at', 'exit_time'):
+                if row.get(key):
+                    row[key] = datetime.fromisoformat(row[key])
+            symbol = row['symbol']
+            if row.get('paper_execution') == 'FILLED':
+                self.paper_traded_symbols.add(symbol)
+            if row['status'] == 'OPEN':
+                self.positions[symbol] = row
+            else:
+                self.closed_trades.append(row)
+                if row.get('paper_settlement_pending'):
+                    self.pending_paper_settlements[row['research_trade_id']] = row
+        self.rearm_states.update({(day, symbol): (armed, datetime.fromisoformat(at))
+                                  for symbol, (armed, at) in self.research_store.state(day).items()})
+
+    @synchronized
+    def retry_paper_settlements(self):
+        for identity, trade in list(self.pending_paper_settlements.items()):
+            try:
+                receipt = self.before_close(symbol=trade['symbol'], exit_price=trade['exit_price'],
+                    exit_reason=trade['exit_reason'], trade_id=trade['paper_trade_id'])
+            except Exception:
+                continue
+            if isinstance(receipt, dict) and receipt.get('status') == 'sold':
+                trade.update(settlement=receipt, paper_settlement_pending=False)
+                self._persist(trade)
+                del self.pending_paper_settlements[identity]
 
 
     # =====================================================
@@ -217,6 +317,7 @@ class PositionManager:
         score,
         reasons,
         vwap=None,
+        decision_evidence=None,
     ):
 
         if not self.can_open(
@@ -230,7 +331,7 @@ class PositionManager:
         if not math.isfinite(price) or price <= 0:
             raise ValueError('invalid_entry_price')
         fill = None
-        if self.before_open:
+        if self.before_open and not self.research_mode:
             fill = self.before_open(symbol=str(symbol), name=name, price=price)
             if not isinstance(fill, dict) or fill.get('status') != 'bought' or fill.get('shares',0) <= 0:
                 return None
@@ -280,6 +381,40 @@ class PositionManager:
                 entry_time,
         }
 
+        if self.research_mode:
+            identity = uuid.uuid4().hex
+            position.update(research_trade_id=identity, episode_id=identity,
+                research_execution='TRACKED', paper_execution='NOT_ATTEMPTED',
+                paper_skip_reason=None, paper_trade_id=None, paper_attempted=False,
+                **(decision_evidence or {}))
+            # Persist acceptance before touching the separate cash ledger.
+            self._persist(position)
+            self.positions[str(symbol)] = position
+            if self.before_open:
+                position['paper_attempted'] = True
+                position['paper_skip_reason'] = 'execution_unconfirmed'
+                self._persist(position)
+                if not self.allow_reentry and str(symbol) in self.paper_traded_symbols:
+                    fill = {'status': 'reentry_disabled'}
+                elif len(self.paper_traded_symbols) >= self.paper_max_daily_entries:
+                    fill = {'status': 'daily_entry_limit'}
+                else:
+                    try:
+                        fill = self.before_open(symbol=str(symbol), name=name, price=price)
+                    except Exception:
+                        fill = {'status': 'execution_unconfirmed'}
+                if (isinstance(fill, dict) and fill.get('status') == 'bought'
+                        and fill.get('shares', 0) > 0 and fill.get('trade_id')):
+                    position.update(paper_execution='FILLED', paper_skip_reason=None,
+                        paper_trade_id=fill['trade_id'], trade_id=fill['trade_id'],
+                        shares=fill['shares'], execution_kind='paper_fill')
+                    self.paper_traded_symbols.add(str(symbol))
+                else:
+                    position.update(paper_execution='SKIPPED',
+                        paper_skip_reason=(fill.get('skip_reason') or fill.get('status', 'execution_unconfirmed')) if isinstance(fill, dict)
+                        else 'execution_unconfirmed', execution_kind='research_only')
+                self._persist(position)
+
         self.positions[
             str(symbol)
         ] = position
@@ -318,6 +453,9 @@ class PositionManager:
         if position is None:
             return None
 
+        if current_time < position['last_update_at']:
+            return None
+
         price = float(price)
         if not math.isfinite(price) or price <= 0:
             return None
@@ -339,6 +477,9 @@ class PositionManager:
             position["lowest_price"],
             price,
         )
+
+        if self.research_mode:
+            self._persist(position)
 
 
         # =================================================
@@ -581,8 +722,14 @@ class PositionManager:
 
         if not math.isfinite(exit_price) or exit_price <= 0:
             return None
+        if self.research_mode:
+            if exit_time < position['last_update_at']:
+                return None
+            position.update(current_price=exit_price, last_update_at=exit_time,
+                highest_price=max(position['highest_price'], exit_price),
+                lowest_price=min(position['lowest_price'], exit_price))
         settlement = None
-        if self.before_close:
+        if self.before_close and not self.research_mode:
             settlement = self.before_close(symbol=symbol, exit_price=exit_price,
                 exit_reason=reason, trade_id=position.get('trade_id'))
             if not isinstance(settlement, dict) or settlement.get('status') != 'sold':
@@ -658,6 +805,25 @@ class PositionManager:
             "duration_seconds":
                 duration_seconds,
         }
+
+        if self.research_mode:
+            # Research closes independently; a failed paper settlement is retried
+            # against the same frozen exit and identity without reopening research.
+            trade['paper_settlement_pending'] = trade.get('paper_execution') == 'FILLED'
+            # Hypothetical one-lot research costs, independent of wallet size.
+            from decimal import Decimal, ROUND_HALF_UP
+            from paper_ledger import fee, BUY_RATE, SELL_RATE, DAY_TAX_RATE
+            entry_amount = Decimal(str(entry_price))*1000
+            exit_amount = Decimal(str(exit_price))*1000
+            costs = (fee(entry_amount, BUY_RATE) + fee(exit_amount, SELL_RATE)
+                     + (exit_amount*DAY_TAX_RATE).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+            trade['research_net_pnl_pct'] = pnl_pct - float(costs/entry_amount)*100
+            trade['research_cost_basis'] = 'one_lot_fee_28pct_discount_daytrade_tax'
+            self._persist(trade, armed=False)
+            self.rearm_states[(exit_time.date().isoformat(), symbol)] = (False, exit_time)
+            if trade['paper_settlement_pending']:
+                self.pending_paper_settlements[trade['research_trade_id']] = trade
+                self.retry_paper_settlements()
 
 
         self.closed_trades.append(

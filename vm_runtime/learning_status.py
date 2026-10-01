@@ -118,14 +118,25 @@ def _rows(value):
     return []
 
 
-def trade_summary(live, session_date):
-    """Return aggregate paper-trade evidence only; never publish trade rows."""
-    rows = []
-    for row in _rows((live or {}).get("closed_trades")):
+def trade_summary(live, session_date, research_rows=None):
+    """Public aggregates only. Durable research evidence wins over mirrors."""
+    all_rows = []
+    source = research_rows if research_rows is not None else (
+        _rows((live or {}).get('closed_trades')) + _rows((live or {}).get('open_positions')))
+    seen = set()
+    for row in source:
         stamp = str(row.get("exit_time") or row.get("entry_time") or "")
-        if stamp[:10] == session_date:
-            rows.append(row)
-    pnl = [float(row["pnl_pct"]) for row in rows if isinstance(row.get("pnl_pct"), (int, float))]
+        identity = row.get('research_trade_id') or row.get('trade_id') or (row.get('symbol'), str(row.get('entry_time')))
+        if stamp[:10] == session_date and identity not in seen:
+            seen.add(identity)
+            all_rows.append(row)
+    rows = [row for row in all_rows if row.get('status', 'CLOSED') == 'CLOSED']
+    gross_pnl = [float(row['pnl_pct']) for row in rows if isinstance(row.get('pnl_pct'), (int, float))]
+    pnl = [float(row['research_net_pnl_pct'] if isinstance(row.get('research_net_pnl_pct'), (int, float))
+                 else row['pnl_pct']) for row in rows
+           if isinstance(row.get('pnl_pct'), (int, float))]
+    net = [float(row['research_net_pnl_pct']) for row in rows
+           if isinstance(row.get('research_net_pnl_pct'), (int, float))]
     mfe = [float(row["mfe_pct"]) for row in rows if isinstance(row.get("mfe_pct"), (int, float))]
     mae = [float(row["mae_pct"]) for row in rows if isinstance(row.get("mae_pct"), (int, float))]
     wins = sum(value > 0 for value in pnl)
@@ -137,11 +148,20 @@ def trade_summary(live, session_date):
         curve += value
         peak = max(peak, curve)
         drawdown = min(drawdown, curve - peak)
-    balance = (live or {}).get("start_balance")
     return {
+        'source': 'research_store' if research_rows is not None else 'legacy_live_mirror',
+        'accepted_episodes': len(all_rows), 'research_trades': len(all_rows),
+        'research_closed': len(rows), 'research_open': len(all_rows)-len(rows),
+        'paper_filled': sum(row.get('paper_execution') == 'FILLED' or
+                            row.get('execution_kind') == 'paper_fill' for row in all_rows),
+        'paper_skipped': sum(row.get('paper_execution') == 'SKIPPED' for row in all_rows),
+        'paper_skipped_insufficient_cash': sum(row.get('paper_skip_reason') == 'insufficient_cash' for row in all_rows),
         "count": len(rows), "wins": wins, "losses": losses,
-        "net_pnl": sum(pnl) if pnl else None,
-        "return_pct": (sum(pnl) / float(balance) * 100) if pnl and isinstance(balance, (int, float)) and balance else None,
+        'net_pnl_pct': sum(net) if net and len(net) == len(rows) else None,
+        'gross_pnl_pct': sum(gross_pnl) if gross_pnl else None,
+        'win_loss_basis': 'research_net_returns_when_available_else_legacy_gross',
+        'net_pnl': None, 'return_pct': None,
+        'pnl_basis': 'sum_of_independent_one_lot_research_returns_pct_not_wallet_return',
         "avg_pnl_pct": (sum(pnl) / len(pnl)) if pnl else None,
         "avg_mfe_pct": (sum(mfe) / len(mfe)) if mfe else None,
         "avg_mae_pct": (sum(mae) / len(mae)) if mae else None,
@@ -382,6 +402,8 @@ def compute(
     activity_dates.update(
         reports_by_date.keys()
     )
+    from daytrade_learning.episodes import research_days
+    activity_dates.update(day for day in research_days(Path(data)/'research.sqlite') if valid_day(day))
 
     if valid_day(
         preferred_date
@@ -686,9 +708,16 @@ def compute(
             "labels": labels_by_date.get(session_date, 0),
             "requested": build_day(session_date).get("requested"),
             "downloaded": build_day(session_date).get("downloaded"),
-            "trades": trade_summary(live or {}, session_date),
+            "trades": trade_summary(live or {}, session_date,
+                research_rows=_research_rows(data, session_date)),
         },
     }
+
+
+def _research_rows(data, day):
+    from daytrade_learning.episodes import read_trades
+    path = Path(data) / 'research.sqlite'
+    return read_trades(path, day) if path.exists() else None
 
 
 def iter_live_rows(

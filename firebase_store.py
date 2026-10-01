@@ -74,7 +74,8 @@ SERVICE_ACCOUNT_JSON = (
 def public_trade(record):
     """Publish strategy prices/status, never private wallet balances or sizes."""
     return {key: value for key, value in record.items()
-            if key not in {'shares', 'settlement', 'start_balance', 'end_balance', 'current_capital'}}
+            if key not in {'shares', 'settlement', 'start_balance', 'end_balance', 'current_capital',
+                           'entry_gate_evidence', 'entry_features', 'paper_settlement_pending', 'paper_attempted'}}
 
 
 def safe_value(value):
@@ -359,22 +360,16 @@ class FirebaseStore:
                 "OPEN",
 
             "last_update_at":
-                now,
+                position.get('last_update_at', now),
 
             "source":
                 "shioaji_live",
         }
 
 
-        self.live.child(
-            "open_positions"
-        ).child(
-            symbol
-        ).set(
-            safe_value(
-                payload
-            )
-        )
+        from daytrade_learning.episodes import mirror_entry
+        clean_payload = safe_value(payload)
+        self.live.transaction(lambda current: mirror_entry(current, clean_payload))
 
 
         self.live.update({
@@ -447,7 +442,7 @@ class FirebaseStore:
 
         # Price ticks must never create OPEN records: the paper BUY may still
         # be pending/skipped, or a delayed tick may arrive after EXIT.
-        trade_id = position.get("trade_id")
+        trade_id = position.get("research_trade_id") or position.get("trade_id")
         entry_time = safe_value(position.get("entry_time"))
         if not trade_id or not entry_time:
             raise ValueError("OPEN price update requires entry identity")
@@ -456,7 +451,7 @@ class FirebaseStore:
             if not isinstance(current, dict):
                 return current
             if (current.get("status") != "OPEN"
-                    or current.get("trade_id") != trade_id
+                    or (current.get("research_trade_id") or current.get("trade_id")) != trade_id
                     or current.get("entry_time") != entry_time):
                 return current
             return {**current, **clean_payload}
@@ -508,14 +503,13 @@ class FirebaseStore:
             )
 
 
-        trade_id = str(trade.get('trade_id') or f"{stamp}_{symbol}")
+        trade_id = str(trade.get('research_trade_id') or trade.get('trade_id') or f"{stamp}_{symbol}")
 
 
         payload = {
             **public_trade(trade),
 
-            "trade_id":
-                trade_id,
+            "trade_id": trade.get('trade_id'),
 
             "status":
                 "CLOSED",
@@ -525,10 +519,9 @@ class FirebaseStore:
         }
 
 
-        self.live.update({
-            "open_positions/" + symbol: None,
-            "closed_trades/" + trade_id: safe_value(payload),
-        })
+        from daytrade_learning.episodes import mirror_exit
+        clean_payload = safe_value(payload)
+        self.live.transaction(lambda current: mirror_exit(current, clean_payload, trade_id))
 
         now = self.now()
 

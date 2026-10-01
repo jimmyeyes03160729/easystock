@@ -134,9 +134,9 @@ def event(con, stamp, symbol, name, price, action, reason):
        symbol, name, float(price), action, reason, time.time()))
 
 
-def skipped(con, stamp, symbol, name, price, reason):
+def skipped(con, stamp, symbol, name, price, reason, skip_reason=None):
     event(con, stamp, symbol, name, price, '略過', reason)
-    return {'status':'skipped', 'reason':reason, 'shares':0}
+    return {'status':'skipped', 'reason':reason, 'shares':0, 'skip_reason': skip_reason}
 
 
 def buy(symbol, name, price, path=None, timestamp=None):
@@ -147,12 +147,12 @@ def buy(symbol, name, price, path=None, timestamp=None):
     with transaction(path) as con:
         pid, acct = period(con), account(con)
         if acct['status'] != 'running':
-            return skipped(con, stamp, symbol, name, price, '模擬帳戶已暫停')
+            return skipped(con, stamp, symbol, name, price, '模擬帳戶已暫停', skip_reason='stopped')
         if con.execute('SELECT 1 FROM paper_trade_positions WHERE symbol=?', (symbol,)).fetchone():
-            return skipped(con, stamp, symbol, name, price, '本期此檔已持倉，禁止覆蓋原部位')
+            return skipped(con, stamp, symbol, name, price, '本期此檔已持倉，禁止覆蓋原部位', skip_reason='already_open')
         stale = con.execute('SELECT symbol FROM paper_trade_positions WHERE period_id IS NULL OR period_id!=? OR entry_date IS NULL OR entry_date!=?', (pid, stamp.date().isoformat())).fetchall()
         if stale:
-            return skipped(con, stamp, symbol, name, price, '存在跨日未結部位，禁止新增模擬買進')
+            return skipped(con, stamp, symbol, name, price, '存在跨日未結部位，禁止新增模擬買進', skip_reason='stale_position')
         cash = money(acct['current_capital'])
         max_budget = cash * Decimal('0.8')
         shares = int(max_budget // (price * LOT)) * LOT
@@ -164,7 +164,8 @@ def buy(symbol, name, price, path=None, timestamp=None):
             shares -= LOT
         if shares <= 0:
             return skipped(con, stamp, symbol, name, price,
-                           f'可用現金 {cash:,.2f} 元不足以支付一張買進成本與手續費（單檔上限八成）')
+                           f'可用現金 {cash:,.2f} 元不足以支付一張買進成本與手續費（單檔上限八成）',
+                           skip_reason='insufficient_cash')
         trade_id = uuid.uuid4().hex
         after = money(cash - gross - buy_fee)
         con.execute('''INSERT INTO paper_trade_positions(symbol,name,entry_price,shares,entry_time,period_id,entry_date,buy_fee)

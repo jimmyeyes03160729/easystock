@@ -1,6 +1,6 @@
 import ast,copy,unittest
 from pathlib import Path
-source=Path(__file__).with_name('firebase_store.py').read_text(encoding='utf-8')
+source=(Path(__file__).resolve().parents[2]/'firebase_store.py').read_text(encoding='utf-8')
 tree=ast.parse(source)
 cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='FirebaseStore')
 method=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='update_position')

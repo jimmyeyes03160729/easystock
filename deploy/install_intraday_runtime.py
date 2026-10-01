@@ -30,6 +30,7 @@ FILES = [
     "daytrade_learning/research.py",
     "position_manager.py",
     "daytrade_learning/runtime.py",
+    "daytrade_learning/episodes.py",
     "daytrade_learning/model_runtime.py",
     "learning_status.py",
     "learning_cycle.py",

@@ -58,12 +58,21 @@ run(main);w.onload=null;
     schema_version:1,updated_at:new Date().toISOString(),phase:'idle',
     model_application:{status:'not_applied',model_version:'paper-adaptive-2026-09-10-old'},
     paper_learning:{training:{trained_through:'2026-09-10',train_samples:100}}
+    ,research_summary:{date:'2026-10-01',trades:{research_trades:2,research_closed:2,paper_filled:1,
+      paper_skipped:1,paper_skipped_insufficient_cash:1,wins:1,losses:1,net_pnl_pct:.2,gross_pnl_pct:.5,
+      avg_pnl_pct:.25,avg_mfe_pct:1.5,avg_mae_pct:-.4,exit_reasons:{'固定停損':1,'固定停利':1}}}
   }:null});
   for(const file of ['learning-status.js','rebound-engine.js','rebound-ui.js','dashboard-layout.js'])
     run(fs.readFileSync(path.join(__dirname,'../assets',file),'utf8'));
   await new Promise(resolve=>setImmediate(resolve));
    assert(w.document.getElementById('learnModel').textContent.includes('UNKNOWN'));
    assert(!w.document.getElementById('learnModel').textContent.includes('採用'));
+  assert(w.document.getElementById('researchTrades').textContent.includes('2'));
+  assert(w.document.getElementById('researchClosed').textContent.includes('2'));
+  assert(w.document.getElementById('researchPaperFilled').textContent.includes('1'));
+  assert(w.document.getElementById('researchPaperCash').textContent.includes('1'));
+  assert(w.document.getElementById('researchPnl').textContent.includes('+0.20%'));
+  assert(w.document.getElementById('researchMfe').textContent.includes('+1.50%'));
   assert(w.document.getElementById('intradayModelBadge').textContent.includes('規則模式'));
   assert.equal(run('renderLinePickList'),renderer);
   assert(!w.document.getElementById('overnightModule'));

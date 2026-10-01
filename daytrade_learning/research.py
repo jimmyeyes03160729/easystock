@@ -352,12 +352,22 @@ def build(data, day, costs, persist_report=True):
             labeled.append(row);next_free[s['symbol']]=dt(row['exit_at'])+timedelta(minutes=1)
         else:missing[why]+=1
     actual=[r['data'] for r in obs if r.get('kind')=='exit']
+    from .episodes import read_trades
+    accepted = []
+    if (data / 'research.sqlite').exists():
+        accepted = read_trades(data / 'research.sqlite', day)
+        actual = [r for r in accepted if r['status'] == 'CLOSED']
     result={'version':'research2','date':day,'status':'ready' if samples else 'no_live_samples',
         'sample_count':len(seen),'bars_symbols':len(packs),'labeled_count':len(labeled),
         'excluded':dict(missing),'corrupt_journal_lines':corrupt,
         'journal_health':[r['data'] for r in obs if r.get('kind')=='health'],
         'surges':discover(packs),'simulation':metrics([r['net_return_pct'] for r in labeled]),
-        'existing_signal_tracking':{'closed_count':len(actual),'gross':metrics([finite(r['pnl_pct']) for r in actual if r.get('pnl_pct') is not None])},
+        'existing_signal_tracking':{'source':'research_store' if (data/'research.sqlite').exists() else 'legacy_journal',
+            'accepted_count':len(accepted) if accepted else len(actual),
+            'closed_count':len(actual),'gross':metrics([finite(r['pnl_pct']) for r in actual if r.get('pnl_pct') is not None]),
+            'net':metrics([finite(r['research_net_pnl_pct']) for r in actual if r.get('research_net_pnl_pct') is not None]),
+            'paper_filled':sum(r.get('paper_execution')=='FILLED' for r in accepted),
+            'paper_skipped_insufficient_cash':sum(r.get('paper_skip_reason')=='insufficient_cash' for r in accepted)},
         'cost_assumptions':costs,
         'limitations':['Only observed pool has point-in-time samples; post-close additional movers have no fabricated samples',
             'Labels share the live stop, take, breakeven, trailing and 12:55 price exits; minute bars cannot reconstruct tick order or technical exits',

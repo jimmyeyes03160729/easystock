@@ -127,3 +127,19 @@ def open_positions():
     with closing(sqlite3.connect(db_path(),timeout=5)) as db:
         rows = db.execute('SELECT p.symbol,p.name,p.entry_price,p.shares,p.entry_time,m.value FROM paper_trade_positions p LEFT JOIN meta m ON m.key=\'paper-position:\'||p.symbol').fetchall()
         return [dict(zip(('symbol','name','entry_price','shares','entry_time','trade_id'),r)) for r in rows]
+
+
+def daily_bought_symbols(day):
+    """Read paper policy history from its ledger, independent of Firebase mirrors."""
+    path = db_path().resolve()
+    with closing(sqlite3.connect(path.as_uri()+'?mode=ro', uri=True)) as db:
+        return {str(row[0]) for row in db.execute(
+            "SELECT DISTINCT symbol FROM paper_trade_events WHERE date=? AND action='買進'", (day,))}
+
+
+def settlement_receipt(trade_id):
+    """Read existing settlement evidence; never write or settle a position."""
+    path = db_path().resolve()
+    with closing(sqlite3.connect(path.as_uri()+'?mode=ro', uri=True)) as db:
+        row = db.execute('SELECT value FROM meta WHERE key=?', ('paper-settlement:'+str(trade_id),)).fetchone()
+        return json.loads(row[0]) if row else None

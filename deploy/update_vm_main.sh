@@ -51,11 +51,16 @@ git bundle create "$backup/repo-before.bundle" --all
 python3 - "$backup" <<'PY'
 from contextlib import closing
 from pathlib import Path
+import os
 import shutil,sqlite3,subprocess,sys
 backup=Path(sys.argv[1])
 source=Path('/home/ubuntu/easystock-admin/state.sqlite')
 with closing(sqlite3.connect(source.as_uri()+'?mode=ro',uri=True)) as src, closing(sqlite3.connect(backup/'state-before.sqlite')) as dst:
     src.backup(dst)
+research_source = Path(os.environ.get('LEARNING_DATA_DIR', '/home/ubuntu/easystock-learning-data'))/'research.sqlite'
+if research_source.exists():
+    with closing(sqlite3.connect(research_source.resolve().as_uri()+'?mode=ro',uri=True)) as src, closing(sqlite3.connect(backup/'research-before.sqlite')) as dst:
+        src.backup(dst)
 # Preserve locally installed, untracked modules before Git starts tracking them.
 paths=subprocess.check_output(['git','ls-tree','-rz','--name-only','origin/main']).decode().split('\0')
 for rel in filter(None,paths):
@@ -88,6 +93,8 @@ cat > release-info.json <<EOF
 EOF
 chmod 600 release-info.json
 .venv/bin/python3 vm_runtime/tests/test_cash_ledger.py -q
+.venv/bin/python3 deploy/verify_research_episodes.py
+.venv/bin/python3 tests/test_market_risk_gate.py -q
 .venv/bin/python3 vm_runtime/tests/test_runtime_safety.py -q
 .venv/bin/python3 history/test_daily_history.py -q
 .venv/bin/python3 tests/test_paper_legacy.py -q

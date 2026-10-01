@@ -167,9 +167,11 @@ class EngineTests(unittest.TestCase):
             in_entry_window=lambda _:True,now_tpe=lambda:NOW,MAX_DAILY_ENTRIES=5,
             live_features=Mock(return_value=dict.fromkeys(FEATURES,1)),
             read_live_settings=lambda:dict(min_price=1,max_price=200,max_gain_pct=5),
+            call_manager_strategy_result=lambda **kw: kw['manager'].on_strategy_result(kw['symbol'], kw['result'], kw['dt']),
+            is_exit_event=lambda event: isinstance(event, dict) and event.get('type') == 'EXIT',
             push_line_text=Mock(),format_entry_message=Mock(return_value='entry'))
         exec(compile(ast.Module(body=[method],type_ignores=[]),'<engine>','exec'),self.ns)
-        self.manager=PositionManager(before_open=Mock(return_value=dict(status='insufficient_cash',shares=0)))
+        self.manager=PositionManager(research_mode=True, before_open=Mock(return_value=dict(status='insufficient_cash',shares=0)))
         self.engine=types.SimpleNamespace(bars=types.SimpleNamespace(rows5=lambda _: [{}],rows15=lambda _:[{}]),
             candidates={'TEST':{}},market_level='GREEN',market_valid_until=NOW.timestamp()+30,
             entry_mode='rules',collect_only=False,last_prices={'TEST':100},manager=self.manager,scanner_top_symbols={'TEST'},
@@ -179,12 +181,37 @@ class EngineTests(unittest.TestCase):
 
     def run_engine(self):self.ns['evaluate_symbol'](self.engine,'TEST',NOW)
 
-    def test_insufficient_cash_does_not_record_or_publish_entry(self):
+    def test_insufficient_cash_records_research_without_paper_fill(self):
         self.run_engine()
-        self.engine.learning.entry.assert_not_called()
-        self.engine.store.write_entry.assert_not_called()
+        self.engine.learning.entry.assert_called_once()
+        self.engine.store.write_entry.assert_called_once()
+        p = self.engine.learning.entry.call_args.args[0]['position']
+        self.assertEqual(p['paper_execution'], 'SKIPPED')
+        self.assertEqual(p['paper_skip_reason'], 'insufficient_cash')
+        self.assertIsNone(p['paper_trade_id'])
         self.ns['push_line_text'].assert_not_called()
         self.assertFalse(self.engine.entry_symbols)
+
+    def test_repeated_accepted_setup_cannot_repeat_paper_skip(self):
+        self.run_engine()
+        self.ns['call_manager_strategy_result'] = lambda **kw: None
+        self.ns['is_exit_event'] = lambda _: False
+        for _ in range(20):
+            self.run_engine()
+        self.manager.before_open.assert_called_once()
+        self.engine.learning.entry.assert_called_once()
+
+    def test_strategy_veto_and_user_price_limit_block_research(self):
+        self.engine.entry_mode='model'
+        self.ns['evaluate_daytrade'].return_value['vetoes']=['跌破VWAP']
+        self.run_engine()
+        self.assertFalse(self.manager.positions)
+        self.ns['evaluate_daytrade'].return_value['vetoes']=[]
+        self.engine.entry_mode='rules'
+        self.ns['read_live_settings']=lambda:dict(min_price=1,max_price=90,max_gain_pct=5)
+        self.run_engine()
+        self.assertFalse(self.manager.positions)
+        self.manager.before_open.assert_not_called()
 
     def test_model_mode_never_falls_back_to_rules(self):
         self.engine.entry_mode='model';self.run_engine()

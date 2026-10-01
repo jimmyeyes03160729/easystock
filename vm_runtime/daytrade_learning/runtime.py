@@ -77,11 +77,11 @@ class Recorder:
 
     def entry(self, event):
         p=event.get('position',{})
-        self.submit('entry',{k:p.get(k) for k in ('symbol','name','trade_id','execution_kind','shares','entry_time','entry_price','entry_score','stop_price','take_profit_price','decision_mode','model_version','model_artifact_sha256','model_score','model_threshold')})
+        self.submit('entry', p)
 
     def exit(self, event):
         p=event.get('trade',{})
-        self.submit('exit',{k:p.get(k) for k in ('symbol','name','trade_id','execution_kind','shares','settlement','entry_time','entry_price','exit_time','exit_price','exit_reason','pnl_pct')})
+        self.submit('exit', p)
 
     def close(self):
         if not self.thread:
