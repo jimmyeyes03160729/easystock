@@ -74,10 +74,10 @@ class RiskTests(unittest.TestCase):
 
     def test_live_index_stale_future_missing_and_crash(self):
         for seconds in (-91,1):
-            q=dict(ts=(NOW.timestamp()+seconds)*1e9,change_rate=0)
+            q=dict(ts=(NOW.replace(tzinfo=timezone.utc).timestamp()+seconds)*1e9,change_rate=0)
             self.assertFalse(snapshot_risk(q,NOW)['valid'])
         self.assertFalse(snapshot_risk({},NOW)['valid'])
-        q=dict(ts=NOW.timestamp()*1e9,change_rate=-2.1)
+        q=dict(ts=NOW.replace(tzinfo=timezone.utc).timestamp()*1e9,change_rate=-2.1)
         self.assertEqual(combine('GREEN',snapshot_risk(q,NOW)['level']),'RED')
 
 
@@ -208,9 +208,37 @@ class EngineTests(unittest.TestCase):
         self.engine.daytrade_model=Mock(evaluate=Mock(return_value=dict(active=True,evaluated=True,approved=True,accepted=True,probability=.8,threshold=.6,model_version='test')))
         self.ns['evaluate_daytrade'].return_value.update(eligible=False,daytrade_score=10)
         self.run_engine();self.manager.before_open.assert_called_once()
+        self.engine.daytrade_model.evaluate.assert_called_once()
         self.manager.before_open.reset_mock()
         self.ns['evaluate_daytrade'].return_value['vetoes']=['市場紅燈']
         self.run_engine();self.manager.before_open.assert_not_called()
+
+    def test_rules_mode_still_requires_rule_eligibility(self):
+        self.engine.entry_mode='rules'
+        self.ns['evaluate_daytrade'].return_value.update(eligible=False,daytrade_score=61)
+        self.run_engine()
+        self.manager.before_open.assert_not_called()
+        self.engine.daytrade_model = Mock()
+        self.run_engine()
+        self.engine.daytrade_model.evaluate.assert_not_called()
+
+    def test_low_rule_score_reaches_model_and_logs_rejection(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        self.engine.entry_mode='model'
+        self.ns['evaluate_daytrade'].return_value.update(eligible=False,daytrade_score=61)
+        self.engine.daytrade_model=Mock(evaluate=Mock(return_value=dict(active=True,
+            evaluated=True,approved=True,accepted=False,probability=.59,threshold=.6,
+            reason='evaluated',model_version='fixture')))
+        output=StringIO()
+        with redirect_stdout(output):
+            self.run_engine()
+        self.engine.daytrade_model.evaluate.assert_called_once()
+        self.manager.before_open.assert_not_called()
+        self.assertIn('[MODEL_DECISION]',output.getvalue())
+        self.assertIn('rule_eligible=False',output.getvalue())
+        self.assertIn('accepted=False',output.getvalue())
+        self.assertNotIn('[ENTRY_DECISION]',output.getvalue())
 
     def test_unknown_market_blocks_before_model_evaluation(self):
         self.engine.entry_mode='model'

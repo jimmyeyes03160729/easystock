@@ -32,7 +32,11 @@ def snapshot_risk(snapshot, now, *, source='shioaji', max_age=90, yellow_pct=-1.
         if ts is not None:
             ts = float(ts)
             divisor = 1e9 if abs(ts) >= 1e17 else 1e6 if abs(ts) >= 1e14 else 1e3 if abs(ts) >= 1e11 else 1
-            observed = datetime.fromtimestamp(ts / divisor, timezone.utc).astimezone(TPE)
+            clock = datetime.fromtimestamp(ts / divisor, timezone.utc)
+            # Shioaji numeric ts encodes exchange-local clock time, like Kbars.
+            # Attach Taipei once; other providers retain Unix epoch semantics.
+            observed = (clock.replace(tzinfo=TPE) if source == 'shioaji'
+                        else clock.astimezone(TPE))
         else:
             observed = datetime.fromisoformat(str(get('datetime')))
             if observed.tzinfo is None:

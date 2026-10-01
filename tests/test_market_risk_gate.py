@@ -19,7 +19,9 @@ def brief(level='GREEN', day='2026-09-30'):
 
 
 def quote(source, change=0, seconds=0, now=NOW):
-    return RISK.snapshot_risk({'ts': (now + timedelta(seconds=seconds)).timestamp() * 1000,
+    observed = now + timedelta(seconds=seconds)
+    encoded = observed.replace(tzinfo=timezone.utc) if source == 'shioaji' else observed
+    return RISK.snapshot_risk({'ts': encoded.timestamp() * 1000,
                                'change_rate': change}, now, source=source)
 
 
@@ -105,6 +107,28 @@ class MarketRiskGateTests(unittest.TestCase):
             {'shioaji': quote('shioaji', change=-2.1), 'esun': quote('esun')}, NOW)
         self.assertEqual(gate['market_risk'], 'RED')
         self.assertEqual(gate['selected_source'],'shioaji')
+
+    def test_shioaji_clock_is_not_shifted_eight_hours(self):
+        clock = datetime(2026, 10, 1, 10, 29, 35, tzinfo=timezone.utc)
+        current = clock.replace(tzinfo=RISK.TPE) + timedelta(seconds=5)
+        for unit in (1, 1000, 1000000, 1000000000):
+            with self.subTest(unit=unit):
+                row = RISK.snapshot_risk({'ts': clock.timestamp()*unit,
+                                          'change_rate': 0}, current)
+                self.assertTrue(row['valid'])
+                self.assertEqual(row['observed_at'], '2026-10-01T10:29:35+08:00')
+                self.assertEqual(row['age_seconds'], 5)
+
+    def test_aware_and_naive_exchange_datetimes(self):
+        for value in ('2026-09-30T10:00:00', '2026-09-30T02:00:00+00:00'):
+            row = RISK.snapshot_risk({'datetime': value, 'change_rate': 0}, NOW)
+            self.assertTrue(row['valid'])
+            self.assertEqual(row['observed_at'], NOW.isoformat())
+
+    def test_esun_numeric_ts_remains_unix_epoch(self):
+        row = quote('esun')
+        self.assertTrue(row['valid'])
+        self.assertEqual(row['observed_at'], NOW.isoformat())
 
     def test_modern_shioaji_index_contract_is_preferred(self):
         from market_data.shioaji import taiex_contract

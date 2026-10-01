@@ -34,6 +34,7 @@ jobs:
       - run: python tests/test_premarket_entry.py
       - run: python vm_runtime/tests/test_cash_ledger.py
       - run: python history/test_daily_history.py
+      - run: python tests/test_market_risk_gate.py
       - run: python vm_runtime/tests/test_runtime_safety.py
       - run: bash -n deploy/switch_vm_runtime.sh
       - run: python vm_runtime/daytrade_learning/test_integration.py

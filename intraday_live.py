@@ -3997,7 +3997,7 @@ class IntradayLiveEngine:
             f"{symbol} "
             f"price={price:.2f} "
             f"score={score} "
-            f"eligible={eligible} "
+            f"eligible={eligible} mode={self.entry_mode} "
             f"veto={','.join(map(str, vetoes)) or '-'}"
         )
 
@@ -4082,6 +4082,16 @@ class IntradayLiveEngine:
         model_decision = self.daytrade_model.evaluate(feature_row or {})
         model_reason = None
         if self.entry_mode == 'model':
+            # Log evaluation before a rejection; ENTRY_DECISION is fill evidence.
+            print(f"[MODEL_DECISION] symbol={symbol} rule_eligible={eligible} "
+                  f"active={model_decision.get('active')} "
+                  f"evaluated={model_decision.get('evaluated')} "
+                  f"approved={model_decision.get('approved')} "
+                  f"accepted={model_decision.get('accepted')} "
+                  f"probability={model_decision.get('probability')} "
+                  f"threshold={model_decision.get('threshold')} "
+                  f"reason={model_decision.get('reason')} "
+                  f"version={model_decision.get('model_version')}")
             if not (model_decision.get('active') and model_decision.get('evaluated')
                     and model_decision.get('approved') and model_decision.get('accepted')):
                 return
