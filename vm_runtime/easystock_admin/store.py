@@ -100,20 +100,16 @@ class Store:
             CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,csrf TEXT NOT NULL,expires REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS challenges(token TEXT PRIMARY KEY,nonce TEXT NOT NULL,expires REAL NOT NULL);
-            CREATE TABLE IF NOT EXISTS binds(code TEXT PRIMARY KEY,expires REAL NOT NULL);
-            CREATE TABLE IF NOT EXISTS receipts(event TEXT PRIMARY KEY,body TEXT NOT NULL,created REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS rate_limits(key TEXT PRIMARY KEY,start REAL NOT NULL,n INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,at REAL NOT NULL,actor TEXT NOT NULL,action TEXT NOT NULL,body TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS paper_trade_settings(id INTEGER PRIMARY KEY CHECK(id=1),initial_capital REAL NOT NULL,current_capital REAL NOT NULL,status TEXT NOT NULL,start_date TEXT NOT NULL,updated_at REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS paper_trade_logs(date TEXT PRIMARY KEY,start_balance REAL NOT NULL,end_balance REAL NOT NULL,net_pnl REAL NOT NULL,symbols TEXT NOT NULL,costs REAL NOT NULL,trades_count INTEGER NOT NULL,created_at REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS paper_trade_positions(symbol TEXT PRIMARY KEY,name TEXT NOT NULL,entry_price REAL NOT NULL,shares INTEGER NOT NULL,entry_time TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS paper_trade_events(id INTEGER PRIMARY KEY AUTOINCREMENT,date TEXT NOT NULL,time_str TEXT NOT NULL,symbol TEXT NOT NULL,name TEXT NOT NULL,price REAL NOT NULL,action TEXT NOT NULL,reason TEXT NOT NULL,created_at REAL NOT NULL);
-            CREATE TABLE IF NOT EXISTS bot_policy(id INTEGER PRIMARY KEY CHECK(id=1),auto_reply_on_follow INTEGER NOT NULL DEFAULT 1,private_replies INTEGER NOT NULL DEFAULT 1,version INTEGER NOT NULL DEFAULT 1);
             CREATE TABLE IF NOT EXISTS pipeline_settings(id INTEGER PRIMARY KEY CHECK(id=1),body TEXT NOT NULL,version INTEGER NOT NULL,updated REAL NOT NULL);
-            INSERT OR IGNORE INTO bot_policy(id, auto_reply_on_follow, private_replies, version) VALUES(1, 1, 1, 1);
             ''')
-            from .conversations import initialize
-            initialize(db)
+            from .notifications import initialize as initialize_notifications
+            initialize_notifications(db)
             if not db.execute('SELECT 1 FROM settings WHERE id=1').fetchone():
                 db.execute('INSERT OR IGNORE INTO settings VALUES(1,?,1,?)', (json.dumps(validate(initial) if initial is not None else defaults()), time.time()))
             if not db.execute('SELECT 1 FROM pipeline_settings WHERE id=1').fetchone():
@@ -171,50 +167,6 @@ class Store:
             db.execute('UPDATE pipeline_settings SET body=?,version=version+1,updated=? WHERE id=1', (json.dumps(value), time.time()))
             self._audit(db, 'google', 'pipeline_settings', {'before': previous, 'after': value})
         return self.get_pipeline_settings()
-
-    def get_bot_policy(self) -> dict:
-        with self.tx() as db:
-            row = db.execute('SELECT auto_reply_on_follow, private_replies, version FROM bot_policy WHERE id=1').fetchone()
-            if not row:
-                db.execute('INSERT OR IGNORE INTO bot_policy(id, auto_reply_on_follow, private_replies, version) VALUES(1, 1, 1, 1)')
-                row = (1, 1, 1)
-            return {
-                'auto_reply_on_follow': bool(row[0]),
-                'private_replies': bool(row[1]),
-                'version': int(row[2]),
-            }
-
-    def update_bot_policy(self, auto_reply_on_follow: bool, private_replies: bool = True, version: int | None = None) -> dict:
-        with self.tx() as db:
-            row = db.execute('SELECT version FROM bot_policy WHERE id=1').fetchone()
-            curr_ver = int(row[0]) if row else 1
-            if version is not None and curr_ver != version:
-                raise Conflict('機器人設定已被變更，請重新載入。')
-            db.execute(
-                'UPDATE bot_policy SET auto_reply_on_follow=?, private_replies=?, version=version+1 WHERE id=1',
-                (1 if auto_reply_on_follow else 0, 1 if private_replies else 0)
-            )
-            self._audit(db, 'google', 'bot_policy', {
-                'auto_reply_on_follow': bool(auto_reply_on_follow),
-                'private_replies': bool(private_replies),
-            })
-        return self.get_bot_policy()
-
-    def is_auto_reply_on_follow_enabled(self) -> bool:
-        try:
-            with self.tx() as db:
-                row = db.execute('SELECT auto_reply_on_follow FROM bot_policy WHERE id=1').fetchone()
-                return bool(row[0]) if row else True
-        except Exception:
-            return True
-
-    def is_private_replies_enabled(self) -> bool:
-        try:
-            with self.tx() as db:
-                row = db.execute('SELECT private_replies FROM bot_policy WHERE id=1').fetchone()
-                return bool(row[0]) if row else True
-        except Exception:
-            return True
 
     def get_paper_trade(self):
         with self.tx() as db:
@@ -280,9 +232,8 @@ class Store:
         with self.tx() as db:
             self._limit(db, 'google-challenge', 60)
             now = time.time()
-            for table in ('sessions', 'challenges', 'binds'):
+            for table in ('sessions', 'challenges'):
                 db.execute('DELETE FROM ' + table + ' WHERE expires<?', (now,))
-            db.execute('DELETE FROM receipts WHERE created<?', (now - 7 * 86400,))
             db.execute('DELETE FROM rate_limits WHERE start<?', (now - 86400,))
             db.execute('INSERT INTO challenges VALUES(?,?,?)', (digest(cookie), nonce, now + 300))
         return cookie, nonce
@@ -323,60 +274,6 @@ class Store:
     def logout(self, token):
         with self.tx() as db:
             db.execute('DELETE FROM sessions WHERE token=?', (digest(token),))
-
-    def bind_code(self):
-        code = secrets.token_hex(16).upper()
-        with self.tx() as db:
-            db.execute('DELETE FROM binds')
-            db.execute('INSERT INTO binds VALUES(?,?)', (digest(code), time.time() + 300))
-        return code
-
-    def linked(self):
-        with self.tx() as db:
-            row = db.execute("SELECT value FROM meta WHERE key='line_user'").fetchone()
-        return bool(row)
-
-    def unlink(self):
-        with self.tx() as db:
-            db.execute("DELETE FROM meta WHERE key='line_user'")
-            db.execute('DELETE FROM binds')
-            self._audit(db, 'google', 'unlink', {})
-
-    def line(self, uid, event, action, value=None):
-        if not uid or not event:
-            raise Denied('無法確認 LINE 身分或訊息編號。')
-        key = digest(uid + ':' + event)
-        with self.tx() as db:
-            self._limit(db, 'line:' + digest(uid), 12)
-        with self.tx() as db:
-            old = db.execute('SELECT body FROM receipts WHERE event=?', (key,)).fetchone()
-            if old:
-                return old[0]
-            actor = db.execute("SELECT value FROM meta WHERE key='line_user'").fetchone()
-            if action == 'bind':
-                row = db.execute('SELECT expires FROM binds WHERE code=?', (digest(value),)).fetchone()
-                if not row or row[0] < time.time():
-                    raise Denied('綁定碼無效或已過期，請回後台重新產生。')
-                db.execute('DELETE FROM binds')
-                db.execute("INSERT OR REPLACE INTO meta VALUES('line_user',?)", (uid,))
-                self._audit(db, 'line', 'bind', {})
-                reply = '管理員 LINE 已綁定。輸入「當沖設定」查看設定。'
-            else:
-                if not actor or not hmac.compare_digest(actor[0], uid):
-                    raise Denied('請先在 Google 後台綁定你的 LINE。')
-                state = self._state(db)
-                if action == 'update':
-                    fields = validate({**state['values'], **value})
-                    db.execute('UPDATE settings SET body=?,version=version+1,updated=? WHERE id=1', (json.dumps(fields), time.time()))
-                    self._audit(db, 'line', 'settings', {'before': state['values'], 'after': fields})
-                    state = self._state(db)
-                fields = state['values']
-                reply = (f"當沖設定（版本 {state['version']}）\n最低股價：{fields['min_price']:g} 元\n最高股價：{fields['max_price']:g} 元\n"
-                         f"推薦當下漲幅上限：{fields['max_gain_pct']:g}%\n推薦檔數上限：{fields['max_recommendations']} 檔\n\n"
-                         "修改範例：\n當沖設定 最高股價 100\n當沖設定 最低股價 20\n當沖設定 漲幅上限 5\n當沖設定 推薦檔數 10\n\n新推薦與LINE發送前會讀取最新設定；既有訊號繼續追蹤。")
-            db.execute('INSERT INTO receipts VALUES(?,?,?)', (key, reply, time.time()))
-            return reply
-
 
 def read_live_settings():
     path = db_path()

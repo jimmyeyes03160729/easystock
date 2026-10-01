@@ -36,6 +36,14 @@ FILES = [
     "learning_cycle.py",
     "learning_eod.py",
     "easystock_admin/store.py",
+    "easystock_admin/notifications.py",
+    "easystock_admin/web.py",
+    "easystock_admin/static/index.html",
+    "easystock_admin/static/admin.js",
+    "trade_notifications.py",
+    "daytrade_summary_push.py",
+    "line_bot.py",
+    "line_stock_bot.py",
 ]
 
 CORE_SERVICES = [

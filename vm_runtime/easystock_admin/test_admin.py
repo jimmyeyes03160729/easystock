@@ -16,8 +16,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 os.environ['ADMIN_OWNER_EMAIL']='owner@example.test'
 from easystock_admin.store import Store,Denied,Conflict,validate,read_live_settings,OWNER
-from easystock_admin.line import handle_admin_command
-INITIAL={'min_price':20,'max_price':100,'max_gain_pct':5}
+INITIAL={'min_price':20,'max_price':100,'max_gain_pct':5,'max_recommendations':30}
 ORIGIN='https://admin.example.com'
 CLIENT='123456-test.apps.googleusercontent.com'
 
@@ -48,27 +47,9 @@ class StoreTests(unittest.TestCase):
         self.s.update({**INITIAL,'max_price':80},1)
         with self.assertRaises(Conflict):self.s.update({**INITIAL,'max_price':90},1)
         self.assertEqual(self.s.get()['values']['max_price'],80)
-    def test_only_three_fields_and_valid_ranges(self):
-        for values in ({**INITIAL,'stop_loss':1},{**INITIAL,'min_price':101},{**INITIAL,'max_price':True},{**INITIAL,'max_gain_pct':float('nan')},{**INITIAL,'max_gain_pct':1.123}):
+    def test_only_allowed_fields_and_valid_ranges(self):
+        for values in ({**INITIAL,'stop_loss':1},{**INITIAL,'min_price':101},{**INITIAL,'max_price':True},{**INITIAL,'max_gain_pct':float('nan')},{**INITIAL,'max_gain_pct':1.123},{**INITIAL,'max_recommendations':31},{**INITIAL,'max_recommendations':2.5}):
             with self.assertRaises(ValueError):validate(values)
-    def test_line_binding_one_use_and_revocation(self):
-        code=self.s.bind_code();self.s.line('user1','e1','bind',code)
-        with self.assertRaises(Denied):self.s.line('user2','e2','bind',code)
-        self.s.unlink()
-        with self.assertRaises(Denied):self.s.line('user1','e3','update',{'max_price':90})
-    def test_line_denied_unbound(self):
-        with self.assertRaises(Denied):self.s.line('attacker','e1','update',{'max_price':90})
-        self.assertEqual(self.s.get()['version'],1)
-    def test_line_redelivery_does_not_reapply_after_web_edit(self):
-        code=self.s.bind_code();self.s.line('u','bind1','bind',code)
-        self.s.line('u','edit1','update',{'max_price':90})
-        self.s.update({**INITIAL,'max_price':80},2)
-        self.s.line('u','edit1','update',{'max_price':90})
-        self.assertEqual(self.s.get()['values']['max_price'],80);self.assertEqual(self.s.get()['version'],3)
-    def test_group_binding_denied(self):
-        code=self.s.bind_code()
-        reply=handle_admin_command('綁定管理員 '+code,{'type':'group','userId':'u'},'e',self.s)
-        self.assertIn('私訊',reply);self.assertFalse(self.s.linked())
     def test_live_settings_reads_changes_without_restart(self):
         with patch.dict(os.environ,{'EASYSTOCK_ADMIN_DB':str(self.path)}):
             self.assertEqual(read_live_settings()['max_price'],100)
@@ -77,6 +58,148 @@ class StoreTests(unittest.TestCase):
     def test_missing_database_fails_closed(self):
         with patch.dict(os.environ,{'EASYSTOCK_ADMIN_DB':str(self.path.parent/'missing.sqlite')}):
             with self.assertRaises(sqlite3.Error):read_live_settings()
+
+    def test_health_reads_nested_paper_trade_settings(self):
+        from easystock_admin.health import snapshot
+        with patch.dict(os.environ, {'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'), 'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history')}):
+            result = snapshot(self.s)
+        paper = next(row for row in result['signals'] if row['key'] == 'paper_trade')
+        self.assertEqual(paper['state'], 'idle')
+        self.s.start_paper_trade(200000)
+        with patch.dict(os.environ, {'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'), 'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history')}):
+            result = snapshot(self.s)
+        paper = next(row for row in result['signals'] if row['key'] == 'paper_trade')
+        self.assertEqual(paper['state'], 'ok')
+        self.assertEqual(paper['metrics']['current_capital'], 200000)
+
+    def test_health_reports_unidentified_deployment_as_warning(self):
+        from easystock_admin.health import snapshot
+        with patch.dict(os.environ, {
+            'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'),
+            'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history'),
+            'EASYSTOCK_RELEASE_FILE': str(self.path.parent/'missing-release.json'),
+        }, clear=False):
+            for key in ('EASYSTOCK_RELEASE_ID', 'EASYSTOCK_SOURCE_COMMIT'):
+                os.environ.pop(key, None)
+            result = snapshot(self.s)
+        signal = next(row for row in result['signals'] if row['key'] == 'deployment_release')
+        self.assertEqual(signal['state'], 'warning')
+        self.assertIn('不能確認', signal['detail'])
+
+    def test_stale_runtime_is_warning_after_market_close(self):
+        from easystock_admin.health import snapshot
+        with patch('easystock_admin.health._market_session', return_value={
+            'key': 'market_session', 'label': '當沖時段', 'state': 'idle', 'detail': '已收盤',
+            'metrics': {},
+        }), patch.dict(os.environ, {
+            'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'),
+            'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history'),
+        }):
+            learning = self.path.parent/'learning'; models = learning/'models'; models.mkdir(parents=True)
+            (models/'runtime-model-status.json').write_text(json.dumps({
+                'reported_at': '2026-09-29T19:00:00+08:00',
+                'entry_mode': 'model',
+                'runtime': {'artifact_sha256': 'a' * 64, 'version': 'fixture'},
+            }))
+            (models/'latest-approved.json').write_text(json.dumps({'approved': False}))
+            result = snapshot(self.s)
+        signal = next(row for row in result['signals'] if row['key'] == 'model_runtime_consistency')
+        self.assertEqual(signal['state'], 'warning')
+        self.assertIn('非盤中', signal['detail'])
+
+    def test_health_treats_auto_approved_paper_model_as_healthy(self):
+        from easystock_admin.health import snapshot
+        learning = self.path.parent/'learning'
+        models = learning/'models'; models.mkdir(parents=True)
+        (learning/'training-status.json').write_text(json.dumps({
+            'status':'auto_approved_for_paper','samples':470,'version':'research-2026-09-24'
+        }))
+        (models/'candidate-2026-09-24.json').write_text(json.dumps({'status':'candidate_only'}))
+        (models/'latest-approved.json').write_text(json.dumps({
+            'approved':True,'deployment_allowed':True,'version':'research-2026-09-24','trained_through':'2026-09-24'
+        }))
+        with patch.dict(os.environ, {'EASYSTOCK_LEARNING_DATA': str(learning), 'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history')}):
+            result = snapshot(self.s)
+        training = next(row for row in result['signals'] if row['key'] == 'daily_training')
+        candidate = next(row for row in result['signals'] if row['key'] == 'candidate_model')
+        self.assertEqual(training['state'], 'ok')
+        self.assertIn('自動核准', training['detail'])
+        self.assertEqual(candidate['state'], 'ok')
+        self.assertIn('不需人工審核', candidate['detail'])
+
+    def test_health_exposes_profile_mismatch_warning(self):
+        from easystock_admin.health import snapshot
+        learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
+        (models/'shadow-summary.json').write_text(json.dumps({'warnings':[{'type':'profile_mismatch','line':'frozen_baseline'}]}))
+        with patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning),'EASYSTOCK_HISTORY_DATA':str(self.path.parent/'history')}):
+            result=snapshot(self.s)
+        signal=next(row for row in result['signals'] if row['key']=='model_profile')
+        self.assertEqual(signal['state'],'warning');self.assertIn('frozen_baseline',signal['detail'])
+
+    def test_health_reports_model_runtime_consistency(self):
+        from easystock_admin.health import snapshot
+        learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
+        approved={'approved':True,'deployment_allowed':True,'schema_version':'daytrade-research-v1','features':['gain_pct','return_5m_pct','surge_60s','buy_ratio_60s','amount_60s'],'mean':[0]*5,'scale':[1]*5,'coef':[0]*5,'intercept':0,'threshold':.6,'version':'research-2026-09-28','trained_through':'2026-09-28','profile':'profile-a'}
+        (models/'latest-approved.json').write_text(json.dumps(approved))
+        from daytrade_learning.model_runtime import write_runtime_model_status
+        write_runtime_model_status({
+            'version':'research-2026-09-28','trained_through':'2026-09-28','profile':'profile-a','schema_version':'daytrade-research-v1',
+            'loaded_at':'2026-09-29T09:00:00+08:00','artifact_path':str(models/'latest-approved.json'),'artifact_sha256':'a'*64,
+        }, entry_mode='model', pid=1, path=models/'runtime-model-status.json')
+        dummy_market={'key':'market_session','label':'當沖時段','state':'ok','detail':'test','metrics':{}}
+        with patch('easystock_admin.health._market_session', return_value=dummy_market), patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning),'EASYSTOCK_HISTORY_DATA':str(self.path.parent/'history')}):
+            result=snapshot(self.s)
+        self.assertIn('model_runtime_consistency', result)
+        signal=next(row for row in result['signals'] if row['key']=='model_runtime_consistency')
+        self.assertEqual(signal['state'],'warning')
+        self.assertIn('不一致', signal['detail'])
+
+    def test_dashboard_has_runtime_model_section(self):
+        html=(ROOT/'easystock_admin/static/index.html').read_text(encoding='utf-8')
+        self.assertIn('runtimeModelPanel', html)
+        self.assertIn('rtVersion', html)
+        self.assertIn('apVersion', html)
+        self.assertIn('rtConsistency', html)
+        self.assertIn('rtMode', html)
+
+    def test_health_does_not_claim_resume_without_worker_status(self):
+        from easystock_admin.health import snapshot
+        history=self.path.parent/'history';history.mkdir()
+        (history/'progress.json').write_text(json.dumps({'stop_reason':'pair_limit','archived_stock_days':10,'target_stock_days':20,'failed_stock_days':0}))
+        with patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(self.path.parent/'learning'),'EASYSTOCK_HISTORY_DATA':str(history)}):
+            result=snapshot(self.s)
+        signal=next(row for row in result['signals'] if row['key']=='history_collection')
+        self.assertEqual(signal['state'],'idle');self.assertIn('無法確認',signal['detail'])
+
+    def test_model_promotion_log_is_bounded_and_whitelisted(self):
+        from easystock_admin.health import model_promotion_log
+        learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
+        entry={'promoted_at':'2026-09-28T16:10:00+08:00','promoted_model':'research-2026-09-28',
+               'previous_model':'research-2026-09-27','backup_file':'archive/latest-approved-date.json',
+               'trained_through':'2026-09-28','validation_mode':'test','secret':'hidden',
+               'validation':[{'fold':1,'test_samples':94,'selected_count':30,'expected_value_pct':.2,'brier':.1,'extra':'hidden'}]}
+        (models/'promotion-log.jsonl').write_text('bad json\n'+json.dumps(entry)+'\n',encoding='utf-8')
+        with patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning)}):result=model_promotion_log()
+        self.assertEqual(len(result['entries']),1)
+        self.assertEqual(result['entries'][0]['promoted_model'],'research-2026-09-28')
+        self.assertNotIn('secret',result['entries'][0])
+        self.assertNotIn('extra',result['entries'][0]['validation'][0])
+
+    def test_model_promotion_log_pages_newest_first(self):
+        from easystock_admin.health import model_promotion_log
+        learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
+        entries=[]
+        for index in range(25):
+            entries.append(json.dumps({'promoted_model':f'model-{index}','validation':[]}))
+        (models/'promotion-log.jsonl').write_text('\n'.join(entries)+'\n',encoding='utf-8')
+        with patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning)}):
+            first=model_promotion_log(page=1,page_size=10)
+            second=model_promotion_log(page=2,page_size=10)
+            third=model_promotion_log(page=3,page_size=10)
+        self.assertEqual([r['promoted_model'] for r in first['entries']],[f'model-{i}' for i in range(24,14,-1)])
+        self.assertEqual([r['promoted_model'] for r in second['entries']],[f'model-{i}' for i in range(14,4,-1)])
+        self.assertEqual(len(third['entries']),5)
+        self.assertTrue(first['has_more']);self.assertTrue(second['has_more']);self.assertFalse(third['has_more'])
 
 class WebTests(unittest.TestCase):
     def setUp(self):
@@ -101,14 +224,34 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.client.put('/admin/settings',base_url=ORIGIN,json={'values':INITIAL,'version':1},headers={'Origin':ORIGIN}).status_code,403)
     def test_wrong_origin_cannot_start_login(self):
         self.assertEqual(self.post('challenge',{},origin='https://evil.example').status_code,403)
-    def test_line_policy_requires_login_csrf_and_origin(self):
-        from easystock_admin.conversations import DEFAULTS
-        path='/admin/line-policy';data={'values':DEFAULTS,'version':1}
+    def test_notifications_require_login_csrf_origin_and_version(self):
+        path='/admin/notifications';data={'line_trade':False,'line_summary':False,'telegram_trade':False,'telegram_summary':False,'version':1}
         self.assertEqual(self.client.get(path,base_url=ORIGIN).status_code,403)
         csrf=self.login().json['csrf']
         self.assertEqual(self.client.put(path,base_url=ORIGIN,json=data,headers={'Origin':ORIGIN}).status_code,403)
         self.assertEqual(self.client.put(path,base_url=ORIGIN,json=data,headers={'Origin':'https://evil.example','X-CSRF-Token':csrf}).status_code,403)
         self.assertEqual(self.client.put(path,base_url=ORIGIN,json=data,headers={'Origin':ORIGIN,'X-CSRF-Token':csrf}).status_code,200)
+        self.assertEqual(self.client.put(path,base_url=ORIGIN,json=data,headers={'Origin':ORIGIN,'X-CSRF-Token':csrf}).status_code,409)
+    def test_line_quota_limited_none_and_failure_do_not_expose_token(self):
+        import easystock_admin.web as web
+        self.login()
+        token='quota-secret-token';user='U'+'1'*32
+        def response(value):
+            result=Mock();result.raise_for_status=Mock();result.json=lambda:value;return result
+        with patch.dict(os.environ,{'LINE_CHANNEL_ACCESS_TOKEN':token,'LINE_USER_ID':user,'LINE_CONFIG_FILE':str(Path(self.tmp.name)/'none')},clear=False):
+            web._LINE_QUOTA_CACHE.update(at=0,value=None)
+            with patch('requests.get',side_effect=[response({'type':'limited','value':200}),response({'totalUsage':35})]):
+                limited=self.client.get('/admin/line-quota',base_url=ORIGIN)
+            self.assertEqual((limited.json['used'],limited.json['limit'],limited.json['remaining']),(35,200,165))
+            self.assertNotIn(token,limited.get_data(as_text=True))
+            web._LINE_QUOTA_CACHE.update(at=0,value=None)
+            with patch('requests.get',side_effect=[response({'type':'none'}),response({'totalUsage':35})]):
+                unlimited=self.client.get('/admin/line-quota',base_url=ORIGIN)
+            self.assertIsNone(unlimited.json['limit']);self.assertIsNone(unlimited.json['remaining'])
+            web._LINE_QUOTA_CACHE.update(at=0,value=None)
+            with patch('requests.get',side_effect=__import__('requests').Timeout(token)):
+                failed=self.client.get('/admin/line-quota',base_url=ORIGIN)
+            self.assertEqual(failed.status_code,503);self.assertNotIn(token,failed.get_data(as_text=True))
     def test_login_cookie_and_csrf(self):
         response=self.login();self.assertEqual(response.status_code,200)
         cookie=response.headers.getlist('Set-Cookie')[0]
@@ -129,6 +272,23 @@ class WebTests(unittest.TestCase):
         with patch.dict(os.environ,{'ADMIN_GOOGLE_CLIENT_ID':''}):
             self.assertFalse(self.client.get('/admin/config',base_url=ORIGIN).json['ready'])
             self.assertEqual(self.post('challenge',{}).status_code,403)
+
+    def test_real_order_requires_csrf_and_explicit_server_switch(self):
+        response = self.login()
+        csrf = response.json['csrf']
+        with patch.dict(os.environ, {
+            'LIVE_ORDERING_ENABLED': '1',
+            'LIVE_ORDERING_CONFIRMATION': 'wrong',
+        }, clear=False):
+            denied = self.client.post('/admin/api/order/place', base_url=ORIGIN,
+                json={'symbol':'2330','action':'BUY','price':100,'quantity':1},
+                headers={'Origin': ORIGIN, 'X-CSRF-Token': csrf})
+        self.assertEqual(denied.status_code, 400)
+        self.assertIn('隔離', denied.json['message'])
+        denied_no_csrf = self.client.post('/admin/api/order/place', base_url=ORIGIN,
+            json={'symbol':'2330','action':'BUY','price':100,'quantity':1},
+            headers={'Origin': ORIGIN})
+        self.assertEqual(denied_no_csrf.status_code, 403)
 
 class GoogleCryptoTests(unittest.TestCase):
     def test_real_signature_audience_and_expiry_verification(self):
@@ -154,23 +314,17 @@ class GoogleCryptoTests(unittest.TestCase):
             with self.assertRaises(ValueError):verify_google('.'.join(pieces),CLIENT)
 
 class WebhookTests(unittest.TestCase):
-    def test_signature_precedes_admin_binding(self):
+    def test_signature_verified_webhook_is_silent_for_stock_commands(self):
         with tempfile.TemporaryDirectory() as temp:
-            fake_line=types.ModuleType('line_bot');fake_line.reply_messages=Mock()
-            groups=types.ModuleType('line_group_manager');groups.register_group=Mock()
-            stock=types.ModuleType('stock_command_service');stock.CHART_DIR=Path(temp)/'cards';stock.handle_command=lambda *a:[];stock.parse_command=lambda *a:None
             env={'EASYSTOCK_ADMIN_DB':str(Path(temp)/'db'),'LINE_CHANNEL_SECRET':'TEST_ONLY_SECRET'}
-            with patch.dict(os.environ,env),patch.dict(sys.modules,{'line_bot':fake_line,'line_group_manager':groups,'stock_command_service':stock}):
+            with patch.dict(os.environ,env):
                 spec=importlib.util.spec_from_file_location('tested_webhook',ROOT/'line_stock_bot.py')
                 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-                code=module.ADMIN_STORE.bind_code()
-                payload=json.dumps({'events':[{'type':'message','webhookEventId':'e1','replyToken':'reply','source':{'type':'user','userId':'u'},'message':{'type':'text','text':'綁定管理員 '+code}}]}).encode()
                 client=module.app.test_client()
-                self.assertEqual(client.post('/callback',data=payload,headers={'X-Line-Signature':'bad'}).status_code,400)
-                self.assertFalse(module.ADMIN_STORE.linked())
-                signature=base64.b64encode(hmac.new(b'TEST_ONLY_SECRET',payload,hashlib.sha256).digest()).decode()
-                self.assertEqual(client.post('/callback',data=payload,headers={'X-Line-Signature':signature}).status_code,200)
-                self.assertFalse(module.ADMIN_STORE.linked());fake_line.reply_messages.assert_not_called()
-                groups.register_group.assert_not_called()
+                for text in ('P2330','K2330','#2330','P大盤','指令'):
+                    payload=json.dumps({'events':[{'type':'message','replyToken':'reply','source':{'type':'user','userId':'u'},'message':{'type':'text','text':text}}]}).encode()
+                    self.assertEqual(client.post('/callback',data=payload,headers={'X-Line-Signature':'bad'}).status_code,400)
+                    signature=base64.b64encode(hmac.new(b'TEST_ONLY_SECRET',payload,hashlib.sha256).digest()).decode()
+                    self.assertEqual(client.post('/callback',data=payload,headers={'X-Line-Signature':signature}).status_code,200)
 
 if __name__=='__main__':unittest.main()
