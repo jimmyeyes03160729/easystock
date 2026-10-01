@@ -15,6 +15,15 @@ EXPECTED_MODEL_PATH = '/home/ubuntu/easystock-learning-data/models/latest-approv
 SERVICE = 'easystock-intraday.service'
 
 
+def parse_environ(payload: bytes) -> dict[bytes, bytes]:
+    """Parse Linux /proc/<pid>/environ without decoding secret values."""
+    return dict(
+        item.split(b'=', 1)
+        for item in payload.split(b'\0')
+        if b'=' in item
+    )
+
+
 def main() -> int:
     if os.name == 'nt' or not Path('/proc').is_dir():
         print('FAIL: Linux /proc process environment is required', file=sys.stderr)
@@ -32,7 +41,7 @@ def main() -> int:
         return 1
     environ_path = Path('/proc') / str(pid) / 'environ'
     try:
-        values = dict(item.split('=', 1) for item in environ_path.read_bytes().split(b'\0') if b'=' in item)
+        values = parse_environ(environ_path.read_bytes())
     except OSError as exc:
         print(f'FAIL: cannot read MainPID environment: {type(exc).__name__}', file=sys.stderr)
         return 1

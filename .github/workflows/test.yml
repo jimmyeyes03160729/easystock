@@ -32,6 +32,7 @@ jobs:
       - run: python tests/test_research_schedule.py
       - run: python daytrade_learning/test_core.py
       - run: python tests/test_premarket_entry.py
+      - run: python tests/test_verify_intraday_runtime.py
       - run: python vm_runtime/tests/test_cash_ledger.py
       - run: python history/test_daily_history.py
       - run: python tests/test_market_risk_gate.py
