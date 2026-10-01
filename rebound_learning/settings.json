@@ -1,0 +1,10 @@
+{
+  "near_miss_tolerance": {
+    "distance_to_support": 0.01,
+    "range_position": 0.03,
+    "net_rr": 0.10
+  },
+  "rejected_control_hash_modulus": 50,
+  "label_horizon_trading_days": 10,
+  "minimum_amount": 5000000
+}

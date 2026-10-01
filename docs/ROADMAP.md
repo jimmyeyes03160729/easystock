@@ -111,12 +111,12 @@
   - 正式調整前需補 regression tests，且不得因制度對齊破壞既有 paper ledger / risk gate / model evidence。
 
 - [ ] **觸底反彈 AI 學習**
-  - 統一正式 Rebound 定義。
-  - 建立 `rebound_learning/`。
-  - 收集候選 Dataset。
-  - 10 個交易日後自動 Label。
-  - Baseline / Logistic Regression / HistGradientBoosting 比較。
-  - 先 Shadow，再決定是否 Applied。
+  - [x] Phase 1：凍結正式 `range-rebound-0.3` Baseline；研究回放不修改正式 feed / Top 3。
+  - [x] Phase 1：版本化 Dataset schema、D0 特徵、PASSED / PENDING 候選與 deterministic Near Miss / rejected control。
+  - [x] Phase 1：永豐逐日封存 K 棒 point-in-time backfill、D1 open 與 10 交易日 label、1/3/5/10/20D outcome。
+  - [x] Phase 1：私有 SQLite、每日收集與成熟 label 排程、Dataset Audit / leakage guard。
+  - [ ] Phase 2：Baseline / Logistic Regression / HistGradientBoosting 比較。
+  - [ ] Phase 2：Shadow 驗證，再決定是否 Applied；不自動晉升。
 
 - [ ] **永豐實盤當沖後台（Owner-only）**
   - 第一階段先建立獨立「永豐實盤當沖」分頁 / Tab，僅在 Google 登入且通過既有 Owner/Admin 驗證後顯示。

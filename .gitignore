@@ -54,3 +54,6 @@ node_modules/
 tools/sample_cards/
 runtime-model-status.json
 release-info.json
+rebound_learning/data/
+rebound-dataset-audit.json
+rebound-dataset-audit.md

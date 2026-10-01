@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily after-hours rebound research refresh
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 22:30:00 Asia/Taipei
+Persistent=true
+Unit=easystock-rebound-research.service
+
+[Install]
+WantedBy=timers.target

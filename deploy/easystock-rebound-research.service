@@ -1,0 +1,13 @@
+[Unit]
+Description=EasyStock rebound point-in-time research collector (no model promotion)
+After=network-online.target easystock-history-download.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+ExecStart=/usr/bin/flock -n /home/ubuntu/easystock-learning-data/rebound/collect.lock /home/ubuntu/easystock/.venv/bin/python -m rebound_learning.daily
+TimeoutStartSec=3600
+Nice=10
+NoNewPrivileges=true

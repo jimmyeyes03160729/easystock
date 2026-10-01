@@ -131,6 +131,7 @@ for path in paths:
 PY
 bash deploy/install_market_data.sh
 bash deploy/install_history_schedule.sh
+bash deploy/install_rebound_research.sh
 printf '主線更新完成：'
 git rev-parse --short HEAD
 printf '備份位置：%s\n' "$backup"
