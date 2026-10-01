@@ -1,123 +1,128 @@
-import contextlib
-import io
 import os
 from pathlib import Path
-import sys
+import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from unittest.mock import Mock, patch
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+
 from easystock_admin.store import Store, Conflict
-from easystock_admin import conversations as c, notifications as n
-from trade_notifications import send_trade, telegram_send, event_identity
-import requests
+from easystock_admin import notifications as n
+from trade_notifications import send_trade, send_daily_summary, event_identity
+from daytrade_summary_push import build_daily_summary
 
-TOKEN='123456:'+'x'*35
-GROUP={'type':'group','groupId':'C'+'1'*32}
+TOKEN = '123456:' + 'x' * 35
+LINE_USER = 'U' + '1' * 32
 
-class Tests(unittest.TestCase):
+
+class NotificationTests(unittest.TestCase):
     def setUp(self):
-        self.tmp=tempfile.TemporaryDirectory()
-        self.store=Store(Path(self.tmp.name)/'db',{'min_price':1,'max_price':100,'max_gain_pct':5})
-        self.env=patch.dict(os.environ,{'TELEGRAM_BOT_TOKEN':TOKEN,'TELEGRAM_GROUP_ID':'-1001234567','TELEGRAM_CONFIG_FILE':str(Path(self.tmp.name)/'absent')});self.env.start()
-        self.key=c.observe(self.store,GROUP)
-        with self.store.tx() as db:
-            db.execute('UPDATE line_conversations SET archived=0,push=1 WHERE id=?',(self.key,))
-            db.execute('UPDATE telegram_policy SET push=1')
-        self.http=patch('trade_notifications.requests.post',return_value=Mock(status_code=200,json=lambda:{'ok':True}));self.post=self.http.start()
-        self.line=Mock(return_value=True)
-    def tearDown(self):self.http.stop();self.env.stop();self.tmp.cleanup()
-    def send(self,**kwargs):return send_trade('entry test',self.line,store=self.store,**kwargs)
-    def test_both_channels_and_duplicate_receipt_survives_restart(self):
-        self.assertTrue(self.send(event_key='trade:entry'))
-        second=Store(self.store.path)
-        self.assertFalse(send_trade('entry test',self.line,store=second,event_key='trade:entry'))
-        self.post.assert_called_once();self.line.assert_called_once()
-        args=self.post.call_args.kwargs
-        self.assertEqual(args['json']['chat_id'],'-1001234567')
-        self.assertNotIn('allow_paid_broadcast',args['json'])
-        self.assertNotIn('parse_mode',args['json'])
-        self.assertFalse(args['allow_redirects'])
-    def test_distinct_entry_exit_are_both_delivered(self):
-        self.send(event_key='entry:1');self.send(event_key='exit:1')
-        self.assertEqual(self.post.call_count,2)
-    def test_real_position_shape_distinguishes_day_and_exit(self):
-        event={'type':'ENTRY','position':{'symbol':'TEST','entry_time':'2026-09-15T09:30:00+08:00'}}
-        first=event_identity(event,'same compact text')
-        self.assertEqual(first,event_identity(event,'text formatting changed'))
-        event['position']['entry_time']='2026-09-16T09:30:00+08:00'
-        self.assertNotEqual(first,event_identity(event,'same compact text'))
-        exit_event={'type':'EXIT','trade':event['position']}
-        self.assertNotEqual(event_identity(event,'same'),event_identity(exit_event,'same'))
-    def test_live_engine_wrapper_calls_both_channels(self):
-        import ast
-        tree=ast.parse((Path(__file__).resolve().parents[1]/'intraday_live.py').read_text(encoding='utf-8'))
-        wrapper=next(node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name=='push_line_text')
-        context={'_push_line_only':self.line}
-        exec(compile(ast.fix_missing_locations(ast.Module(body=[wrapper],type_ignores=[])),'<wrapper>','exec'),context)
-        with patch('easystock_admin.store.Store',return_value=self.store):
-            context['push_line_text']('ENTRY',event={'type':'ENTRY','position':{'symbol':'TEST','entry_time':'2026-09-15T09:30:00'}})
-        self.post.assert_called_once();self.line.assert_called_once()
-    def test_line_failure_does_not_suppress_telegram(self):
-        self.line.side_effect=RuntimeError('line unavailable')
-        self.assertTrue(self.send())
-        self.post.assert_called_once()
-    def test_telegram_timeout_does_not_suppress_line_or_leak_token(self):
-        self.post.side_effect=requests.Timeout('https://api.telegram.org/bot'+TOKEN)
-        capture=io.StringIO()
-        with contextlib.redirect_stdout(capture):self.assertTrue(self.send())
-        self.assertNotIn(TOKEN,capture.getvalue())
-        self.line.assert_called_once()
-        self.assertIn('unknown',[r['status'] for r in n.state(self.store)['deliveries']])
-        self.send();self.post.assert_called_once()
-    def test_telegram_api_rejection_is_failure(self):
-        self.post.return_value=Mock(status_code=200,json=lambda:{'ok':False})
-        self.assertEqual(telegram_send('test',self.store),'failed')
-    def test_disabled_telegram_does_not_affect_line(self):
-        n.update(self.store,'telegram','configured',{'push':False,'version':1})
-        self.assertTrue(self.send());self.post.assert_not_called()
-    def test_disabled_line_does_not_affect_telegram(self):
-        n.update(self.store,'line',self.key,{'push':False,'replies':False,'version':1})
-        self.assertTrue(self.send());self.line.assert_not_called();self.post.assert_called_once()
-    def test_private_target_and_invalid_credentials_rejected(self):
-        for override in ({'TELEGRAM_GROUP_ID':'1234567'},{'TELEGRAM_GROUP_ID':'@user'},{'TELEGRAM_BOT_TOKEN':'bad'}):
-            with patch.dict(os.environ,override):self.assertEqual(telegram_send('test',self.store),'disabled')
-        self.post.assert_not_called()
-    def test_latest_entry_gate_applies_to_each_channel(self):
-        self.assertTrue(self.send(entry_check=Mock(side_effect=[True,False])))
-        self.post.assert_called_once();self.line.assert_not_called()
-    def test_stale_entry_never_sends(self):
-        self.assertFalse(self.send(entry_check=lambda:False))
-        self.post.assert_not_called();self.line.assert_not_called()
-    def test_controls_independent_and_conflict_safe(self):
-        n.update(self.store,'line',self.key,{'push':False,'replies':True,'version':1})
-        self.assertFalse(c.allowed(self.store,GROUP,'trade'))
-        self.assertTrue(c.allowed(self.store,GROUP))
-        self.assertTrue(n.state(self.store)['groups'][-1]['push'])
-        with self.assertRaises(Conflict):n.update(self.store,'line',self.key,{'push':True,'replies':True,'version':1})
-    def test_credentials_and_raw_ids_never_returned(self):
-        data=str(n.state(self.store))
-        for secret in (TOKEN,'-1001234567',GROUP['groupId']):self.assertNotIn(secret,data)
-    def test_unknown_or_personal_rows_cannot_be_activated(self):
-        unknown=c.observe(self.store,{'type':'group','groupId':'C'+'3'*32})
-        with self.assertRaises(Conflict):n.update(self.store,'line',unknown,{'push':True,'replies':True,'version':1})
-        self.assertEqual(len(n.state(self.store)['groups']),2)
-    def test_api_requires_auth_origin_csrf_and_blocks_binding(self):
-        from flask import Flask
-        from easystock_admin.web import register_admin,SESSION
-        import easystock_admin.store as stores
-        origin='https://admin.example.com'
-        with patch.dict(os.environ,{'ADMIN_PUBLIC_ORIGIN':origin,'ADMIN_GOOGLE_CLIENT_ID':'test.apps.googleusercontent.com'}),patch.object(stores,'OWNER','owner@example.com'),patch('easystock_admin.web.OWNER','owner@example.com'):
-            app=Flask(__name__);register_admin(app,self.store);client=app.test_client()
-            path='/admin/notification-groups/telegram/configured';body={'push':False,'version':1}
-            self.assertEqual(client.get('/admin/notification-groups',base_url=origin).status_code,403)
-            token,csrf=self.store.login({'email':'owner@example.com','email_verified':True,'sub':'1','nonce':'n'},'n')
-            client.set_cookie(SESSION,token,domain='admin.example.com',secure=True)
-            self.assertEqual(client.put(path,base_url=origin,json=body,headers={'Origin':origin}).status_code,403)
-            self.assertEqual(client.put(path,base_url=origin,json=body,headers={'Origin':'https://evil.example','X-CSRF-Token':csrf}).status_code,403)
-            headers={'Origin':origin,'X-CSRF-Token':csrf}
-            self.assertEqual(client.put(path,base_url=origin,json=body,headers=headers).status_code,200)
-            self.assertEqual(client.post('/admin/line-bind',base_url=origin,json={},headers=headers).status_code,403)
-            self.assertEqual(client.put(path,base_url=origin,json=body,headers=headers).status_code,409)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.store = Store(Path(self.tmp.name) / 'state.sqlite', {'min_price': 1, 'max_price': 100, 'max_gain_pct': 5})
+        self.env = patch.dict(os.environ, {
+            'LINE_CHANNEL_ACCESS_TOKEN': 'line-test-token', 'LINE_USER_ID': LINE_USER,
+            'TELEGRAM_BOT_TOKEN': TOKEN, 'TELEGRAM_CHAT_ID': '1234567',
+            'TELEGRAM_CONFIG_FILE': str(Path(self.tmp.name) / 'absent'),
+            'LINE_CONFIG_FILE': str(Path(self.tmp.name) / 'absent-line'),
+        }, clear=False)
+        self.env.start()
+        self.http = patch('trade_notifications.requests.post', side_effect=self.response)
+        self.post = self.http.start()
 
-if __name__=='__main__':unittest.main()
+    def tearDown(self):
+        self.http.stop(); self.env.stop(); self.tmp.cleanup()
+
+    @staticmethod
+    def response(url, **kwargs):
+        return Mock(status_code=200, headers={}, json=lambda: {'ok': True})
+
+    def set_policy(self, **values):
+        current = n.policy(self.store)
+        body = {key: values.get(key, current[key]) for key in n.POLICY_FIELDS}
+        return n.update(self.store, {**body, 'version': current['version']})
+
+    def calls(self, platform):
+        needle = 'api.line.me' if platform == 'line' else 'api.telegram.org'
+        return [call for call in self.post.call_args_list if needle in call.args[0]]
+
+    def test_line_entry_exit_on_without_groups_and_exactly_once(self):
+        self.set_policy(line_trade=True)
+        self.assertTrue(send_trade('entry', event_key='entry:1', store=self.store))
+        self.assertFalse(send_trade('entry', event_key='entry:1', store=self.store))
+        self.assertTrue(send_trade('exit', event_key='exit:1', store=self.store))
+        self.assertEqual(len(self.calls('line')), 2)
+        self.assertFalse(self.store.path.read_bytes().find(b'line_conversations') >= 0)
+
+    def test_line_trade_off_sends_nothing(self):
+        send_trade('entry', event_key='off', store=self.store)
+        self.assertEqual(len(self.calls('line')), 0)
+
+    def test_telegram_positive_personal_entry_exit(self):
+        self.set_policy(telegram_trade=True)
+        send_trade('entry', event_key='te', store=self.store)
+        send_trade('exit', event_key='tx', store=self.store)
+        self.assertEqual(len(self.calls('telegram')), 2)
+        self.assertEqual(self.calls('telegram')[0].kwargs['json']['chat_id'], '1234567')
+
+    def test_negative_or_group_only_telegram_is_not_configured(self):
+        with patch.dict(os.environ, {'TELEGRAM_CHAT_ID': '-1001234567'}, clear=False):
+            self.assertEqual(n.telegram_config(), ('', ''))
+        with patch.dict(os.environ, {'TELEGRAM_CHAT_ID': '', 'TELEGRAM_USER_ID': '', 'TELEGRAM_GROUP_ID': '-1001234567'}, clear=False):
+            self.assertEqual(n.telegram_config(), ('', ''))
+
+    def test_channels_and_four_switches_are_independent(self):
+        self.set_policy(line_trade=True, telegram_summary=True)
+        send_trade('entry', event_key='independent', store=self.store)
+        send_daily_summary('summary', day='2026-10-01', store=self.store)
+        self.assertEqual(len(self.calls('line')), 1)
+        self.assertEqual(len(self.calls('telegram')), 1)
+
+    def test_summary_on_once_and_off_never(self):
+        self.set_policy(line_summary=True, telegram_summary=True)
+        self.assertTrue(send_daily_summary('summary', day='2026-10-01', store=self.store))
+        self.assertFalse(send_daily_summary('summary', day='2026-10-01', store=self.store))
+        self.assertEqual(len(self.calls('line')), 1); self.assertEqual(len(self.calls('telegram')), 1)
+        self.set_policy(line_summary=False, telegram_summary=False)
+        send_daily_summary('next', day='2026-10-02', store=self.store)
+        self.assertEqual(self.post.call_count, 2)
+
+    def test_line_has_retry_key_and_no_secret_in_state(self):
+        self.set_policy(line_trade=True)
+        send_trade('entry', event_key='retry', store=self.store)
+        self.assertIn('X-Line-Retry-Key', self.calls('line')[0].kwargs['headers'])
+        state = str(n.state(self.store))
+        self.assertNotIn('line-test-token', state); self.assertNotIn(LINE_USER, state); self.assertNotIn(TOKEN, state)
+
+    def test_event_identity_distinguishes_entry_and_exit(self):
+        event = {'type': 'ENTRY', 'position': {'symbol': '2330', 'entry_time': '2026-10-01T09:30:00+08:00'}}
+        self.assertNotEqual(event_identity(event, 'same'), event_identity({'type': 'EXIT', 'trade': event['position']}, 'same'))
+
+    def test_policy_conflict_and_safe_defaults(self):
+        self.assertFalse(any(n.policy(self.store)[key] for key in n.POLICY_FIELDS))
+        self.set_policy(line_trade=True)
+        with self.assertRaises(Conflict):
+            n.update(self.store, {'line_trade': False, 'line_summary': False, 'telegram_trade': False, 'telegram_summary': False, 'version': 1})
+
+    def test_summary_reads_canonical_paper_log_including_zero_trades(self):
+        with closing(sqlite3.connect(self.store.path)) as db, db:
+            db.execute("INSERT INTO paper_trade_settings VALUES(1,100000,100000,'running','2026-10-01',0)")
+            db.execute("INSERT INTO paper_trade_logs VALUES('2026-10-01',100000,100000,0,'',0,0,0)")
+        text = build_daily_summary(self.store.path, '2026-10-01')
+        self.assertIn('今日模擬當沖 0 筆', text); self.assertIn('100,000.00', text)
+
+    def test_retired_runtime_paths_and_messaging_side_effects_are_absent(self):
+        root = Path(__file__).resolve().parents[1]
+        repo = root.parent if root.name == 'vm_runtime' else root
+        for name in ('telegram_queries.py', 'telegram_stock_bot.py', 'line_group_manager.py',
+                     'stock_command_service.py', 'line_card_renderer.py'):
+            self.assertFalse((root / name).exists(), name)
+        premarket = (repo / 'vm_runtime/premarket_ai.py').read_text(encoding='utf-8')
+        self.assertNotIn('send_daily_summary', premarket)
+        self.assertNotIn('push_line_text', premarket)
+        guardian = (repo / 'ops/guardian/notify.py').read_text(encoding='utf-8')
+        self.assertNotIn('api.telegram.org', guardian)
+        self.assertNotIn('api.line.me', guardian)
+
+
+if __name__ == '__main__':
+    unittest.main()

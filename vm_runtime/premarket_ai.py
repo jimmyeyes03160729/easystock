@@ -17,10 +17,6 @@ Easystock AI Premarket Brief
    - key_risks / key_supports
 6. 寫入 Firebase：
       /market_data/premarket_brief
-7. 推送 LINE
-8. LINE 訊息固定包含：
-      https://jimmyeyes03160729.github.io/easystock/
-
 注意：
 - 原始價格與漲跌不交給 AI 猜，全部由公開資料取得/計算。
 - AI 只做綜合判讀與小幅 headline adjustment。
@@ -34,7 +30,6 @@ import json
 import math
 import os
 
-from line_group_manager import get_active_groups
 
 import random
 import re
@@ -131,17 +126,6 @@ SJ_API_KEY = env_first(
 SJ_SECRET_KEY = env_first(
     "SJ_SECRET_KEY",
     "SHIOAJI_SECRET_KEY",
-)
-
-LINE_TOKEN = env_first(
-    "LINE_CHANNEL_ACCESS_TOKEN",
-    "LINE_ACCESS_TOKEN",
-    "LINE_TOKEN",
-)
-LINE_TARGET_ID = env_first(
-    "LINE_TARGET_ID",
-    "LINE_USER_ID",
-    "LINE_GROUP_ID",
 )
 
 
@@ -1507,157 +1491,6 @@ def market_line(brief: dict, key: str) -> str:
     )
 
 
-def format_line_message(brief: dict) -> str:
-    level_icon = {
-        "GREEN": "🟢",
-        "YELLOW": "🟡",
-        "RED": "🔴",
-    }.get(brief.get("market_level"), "⚪")
-
-    sector = brief.get("sector_bias") or {}
-
-    lines = [
-        "🤖 當沖吧！牛馬仔｜AI 開盤前市場通報",
-        f"{brief.get('scan_date')} 08:35",
-        "",
-        (
-            f"{level_icon} 市場燈號：{brief.get('market_level')} "
-            f"｜風險 {brief.get('risk_score')}/100 "
-            f"｜波動 {brief.get('expected_volatility')}"
-        ),
-        "",
-        market_line(brief, "sp500"),
-        market_line(brief, "nasdaq"),
-        market_line(brief, "sox"),
-        market_line(brief, "tsm_adr"),
-        market_line(brief, "taiwan_futures"),
-        market_line(brief, "vix"),
-        market_line(brief, "usd_twd"),
-        market_line(brief, "us10y"),
-        market_line(brief, "oil_wti"),
-        "",
-        (
-            "半導體："
-            f"{sector.get('semiconductor', 'NEUTRAL')} "
-            "｜電子："
-            f"{sector.get('electronics', 'NEUTRAL')}"
-        ),
-        "",
-        str(brief.get("summary") or ""),
-        "",
-        WEBSITE_URL,
-    ]
-
-    return "\n".join(lines)
-
-
-def push_line_text(text: str) -> bool:
-    from line_policy import push_allowed
-    groups = get_active_groups()
-    registered_groups = bool(groups)
-    groups = [gid for gid in groups if push_allowed(gid, 'other')]
-    if registered_groups and not groups:
-        return False
-
-    if groups:
-        ok = False
-
-        for gid in groups:
-            try:
-                payload = {
-                    "to": gid,
-                    "messages": [
-                        {
-                            "type": "text",
-                            "text": text,
-                        }
-                    ],
-                }
-
-                response = requests.post(
-                    "https://api.line.me/v2/bot/message/push",
-                    headers={
-                        "Authorization": f"Bearer {LINE_TOKEN}",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                    timeout=10,
-                )
-
-                print(
-                    f"[LINE GROUP] {gid} status={response.status_code}"
-                )
-
-                if response.status_code == 200:
-                    ok = True
-
-            except Exception as e:
-                print("[LINE GROUP ERROR]", e)
-
-        return ok
-
-    if not push_allowed(LINE_TARGET_ID, 'other'):
-        return False
-    # 先相容既有 line_bot.py
-    try:
-        import inspect
-        import line_bot
-
-        for name in (
-            "push_message",
-            "push_text",
-            "send_message",
-            "send_line_message",
-            "line_push",
-            "push_line_message",
-        ):
-            fn = getattr(line_bot, name, None)
-            if not callable(fn):
-                continue
-
-            try:
-                params = list(inspect.signature(fn).parameters.values())
-
-                if len(params) == 1:
-                    result = fn(text)
-                    return result is not False
-
-                if len(params) >= 2:
-                    result = fn(LINE_TARGET_ID, text)
-                    return result is not False
-            except Exception:
-                continue
-
-    except Exception:
-        pass
-
-    # fallback LINE HTTP
-    if not LINE_TOKEN or not LINE_TARGET_ID:
-        print("[WARN] LINE token/target not configured")
-        return False
-
-    response = requests.post(
-        "https://api.line.me/v2/bot/message/push",
-        headers={
-            "Authorization": f"Bearer {LINE_TOKEN}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "to": LINE_TARGET_ID,
-            "messages": [
-                {
-                    "type": "text",
-                    "text": text,
-                }
-            ],
-        },
-        timeout=HTTP_TIMEOUT,
-    )
-
-    print(f"[LINE] status={response.status_code}")
-    return response.status_code == 200
-
-
 def print_brief(brief: dict) -> None:
     print("======================================")
     print("Easystock AI Premarket Brief")
@@ -1725,7 +1558,6 @@ def print_brief(brief: dict) -> None:
 
 
 def main() -> None:
-    no_line = "--no-line" in sys.argv
     no_firebase = "--no-firebase" in sys.argv
     # 開盤日自動檢核（排除週末、國定假日與台北市颱風停班）
     try:
@@ -1763,10 +1595,6 @@ def main() -> None:
         if not no_firebase:
             write_premarket_status("failed", "build_or_publish_error")
         raise
-
-    if not no_line:
-        ok = push_line_text(format_line_message(brief))
-        print("✅ LINE sent" if ok else "⚠️ LINE not sent")
 
     print("✅ Premarket brief complete")
 

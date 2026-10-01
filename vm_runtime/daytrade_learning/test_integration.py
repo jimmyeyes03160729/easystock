@@ -114,16 +114,6 @@ class StateTests(unittest.TestCase):
     def test_same_day_preserved(self):
         old={'scan_date':'2026-09-10','open_positions':{'a':{'entry_time':'2026-09-10T10:00:00+08:00'}}}
         self.assertEqual(prepare_rollover(old,{'scan_date':'2026-09-10'})['open_positions'],old['open_positions'])
-    def test_report_counts_zero_and_all_four_closed(self):
-        spec=importlib.util.spec_from_file_location('report_under_test',ROOT/'line_hub_service.py')
-        mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
-        day=datetime.now(TPE).date().isoformat()
-        closed={str(i):{'name':str(i),'entry_time':day+'T10:00:00+08:00','status':'CLOSED','pnl_pct':p} for i,p in enumerate([0,1,-1,2])}
-        root={'scan_date':day,'closed_trades':closed,'open_positions':{'p':{'entry_time':day+'T10:00:00+08:00','pnl_pct':99}}}
-        mod._read=lambda _:root
-        text=mod.latest_daytrade_text()
-        self.assertIn('推薦 5 筆',text);self.assertIn('50.0%（2/4）',text);self.assertNotIn('99.00',text)
-        self.assertIn('0.00%',text)
     def test_live_ticks_create_and_complete_minute_bar(self):
         import threading
         from collections import defaultdict

@@ -28,7 +28,7 @@ fi
 mapfile -t timers < <(systemctl list-units --type=timer --state=active --no-pager --no-legend --plain |
     awk '$1 ~ /^easystock-/ {print $1}')
 services=()
-for unit in easystock-telegram-stock-bot.service easystock-line-stock-bot.service easystock-guardian-proxy.service; do
+for unit in easystock-line-stock-bot.service easystock-guardian-proxy.service; do
     if systemctl is-active --quiet "$unit"; then services+=("$unit"); fi
 done
 switched=0
@@ -42,7 +42,7 @@ restore() {
         if (( switched )); then
             git switch main || echo "無法自動切回 main，請保持當沖 timer 停用。" >&2
         fi
-        for unit in easystock-guardian-proxy.service easystock-line-stock-bot.service easystock-telegram-stock-bot.service; do
+        for unit in easystock-guardian-proxy.service easystock-line-stock-bot.service; do
             for active in "${services[@]}"; do
                 if [[ "$active" == "$unit" ]]; then sudo systemctl start "$unit" || echo "重啟失敗：$unit" >&2; fi
             done
@@ -91,7 +91,7 @@ switched=1
 PYTHONPATH=vm_runtime:. .venv/bin/python3 vm_runtime/tests/test_runtime_safety.py -q
 test -z "$(git status --porcelain --untracked-files=no)"
 
-for unit in easystock-guardian-proxy.service easystock-line-stock-bot.service easystock-telegram-stock-bot.service; do
+for unit in easystock-guardian-proxy.service easystock-line-stock-bot.service; do
     for active in "${services[@]}"; do
         if [[ "$active" == "$unit" ]]; then
             sudo systemctl start "$unit"

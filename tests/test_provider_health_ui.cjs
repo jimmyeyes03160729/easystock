@@ -22,7 +22,7 @@ test('expired or future summary cannot show a false ONLINE',async()=>{
 test('authenticated admin renderer shows safe diagnostics as text',async()=>{
   const {w,run}=createDOM(fs.readFileSync('easystock_admin/static/index.html','utf8'));
   w.fetch=async url=>{
-    let data={groups:[],deliveries:[]};
+    let data={version:1,line:{configured:false,trade:false,summary:false},telegram:{configured:false,trade:false,summary:false},deliveries:[]};
     if(url.endsWith('/session'))data={email:'test@example.test',csrf:'test-csrf'};
     if(url.endsWith('/settings'))data={values:{min_price:1,max_price:100,max_gain_pct:5},version:1};
     if(url.endsWith('/health'))data={signals:[],generated_at:new Date().toISOString(),provider_health:{market_state:'OPEN',

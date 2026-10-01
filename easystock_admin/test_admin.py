@@ -16,7 +16,6 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 os.environ['ADMIN_OWNER_EMAIL']='owner@example.test'
 from easystock_admin.store import Store,Denied,Conflict,validate,read_live_settings,OWNER
-from easystock_admin.line import handle_admin_command
 INITIAL={'min_price':20,'max_price':100,'max_gain_pct':5,'max_recommendations':30}
 ORIGIN='https://admin.example.com'
 CLIENT='123456-test.apps.googleusercontent.com'
@@ -51,24 +50,6 @@ class StoreTests(unittest.TestCase):
     def test_only_allowed_fields_and_valid_ranges(self):
         for values in ({**INITIAL,'stop_loss':1},{**INITIAL,'min_price':101},{**INITIAL,'max_price':True},{**INITIAL,'max_gain_pct':float('nan')},{**INITIAL,'max_gain_pct':1.123},{**INITIAL,'max_recommendations':31},{**INITIAL,'max_recommendations':2.5}):
             with self.assertRaises(ValueError):validate(values)
-    def test_line_binding_one_use_and_revocation(self):
-        code=self.s.bind_code();self.s.line('user1','e1','bind',code)
-        with self.assertRaises(Denied):self.s.line('user2','e2','bind',code)
-        self.s.unlink()
-        with self.assertRaises(Denied):self.s.line('user1','e3','update',{'max_price':90})
-    def test_line_denied_unbound(self):
-        with self.assertRaises(Denied):self.s.line('attacker','e1','update',{'max_price':90})
-        self.assertEqual(self.s.get()['version'],1)
-    def test_line_redelivery_does_not_reapply_after_web_edit(self):
-        code=self.s.bind_code();self.s.line('u','bind1','bind',code)
-        self.s.line('u','edit1','update',{'max_price':90})
-        self.s.update({**INITIAL,'max_price':80},2)
-        self.s.line('u','edit1','update',{'max_price':90})
-        self.assertEqual(self.s.get()['values']['max_price'],80);self.assertEqual(self.s.get()['version'],3)
-    def test_group_binding_denied(self):
-        code=self.s.bind_code()
-        reply=handle_admin_command('綁定管理員 '+code,{'type':'group','userId':'u'},'e',self.s)
-        self.assertIn('私訊',reply);self.assertFalse(self.s.linked())
     def test_live_settings_reads_changes_without_restart(self):
         with patch.dict(os.environ,{'EASYSTOCK_ADMIN_DB':str(self.path)}):
             self.assertEqual(read_live_settings()['max_price'],100)
@@ -243,14 +224,34 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.client.put('/admin/settings',base_url=ORIGIN,json={'values':INITIAL,'version':1},headers={'Origin':ORIGIN}).status_code,403)
     def test_wrong_origin_cannot_start_login(self):
         self.assertEqual(self.post('challenge',{},origin='https://evil.example').status_code,403)
-    def test_line_policy_requires_login_csrf_and_origin(self):
-        from easystock_admin.conversations import DEFAULTS
-        path='/admin/line-policy';data={'values':DEFAULTS,'version':1}
+    def test_notifications_require_login_csrf_origin_and_version(self):
+        path='/admin/notifications';data={'line_trade':False,'line_summary':False,'telegram_trade':False,'telegram_summary':False,'version':1}
         self.assertEqual(self.client.get(path,base_url=ORIGIN).status_code,403)
         csrf=self.login().json['csrf']
         self.assertEqual(self.client.put(path,base_url=ORIGIN,json=data,headers={'Origin':ORIGIN}).status_code,403)
         self.assertEqual(self.client.put(path,base_url=ORIGIN,json=data,headers={'Origin':'https://evil.example','X-CSRF-Token':csrf}).status_code,403)
         self.assertEqual(self.client.put(path,base_url=ORIGIN,json=data,headers={'Origin':ORIGIN,'X-CSRF-Token':csrf}).status_code,200)
+        self.assertEqual(self.client.put(path,base_url=ORIGIN,json=data,headers={'Origin':ORIGIN,'X-CSRF-Token':csrf}).status_code,409)
+    def test_line_quota_limited_none_and_failure_do_not_expose_token(self):
+        import easystock_admin.web as web
+        self.login()
+        token='quota-secret-token';user='U'+'1'*32
+        def response(value):
+            result=Mock();result.raise_for_status=Mock();result.json=lambda:value;return result
+        with patch.dict(os.environ,{'LINE_CHANNEL_ACCESS_TOKEN':token,'LINE_USER_ID':user,'LINE_CONFIG_FILE':str(Path(self.tmp.name)/'none')},clear=False):
+            web._LINE_QUOTA_CACHE.update(at=0,value=None)
+            with patch('requests.get',side_effect=[response({'type':'limited','value':200}),response({'totalUsage':35})]):
+                limited=self.client.get('/admin/line-quota',base_url=ORIGIN)
+            self.assertEqual((limited.json['used'],limited.json['limit'],limited.json['remaining']),(35,200,165))
+            self.assertNotIn(token,limited.get_data(as_text=True))
+            web._LINE_QUOTA_CACHE.update(at=0,value=None)
+            with patch('requests.get',side_effect=[response({'type':'none'}),response({'totalUsage':35})]):
+                unlimited=self.client.get('/admin/line-quota',base_url=ORIGIN)
+            self.assertIsNone(unlimited.json['limit']);self.assertIsNone(unlimited.json['remaining'])
+            web._LINE_QUOTA_CACHE.update(at=0,value=None)
+            with patch('requests.get',side_effect=__import__('requests').Timeout(token)):
+                failed=self.client.get('/admin/line-quota',base_url=ORIGIN)
+            self.assertEqual(failed.status_code,503);self.assertNotIn(token,failed.get_data(as_text=True))
     def test_login_cookie_and_csrf(self):
         response=self.login();self.assertEqual(response.status_code,200)
         cookie=response.headers.getlist('Set-Cookie')[0]
@@ -313,23 +314,17 @@ class GoogleCryptoTests(unittest.TestCase):
             with self.assertRaises(ValueError):verify_google('.'.join(pieces),CLIENT)
 
 class WebhookTests(unittest.TestCase):
-    def test_signature_precedes_admin_binding(self):
+    def test_signature_verified_webhook_is_silent_for_stock_commands(self):
         with tempfile.TemporaryDirectory() as temp:
-            fake_line=types.ModuleType('line_bot');fake_line.reply_messages=Mock()
-            groups=types.ModuleType('line_group_manager');groups.register_group=Mock()
-            stock=types.ModuleType('stock_command_service');stock.CHART_DIR=Path(temp)/'cards';stock.handle_command=lambda *a:[];stock.parse_command=lambda *a:None
             env={'EASYSTOCK_ADMIN_DB':str(Path(temp)/'db'),'LINE_CHANNEL_SECRET':'TEST_ONLY_SECRET'}
-            with patch.dict(os.environ,env),patch.dict(sys.modules,{'line_bot':fake_line,'line_group_manager':groups,'stock_command_service':stock}):
+            with patch.dict(os.environ,env):
                 spec=importlib.util.spec_from_file_location('tested_webhook',ROOT/'line_stock_bot.py')
                 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-                code=module.ADMIN_STORE.bind_code()
-                payload=json.dumps({'events':[{'type':'message','webhookEventId':'e1','replyToken':'reply','source':{'type':'user','userId':'u'},'message':{'type':'text','text':'綁定管理員 '+code}}]}).encode()
                 client=module.app.test_client()
-                self.assertEqual(client.post('/callback',data=payload,headers={'X-Line-Signature':'bad'}).status_code,400)
-                self.assertFalse(module.ADMIN_STORE.linked())
-                signature=base64.b64encode(hmac.new(b'TEST_ONLY_SECRET',payload,hashlib.sha256).digest()).decode()
-                self.assertEqual(client.post('/callback',data=payload,headers={'X-Line-Signature':signature}).status_code,200)
-                self.assertFalse(module.ADMIN_STORE.linked());fake_line.reply_messages.assert_not_called()
-                groups.register_group.assert_not_called()
+                for text in ('P2330','K2330','#2330','P大盤','指令'):
+                    payload=json.dumps({'events':[{'type':'message','replyToken':'reply','source':{'type':'user','userId':'u'},'message':{'type':'text','text':text}}]}).encode()
+                    self.assertEqual(client.post('/callback',data=payload,headers={'X-Line-Signature':'bad'}).status_code,400)
+                    signature=base64.b64encode(hmac.new(b'TEST_ONLY_SECRET',payload,hashlib.sha256).digest()).decode()
+                    self.assertEqual(client.post('/callback',data=payload,headers={'X-Line-Signature':signature}).status_code,200)
 
 if __name__=='__main__':unittest.main()

@@ -56,9 +56,6 @@ from position_manager import PaperWallet
 import inspect
 import math
 import os
-import requests
-
-from line_group_manager import get_active_groups
 
 import re
 import signal
@@ -169,20 +166,6 @@ SJ_SECRET_KEY = env_first(
     "SJ_SECRET_KEY",
     "SHIOAJI_SECRET_KEY",
 )
-
-# LINE：同時相容先前 LINE_USER_ID 與新版 LINE_TARGET_ID。
-LINE_TOKEN = env_first(
-    "LINE_CHANNEL_ACCESS_TOKEN",
-    "LINE_ACCESS_TOKEN",
-    "LINE_TOKEN",
-)
-
-LINE_TARGET_ID = env_first(
-    "LINE_TARGET_ID",
-    "LINE_USER_ID",
-    "LINE_GROUP_ID",
-)
-
 
 # =========================================================
 # Runtime config
@@ -716,173 +699,10 @@ def daytrade_closed(dt: datetime | None = None) -> bool:
 # LINE adapter
 # =========================================================
 
-def _load_line_module() -> Any:
-    try:
-        import line_bot  # type: ignore
-        return line_bot
-
-    except Exception as exc:
-        print(
-            f"[WARN] line_bot import 失敗："
-            f"{type(exc).__name__}: {exc}"
-        )
-        return None
-
-
-LINE_MODULE = _load_line_module()
-
-
 def push_line_text(text: str, entry_check=None, event=None) -> bool:
-    # Compatibility name retained; fan out only entry/exit events to both channels.
+    """Notify only after the canonical paper fill has succeeded."""
     from trade_notifications import send_trade, event_identity
-    return send_trade(text, _push_line_only, entry_check=entry_check, event_key=event_identity(event, text))
-
-
-def _push_line_only(text: str, entry_check=None) -> bool:
-    from line_policy import push_allowed
-    groups = get_active_groups()
-    registered_groups = bool(groups)
-    groups = [gid for gid in groups if push_allowed(gid, 'trade')]
-    if registered_groups and not groups:
-        return False
-
-    if groups:
-        ok = False
-
-        for gid in groups:
-            try:
-                if entry_check is not None and not entry_check():
-                    print("[LINE] ENTRY skipped: latest quote no longer passes limits")
-                    continue
-                payload = {
-                    "to": gid,
-                    "messages": [
-                        {
-                            "type": "text",
-                            "text": text,
-                        }
-                    ],
-                }
-
-                response = requests.post(
-                    "https://api.line.me/v2/bot/message/push",
-                    headers={
-                        "Authorization": f"Bearer {LINE_TOKEN}",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                    timeout=10,
-                )
-
-                print(
-                    f"[LINE GROUP] {gid} status={response.status_code}"
-                )
-
-                if response.status_code == 200:
-                    ok = True
-
-            except Exception as e:
-                print("[LINE GROUP ERROR]", e)
-
-        return ok
-
-    """
-    先嘗試專案既有 line_bot.py；
-    找不到可呼叫函式時，再使用 LINE Messaging API HTTP fallback。
-    """
-    if not text.strip():
-        return False
-    if entry_check is not None and not entry_check():
-        print("[LINE] ENTRY skipped: latest quote no longer passes limits")
-        return False
-
-    if not push_allowed(LINE_TARGET_ID, 'trade'):
-        return False
-    # Legacy generic adapters have no event category; use the guarded HTTP path.
-    module = None
-
-    if module is not None:
-        # 盡量相容不同版本 line_bot.py
-        candidates = [
-            "push_message",
-            "push_text",
-            "send_message",
-            "send_line_message",
-            "line_push",
-            "push_line_message",
-        ]
-
-        for name in candidates:
-            fn = getattr(module, name, None)
-
-            if not callable(fn):
-                continue
-
-            try:
-                sig = inspect.signature(fn)
-                params = list(sig.parameters.values())
-
-                # 常見一參數：fn(text)
-                if len(params) == 1:
-                    result = fn(text)
-                    return result is not False
-
-                # 常見二參數：fn(target, text)
-                if len(params) >= 2:
-                    result = fn(LINE_TARGET_ID, text)
-                    return result is not False
-
-            except Exception as exc:
-                print(
-                    f"[WARN] line_bot.{name} 呼叫失敗："
-                    f"{type(exc).__name__}: {exc}"
-                )
-
-    if not LINE_TOKEN or not LINE_TARGET_ID:
-        print(
-            "[WARN] LINE fallback 缺少 "
-            "LINE_CHANNEL_ACCESS_TOKEN / LINE_TARGET_ID"
-        )
-        return False
-
-    if entry_check is not None and not entry_check():
-        return False
-    try:
-
-        response = requests.post(
-            "https://api.line.me/v2/bot/message/push",
-            headers={
-                "Authorization": f"Bearer {LINE_TOKEN}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "to": LINE_TARGET_ID,
-                "messages": [
-                    {
-                        "type": "text",
-                        "text": text,
-                    }
-                ],
-            },
-            timeout=10,
-        )
-
-        if response.status_code != 200:
-            print(
-                "[WARN] LINE push failed "
-                f"status={response.status_code}"
-            )
-            return False
-
-        print("[LINE] Push success")
-        return True
-
-    except Exception as exc:
-        print(
-            f"[WARN] LINE push error："
-            f"{type(exc).__name__}: {exc}"
-        )
-        return False
+    return send_trade(text, event=event, event_key=event_identity(event, text))
 
 
 def format_entry_message(
@@ -903,28 +723,19 @@ def format_entry_message(
     symbol = str(data.get("symbol") or "")
     name = str(data.get("name") or symbol)
 
-    score = (
-        data.get("entry_score")
-        or data.get("score")
-    )
-
-    change = num(
-        data.get("change_pct")
-        or data.get("price_change_pct")
-        or data.get("price_change_60_pct")
-    )
-
-    change_text = (
-        f"{change:+.2f}%"
-        if change is not None
-        else ""
-    )
-
-    return "\n".join([
-        "🧪 當沖吧！牛馬仔｜模擬成交 ENTRY",
-        f"{symbol} {name} {change_text}".strip(),
-        f"分數 {score}" if score is not None else "分數 --",
-    ])
+    price = num(data.get("entry_price") or data.get("price"))
+    when = str(data.get("entry_time") or "")
+    mode = str(data.get("decision_mode") or "")
+    model = str(data.get("model_version") or "")
+    lines = ["🚀 模擬當沖進場", f"{name} ({symbol})",
+             f"買入：{price:g}" if price is not None else "買入：--"]
+    if when:
+        lines.append("時間：" + when)
+    if mode:
+        lines.append("模式：" + mode)
+    if model:
+        lines.append("模型：" + model)
+    return "\n".join(lines)
 
 
 def format_exit_message(
@@ -944,19 +755,23 @@ def format_exit_message(
     symbol = str(data.get("symbol") or "")
     name = str(data.get("name") or symbol)
 
-    pnl = num(data.get("pnl_pct"))
-
-    pnl_text = (
-        f"{pnl:+.2f}%"
-        if pnl is not None
-        else "--"
-    )
-
-    return "\n".join([
-        "🧪 當沖吧！牛馬仔｜模擬成交 EXIT",
-        f"{symbol} {name}",
-        pnl_text,
-    ])
+    entry = num(data.get("entry_price"))
+    exit_price = num(data.get("exit_price") or data.get("price"))
+    pnl_value = num(data.get("net_pnl") or data.get("realized_pnl"))
+    pnl_pct = num(data.get("pnl_pct") or data.get("return_pct"))
+    reason = str(data.get("exit_reason") or data.get("reason") or "")
+    lines = ["✅ 模擬當沖出場", f"{name} ({symbol})"]
+    if entry is not None:
+        lines.append(f"買入：{entry:g}")
+    if exit_price is not None:
+        lines.append(f"賣出：{exit_price:g}")
+    if pnl_value is not None and pnl_pct is not None:
+        lines.append(f"損益：{pnl_value:+,.2f} ({pnl_pct:+.2f}%)")
+    elif pnl_pct is not None:
+        lines.append(f"損益：{pnl_pct:+.2f}%")
+    if reason:
+        lines.append("原因：" + reason)
+    return "\n".join(lines)
 
 
 
@@ -4313,7 +4128,6 @@ class IntradayLiveEngine:
         if paper_filled:
             push_line_text(
                 format_entry_message(event, self.market_level),
-                entry_check=lambda: self.fresh_entry_quote(symbol) is not None,
                 event=event,
             )
 

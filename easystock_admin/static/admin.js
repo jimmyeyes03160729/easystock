@@ -141,7 +141,7 @@ async function loadPipeline(){try{applyPipeline(await api('pipeline-settings'));
 async function maintenance(action,confirmation,label){if(!confirm(`確認要${label}嗎？\n此操作會受到時段、工作衝突與冷卻限制。`))return;const id=action==='restart-intraday'?'restartIntraday':'syncVm';const button=el(id);button.disabled=true;message('maintenanceStatus','正在送出受控維護要求…');try{const result=await api('maintenance/'+action,{method:'POST',body:{confirmation}});message('maintenanceStatus',result.detail||'操作已送出。',!result.available);}catch(error){message('maintenanceStatus',error.message,true);}finally{await loadMaintenance();}}
 async function session(){const s=await api('session');csrf=s.csrf;el('identity').textContent=s.email;return s;}
 function startLiveRefresh(){if(liveRefreshTimer)clearInterval(liveRefreshTimer);liveRefreshTimer=setInterval(()=>{if(!document.hidden){loadHealth();loadMaintenance();}},30000);}
-async function enter(){await session();applySettings(await api('settings'));await reloadConversations();try{await loadBotPolicy();}catch(_){}el('login').hidden=true;el('workspace').hidden=false;await loadHealth();await loadMaintenance();await loadPipeline();startLiveRefresh();}
+async function enter(){await session();applySettings(await api('settings'));await loadNotifications();el('login').hidden=true;el('workspace').hidden=false;await loadHealth();await loadMaintenance();await loadPipeline();startLiveRefresh();}
 async function loginSetup(){
   try{
     const config=await api('config');
@@ -180,48 +180,19 @@ el('syncVm').onclick=()=>maintenance('sync-vm','SYNC_VM','同步 VM');
 el('pipelineForm').onsubmit=async event=>{event.preventDefault();const values={history_target_symbols:+el('pTarget').value,history_symbols:el('pSymbols').value.split(',').map(x=>x.trim()).filter(Boolean),history_max_pairs:+el('pPairs').value,history_weekends:el('pWeekend').checked,history_window_start:el('pStart').value,history_window_end:el('pEnd').value,learning_enabled:el('pLearning').checked,learning_time:el('pLearningTime').value,min_training_dates:+el('pDates').value,min_training_samples:+el('pSamples').value,min_class_samples:+el('pClass').value,holdout_days:+el('pHoldout').value,model_retrain_every_days:+el('pRetrainDays').value,forward_observe_days:+el('pForwardDays').value,formal_candidate_for_live:el('pFormalLive').checked,model_threshold:+el('pThreshold').value,fee_rate:+el('pFee').value,minimum_fee_twd:20,sell_tax_rate:+el('pTax').value,slippage_bps:+el('pSlip').value,shares:+el('pShares').value};try{applyPipeline(await api('pipeline-settings',{method:'PUT',body:{values,version:pipelineVersion}}));message('pipelineStatus','已儲存。此計畫將在 VM 同步後由下一次抓取／訓練讀取。');}catch(error){message('pipelineStatus',error.message,true);}};
 for(const button of document.querySelectorAll('[data-admin-tab]'))button.onclick=()=>showAdminTab(button.dataset.adminTab);
 el('logout').onclick=async()=>{try{await api('logout',{method:'POST',body:{}});location.reload();}catch(e){message('saveStatus',e.message,true);}};
-el('checkUsage').onclick=async()=>{el('checkUsage').disabled=true;try{const s=await api('line-usage');message('lineUsage',`本月已用 ${s.used} / ${s.limit??'無上限'} 則，剩餘 ${s.remaining??'無上限'} 則。群組主動推播按接收人數計算，查詢回覆不扣額度。`);}catch(e){message('lineUsage',e.message,true);}finally{el('checkUsage').disabled=false;}};
-function checkbox(label,checked){const wrap=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.checked=!!checked;wrap.append(input,document.createTextNode(' '+label));wrap.style.display='block';wrap.style.margin='12px 0';input.style.width='auto';return {wrap,input};}
-function applyConversations(data){
-  el('conversationList').replaceChildren();
-  for(const row of data.groups.filter(r=>r.kind==='group')){
-    const form=document.createElement('form'),title=document.createElement('h3'),name=document.createElement('p'),save=document.createElement('button');
-    title.textContent=row.platform==='line'?'LINE':'Telegram';name.textContent=row.label;
-    const replies=checkbox('群組查詢回覆',row.replies),push=checkbox('進出場通知',row.push);
-    push.input.dataset.platform=row.platform;push.input.dataset.control='push';replies.input.dataset.control='replies';
-    form.append(title,name,push.wrap,replies.wrap);
-    if(row.platform==='telegram'&&!row.configured){push.input.disabled=true;replies.input.disabled=true;const note=document.createElement('p');note.textContent='尚未設定 Bot 憑證與群組。';form.append(note);save.disabled=true;}
-    save.type='submit';save.textContent='儲存 '+title.textContent;form.append(save);form.style.padding='0 0 24px';
-    form.onsubmit=async event=>{event.preventDefault();save.disabled=true;try{const body={push:push.input.checked,replies:replies.input.checked,version:row.version};applyConversations(await api('notification-groups/'+row.platform+'/'+encodeURIComponent(row.id),{method:'PUT',body}));message('conversationStatus','已儲存，下一次事件立即生效。');}catch(e){message('conversationStatus',e.message,true);}finally{save.disabled=false;}};
-    el('conversationList').append(form);
-  }
-  if(!data.groups.some(r=>r.platform==='line'&&r.kind==='group')){const note=document.createElement('p');note.textContent='尚無已核准的 LINE 群組。';el('conversationList').append(note);}
+el('checkUsage').onclick=async()=>{el('checkUsage').disabled=true;try{const s=await api('line-quota');message('lineUsage',s.limit===null?`本月已使用 ${s.used}；LINE 未設定月上限。最後查詢：${new Date(s.checked_at*1000).toLocaleString('zh-TW')}`:`已使用：${s.used}｜當月上限：${s.limit}｜剩餘：${s.remaining}｜最後查詢：${new Date(s.checked_at*1000).toLocaleString('zh-TW')}`);}catch(_){message('lineUsage','額度暫時無法取得',true);}finally{el('checkUsage').disabled=false;}};
+let notificationVersion=null;
+function applyNotifications(data){
+  notificationVersion=data.version;
+  el('lineConfigured').textContent='狀態：'+(data.line.configured?'已設定':'未設定');
+  el('telegramConfigured').textContent='狀態：'+(data.telegram.configured?'已設定':'未設定');
+  el('lineTrade').checked=!!data.line.trade;el('lineSummary').checked=!!data.line.summary;
+  el('telegramTrade').checked=!!data.telegram.trade;el('telegramSummary').checked=!!data.telegram.summary;
   el('deliveryStatus').replaceChildren();
   const labels={sent:'送出成功',failed:'送出失敗',unknown:'結果不明（不重送）',pending:'處理中／中斷未確認',disabled:'已關閉'};
-  for(const row of data.deliveries||[]){const p=document.createElement('p');p.textContent=`${row.channel==='line'?'LINE':'Telegram'} · ${labels[row.status]||'未知狀態'} · ${new Date(row.at*1000).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}`;el('deliveryStatus').append(p);}
+  for(const row of data.deliveries||[]){const p=document.createElement('p');p.textContent=`${row.channel==='line'?'LINE':'Telegram'} ${row.kind} · ${labels[row.status]||'未知狀態'} · ${new Date(row.at*1000).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}`;el('deliveryStatus').append(p);}
   if(!data.deliveries?.length)el('deliveryStatus').textContent='尚無通知紀錄。';
 }
-let botPolicyVersion=1;
-async function loadBotPolicy(){
-  try{
-    const p=await api('bot-policy');
-    if(p&&p.auto_reply_on_follow!==undefined){
-      if(el('autoReplyToggle'))el('autoReplyToggle').checked=!!p.auto_reply_on_follow;
-      botPolicyVersion=p.version||1;
-    }
-  }catch(_){}
-}
-if(el('saveBotPolicy')){
-  el('saveBotPolicy').onclick=async()=>{
-    const btn=el('saveBotPolicy');btn.disabled=true;message('botPolicyStatus','正在儲存…');
-    try{
-      const auto_reply_on_follow=!!el('autoReplyToggle')?.checked;
-      const res=await api('bot-policy',{method:'PUT',body:{auto_reply_on_follow,version:botPolicyVersion}});
-      botPolicyVersion=res.version;
-      message('botPolicyStatus','已儲存！'+(auto_reply_on_follow?'已啟用加入好友自動回覆':'已關閉加入好友自動回覆'));
-    }catch(e){message('botPolicyStatus',e.message,true);}finally{btn.disabled=false;}
-  };
-}
-async function reloadConversations(){applyConversations(await api('notification-groups'));try{await loadBotPolicy();}catch(_){}}
-el('reloadLine').onclick=async()=>{try{await reloadConversations();message('conversationStatus','已載入最新設定。');}catch(e){message('conversationStatus',e.message,true);}};
+async function loadNotifications(){applyNotifications(await api('notifications'));}
+el('notificationForm').onsubmit=async event=>{event.preventDefault();const button=el('saveNotifications');button.disabled=true;try{applyNotifications(await api('notifications',{method:'PUT',body:{line_trade:el('lineTrade').checked,line_summary:el('lineSummary').checked,telegram_trade:el('telegramTrade').checked,telegram_summary:el('telegramSummary').checked,version:notificationVersion}}));message('conversationStatus','已儲存，下一次事件立即生效。');}catch(e){message('conversationStatus',e.message,true);}finally{button.disabled=false;}};
 (async()=>{try{await enter();showAdminTab('healthPanel');}catch{await loginSetup();}})();

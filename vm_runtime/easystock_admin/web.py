@@ -2,6 +2,7 @@ import hmac
 import os
 import re
 import sqlite3
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 from flask import Blueprint, jsonify, request, send_from_directory
@@ -10,6 +11,7 @@ from .store import Store, OWNER, Conflict, Denied
 SESSION = '__Host-easystock_admin'
 CHALLENGE = '__Host-easystock_login'
 STATIC = Path(__file__).parent / 'static'
+_LINE_QUOTA_CACHE = {'at': 0.0, 'value': None}
 
 
 def verify_google(credential, client_id):
@@ -130,7 +132,7 @@ def register_admin(app, store=None, verifier=None):
             _, csrf = authenticated()
         except Denied:
             return jsonify(authenticated=False), 401
-        return jsonify(authenticated=True, email=OWNER, csrf=csrf, line_linked=store.linked())
+        return jsonify(authenticated=True, email=OWNER, csrf=csrf)
 
     @bp.post('/admin/logout')
     def logout():
@@ -146,6 +148,33 @@ def register_admin(app, store=None, verifier=None):
         authenticated()
         return jsonify(store.get())
 
+    @bp.get('/admin/health')
+    def get_health():
+        authenticated()
+        from .health import snapshot
+        return jsonify(snapshot(store))
+
+    @bp.get('/admin/model-log')
+    def get_model_log():
+        authenticated()
+        from .health import model_promotion_log
+        try:page=int(request.args.get('page','1'))
+        except (TypeError,ValueError):page=1
+        return jsonify(model_promotion_log(page=page,page_size=10))
+
+    @bp.get('/admin/maintenance')
+    def get_maintenance():
+        authenticated()
+        from .operations import status
+        return jsonify(status())
+
+    @bp.post('/admin/maintenance/<action>')
+    def post_maintenance(action):
+        authenticated(True)
+        data = body()
+        from .operations import execute
+        return jsonify(execute(store, action, data.get('confirmation', '')))
+
     @bp.put('/admin/settings')
     def put_settings():
         authenticated(True)
@@ -153,6 +182,19 @@ def register_admin(app, store=None, verifier=None):
         if set(data) != {'values', 'version'}:
             raise ValueError('設定欄位不正確。')
         return jsonify(store.update(data['values'], data['version']))
+
+    @bp.get('/admin/pipeline-settings')
+    def get_pipeline_settings():
+        authenticated()
+        return jsonify(store.get_pipeline_settings())
+
+    @bp.put('/admin/pipeline-settings')
+    def put_pipeline_settings():
+        authenticated(True)
+        data = body()
+        if set(data) != {'values', 'version'}:
+            raise ValueError('訓練與資料計畫欄位不正確。')
+        return jsonify(store.update_pipeline_settings(data['values'], data['version']))
 
     @bp.get('/admin/paper-trade')
     def get_paper_trade():
@@ -174,38 +216,29 @@ def register_admin(app, store=None, verifier=None):
         body()
         return jsonify(store.toggle_paper_trade())
 
-    @bp.post('/admin/line-bind')
-    def bind():
-        authenticated(True)
-        body()
-        raise Denied('個人 LINE 管理已停用，請使用 Google 登入後台。')
-
-    @bp.get('/admin/notification-groups')
-    def get_notification_groups():
+    @bp.get('/admin/notifications')
+    def get_notifications():
         authenticated()
         from .notifications import state
         return jsonify(state(store))
 
-    @bp.put('/admin/notification-groups/<platform>/<key>')
-    def put_notification_group(platform, key):
+    @bp.put('/admin/notifications')
+    def put_notifications():
         authenticated(True)
         from .notifications import update
-        return jsonify(update(store, platform, key, body()))
+        return jsonify(update(store, body()))
 
-    @bp.get('/admin/line-policy')
-    def get_line_policy():
+    @bp.get('/admin/line-quota')
+    def get_line_quota():
         authenticated()
-        from .conversations import state
-        return jsonify(state(store))
-
-    @bp.get('/admin/line-usage')
-    def get_line_usage():
-        authenticated()
+        now = time.time()
+        if _LINE_QUOTA_CACHE['value'] is not None and now - _LINE_QUOTA_CACHE['at'] < 600:
+            return jsonify(_LINE_QUOTA_CACHE['value'])
         with store.tx() as db:
-            store._limit(db, 'line-usage', 6)
-        from line_bot import access_token
+            store._limit(db, 'line-quota', 6)
+        from .notifications import line_config
         import requests
-        token = access_token()
+        token, _ = line_config()
         if not token:
             return jsonify(error='LINE 憑證未設定。'), 503
         try:
@@ -216,57 +249,14 @@ def register_admin(app, store=None, verifier=None):
             used.raise_for_status()
             q = quota.json()
             u = used.json()['totalUsage']
-            if isinstance(u, bool) or not isinstance(u, (int, float)) or u < 0:
-                raise ValueError('invalid LINE usage')
-            u = int(u)
             limit = q.get('value') if q.get('type') == 'limited' else None
-            if limit is not None:
-                if isinstance(limit, bool) or not isinstance(limit, (int, float)) or limit < 0:
-                    raise ValueError('invalid LINE quota')
-                limit = int(limit)
-            return jsonify(used=u, limit=limit, remaining=max(0, limit - u) if limit is not None else None)
+            result = {'used': u, 'limit': limit, 'remaining': max(0, limit - u) if limit is not None else None,
+                      'checked_at': now}
+            _LINE_QUOTA_CACHE.update(at=now, value=result)
+            return jsonify(result)
         except (requests.RequestException, ValueError, KeyError, TypeError):
             return jsonify(error='LINE 用量暫時無法取得，請稍後重試。'), 503
 
-    @bp.put('/admin/line-policy')
-    def put_line_policy():
-        authenticated(True)
-        from .conversations import update
-        return jsonify(update(store, body()))
-
-    @bp.put('/admin/line-conversations/<key>')
-    def put_line_conversation(key):
-        authenticated(True)
-        from .conversations import update_conversation
-        return jsonify(update_conversation(store, key, body()))
-
-    @bp.post('/admin/line-unlink')
-    def unlink():
-        authenticated(True)
-        body()
-        store.unlink()
-        return jsonify(ok=True)
-
-    @bp.get('/admin/bot-policy')
-    def get_bot_policy():
-        authenticated()
-        return jsonify(store.get_bot_policy())
-
-    @bp.put('/admin/bot-policy')
-    def put_bot_policy():
-        authenticated(True)
-        data = body()
-        if 'auto_reply_on_follow' not in data:
-            raise ValueError('缺少自動回覆開關設定。')
-        auto_reply = bool(data.get('auto_reply_on_follow'))
-        private_replies = bool(data.get('private_replies', True))
-        ver = data.get('version')
-        if ver is not None:
-            try:
-                ver = int(ver)
-            except Exception:
-                raise ValueError('設定版本格式不正確。')
-        return jsonify(store.update_bot_policy(auto_reply, private_replies, ver))
 
     # --------------------------------------------------------
     # 永豐證券下單 API (包含完整例外捕捉與 JSON 格式錯誤處理)
@@ -302,7 +292,9 @@ def register_admin(app, store=None, verifier=None):
     @bp.post('/admin/api/order/place')
     def post_order_place():
         try:
-            authenticated()
+            # This endpoint can call the broker.  It must use the same
+            # Origin/CSRF protection as every state-changing admin action.
+            authenticated(True)
             data = request.get_json(silent=True) or {}
             res = order_service.place_order(
                 symbol=data.get('symbol'),

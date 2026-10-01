@@ -122,6 +122,9 @@
   - 第一階段先建立獨立「永豐實盤當沖」分頁 / Tab，僅在 Google 登入且通過既有 Owner/Admin 驗證後顯示。
   - 未登入時首頁 / 後台導覽都不顯示入口；即使直接輸入 route 或呼叫 API，也必須由後端強制回 401 / 403，不能只靠前端隱藏。
   - 第一版只做安全入口與 UI / backend skeleton：券商狀態、實盤模式 OFF、AUTO OFF、今日持倉 / 委託 / 成交 / 損益、帳戶設定與 KILL SWITCH placeholder。
+  - 未來正式接永豐後，持倉區要顯示目前持有股狀態：股票、數量、均價、現價、未實現損益、報酬率、持倉來源 / 策略、持有時間、可賣數量與券商同步時間。
+  - 持倉區新增 Owner-only 手動「賣出」入口，可針對單一持股執行全數或指定數量賣出；送單前需再次確認帳戶 / 持倉 / 可賣數量 / 價格類型，並寫入 audit / live ledger。
+  - 手動賣出與 AUTO EXIT 必須共用同一套 broker reconciliation / order / deal / ledger 流程，避免兩套帳務。
   - 第一版所有交易按鈕預設 disabled，不處理真實 API Key / CA、不啟用 LIVE AUTO、不送任何真實委託。
   - 預留未來模式：OFF / SHADOW / PAPER / LIVE AUTO。
   - 永豐 API / CA 憑證安全持久化。
@@ -1146,6 +1149,63 @@ Deal Callback
 實盤成交價必須以券商實際 Deal Callback 為準，不能以策略訊號價或原始委託價取代。
 
 部分成交時必須累積實際成交數量與加權平均成交價。
+
+### 持有股狀態與 Owner 手動賣出
+
+永豐實盤分頁正式接 Broker 後，需有獨立的「目前持有股」區塊，資料以永豐實際持倉為最高權威。
+
+每筆持倉至少顯示：
+- 股票代號 / 名稱。
+- 持有數量。
+- 可賣數量。
+- 平均成本。
+- 目前價格。
+- 未實現損益。
+- 未實現報酬率。
+- 進場時間 / 持有時間。
+- strategy / model version（若此部位由 EasyStock 產生）。
+- position source：AUTO / MANUAL / EXTERNAL。
+- broker sync time。
+- reconcile status。
+
+若持倉是使用者在券商端手動買入、不是 EasyStock 建立，也必須能顯示，但要標記為 `EXTERNAL` / `MANUAL`，不可假裝是 AI 策略部位。
+
+Owner-only 後台可提供「手動賣出」入口：
+- 單一持股全數賣出。
+- 指定數量賣出（若 Broker / 策略支援）。
+- 明確顯示價格類型 / 委託類型。
+- 送單前重新讀取 Broker 持倉，確認可賣數量。
+- 送單前再次確認 Owner session 與指定券商帳戶。
+- 成功送單後以 Order Callback / Deal Callback 更新狀態。
+- 未成交 / 部分成交需持續追蹤，不可直接視為已平倉。
+- 真實成交後才更新 Live Ledger / PnL。
+- 所有手動賣出操作必須寫入 audit log。
+
+手動賣出與自動策略出場不可建立兩套執行引擎。兩者都必須走同一套：
+
+```text
+Owner Manual Sell / Strategy Exit
+            ↓
+       Trade Gate
+            ↓
+      Broker Order
+            ↓
+    Order / Deal Callback
+            ↓
+       Reconcile
+            ↓
+      Live Ledger
+            ↓
+      Position / PnL
+```
+
+若持倉 / 可賣數量 / 本機 ledger 與 Broker 不一致：
+- 禁止手動送出新賣單。
+- AUTO PAUSED。
+- 先完成 Reconcile。
+- 後台顯示明確不一致原因。
+
+第一階段 UI skeleton 仍保持所有賣出按鈕 disabled；只有未來正式完成 broker credential、account binding、reconcile、order/deal callback 與 safety tests 後，才可解鎖真實賣出。
 
 ### 真實持倉為最高權威
 VM 啟動 / Shioaji 重連後必須執行 Reconcile：

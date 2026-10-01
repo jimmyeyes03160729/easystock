@@ -43,7 +43,7 @@ for name in ('firebase_store.py','intraday_live.py','position_manager.py'):
 shutil.copy2(baseline/'firebase_store.py',ROOT/'firebase_store.py')
 confdir=Path('/etc/easystock-guardian');confdir.mkdir(exist_ok=True,mode=0o700)
 conf=confdir/'config.json'
-if not conf.exists():conf.write_text(json.dumps({'enabled':True,'telegram_enabled':True,'max_jobs_per_day':2,'model':'gpt-5.6-luna'},indent=2))
+if not conf.exists():conf.write_text(json.dumps({'enabled':True,'max_jobs_per_day':2,'model':'gpt-5.6-luna'},indent=2))
 conf.chmod(0o600)
 units={
 'easystock-guardian.service':f'''[Unit]
