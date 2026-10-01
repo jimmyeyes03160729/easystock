@@ -20,6 +20,17 @@
   - 不調整模型 threshold 0.6、不放寬雷達條件；今天資料完整保留作研究樣本，修正後自下一交易日重新驗證。
   - 同步追查 `easystock-premarket.timer/service` 為何 9/29、9/30 未更新盤前 brief。
 
+- [ ] **【高優先】Research Trade 與 Paper Wallet 解耦 + Trade Episode 去重**
+  - 2026-10-01 實盤確認：3189 景碩已通過策略 / 模型 / Market Gate，但因模擬資金不足，Paper Wallet 回傳 `insufficient_cash` 後整筆 position 被丟棄，導致首頁「每日盤後研究摘要」也沒有景碩。
+  - 正確原則：`Signal acceptance != Paper execution`。只要策略 / 模型 / Market Gate / 使用者條件 / fresh quote 都通過，就必須建立 Research / Shadow Trade；Paper Wallet 是否有足夠資金只能影響 `paper_execution`，不能決定研究樣本是否存在。
+  - Research Trade 必須持續使用真實盤中行情追蹤 entry / exit / highest / lowest / MFE / MAE / stop / take-profit / trailing / force-exit / pnl，供 AI 訓練與盤後摘要使用。
+  - Paper 帳戶仍維持真實資金限制，不可改成無限資金；需保留 `paper_execution=SKIPPED`、`paper_skip_reason=insufficient_cash` 等證據。
+  - 同一股票允許一天出現多個獨立 Research Trade Episode，但只有在上一筆 Research Position 已 CLOSED，且之後完整 ENTRY 條件重新成立時才能建立下一筆。
+  - 同一筆 OPEN Research Position 期間，連續 Tick 再次符合 ENTRY 不得重複建立新 Trade，也不得每 3～7 秒重複寫一筆相同 `insufficient_cash` 略過事件。
+  - 2026-10-01 景碩觀察到約 10:33 與 12:07 兩個明顯訊號時段；盤後應以保存的 point-in-time 資料檢查第一筆是否已依策略出場，若已 CLOSED，第二段才可視為新的 Trade Episode。
+  - 若要回補 2026-10-01 景碩研究交易，只能使用當時已保存的 Tick / K 線 / ENTRY evidence 重播，不得使用收盤後資訊反推進場，避免 look-ahead leakage。
+  - 每日盤後研究摘要需分開顯示：策略有效訊號 / Research Trades / Paper 成交 / Paper 因資金限制未成交，避免資金約束污染模型研究統計。
+
 - [ ] **首頁 LOGO 圖片效能優化**
   - 2026-09-30 發現首頁 LOGO 圖片檔案偏大，首次載入時讀圖時間明顯。
   - 下一輪修正需先確認目前 LOGO 實際檔案尺寸、像素尺寸、格式與瀏覽器解碼成本。
@@ -245,6 +256,128 @@
 5. RED 必須代表真實市場風險，而不是單純資料缺失。
 6. 今日 9/30 資料完整保留作研究樣本。
 7. 下一交易日重新做完整盤中驗證。
+
+---
+
+## Research Trade 與 Paper Wallet 解耦 + Trade Episode 去重（2026-10-01）
+
+### 問題一：Paper 資金限制污染 Research / AI 樣本
+2026-10-01 實盤案例：3189 景碩通過正式 ENTRY 條件，但一張成本超過目前模擬可用現金，因此 Paper Wallet 回傳 `insufficient_cash`。現行 `PositionManager.open_position()` 在 `before_open` 沒有 `status=bought` 時直接 return，後續 `learning.entry()`、EXIT、MFE / MAE 與盤後研究摘要全部遺失。
+
+核心原則：
+
+```text
+Signal acceptance
+!=
+Paper execution
+```
+
+只要通過：
+- Market Gate
+- Strategy
+- Model（model mode 時）
+- 使用者價格 / 漲幅等正式 ENTRY 條件
+- fresh quote
+
+就必須建立資金獨立的 Research / Shadow Position。
+
+Paper Wallet 另行判斷：
+- `paper_execution=FILLED`
+- `paper_execution=SKIPPED`
+- `paper_skip_reason=insufficient_cash`
+
+Paper 帳戶仍維持真實資金、整張、費稅與部位限制，不可用無限資金假裝成交。
+
+### Research Trade 需要完整追蹤
+Research Position 需使用真實 point-in-time 行情持續計算：
+- entry_time / entry_price
+- highest_price / lowest_price
+- MFE / MAE
+- stop loss
+- take profit
+- trailing / breakeven
+- strategy exit
+- force exit
+- exit_time / exit_price
+- pnl_pct
+- decision_mode / model_version / model_score / threshold
+- paper_execution / paper_skip_reason
+
+首頁「每日盤後研究摘要」需至少能區分：
+- 策略有效訊號數
+- Research Trades 數
+- Paper 實際成交數
+- Paper 因資金限制略過數
+- Research win / loss / pnl / MFE / MAE / exit reason
+
+AI 訓練 / 研究以 Research Trade 為主要交易結果證據，不能只看 Paper Wallet 是否買得起。
+
+### 問題二：同股連續 Tick 不得重複建單
+景碩資金不足時，目前後台可看到每數秒重複寫：
+`略過：可用現金不足以支付一張買進成本與手續費`
+
+這代表同一訊號 episode 被反覆嘗試，不應拿來當多筆研究交易或大量重複事件。
+
+正確 Trade Episode：
+
+```text
+第一次完整 ENTRY 成立
+        ↓
+Research Trade #1 OPEN
+        ↓
+OPEN 期間再次出現 ENTRY
+        ↓
+不建立新 Trade
+只更新既有 Position
+        ↓
+EXIT 條件成立
+        ↓
+Research Trade #1 CLOSED
+        ↓
+之後完整 ENTRY setup 再次成立
+        ↓
+Research Trade #2 OPEN
+```
+
+### 同股再進場規則
+Research 層允許同股同日多次交易，但需同時滿足：
+1. 上一筆 Research Trade 已 CLOSED。
+2. 新 ENTRY 是之後重新成立的有效 setup。
+3. 不可把同一持續訊號的多個 Tick 視為不同交易。
+4. 每一筆需有獨立 trade_id / episode_id。
+5. Paper 是否允許 re-entry 可保留自己的風控設定，不必與 Research 完全相同。
+
+2026-10-01 景碩約在：
+- 10:33～10:34
+- 12:07 左右
+
+出現兩個明顯訊號時段。盤後僅可利用當時已保存資料判斷：若第一筆在第二段之前已依現行 exit 規則 CLOSED，12:07 才能建立第二個 Research Episode；否則仍是第一筆 OPEN Position 的再次訊號。
+
+### Log 去重
+同一 Research Episode 若 Paper 因相同原因無法成交：
+- 第一次記錄 `paper_skip_reason=insufficient_cash`。
+- 後續相同 Tick / 相同 episode 不再每數秒重複寫相同略過 log。
+- 若上一筆 CLOSED、建立新 episode，才可重新記錄一次該 episode 的 Paper execution 結果。
+
+### 歷史回補原則
+若回補 2026-10-01 景碩：
+- 必須使用當時已保存的 tick / bar / model / gate / entry evidence。
+- 從原本 ENTRY 時點開始順序重播。
+- 不得使用收盤價或未來 K 棒決定過去是否進場。
+- 無足夠 point-in-time evidence 時寧可標記不可回補，不得製造假 Research Trade。
+
+### 驗收
+至少新增 regression tests：
+1. `insufficient_cash` 不會阻止 Research Position 建立。
+2. Paper current_capital 不會被 Research Trade 修改。
+3. Research Position 仍可正常 exit 並產生 pnl / MFE / MAE。
+4. Paper filled 時只產生一筆 Research Trade，不重複。
+5. 同一 OPEN episode 連續 ENTRY Tick 不新增第二筆。
+6. 第一筆 CLOSED 後，完整 ENTRY 重新成立可建立第二筆。
+7. 同 episode 的 `insufficient_cash` log 只記一次。
+8. 盤後摘要能同時顯示 Research Trade 與 Paper execution 統計。
+9. model / strategy / market gate 拒絕的標的不應被偽造成 Research Trade。
+10. root 與 `vm_runtime` 對應邏輯不得 drift。
 
 ---
 
