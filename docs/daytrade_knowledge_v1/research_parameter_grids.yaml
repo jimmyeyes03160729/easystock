@@ -291,6 +291,57 @@ grids:
   - AQ_R_008
   note: 成本後效果；無作者通用止損認定
   default: null
+- grid_id: G22
+  parameter: lower_shadow_support_ratio
+  status: AI_QUANTIZED
+  source_type: RESEARCH_PARAMETER_GRID
+  values:
+  - 0.2
+  - 0.25
+  - 0.3
+  unit: ratio
+  gemini_or_prior_seed: 0.25
+  references:
+  - AQ_R_003
+  source_claim_ids:
+  - SV004
+  research_purpose: 評估VWAP拉回處下影線長度對防守支撐強度的有效性
+  note: AI敏感度網格，非作者原文數值
+  default: null
+- grid_id: G23
+  parameter: breakout_proximity_band
+  status: AI_QUANTIZED
+  source_type: RESEARCH_PARAMETER_GRID
+  values:
+  - 0
+  - 0.001
+  - 0.002
+  unit: fraction
+  gemini_or_prior_seed: 0.001
+  references:
+  - AQ_R_001
+  source_claim_ids:
+  - SV001
+  research_purpose: 評估接近或剛突破前高時之觸發距離容許帶
+  note: AI敏感度網格，非作者原文數值
+  default: null
+- grid_id: G24
+  parameter: upper_shadow_rejection_ratio
+  status: AI_QUANTIZED
+  source_type: RESEARCH_PARAMETER_GRID
+  values:
+  - 0.4
+  - 0.45
+  - 0.5
+  unit: ratio
+  gemini_or_prior_seed: 0.45
+  references:
+  - AQ_R_008
+  source_claim_ids:
+  - SV005
+  research_purpose: 評估反彈受阻於壓力位時上影線長度的拒絕力道
+  note: AI敏感度網格，非作者原文數值
+  default: null
 hypotheses:
 - hypothesis_id: H01
   status: RESEARCH_HYPOTHESIS

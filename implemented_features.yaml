@@ -1,0 +1,175 @@
+schema_version: '1.0'
+phase: PHASE_1_RESEARCH_IMPLEMENTATION
+category: NEW_RESEARCH
+generated_date: '2026-10-02'
+project: EasyStock
+features:
+  - feature_id: F_body_ratio
+    knowledge_id: F_body_ratio
+    source_status: AI_QUANTIZED
+    data_source: closed_bars
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.body_ratio
+    formula: abs(close - open) / (high - low)
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None when high <= low or prices nonpositive; no zero-fill
+
+  - feature_id: F_body_return_pct
+    knowledge_id: F_body_return_pct
+    source_status: AI_QUANTIZED
+    data_source: closed_bars
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.body_return_pct
+    formula: (close - open) / open
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None when open <= 0
+
+  - feature_id: F_lower_shadow_ratio
+    knowledge_id: F_lower_shadow_ratio
+    source_status: AI_QUANTIZED
+    data_source: closed_bars
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.lower_shadow_ratio
+    formula: (min(open, close) - low) / (high - low)
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None when high <= low
+
+  - feature_id: F_gap_open_pct
+    knowledge_id: F_gap_open_pct
+    source_status: AI_QUANTIZED
+    data_source: daily_prior_close_and_open_tick
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.gap_open_pct
+    formula: (session_open - prev_close) / prev_close
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if prev_close <= 0 or session_open <= 0
+
+  - feature_id: F_relative_volume_open
+    knowledge_id: F_relative_volume_open
+    source_status: AI_QUANTIZED
+    data_source: intraday_cumulative_bars_and_history
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.relative_volume_open
+    formula: elapsed_open_volume / mean(same_elapsed_open_volume_previous_sessions)
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if baseline <= 0 or insufficient history
+
+  - feature_id: F_volume_ratio_5m
+    knowledge_id: F_volume_ratio_5m
+    source_status: AI_QUANTIZED
+    data_source: closed_1m_bars
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.volume_ratio_5m
+    formula: current_1m_volume / mean(prev_5_completed_1m_volumes)
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if prior 5-minute volume average is zero
+
+  - feature_id: F_volume_acceleration
+    knowledge_id: F_volume_acceleration
+    source_status: AI_QUANTIZED
+    data_source: equal_interval_volume_buckets
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.volume_acceleration
+    formula: V_t - 2*V_{t-1} + V_{t-2}
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if fewer than 3 volume intervals available
+
+  - feature_id: F_dist_to_prev_high_pct
+    knowledge_id: F_dist_to_prev_high_pct
+    source_status: AI_QUANTIZED
+    data_source: prior_completed_bars
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.dist_to_prev_high_pct
+    formula: (max(prior_highs) - current_price) / current_price
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if no historical highs available or price <= 0
+
+  - feature_id: F_dist_to_prev_low_pct
+    knowledge_id: F_dist_to_prev_low_pct
+    source_status: AI_QUANTIZED
+    data_source: prior_completed_bars
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.dist_to_prev_low_pct
+    formula: (current_price - min(prior_lows)) / current_price
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if no historical lows available or price <= 0
+
+  - feature_id: F_intraday_return_1m
+    knowledge_id: F_intraday_return_1m
+    source_status: AI_QUANTIZED
+    data_source: sequenced_prices
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.intraday_return_nm
+    formula: (P_t - P_{t-1m}) / P_{t-1m}
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if price 1 minute ago is missing
+
+  - feature_id: F_intraday_return_3m
+    knowledge_id: F_intraday_return_3m
+    source_status: AI_QUANTIZED
+    data_source: sequenced_prices
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.intraday_return_nm
+    formula: (P_t - P_{t-3m}) / P_{t-3m}
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if price 3 minutes ago is missing
+
+  - feature_id: F_intraday_return_5m
+    knowledge_id: F_intraday_return_5m
+    source_status: AI_QUANTIZED
+    data_source: sequenced_prices
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.intraday_return_nm
+    formula: (P_t - P_{t-5m}) / P_{t-5m}
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if price 5 minutes ago is missing
+
+  - feature_id: F_vwap_touch_count
+    knowledge_id: F_vwap_touch_count
+    source_status: AI_QUANTIZED
+    data_source: closed_bars_and_vwap
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.vwap_touch_count
+    formula: count(low <= vwap*(1+band) and high >= vwap*(1-band)) from session open to t
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns 0 if no prior touches
+
+  - feature_id: F_vwap_cross_count
+    knowledge_id: F_vwap_cross_count
+    source_status: AI_QUANTIZED
+    data_source: closed_bars_and_vwap
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.vwap_cross_count
+    formula: count(crossings over/under vwap) from session open to t
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns 0 if no prior crosses
+
+  - feature_id: F_pullback_vol_decay_ratio
+    knowledge_id: F_pullback_vol_decay_ratio
+    source_status: AI_QUANTIZED
+    data_source: causal_segmented_bars
+    calculation_function: daytrade_learning.knowledge_v1.causal_tools.CausalSwingSegmenter.volume_decay_ratio
+    formula: pullback_volume_rate / impulse_volume_rate
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if no confirmed swing pivot exists or impulse volume <= 0
+
+  - feature_id: F_aggressor_sell_share
+    knowledge_id: F_aggressor_sell_share
+    source_status: AI_QUANTIZED
+    data_source: trades_tick_stream
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.aggressor_sell_share
+    formula: 1.0 - aggressor_buy_share
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if classified_volume <= 0
+
+  - feature_id: F_aggressor_volume_delta
+    knowledge_id: F_aggressor_volume_delta
+    source_status: AI_QUANTIZED
+    data_source: trades_tick_stream
+    calculation_function: daytrade_learning.knowledge_v1.features.KnowledgeV1Features.aggressor_volume_delta
+    formula: buy_volume - sell_volume
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if no classified volume in window

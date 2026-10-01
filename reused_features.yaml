@@ -1,0 +1,80 @@
+schema_version: '1.0'
+phase: PHASE_1_FIX
+category: PARTIAL_REUSE
+generated_date: '2026-10-02'
+project: EasyStock
+fix_reference: FIX-2
+features:
+  - feature_id: F_upper_shadow_ratio
+    knowledge_id: F_upper_shadow_ratio
+    source_status: AI_QUANTIZED
+    data_source: closed_bars
+    reused_repo_symbol: strategy_engine.py:upper_wick_ratio
+    calculation_function: KnowledgeV1Features.upper_shadow_ratio (defensive research wrapper)
+    mapping_relationship: PARTIAL_REUSE_WRAPPER
+    formula: (high - max(open, close)) / (high - low)
+    semantic_difference_audit:
+      production_behavior: strategy_engine.upper_wick_ratio returns 0.0 when high <= low.
+      research_wrapper_behavior: Returns None when high <= low or prices nonpositive. Production function is left 100% untouched.
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None when high <= low or incomplete bar
+
+  - feature_id: F_close_location_value
+    knowledge_id: F_close_location_value
+    source_status: AI_QUANTIZED
+    data_source: closed_bars
+    reused_repo_symbol: strategy_engine.py:bar_position
+    calculation_function: KnowledgeV1Features.close_location_value (defensive research wrapper)
+    mapping_relationship: PARTIAL_REUSE_WRAPPER
+    formula: 2.0 * bar_position(bar) - 1.0
+    semantic_difference_audit:
+      production_behavior: strategy_engine.bar_position returns 0.5 when high <= low.
+      research_wrapper_behavior: Returns None when high <= low. Maps valid [0, 1] bar_position linearly to [-1, 1]. Production code untouched.
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None when high <= low or incomplete bar
+
+  - feature_id: F_dist_to_bar_vwap_pct
+    knowledge_id: F_dist_to_vwap_pct (Scope A)
+    source_status: AI_QUANTIZED
+    data_source: closed_5m_bars
+    reused_repo_symbol: strategy_engine.py:calculate_vwap
+    calculation_function: KnowledgeV1Features.dist_to_bar_vwap_pct
+    mapping_relationship: PARTIAL_REUSE
+    formula: (current_price - bar_vwap) / bar_vwap
+    semantic_difference_audit:
+      scope: Scope A (BAR_TYPICAL_PRICE_VWAP).
+      difference_vs_broker_avg: Uses typical price ((H+L+C)/3) * volume across 5-minute bars. Does not match broker tick-by-tick cumulative average price.
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if bar_vwap <= 0 or current_price <= 0
+
+  - feature_id: F_dist_to_broker_avg_price_pct
+    knowledge_id: F_dist_to_vwap_pct (Scope B)
+    source_status: AI_QUANTIZED
+    data_source: live_intraday_snapshot
+    reused_repo_symbol: intraday_live.py:price_vs_avg_pct
+    calculation_function: KnowledgeV1Features.dist_to_broker_avg_price_pct
+    mapping_relationship: PARTIAL_REUSE
+    formula: (current_price - broker_avg_price) / broker_avg_price
+    semantic_difference_audit:
+      scope: Scope B (BROKER_AVERAGE_PRICE).
+      difference_vs_bar_vwap: Official exchange/broker cumulative traded turnover / traded volume. Differs from bar typical price VWAP.
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if broker_avg_price <= 0 or current_price <= 0
+
+  - feature_id: F_aggressor_buy_share
+    knowledge_id: F_aggressor_buy_share
+    source_status: AI_QUANTIZED
+    data_source: trades_tick_stream
+    reused_repo_symbol: intraday_live.py:buy_ratio_60s
+    calculation_function: KnowledgeV1Features.aggressor_buy_share
+    mapping_relationship: PARTIAL_REUSE
+    formula: buy_volume / (buy_volume + sell_volume)
+    semantic_difference_audit:
+      null_policy: Returns None when buy_volume + sell_volume == 0 instead of defaulting to 0.5 or 0.0.
+    causal_safe: true
+    lookahead_risk: NONE
+    missing_data_policy: Returns None if classified_volume <= 0

@@ -1,0 +1,177 @@
+schema_version: '1.0'
+phase: PHASE_1_PROVENANCE_FINAL_FIX
+category: CANDIDATE_RULES
+generated_date: '2026-10-02'
+project: EasyStock
+fix_reference: PROVENANCE_FINAL_FIX
+policy: Research-only candidate evaluators. Strictly prohibited from placing live or paper orders.
+canonical_grids_alignment:
+  g19_status: PRESERVED_CANONICAL (futures_spread_candidate)
+  g20_status: PRESERVED_CANONICAL (pyramid_profit_trigger)
+  g21_status: PRESERVED_CANONICAL (stop_ticks_candidate)
+  g05_status: FIXED_MAPPING (points to RESEARCH_GRID_G05 rvol_threshold)
+  new_grids_assigned:
+    G22: lower_shadow_support_ratio (0.25)
+    G23: breakout_proximity_band (0.001)
+    G24: upper_shadow_rejection_ratio (0.45)
+  scope_creep_status: C02 max_extension (0.015) COMPLETELY REMOVED
+
+rules:
+  - candidate_id: C01_vwap_pullback_support
+    name: VWAP Pullback Support Rebound
+    source_status: HYBRID_RESEARCH_CANDIDATE
+    source_claims:
+      - SV004  # 極短線均價線防守：跌破均價線出場 (Johnny 3-1)
+    ai_quantized_ids:
+      - AQ_R_003
+    parameter_grid_references:
+      - grid_id: RESEARCH_GRID_G01
+        parameter: vwap_touch_band_fraction
+        seed_value: 0.003
+        allowed_values: [0.0, 0.001, 0.003, 0.005]
+        status: AI_QUANTIZED
+        unit: fraction
+        source_reference: AQ_R_003
+      - grid_id: RESEARCH_GRID_G02
+        parameter: vwap_stop_band_fraction
+        seed_value: 0.002
+        allowed_values: [0.0, 0.001, 0.002, 0.003]
+        status: AI_QUANTIZED
+        unit: fraction
+        source_reference: AQ_R_003
+      - grid_id: RESEARCH_GRID_G22
+        parameter: lower_shadow_support_ratio
+        seed_value: 0.25
+        allowed_values: [0.20, 0.25, 0.30]
+        status: AI_QUANTIZED
+        unit: ratio
+        source_reference: AQ_R_003
+    causal_contract: Uses completed 5m bar VWAP and current completed candle geometry (CLV, lower_shadow_ratio). Execution delayed to next minute open.
+    trigger_logic:
+      condition_1: Price pulls back to VWAP within touch band (-0.002 <= dist <= 0.003)
+      condition_2: Price does not breach stop band below VWAP (-0.002)
+      condition_3: Bar shows support rejection (close_location_value > 0.0 or lower_shadow_ratio >= 0.25)
+    unsupported_dependencies: []
+
+  - candidate_id: C02_daily_trend_open_breakout
+    name: Daily MA Alignment and Open Breakout
+    source_status: HYBRID_RESEARCH_CANDIDATE
+    source_claims:
+      - SV001  # 多方標準型態看短天期均線多頭排列、60MA上揚 (Johnny 2-1)
+      - SV002  # A與左方X收盤價差在10%內準備突破前高 (Johnny 2-1)
+      - SV003  # 多方連續型態當日開盤最好跳空開高 (Johnny 2-2)
+    ai_quantized_ids:
+      - AQ_R_001
+      - AQ_R_002
+    parameter_grid_references:
+      - grid_id: RESEARCH_GRID_G04
+        parameter: prior_high_window
+        seed_value: 20
+        allowed_values: [20, 60, 250]
+        status: AI_QUANTIZED
+        unit: sessions
+        source_reference: AQ_R_001, AQ_R_002
+      - grid_id: RESEARCH_GRID_G23
+        parameter: breakout_proximity_band
+        seed_value: 0.001
+        allowed_values: [0.0, 0.001, 0.002]
+        status: AI_QUANTIZED
+        unit: fraction
+        source_reference: AQ_R_001
+    causal_contract: Strictly uses yesterday's completed daily MAs (5MA, 10MA, 20MA) and today's confirmed open price. Execution delayed to next minute open.
+    trigger_logic:
+      condition_1: Daily moving average alignment (MA5 > MA10 > MA20)
+      condition_2: Gap open higher than previous session close (gap_open_pct > 0.0)
+      condition_3: Price is approaching or has broken prior 20-session high (dist_to_prev_high_pct <= 0.001)
+    scope_creep_removed: max_extension = 0.015 completely removed; restored to original Phase 1 specification.
+    unsupported_dependencies: []
+
+  - candidate_id: C03_pullback_vol_decay
+    name: Strong Trend Pullback Volume Decay
+    source_status: AI_QUANTIZED
+    source_claims:
+      - SV004
+    ai_quantized_ids:
+      - AQ_R_008
+    parameter_grid_references:
+      - grid_id: RESEARCH_GRID_G17
+        parameter: pullback_volume_decay
+        seed_value: 0.5
+        allowed_values: [0.3, 0.5, 0.7]
+        status: AI_QUANTIZED
+        unit: rate_ratio
+        source_reference: AQ_R_008
+    causal_contract: Uses CausalSwingSegmenter; swing high pivot confirmed only after 2 subsequent bars close without exceeding pivot.
+    trigger_logic:
+      condition_1: A causal swing high pivot has been confirmed (confirmation_time >= pivot_time + 2 bars)
+      condition_2: Pullback volume per second is less than or equal to 0.5x of impulse volume per second (decay <= 0.5)
+      condition_3: Price remains above preceding causal swing low
+    unsupported_dependencies: []
+
+  - candidate_id: C04_breakout_with_rvol
+    name: Prior High Breakout with Relative Volume and Aggressor Buying
+    source_status: HYBRID_RESEARCH_CANDIDATE
+    source_claims:
+      - SV001
+    ai_quantized_ids:
+      - AQ_R_001
+      - AQ_R_002
+      - AQ_R_007
+    parameter_grid_references:
+      - grid_id: RESEARCH_GRID_G05
+        parameter: rvol_threshold
+        seed_value: 1.5
+        allowed_values: [1.0, 1.5, 2.0, 3.0]
+        status: AI_QUANTIZED
+        unit: ratio
+        source_reference: AQ_R_001
+      - grid_id: RESEARCH_GRID_G14
+        parameter: aggressor_sell_share
+        seed_value: 0.6
+        allowed_values: [0.5, 0.6, 0.7]
+        status: AI_QUANTIZED
+        unit: share_0_to_1
+        source_reference: H01
+    causal_contract: Breakout evaluated against past completed bars; volume ratio evaluated on trailing 1m/5m completed bars.
+    trigger_logic:
+      condition_1: Current price breaks prior opening range or rolling high (dist_to_prev_high_pct <= 0.0)
+      condition_2: Volume ratio exceeds 1.5x of trailing baseline (G05)
+      condition_3: Aggressor buy volume share is at least 60% (G14)
+    unsupported_dependencies: []
+
+  - candidate_id: C05_failed_rebound_reversal
+    name: Weak Rebound Resistance Exhaustion
+    source_status: AI_QUANTIZED
+    source_claims:
+      - SV004  # 反向平倉思維
+      - SV005  # 反轉K棒墓碑/長上影
+    ai_quantized_ids:
+      - AQ_R_008
+    parameter_grid_references:
+      - grid_id: RESEARCH_GRID_G14
+        parameter: aggressor_sell_share
+        seed_value: 0.6
+        allowed_values: [0.5, 0.6, 0.7]
+        status: AI_QUANTIZED
+        unit: share_0_to_1
+        source_reference: H01
+      - grid_id: RESEARCH_GRID_G24
+        parameter: upper_shadow_rejection_ratio
+        seed_value: 0.45
+        allowed_values: [0.40, 0.45, 0.50]
+        status: AI_QUANTIZED
+        unit: ratio
+        source_reference: AQ_R_008
+      - grid_id: RESEARCH_GRID_G15
+        parameter: drop_from_reference
+        seed_value: 0.005
+        allowed_values: [0.005, 0.01, 0.02, 0.03]
+        status: AI_QUANTIZED
+        unit: fraction
+        source_reference: AQ_R_010
+    causal_contract: Uses resistance price established strictly before t and completed candle wick.
+    trigger_logic:
+      condition_1: Price approaches resistance within 0.5% (0.0 <= dist_to_resistance_pct <= 0.005)
+      condition_2: Candle exhibits heavy upper shadow rejection (upper_shadow_ratio >= 0.45)
+      condition_3: Dominant aggressor sell volume share is at least 60% (sell_share >= 0.6)
+    unsupported_dependencies: []

@@ -1,0 +1,85 @@
+schema_version: '1.0'
+phase: PHASE_1_RESEARCH_IMPLEMENTATION
+category: UNSUPPORTED_AND_FUTURE_DATA_REQUIRED
+generated_date: '2026-10-02'
+project: EasyStock
+features:
+  # Hard Unsupported (External Market/API Limitations)
+  - feature_id: F_order_book_imbalance_5
+    knowledge_id: F_order_book_imbalance_5
+    status: UNSUPPORTED
+    blocking_reason: Shioaji feed in EasyStock only subscribes to TickSTKv1; BidAskSTKv1 (5-depth order book) is not subscribed or collected.
+    policy: Strictly unsupported; synthetic or random depth proxy is explicitly forbidden.
+
+  - feature_id: F_order_book_imbalance_weighted
+    knowledge_id: F_order_book_imbalance_weighted
+    status: UNSUPPORTED
+    blocking_reason: 5-depth bid/ask queues are unavailable.
+    policy: Strictly unsupported.
+
+  - feature_id: F_bid_wall_thickness_ratio
+    knowledge_id: F_bid_wall_thickness_ratio
+    status: UNSUPPORTED
+    blocking_reason: Requires L2 order book depth (BidQty_1to5).
+    policy: Strictly unsupported.
+
+  - feature_id: F_bid_wall_mean_ratio
+    knowledge_id: F_bid_wall_mean_ratio
+    status: UNSUPPORTED
+    blocking_reason: Requires L2 order book depth (BidQty_1to5).
+    policy: Strictly unsupported.
+
+  - feature_id: F_quote_flip_rate_1m
+    knowledge_id: F_quote_flip_rate_1m
+    status: UNSUPPORTED
+    blocking_reason: Continuous quote change stream is not recorded; only trade ticks are preserved.
+    policy: Strictly unsupported.
+
+  - feature_id: F_wall_depletion_velocity
+    knowledge_id: F_wall_depletion_velocity
+    status: UNSUPPORTED
+    blocking_reason: TWSE does not publish order-level cancellation stream; Shioaji API does not emit cancellation events.
+    policy: Strictly unsupported; spoofing labels must not be invented.
+
+  - feature_id: F_tx_traded_lots_spread
+    knowledge_id: F_tx_traded_lots_spread
+    status: UNSUPPORTED
+    blocking_reason: TXF index futures tick feed is not subscribed in EasyStock.
+    policy: Strictly unsupported.
+
+  - feature_id: F_futures_bid_ask_spread_pct_book
+    knowledge_id: F_futures_bid_ask_spread_pct_book
+    status: UNSUPPORTED
+    blocking_reason: TXF futures L1 quotes are not available.
+    policy: Strictly unsupported.
+
+  # Future Data Required (Pending Crawler/Matrix Pipeline Extensions)
+  - feature_id: F_dealer_hedging_share_ratio_eod
+    knowledge_id: F_dealer_hedging_share_ratio_eod
+    status: FUTURE_DATA_REQUIRED
+    blocking_reason: update_market.py parse_twse_t86 currently discards dealer hedging columns.
+    planned_extension: Extend T86 parser to extract '自營商避險買賣超股數' in Phase 2.
+
+  - feature_id: F_dealer_hedging_ratio_eod
+    knowledge_id: F_dealer_hedging_amount_ratio_ai
+    status: FUTURE_DATA_REQUIRED
+    blocking_reason: TWSE T86 scraper does not collect dealer hedging net turnover amount.
+    planned_extension: Separate research hypothesis in Phase 2.
+
+  - feature_id: F_futures_basis_pct
+    knowledge_id: F_futures_basis_pct
+    status: FUTURE_DATA_REQUIRED
+    blocking_reason: Spot index (IX0001) is available, but TXF futures contract is not subscribed.
+    planned_extension: Add Shioaji TXF contract polling in Phase 2.
+
+  - feature_id: F_sector_lead_lag_return_diff
+    knowledge_id: F_sector_lead_lag_return_diff
+    status: FUTURE_DATA_REQUIRED
+    blocking_reason: Real-time synchronized multi-stock sector momentum aggregator is not implemented.
+    planned_extension: Build causal sector matrix replay engine in Phase 2.
+
+  - feature_id: F_turnover_rate_intraday
+    knowledge_id: F_turnover_rate_intraday
+    status: FUTURE_DATA_REQUIRED
+    blocking_reason: Point-in-time outstanding share capital is not present in live candidate metadata.
+    planned_extension: Merge official capital data from daily release metadata in Phase 2.

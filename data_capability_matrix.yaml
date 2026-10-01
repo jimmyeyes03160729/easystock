@@ -1,0 +1,255 @@
+schema_version: '1.0'
+audit_date: '2026-10-02'
+project: EasyStock
+auditor: Senior Quantitative Systems Engineer
+audit_scope: READ_ONLY_REPOSITORY_AUDIT
+
+providers:
+  shioaji_realtime:
+    provider: Sinotrade Shioaji SDK
+    role: Live streaming & execution proxy
+    feed_types:
+      ticks:
+        supported: true
+        granularity: Trade Tick (TickSTKv1)
+        fields: [ts, close, volume, tick_type]
+        tick_type_mapping:
+          1: buy_aggressor (外盤)
+          2: sell_aggressor (內盤)
+          0: unknown
+        frequency: Event-driven
+        in_memory_retention_seconds: 300
+        disk_persisted: false
+      quotes_l1:
+        supported: true
+        granularity: Top of book (bid1, ask1)
+        fields: [bid_price, ask_price]
+        frequency: Snapshot on trade/quote
+      quotes_l2:
+        supported: false
+        granularity: 5-depth (BidAskSTKv1)
+        status: UNSUPPORTED
+        note: Not subscribed in intraday_live.py; no 5-level bid/ask qty.
+      cancellations_and_orders:
+        supported: false
+        status: UNSUPPORTED
+        note: TWSE and Shioaji API do not expose order-level cancellation events.
+      index:
+        supported: true
+        granularity: TAIEX (IX0001) periodic snapshot
+        frequency: 15-60 seconds polling
+        fields: [ts, change_rate, close]
+      futures:
+        supported: false
+        status: UNSUPPORTED
+        note: TXF futures contract not subscribed or loaded.
+
+  shioaji_history:
+    provider: Sinotrade Shioaji Historical API
+    role: Post-close bar and tick archive
+    storage_path: /home/ubuntu/easystock-history-expanded-data
+    boundary_floor: '2020-03-02'
+    feed_types:
+      kbars_1m:
+        supported: true
+        fields: [ts, Open, High, Low, Close, Volume, Amount]
+        granularity: 1-minute completed bars
+        coverage: Target pool (up to 200 symbols)
+      ticks:
+        supported: true
+        fields: [ts, close, volume, tick_type, bid_price, ask_price]
+        granularity: Historical ticks
+        coverage: Partial (only selected symbols and dates due to quota)
+      l2_order_book:
+        supported: false
+        status: UNSUPPORTED
+      futures:
+        supported: false
+        status: UNSUPPORTED
+
+  fugle_marketdata:
+    provider: Fugle Market Data API
+    role: Overnight candidate scanner & daily reference prices
+    workflow: GitHub Actions (intraday-picks)
+    frequency: Daily post-market batch
+    fields: [symbol, price, volume, change, turnover]
+    granularity: Daily EOD
+    l2_depth: false
+
+  twse_tpex_open_data:
+    provider: TWSE/TPEX Official Endpoints & Web Scraper
+    role: EOD fundamental & institutional flows
+    endpoints:
+      t86_institutional:
+        url: https://www.twse.com.tw/rwd/zh/fund/T86
+        current_parsing:
+          foreign_net_shares: true
+          trust_net_shares: true
+          dealer_hedging_shares: false
+          dealer_proprietary_shares: false
+        status: PARTIAL
+        defect: Parser in update_market.py discards dealer hedging flows.
+      daily_quotes:
+        url: https://openapi.twse.com.tw/v1
+        parsed: [Open, High, Low, Close, Volume, Category]
+
+causality_and_pit_contract:
+  timezone: Asia/Taipei
+  event_time_field: ts (nanoseconds in Taiwan wall-clock)
+  receive_time_tracked: true
+  availability_contract:
+    intraday_features:
+      rule: strictly availability_time <= decision_time
+      delay_protection: 2-second buffer before entering next completed 1m bar
+      look_ahead_risk: LOW (audited in research.py simulate)
+    daily_features:
+      rule: Prior completed session only; ex-dividend adjustments must be PIT
+      look_ahead_risk: MEDIUM (if stock universe uses post-hoc listing status)
+  bar_completion_policy: Only completed minute bars are exposed to strategy; uncompleted bars restricted to tick buffer.
+
+feature_support_matrix:
+  F_body_ratio:
+    formula: abs(C-O)/(H-L)
+    status: PARTIAL
+    supported_by: Closed 1m/5m bars
+    gap: Formula exists implicitly in bar logic; needs standardized registry.
+  F_body_return_pct:
+    formula: (C-O)/O
+    status: PARTIAL
+    supported_by: Closed 1m/5m bars
+    gap: Currently computed as price_change_60_pct; not standardized per-bar.
+  F_upper_shadow_ratio:
+    formula: (H-max(O,C))/(H-L)
+    status: EXISTS
+    supported_by: Closed bars
+    repo_symbol: strategy_engine.py:upper_wick_ratio
+  F_lower_shadow_ratio:
+    formula: (min(O,C)-L)/(H-L)
+    status: PARTIAL
+    supported_by: Closed bars
+    gap: Derivable from bar_position and upper_wick_ratio.
+  F_close_location_value:
+    formula: (2*C-H-L)/(H-L)
+    status: PARTIAL
+    supported_by: Closed bars
+    repo_symbol: strategy_engine.py:bar_position (rescaled to [0,1])
+  F_gap_open_pct:
+    formula: (open_1 - close_0) / close_0
+    status: PARTIAL
+    supported_by: EOD prior close + first live tick/bar
+    gap: Available at runtime, not logged as standalone historical column.
+  F_ma_alignment_score:
+    formula: sign(MA5-MA10)+sign(MA10-MA20)+sign(MA20-MA60)
+    status: PARTIAL
+    supported_by: Prior daily bars
+    gap: Boolean trend exists; discrete ternary sum not yet vectorized.
+  F_dist_to_prev_high_pct:
+    formula: (max(previous_N_highs) - P_t) / P_t
+    status: PARTIAL
+    supported_by: Prior daily bars (ORB uses intraday opening range)
+    gap: 10-day rolling high exists in update_market.py; needs intraday merge.
+  F_dist_to_prev_close_high_pct:
+    formula: (max(previous_N_closes) - P_t) / P_t
+    status: MISSING
+    supported_by: Prior daily bars
+    gap: Daily close history available, but rolling close max not implemented.
+  F_dist_to_vwap_pct:
+    formula: (P_t - VWAP_t) / VWAP_t
+    status: EXISTS
+    supported_by: Live average_price & 5m bar Typical Price VWAP
+    repo_symbol: strategy_engine.py:calculate_vwap, intraday_live.py:price_vs_avg_pct
+  F_relative_volume_open:
+    formula: elapsed_open_volume / mean(same_elapsed_open_volume_prev_D_days)
+    status: PARTIAL
+    supported_by: Historical 1m bars
+    gap: Current surge60 uses trailing 3-minute baseline within same session, not cross-day same-interval baseline.
+  F_volume_ratio_5m:
+    formula: current_1m_volume / mean(prev_5_1m_volumes)
+    status: PARTIAL
+    supported_by: Closed 1m/5m bars
+    repo_symbol: strategy_engine.py:volume_score
+  F_volume_acceleration:
+    formula: (V_t - 2*V_prev + V_prev2) / dt^2
+    status: PARTIAL
+    supported_by: Sequenced volume buckets
+    gap: Current acceleration10 is 10s volume vs expected volume, not 2nd order difference.
+  F_turnover_rate_intraday:
+    formula: cumulative_shares / outstanding_shares
+    status: MISSING
+    supported_by: Not supported (outstanding shares missing in live context)
+  F_pullback_vol_decay_ratio:
+    formula: pullback_volume_rate / impulse_volume_rate
+    status: MISSING
+    supported_by: High/low turning point causal segmentation
+    gap: Requires causal segmentation engine.
+  F_order_book_imbalance_5:
+    formula: (sum(BidQty) - sum(AskQty)) / (sum(BidQty) + sum(AskQty))
+    status: UNSUPPORTED
+    supported_by: None (L2 5-depth unavailable)
+  F_order_book_imbalance_weighted:
+    formula: Weighted 5-depth OBI
+    status: UNSUPPORTED
+    supported_by: None (L2 5-depth unavailable)
+  F_aggressor_buy_share:
+    formula: buy_shares / (buy_shares + sell_shares)
+    status: EXISTS
+    supported_by: Shioaji tick.tick_type (1=buy, 2=sell)
+    repo_symbol: intraday_live.py:buy_ratio_60s
+  F_trade_aggressiveness_ratio:
+    formula: (buy_shares - sell_shares) / total_classified_shares
+    status: EXISTS
+    supported_by: Linearly mapped from buy_ratio_60s (2*p - 1)
+  F_bid_wall_thickness_ratio:
+    formula: max(BidQty) / median(BidQty)
+    status: UNSUPPORTED
+    supported_by: None (L2 5-depth unavailable)
+  F_bid_wall_mean_ratio:
+    formula: max(BidQty) / mean(BidQty)
+    status: UNSUPPORTED
+    supported_by: None (L2 5-depth unavailable)
+  F_quote_flip_rate_1m:
+    formula: quote_changes / window_seconds
+    status: UNSUPPORTED
+    supported_by: None (Sequenced quotes unavailable)
+  F_wall_depletion_velocity:
+    formula: matched_shares_at_wall / dt
+    status: UNSUPPORTED
+    supported_by: None (Order events unavailable)
+  F_dealer_hedging_ratio_eod:
+    formula: dealer_hedging_net_amount / stock_turnover_amount
+    status: MISSING
+    supported_by: T86 scraper (needs parser update)
+  F_dealer_hedging_share_ratio_eod:
+    formula: dealer_hedging_net_shares / stock_traded_shares
+    status: MISSING
+    supported_by: T86 scraper (needs parser update)
+  F_futures_basis_pct:
+    formula: (F_t - S_t) / S_t
+    status: MISSING
+    supported_by: Requires TXF futures feed subscription
+  F_tx_traded_lots_spread:
+    formula: futures_buy_lots - futures_sell_lots
+    status: UNSUPPORTED
+    supported_by: None (TXF Tick stream unavailable)
+  F_sector_lead_lag_return_diff:
+    formula: leader_return_3m - follower_return_3m
+    status: MISSING
+    supported_by: Requires synchronized multi-stock real-time matrix
+  F_futures_bid_ask_spread_pct_book:
+    formula: (ask1 - bid1) / bid1
+    status: UNSUPPORTED
+    supported_by: None (TXF L1 unavailable)
+
+unsupported_data_capabilities:
+  - capability: L2_5_DEPTH_ORDER_BOOK
+    impact: All OBI, wall thickness, and order-book features cannot be computed.
+    mitigation: Rely strictly on aggressor trade flow (buy_ratio_60s) and volume surge.
+  - capability: CANCELLATIONS_AND_ORDER_EVENTS
+    impact: Spoofing detection and wall depletion cannot be verified.
+    mitigation: Quarantine all spoofing/manipulation labels as unsupported.
+  - capability: TXF_FUTURES_STREAMING
+    impact: Basis and index futures lead-lag strategies cannot be backtested.
+    mitigation: Restrict index regime to spot TAIEX (IX0001) MarketGate.
+  - capability: INTRADAY_SECTOR_MATRIX
+    impact: Real-time sector contagion and leader-follower arbitrage unavailable.
+    mitigation: Filter by static EOD industry classification.
