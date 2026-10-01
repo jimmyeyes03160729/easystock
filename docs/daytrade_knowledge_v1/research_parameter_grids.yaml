@@ -1,0 +1,334 @@
+schema_version: '1.0'
+knowledge_version: V1
+release_status: RESEARCH_HANDOFF_READY_WITH_QUARANTINED_CLAIMS
+created_date: '2026-10-02'
+timezone: Asia/Taipei
+research_only: true
+production_eligible: false
+origin: 全部為研究候選；包含Gemini起始值及本次新增敏感度值，均非作者規則或最佳參數。
+enabled: false
+search_policy: 依單一假說先小範圍預註冊；禁止全grid笛卡兒積盲搜。固定最終holdout，不可按其績效改grid。
+grids:
+- grid_id: G01
+  parameter: vwap_touch_band_fraction
+  status: AI_QUANTIZED
+  values:
+  - 0
+  - 0.001
+  - 0.003
+  - 0.005
+  unit: fraction
+  gemini_or_prior_seed: 0.003
+  references:
+  - AQ_R_003
+  note: 距離帶不是原書數值
+  default: null
+- grid_id: G02
+  parameter: vwap_stop_band_fraction
+  status: AI_QUANTIZED
+  values:
+  - 0
+  - 0.001
+  - 0.002
+  - 0.003
+  unit: fraction
+  gemini_or_prior_seed: 0.002
+  references:
+  - AQ_R_003
+  note: 觸價 vs 已完成1分K版本分開；帶0不代表已驗證原文
+  default: null
+- grid_id: G03
+  parameter: vwap_stop_ticks
+  status: AI_QUANTIZED
+  values:
+  - 0
+  - 1
+  - 2
+  unit: valid_price_ladder_steps
+  gemini_or_prior_seed: null
+  references:
+  - AQ_R_003
+  note: 與比例停損互斥成不同實驗
+  default: null
+- grid_id: G04
+  parameter: prior_high_window
+  status: AI_QUANTIZED
+  values:
+  - 20
+  - 60
+  - 250
+  unit: sessions
+  gemini_or_prior_seed: null
+  references:
+  - AQ_R_001
+  - AQ_R_002
+  note: high vs close分別實驗
+  default: null
+- grid_id: G05
+  parameter: rvol_threshold
+  status: AI_QUANTIZED
+  values:
+  - 1
+  - 1.5
+  - 2
+  - 3
+  unit: ratio
+  gemini_or_prior_seed: 2
+  references:
+  - AQ_R_001
+  note: 同期量且elapsed匹配
+  default: null
+- grid_id: G06
+  parameter: weighted_obi_short_threshold
+  status: AI_QUANTIZED
+  values:
+  - -0.2
+  - -0.3
+  - -0.35
+  - -0.5
+  unit: signed_ratio
+  gemini_or_prior_seed: -0.35
+  references:
+  - H03
+  note: 不與plain OBI門檻混用
+  default: null
+- grid_id: G07
+  parameter: weighted_obi_long_threshold
+  status: AI_QUANTIZED
+  values:
+  - 0.2
+  - 0.4
+  - 0.6
+  unit: signed_ratio
+  gemini_or_prior_seed: 0.4
+  references:
+  - H03
+  note: 效果方向需實證
+  default: null
+- grid_id: G08
+  parameter: wall_ratio
+  status: AI_QUANTIZED
+  values:
+  - 2
+  - 3
+  - 5
+  unit: ratio
+  gemini_or_prior_seed: 3
+  references:
+  - AQ_R_007
+  note: mean及median分開
+  default: null
+- grid_id: G09
+  parameter: wall_event_window
+  status: AI_QUANTIZED
+  values:
+  - 100
+  - 500
+  - 1000
+  unit: milliseconds
+  gemini_or_prior_seed: 100
+  references:
+  - AQ_R_007
+  note: 需時間精度與事件完整度，快照不夠不可硬算
+  default: null
+- grid_id: G10
+  parameter: leader_return_threshold
+  status: AI_QUANTIZED
+  values:
+  - 0.015
+  - 0.025
+  - 0.03
+  unit: fraction
+  gemini_or_prior_seed: 0.025
+  references:
+  - H04
+  note: 3分已過去窗口
+  default: null
+- grid_id: G11
+  parameter: pair_correlation_threshold
+  status: AI_QUANTIZED
+  values:
+  - 0.5
+  - 0.6
+  - 0.65
+  - 0.8
+  unit: correlation
+  gemini_or_prior_seed: 0.65
+  references:
+  - H04
+  note: 與lead-lag統計分開
+  default: null
+- grid_id: G12
+  parameter: follower_timeout
+  status: AI_QUANTIZED
+  values:
+  - 180
+  - 300
+  unit: seconds
+  gemini_or_prior_seed: 180
+  references:
+  - AQ_R_009
+  note: 從leader_event_time或entry_time分開，不可偷換起點
+  default: null
+- grid_id: G13
+  parameter: large_trade_notional
+  status: AI_QUANTIZED
+  values:
+  - 250000
+  - 500000
+  - 1000000
+  unit: TWD
+  gemini_or_prior_seed: 500000
+  references:
+  - H04
+  note: notional=價格*股數，不以張數直接乘價
+  default: null
+- grid_id: G14
+  parameter: aggressor_sell_share
+  status: AI_QUANTIZED
+  values:
+  - 0.5
+  - 0.6
+  - 0.7
+  unit: share_0_to_1
+  gemini_or_prior_seed: 0.6
+  references:
+  - H01
+  note: 不等於signed aggressiveness -0.6
+  default: null
+- grid_id: G15
+  parameter: drop_from_reference
+  status: AI_QUANTIZED
+  values:
+  - 0.005
+  - 0.01
+  - 0.02
+  - 0.03
+  unit: fraction
+  gemini_or_prior_seed: 0.02
+  references:
+  - AQ_R_010
+  note: 漲停價與rolling high參考不同
+  default: null
+- grid_id: G16
+  parameter: limit_proximity
+  status: AI_QUANTIZED
+  values:
+  - 0
+  - 1
+  - 2
+  unit: valid_price_ladder_steps
+  gemini_or_prior_seed: 2
+  references:
+  - AQ_R_010
+  note: exact touch及near touch分開
+  default: null
+- grid_id: G17
+  parameter: pullback_volume_decay
+  status: AI_QUANTIZED
+  values:
+  - 0.3
+  - 0.5
+  - 0.7
+  unit: rate_ratio
+  gemini_or_prior_seed: 0.5
+  references:
+  - AQ_R_008
+  note: 段落起點與確認時間必須因果
+  default: null
+- grid_id: G18
+  parameter: hedging_ratio_candidate
+  status: AI_QUANTIZED
+  values:
+  - 0.05
+  - 0.1
+  - 0.15
+  unit: fraction
+  gemini_or_prior_seed: 0.1
+  references:
+  - AQ_R_004
+  note: 書中10%股數比可驗證，但5%/15%仍AI敏感度；金額比另研究，禁混用。
+  default: null
+  verified_seed_reference: SV012
+- grid_id: G19
+  parameter: futures_spread_candidate
+  status: AI_QUANTIZED
+  values:
+  - 0.003
+  - 0.005
+  - 0.006
+  unit: fraction
+  gemini_or_prior_seed: 0.005
+  references:
+  - AQ_R_004
+  note: 原書0.6%以bid為分母；0.5%是AI候選。
+  default: null
+  verified_seed_reference: SV016
+- grid_id: G20
+  parameter: pyramid_profit_trigger
+  status: AI_QUANTIZED
+  values:
+  - 0.004
+  - 0.008
+  - 0.015
+  unit: fraction
+  gemini_or_prior_seed: 0.008
+  references:
+  - AQ_R_011
+  note: 未設資金比例grid，分母尚缺
+  default: null
+- grid_id: G21
+  parameter: stop_ticks_candidate
+  status: AI_QUANTIZED
+  values:
+  - 2
+  - 3
+  - 5
+  unit: valid_price_ladder_steps
+  gemini_or_prior_seed: 3
+  references:
+  - AQ_R_007
+  - AQ_R_008
+  note: 成本後效果；無作者通用止損認定
+  default: null
+hypotheses:
+- hypothesis_id: H01
+  status: RESEARCH_HYPOTHESIS
+  title: 權證避險資料與次日早盤方向是否相關
+  source_status: UNVERIFIABLE
+  required_features:
+  - F_dealer_hedging_share_ratio_eod
+  - F_aggressor_buy_share
+  effect_verified: false
+- hypothesis_id: H02
+  status: RESEARCH_HYPOTHESIS
+  title: 日線型態加早盤突破、VWAP回測是否有樣本外效果
+  source_status: UNVERIFIABLE
+  required_features:
+  - F_ma_alignment_score
+  - F_relative_volume_open
+  - F_dist_to_vwap_pct
+  effect_verified: false
+- hypothesis_id: H03
+  status: RESEARCH_HYPOTHESIS
+  title: 弱勢反彈加委賣增厚是否帶來負向前向收益
+  source_status: UNVERIFIABLE
+  required_features:
+  - F_order_book_imbalance_weighted
+  - F_pullback_vol_decay_ratio
+  effect_verified: false
+- hypothesis_id: H04
+  status: RESEARCH_HYPOTHESIS
+  title: 同族群領頭發動後跟隨股是否存在可交易的遲滯效果
+  source_status: UNVERIFIABLE
+  required_features:
+  - F_sector_lead_lag_return_diff
+  - F_aggressor_buy_share
+  effect_verified: false
+- hypothesis_id: H05
+  status: RESEARCH_HYPOTHESIS
+  title: 限價接近/觸及後回落是否有負向收益或filter效果
+  source_status: UNVERIFIABLE
+  required_features:
+  - F_dist_to_vwap_pct
+  effect_verified: false

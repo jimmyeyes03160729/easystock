@@ -1,0 +1,747 @@
+schema_version: '1.0'
+knowledge_version: V1
+release_status: RESEARCH_HANDOFF_READY_WITH_QUARANTINED_CLAIMS
+created_date: '2026-10-02'
+timezone: Asia/Taipei
+research_only: true
+production_eligible: false
+verified_cases:
+- case_id: VC001
+  status: SOURCE_VERIFIED
+  claim_type: AUTHOR_CASE
+  instrument: 安勤3479
+  case_date: '2019-08-23'
+  direction: LONG
+  source_entry_summary: 連續型態、跳空與早盤高點觀察。
+  source_exit_summary: 以均價線防守。
+  source_location:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 58
+    printed_page_label: 054-055
+    section: 圖3-1
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  draft_case_id_replaced: null
+  raw_trade_dataset_available: false
+  performance_evidence: 作者敘事/圖例，非獨立核對交易回報或樣本外驗證
+  usable_as_training_label: false
+- case_id: VC002
+  status: SOURCE_VERIFIED
+  claim_type: AUTHOR_POSITION_EXAMPLE
+  instrument: 台表科6278
+  case_date: null
+  direction: LONG
+  source_entry_summary: 試單、過高且成本拉開再分批加碼。
+  source_exit_summary: 示例以均價線觀察與個人停利。
+  source_location:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 94
+    printed_page_label: 090-091
+    section: 4-2
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  draft_case_id_replaced: null
+  raw_trade_dataset_available: false
+  performance_evidence: 作者敘事/圖例，非獨立核對交易回報或樣本外驗證
+  usable_as_training_label: false
+- case_id: VC003
+  status: SOURCE_VERIFIED
+  claim_type: CHART_CONCEPT_EXAMPLE
+  instrument: 泰碩3338
+  case_date: '2019-08-23'
+  direction: LONG
+  source_entry_summary: 日線價格突破與成交量配合的觀察。
+  source_exit_summary: null
+  source_location:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 106
+    printed_page_label: 102-103
+    section: 圖5-1
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  draft_case_id_replaced: C_005
+  raw_trade_dataset_available: false
+  performance_evidence: 作者敘事/圖例，非獨立核對交易回報或樣本外驗證
+  usable_as_training_label: false
+- case_id: VC004
+  status: SOURCE_VERIFIED
+  claim_type: AUTHOR_CASE
+  instrument: 創意3443／創意股票期貨
+  case_date: '2019-01-25'
+  direction: LONG
+  source_entry_summary: 個股強於加權且外盤成交線走強；9:23–9:28觀察進場。
+  source_exit_summary: null
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 168
+    printed_page_label: '170'
+    section: 林昇實例
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  draft_case_id_replaced: C_010
+  raw_trade_dataset_available: false
+  performance_evidence: 作者敘事/圖例，非獨立核對交易回報或樣本外驗證
+  usable_as_training_label: false
+- case_id: VC005
+  status: SOURCE_VERIFIED
+  claim_type: AUTHOR_CASE
+  instrument: TPK-KY3673／股票期貨
+  case_date: '2019-01-17'
+  direction: SHORT
+  source_entry_summary: 前日自營比約25%、期貨近1日212口及5日平均250口，再核對開盤三條件。
+  source_exit_summary: 10:10–10:15現貨急跌爆量選擇平倉；價格敘述是書中假設收益。
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 217
+    printed_page_label: '219'
+    section: 3-9
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  draft_case_id_replaced: C_011
+  raw_trade_dataset_available: false
+  performance_evidence: 作者敘事/圖例，非獨立核對交易回報或樣本外驗證
+  usable_as_training_label: false
+- case_id: VC006
+  status: SOURCE_VERIFIED
+  claim_type: AUTHOR_SCENARIO_EXAMPLE
+  instrument: 大同2371／股票期貨
+  case_date: '2018-12-18'
+  direction: SHORT
+  source_entry_summary: 前日自營比約15%並通過盤前/盤中條件。
+  source_exit_summary: 9:20–9:25急跌爆量出場例。
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 222
+    printed_page_label: '224'
+    section: 3-9
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  draft_case_id_replaced: null
+  raw_trade_dataset_available: false
+  performance_evidence: 作者敘事/圖例，非獨立核對交易回報或樣本外驗證
+  usable_as_training_label: false
+- case_id: VC007
+  status: SOURCE_VERIFIED
+  claim_type: AUTHOR_CASE
+  instrument: 威剛3260
+  case_date: '2020-05-13'
+  direction: SHORT
+  source_entry_summary: 反彈趨緩、外盤單小且不連貫，54委賣增多，測試單後放空。
+  source_exit_summary: 一波下殺後分批停利。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-29.xhtml
+    text_anchor: 分享2020年5月13日
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  draft_case_id_replaced: C_014
+  raw_trade_dataset_available: false
+  performance_evidence: 作者敘事/圖例，非獨立核對交易回報或樣本外驗證
+  usable_as_training_label: false
+- case_id: VC008
+  status: SOURCE_VERIFIED
+  claim_type: AUTHOR_CASE
+  instrument: 華擎3515
+  case_date: '2020-05-27'
+  direction: SHORT
+  source_entry_summary: 大盤轉弱，9:16反彈外盤無法突破140，限價放空。
+  source_exit_summary: 跟隨大盤下殺回補。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-30.xhtml
+    text_anchor: 2020年5月27日
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  draft_case_id_replaced: null
+  raw_trade_dataset_available: false
+  performance_evidence: 作者敘事/圖例，非獨立核對交易回報或樣本外驗證
+  usable_as_training_label: false
+- case_id: VC009
+  status: SOURCE_VERIFIED
+  claim_type: AUTHOR_CASE
+  instrument: 立積4968
+  case_date: '2020-06-01'
+  direction: SHORT
+  source_entry_summary: 大盤強但157買盤防守仍漲不上去，內盤攻擊時做下殺。
+  source_exit_summary: 內盤量減、下跌趨緩回補；書中並述10點後反向軋空。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-31.xhtml
+    text_anchor: 2020年6月1日
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  draft_case_id_replaced: C_015
+  raw_trade_dataset_available: false
+  performance_evidence: 作者敘事/圖例，非獨立核對交易回報或樣本外驗證
+  usable_as_training_label: false
+- case_id: VC010
+  status: SOURCE_VERIFIED
+  claim_type: AUTHOR_CASE
+  instrument: 寶齡富錦1760／熱映3373
+  case_date: '2020-06-04'
+  direction: LONG
+  source_entry_summary: 9:07見熱映攻擊買寶齡富錦；9:16見寶齡反彈改買熱映。
+  source_exit_summary: 第一筆不如預期2tick停損；第二筆快速分批停利。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-32.xhtml
+    text_anchor: 分享2020年6月4日
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  draft_case_id_replaced: null
+  raw_trade_dataset_available: false
+  performance_evidence: 作者敘事/圖例，非獨立核對交易回報或樣本外驗證
+  usable_as_training_label: false
+- case_id: VC011
+  status: SOURCE_VERIFIED
+  claim_type: AUTHOR_CASE
+  instrument: 昇揚半導體8028
+  case_date: '2020-06-08'
+  direction: SHORT
+  source_entry_summary: 反彈高不過高、委買多但漲不上去、反彈量少於下殺量。
+  source_exit_summary: 設58.6監控停損，下殺後分批停利，未因後續反向拉抬而戀棧。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-33.xhtml
+    text_anchor: 2020年6月8日
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  draft_case_id_replaced: C_016
+  raw_trade_dataset_available: false
+  performance_evidence: 作者敘事/圖例，非獨立核對交易回報或樣本外驗證
+  usable_as_training_label: false
+- case_id: VC012
+  status: SOURCE_VERIFIED
+  claim_type: AUTHOR_EXAMPLE
+  instrument: 每月練習本金2萬元
+  case_date: null
+  direction: RISK
+  source_entry_summary: 初學者制定每日損失容忍範圍。
+  source_exit_summary: 當日虧損超過2000元停止交易。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-39.xhtml
+    text_anchor: 例如你每個月有2萬元
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  draft_case_id_replaced: C_018
+  raw_trade_dataset_available: false
+  performance_evidence: 作者敘事/圖例，非獨立核對交易回報或樣本外驗證
+  usable_as_training_label: false
+quarantined_cases:
+- case_id: C_001
+  status: SOURCE_MISMATCH
+  draft_source: 《100張圖》p.38
+  draft_instrument: 台表科 (6278)
+  draft_direction: LONG
+  draft_context: 多方標準型態
+  draft_entry_claim: 5MA翻揚、離前高收盤<10%，開盤跳空創高
+  draft_exit_claim: 盤中觸及漲停或尾盤平倉
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**倖存者偏誤**：只挑選隔日連拉大紅K案例。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 672
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: null
+  mismatch_reason: p38是多方連續型態示意，非台表科案例。
+  source_location_checked:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 42
+    printed_page_label: 038-039
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_002
+  status: SOURCE_MISMATCH
+  draft_source: 《100張圖》p.44
+  draft_instrument: 矽力-KY (6415)
+  draft_direction: LONG
+  draft_context: 多方連續型態
+  draft_entry_claim: 昨日創歷史新高，今日開盤再度跳空開高
+  draft_exit_claim: 守前日收盤價，尾盤獲利平倉
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**高價股滑價風險**：千元股跳一檔即為巨大損益。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 673
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: null
+  mismatch_reason: p44是跌破5MA示意，非矽力-KY此案例。
+  source_location_checked:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 48
+    printed_page_label: 044-045
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_003
+  status: SOURCE_MISMATCH
+  draft_source: 《100張圖》p.50
+  draft_instrument: 穩懋 (3105)
+  draft_direction: LONG
+  draft_context: 多方複合型態
+  draft_entry_claim: 三角收斂末端，帶量跳空站上所有均線
+  draft_exit_claim: 盤中沿均價線上漲，跌破均價線平倉
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**主觀畫線偏誤**：形態收斂邊界缺乏統計精確度。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 674
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: null
+  mismatch_reason: p50是追高停損論述，非穩懋三角型態。
+  source_location_checked:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 54
+    printed_page_label: 050-051
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_004
+  status: SOURCE_MISMATCH
+  draft_source: 《100張圖》p.64
+  draft_instrument: 宏捷科 (8086)
+  draft_direction: LONG
+  draft_context: 均價線回測
+  draft_entry_claim: 早盤衝高後拉回至 VWAP 量縮有守，再出量買進
+  draft_exit_claim: 尾盤獲利平倉或跌破 VWAP 停損
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**洗盤風險**：震盪市容易反覆停損。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 675
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: null
+  mismatch_reason: p64是左邊K棒防守表格，非宏捷科VWAP回測。
+  source_location_checked:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 68
+    printed_page_label: 064-065
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_005
+  status: SOURCE_MISMATCH
+  draft_source: 《100張圖》p.102
+  draft_instrument: 國巨 (2327)
+  draft_direction: LONG
+  draft_context: 被動元件主流飆漲
+  draft_entry_claim: 族群共振，早盤 09:05 帶量突破早盤高點
+  draft_exit_claim: 漲停板前一檔獲利全出
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**後見之明**：歷史大行情時任何買點皆賺錢。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 676
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: null
+  mismatch_reason: p102圖5-1是泰碩3338，非國巨。
+  source_location_checked:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 106
+    printed_page_label: 102-103
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_006
+  status: SOURCE_MISMATCH
+  draft_source: 《100張圖》p.140
+  draft_instrument: 華新科 (2492)
+  draft_direction: LONG
+  draft_context: 試單加碼實例
+  draft_entry_claim: 開盤敲第一筆，拉開成本敲第二筆，破高敲第三筆
+  draft_exit_claim: 盤中未跌破成本線，抱至尾盤獲利
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**順水推舟偏誤**：忽略逆勢時加碼快速爆倉之慘劇。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 677
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: null
+  mismatch_reason: p140是K%D指標章節，非華新科試單加碼。
+  source_location_checked:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 144
+    printed_page_label: 140-141
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_007
+  status: SOURCE_MISMATCH
+  draft_source: 《智富》p.134
+  draft_instrument: 友達 (2409)
+  draft_direction: LONG
+  draft_context: 詹大樓層突破
+  draft_entry_claim: 日K密集價位13.5元突破，由天花板轉為地板
+  draft_exit_claim: 上漲至下一樓層14.2元天花板平倉
+  draft_generalizability: PARTIAL
+  draft_bias_comment: '**人工畫線偏誤**：樓層帶缺乏量化定義。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 678
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: null
+  mismatch_reason: p134是台指期與前20權值股，不是友達13.5→14.2。
+  source_location_checked:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 132
+    printed_page_label: '134'
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_008
+  status: SOURCE_MISMATCH
+  draft_source: 《智富》p.142
+  draft_instrument: 群創 (3481)
+  draft_direction: SHORT
+  draft_context: 詹大樓層跌破
+  draft_entry_claim: 股價跌破近期密集支撐地板，空單進場
+  draft_exit_claim: 回補於下一樓層地板
+  draft_generalizability: PARTIAL
+  draft_bias_comment: '**同上**。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 679
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: null
+  mismatch_reason: p142是股票期貨介紹，非群創樓層空單。
+  source_location_checked:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 140
+    printed_page_label: '142'
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_009
+  status: SOURCE_MISMATCH
+  draft_source: 《智富》p.156
+  draft_instrument: 台指期
+  draft_direction: LONG
+  draft_context: 零克連台指期
+  draft_entry_claim: 摩台/電子期同步強勢，5分K KD黃金交叉且MACD轉紅
+  draft_exit_claim: 5分K KD死亡交叉平倉
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**指標滯後偏誤**：極短線KD與MACD極易被反向巴頭。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 680
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: I003
+  mismatch_reason: p156是內外盤成交線設定，非零克連台指期案例。
+  source_location_checked:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 154
+    printed_page_label: '156'
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_010
+  status: SOURCE_MISMATCH
+  draft_source: 《智富》p.170
+  draft_instrument: 大立光期 (IJ)
+  draft_direction: LONG
+  draft_context: 林昇線條式
+  draft_entry_claim: 台指期委買口數差暴增 + 股期走勢強於大盤
+  draft_exit_claim: 台指期口數差轉折或跌破布林中軌
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**流動性限制**：股期大單容易無對手盤。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 681
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: I003
+  mismatch_reason: p170是創意3443股期做多，非大立光期。
+  source_location_checked:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 168
+    printed_page_label: '170'
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_011
+  status: SOURCE_MISMATCH
+  draft_source: 《智富》p.186
+  draft_instrument: TPK-KY (3673)
+  draft_direction: SHORT
+  draft_context: 權證小哥自營比
+  draft_entry_claim: 前日權證自營比買超達14%，股期開盤走弱放空
+  draft_exit_claim: 09:12 急跌爆量回補平倉
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**極具量化價值**：微觀結構避險機制具有實質經濟學意義。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 682
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: I003
+  mismatch_reason: p186是嘉聯益6153案例；TPK-KY實際p214–220，25%且10:10–10:15出場。
+  source_location_checked:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 184
+    printed_page_label: '186'
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_012
+  status: SOURCE_MISMATCH
+  draft_source: 《智富》p.192
+  draft_instrument: 美律 (2439)
+  draft_direction: SHORT
+  draft_context: 權證小哥自營比
+  draft_entry_claim: 自營比>10%，早盤現貨與期貨跌破均價線放空
+  draft_exit_claim: 09:15 滿足點平倉
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**同上**。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 683
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: I003
+  mismatch_reason: p192是自營比方法介紹，非美律案例。
+  source_location_checked:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 190
+    printed_page_label: '192'
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_013
+  status: SOURCE_MISMATCH
+  draft_source: 《手機當沖》A-27
+  draft_instrument: 康友-KY (6452)
+  draft_direction: SHORT
+  draft_context: 五檔大單假防守
+  draft_entry_claim: 委買掛700張大買單，被連續主動大賣單摜破追空
+  draft_exit_claim: 下跌4個Tick快速平倉
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**延遲風險**：人工手機操作可能成功，量化需極低延遲。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 684
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: null
+  mismatch_reason: 本EPUB沒有A-27，無法支持康友700張案例。
+  source_location_checked:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-26.xhtml
+    text_anchor: 停損、停利技巧
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_014
+  status: SOURCE_MISMATCH
+  draft_source: 《手機當沖》A-29
+  draft_instrument: 奇鋐 (3017)
+  draft_direction: LONG
+  draft_context: 族群連動跟進
+  draft_entry_claim: 散熱龍頭雙鴻帶量噴漲停，奇鋐在3分鐘內跟進做多
+  draft_exit_claim: 奇鋐補漲2%遇賣壓平倉
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**連動失敗風險**：若龍頭炸板，跟隨股率先崩跌。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 685
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: I002
+  mismatch_reason: A-29是威剛3260放空，不是奇鋐做多。
+  source_location_checked:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-29.xhtml
+    text_anchor: 威剛（3260）
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_015
+  status: SOURCE_MISMATCH
+  draft_source: 《手機當沖》A-31
+  draft_instrument: 宏達電 (2498)
+  draft_direction: LONG
+  draft_context: 拉回不破前低
+  draft_entry_claim: 強勢股急拉後橫盤回檔，不破起漲點且買檔墊高
+  draft_exit_claim: 再次創高爆量平倉
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**形態識別偏誤**：橫盤與起漲點需精準演算法定義。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 686
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: I002
+  mismatch_reason: A-31是立積4968放空，不是宏達電做多。
+  source_location_checked:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-31.xhtml
+    text_anchor: 立積（4968）
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_016
+  status: SOURCE_MISMATCH
+  draft_source: 《手機當沖》A-33
+  draft_instrument: 玉晶光 (3406)
+  draft_direction: SHORT
+  draft_context: 漲停未鎖回跌
+  draft_entry_claim: 觸及漲停板數次打開，隨後回跌超過2%追空
+  draft_exit_claim: 跌至VWAP均價線平倉
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**極高推廣性**：多殺多踩踏流動性具有高度統計顯著性。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 687
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: I002
+  mismatch_reason: A-33是昇揚半導體8028弱勢反彈放空，非玉晶光漲停回落。
+  source_location_checked:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-33.xhtml
+    text_anchor: 昇揚半導體（8028）
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_017
+  status: SOURCE_MISMATCH
+  draft_source: 《手機當沖》A-41
+  draft_instrument: 國巨 (2327)
+  draft_direction: EXIT
+  draft_context: 嚴格3-Tick停損
+  draft_entry_claim: 買進後未如預期上攻，反向跌破2個Tick手動砍倉
+  draft_exit_claim: 避免後續連續重挫5%的大虧損
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**執法成本**：頻繁停損對交易手續費侵蝕極大。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 688
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: null
+  mismatch_reason: A-41是固定20萬、停損2tick停利3tick的節奏示例，不是國巨實戰。
+  source_location_checked:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-41.xhtml
+    text_anchor: 當沖操作的節奏與心境
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  confirmed_against_book: true
+- case_id: C_018
+  status: SOURCE_MISMATCH
+  draft_source: 《手機當沖》A-45
+  draft_instrument: 帳戶熔斷
+  draft_direction: RISK
+  draft_context: 達到每日虧損上限
+  draft_entry_claim: 兩筆交易虧損達2,000元（本金2萬），強制關機離場
+  draft_exit_claim: 當日停止交易，避免非理性凹單破產
+  draft_generalizability: 'YES'
+  draft_bias_comment: '**純帳務邏輯**，100%可系統化。'
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 689
+    evidence_kind: GEMINI_DRAFT_ONLY
+  source_location: null
+  usable_for_training_or_backtest: false
+  reported_mismatch_issue_id: null
+  mismatch_reason: A-45是獲利停手；本金2萬虧2000的例子在A-39，無兩筆交易敘述。
+  source_location_checked:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-39.xhtml
+    text_anchor: 設定虧損範圍
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  confirmed_against_book: true
+rebuild_requirements:
+- 每個案例以教材原文和圖表重建，案例ID不可等於EPUB spine序號
+- 記錄股票名稱、當時代碼、日期（若有）、圖表時間、進出場文字
+- 未載日期、價格與數據不可自行補值
+- 案例不當作完整歷史交易資料或效果驗證樣本
+policy: 重建VC ID與Gemini C ID分開；SOURCE_VERIFIED只表示該敘事由來源支持，不代表案例收益或泛化能力已驗證。

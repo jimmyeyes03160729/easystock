@@ -1,0 +1,9 @@
+# EasyStock Daytrade Knowledge V1
+
+完成來源交叉核對與研究工程規格，供OpenCode交接。三本教材原檔均已取得；兩PDF各228頁，先前150頁的來源範圍判斷已更正。未宣稱全书逐行核验，也没有绩效验证。
+
+先讀implementation_spec.md、source_issues.yaml與source_manifest.yaml。七份主檔與OpenCode_final_prompt.md均齊全。SOURCE_VERIFIED規則有直接來源位置與限制；全部18個Gemini案例隔離，另建VC案例。AI閾值可作研究，不能冒稱作者規則。
+
+本次沒有修改repo、沒有策略實作、沒有啟動回測、paper或實單。未讀repo，因此工程提示詞先做實際架構對照。每月練習本金10%例子、半倉/三筆/五筆與50元整的歧義均保留語境。
+
+claim_audit.yaml保留Gemini 670內容行，複合行未拆完的atomic_review_complete=false，不可整行升級。已確認的原子教材命題另列atomic_source_claims及source_verified_rules。未支持或尚不明的內容維持UNVERIFIABLE，且不得用OCR沒有命中证明不存在。

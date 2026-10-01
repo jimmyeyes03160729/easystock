@@ -1,0 +1,15 @@
+{
+  "yaml_files_parsed": 9,
+  "gemini_rules_preserved": 12,
+  "cases_quarantined": 18,
+  "verified_cases": 12,
+  "verified_source_claims": 35,
+  "features": 29,
+  "grids": 21,
+  "review_units": 670,
+  "source_files_available": 3,
+  "source_scope": "targeted claims and cases, not exhaustive full-book verification",
+  "repo_inspected": false,
+  "repo_modified": false,
+  "strategy_implemented": false
+}

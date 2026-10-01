@@ -1,0 +1,67 @@
+schema_version: '1.0'
+knowledge_version: V1
+release_status: RESEARCH_HANDOFF_READY_WITH_QUARANTINED_CLAIMS
+created_date: '2026-10-02'
+timezone: Asia/Taipei
+research_only: true
+production_eligible: false
+classification_definitions:
+  SOURCE_VERIFIED: 教材原檔直接支持此原子主張，附來源雜湊、精確定位與必要語境；不代表績效已驗證。
+  AI_QUANTIZED: 將概念轉成公式、數值或代理特徵的研究設計；教材概念是否支持需另列 parent_source_status。
+  RESEARCH_HYPOTHESIS: 待實證的效果、機制、比較或組合假說，不代表作者主張或已證明的績效。
+  SOURCE_MISMATCH: 引用或敘述出現可定位的錯配。必須註明 mismatch_scope 與直接證據；報告內衝突不等同教材已核對。
+  UNVERIFIABLE: 缺少原始來源、定位或足以核對的證據；不得推定為真或推定為假。
+sources:
+- source_id: B1
+  title_as_reported: 100張圖學會K線當沖
+  format: PDF
+  available: true
+  sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+  coverage_verified: true
+  filename: 100張圖學會K線當沖 - Johnny.pdf
+  pages: 228
+  text_chars: 0
+  drive_file_id: 1La4kv0LT7J_uMPWEf0ynFkCsqeURpW_G
+  coverage_scope: 原檔可取得，228頁PDF與EPUB；不宣稱所有文字與圖片已逐項核驗
+- source_id: B2
+  title_as_reported: 人人都能學會股票當沖全圖解
+  format: PDF
+  available: true
+  sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+  coverage_verified: true
+  filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+  pages: 228
+  text_chars: 0
+  drive_file_id: 1FYlEH3r3PE3DlWMmDgHIuP0k1-JMpfrw
+  coverage_scope: 原檔可取得，228頁PDF與EPUB；不宣稱所有文字與圖片已逐項核驗
+  completeness_note: 涵蓋印刷p156/170/186/192且至版權頁；檔案開頭未見完整封面/目錄，不能說完整出版品。
+- source_id: B3
+  title_as_reported: 【圖解】最高勝率手機當沖
+  format: EPUB
+  available: true
+  sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+  coverage_verified: true
+  filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+  chapters: 48
+  text_chars: 36310
+  drive_file_id: 1vcaifv8ExdtCsv2LJwEqi2SxAwUgcRy4
+  coverage_scope: 原檔可取得，228頁PDF與EPUB；不宣稱所有文字與圖片已逐項核驗
+- source_id: G1
+  filename: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+  available: true
+  sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+  line_count: 845
+  evidence_kind: MODEL_DRAFT
+  may_verify_book_claim: false
+- source_id: P1
+  conversation_id: 6abe759d-2770-83e9-9ed0-406c6defab28
+  evidence_kind: PRIOR_ASSISTANT_REVIEW
+  may_verify_book_claim: false
+  retrieval: read_thread returned six turns, no older cursor; only Gemini attachment available
+release_requirements:
+- 尚未支持的敘述維持UNVERIFIABLE，不阻擋其餘已核對知識交接
+- 未檢查repo，本提示詞要求先唯讀對照實際結構
+- 不得把verified概念當作performance verified或production參數
+repo_inspected: false
+external_market_rules_verified: false
+retrieval_update: 使用者提供Drive資料夾後三原檔取得；先前150頁coverage判斷撤回，不沿用。

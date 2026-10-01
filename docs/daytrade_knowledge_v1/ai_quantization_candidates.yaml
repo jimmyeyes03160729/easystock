@@ -1,0 +1,1932 @@
+schema_version: '1.0'
+knowledge_version: V1
+release_status: RESEARCH_HANDOFF_READY_WITH_QUARANTINED_CLAIMS
+created_date: '2026-10-02'
+timezone: Asia/Taipei
+research_only: true
+production_eligible: false
+policy: R_001–R_012 的工程化組合均作 AI 設計；AUTHOR_CLAIM 等來源欄位另列 UNVERIFIABLE。數值不可因 false 標記升級。
+candidates:
+- candidate_id: AQ_R_001
+  gemini_rule_id: R_001
+  title: 多方標準型態日K突破前高進場假說
+  status: AI_QUANTIZED
+  parent_source_status: SOURCE_VERIFIED
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 54
+    evidence_kind: GEMINI_DRAFT_ONLY
+  claimed_source_book: 《100張圖學會K線當沖》
+  claimed_source_chapter: Part-2 2-1「多方標準型態」
+  claimed_source_page: p.36 - p.40
+  author_claim_status: UNVERIFIABLE
+  gemini_ai_inference_flag: 'true'
+  flag_is_authority: false
+  candidate_fields:
+    TITLE:
+      draft_value: 多方標準型態日K突破前高進場假說
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SOURCE_BOOK:
+      draft_value: 《100張圖學會K線當沖》
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_CHAPTER:
+      draft_value: Part-2 2-1「多方標準型態」
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_PAGE:
+      draft_value: p.36 - p.40
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    DIRECTION:
+      draft_value: LONG
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CATEGORY:
+      draft_value: STOCK_SELECTION
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AUTHOR_CLAIM:
+      draft_value: 當股票短中長線皆站在多方，5MA翻揚且站上，距離左邊波段高點收盤價在10%漲幅以內時，隔日極易開盤帶量突破，形成帶有氣勢的多方噴出。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    ORIGINAL_CONTEXT:
+      draft_value: 盤後選股建立次日當沖口袋名單（自選池）。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    MARKET_CONDITION:
+      draft_value: 大盤日線未走空，市場有多頭主流。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TIME_CONDITION:
+      draft_value: 盤後選股（EOD），次日開盤追蹤。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    PRICE_CONDITION:
+      draft_value: 收盤價 $Close_0 > MA5_0$；短天期均線呈現多頭排列（$MA5_0 > MA10_0 > MA20_0$）；長天期季線 $MA60_0$ 翻揚（$MA60_0 > MA60_{-1}$）；長天期均線不可在5MA之上（無蓋頭反壓）；左方存在波段高點
+        $X$，且當前收盤價與 $X$ 的收盤價價差在10%以內：
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    VOLUME_CONDITION:
+      draft_value: 作者在此處未對成交量給出絕對數值，僅要求不可為冷門無量股。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CANDLE_CONDITION:
+      draft_value: 當日收盤為實體紅K棒（收在相對高點）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ORDERFLOW_CONDITION:
+      draft_value: 無（盤後日線層級）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INDEX_CONDITION:
+      draft_value: 無特定指標限制，但大盤不宜為重挫空頭格局。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SECTOR_CONDITION:
+      draft_value: 屬於盤面強勢或具題材族群。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ENTRY_TRIGGER:
+      draft_value: 次日開盤若帶跳空開高（$Open_1 > Close_0$），且盤中放量突破左方高點 $Close_X$ 時進場。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    EXIT_TRIGGER:
+      draft_value: 盤中漲停鎖死獲利全出，或收盤前未達預期平倉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    STOP_LOSS:
+      draft_value: 盤中跌破當日開盤價，或跌破日內均價線（VWAP），或跌破 $Close_X$。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TAKE_PROFIT:
+      draft_value: 漲停板鎖死前全數獲利了結，或獲利達標（3%～5%）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INVALIDATION:
+      draft_value: 開盤跌破前日收盤價，或跌破5MA。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    REQUIRED_DATA:
+      draft_value: 每日日線OHLCV、歷史還原除權息價格、5MA/10MA/20MA/60MA。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    POSSIBLE_FEATURES:
+      draft_value: '`dist_to_prev_high_10d_pct`, `ma5_slope_5d`, `ma_alignment_score`, `gap_open_pct`'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    QUANTIFIABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    BACKTESTABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    AI_INFERENCE:
+      draft_value: 'true'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AI_INFERENCE_DETAIL:
+      draft_value: 作者書中僅以示意圖表示「K棒A與K棒X收盤價差在10%漲幅內」及「季線翻揚」，量化上需嚴格定義為過去 $N$ 天（建議 $N=20$ 至 $60$）的局部收盤價最大值 $Close_X$，且限制均線斜率
+        $MA60_t - MA60_{t-5} > 0$。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AMBIGUITY:
+      draft_value: 均線「走得扭捏糾結」與「翻揚角度」在作者文字中屬質化描繪，需以回歸斜率量化。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    LOOKAHEAD_BIAS_RISK:
+      draft_value: LOW（使用前一日確定收盤價）。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    SURVIVORSHIP_BIAS_RISK:
+      draft_value: HIGH（書中範例皆為成功飆漲案例，如台表科、矽力-KY，忽略大量接近前高後反轉下殺之失敗個股）。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    IMPLEMENTATION_RISK:
+      draft_value: 隔日開盤跳空若過大（如開在+6%以上），追高進場極易遭遇早盤當沖獲利回吐賣壓。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    NEEDS_TRANSACTION_COST:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    NEEDS_SLIPPAGE:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    RESEARCH_PRIORITY:
+      draft_value: HIGH
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+  execution_allowed: false
+  verified_concept_references:
+  - SV001
+  - SV002
+  claimed_source_location_may_be_wrong: true
+  source_attribution_review: 以verified_concept_references及source_issues為準，candidate_fields原文僅作保留草稿。
+  original_claimed_source_preserved: true
+  author_claim_review_note: 複合敘述未整体核驗；已支持原子部分見SV引用，未支持門檻仍是AI候選。
+- candidate_id: AQ_R_002
+  gemini_rule_id: R_002
+  title: 多方連續型態跳空開高續創高進場假說
+  status: AI_QUANTIZED
+  parent_source_status: SOURCE_VERIFIED
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 93
+    evidence_kind: GEMINI_DRAFT_ONLY
+  claimed_source_book: 《100張圖學會K線當沖》
+  claimed_source_chapter: Part-2 2-2「多方連續型態」
+  claimed_source_page: p.42 - p.46
+  author_claim_status: UNVERIFIABLE
+  gemini_ai_inference_flag: 'true'
+  flag_is_authority: false
+  candidate_fields:
+    TITLE:
+      draft_value: 多方連續型態跳空開高續創高進場假說
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SOURCE_BOOK:
+      draft_value: 《100張圖學會K線當沖》
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_CHAPTER:
+      draft_value: Part-2 2-2「多方連續型態」
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_PAGE:
+      draft_value: p.42 - p.46
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    DIRECTION:
+      draft_value: LONG
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CATEGORY:
+      draft_value: ENTRY
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AUTHOR_CLAIM:
+      draft_value: 昨日剛創歷史或波段新高的強勢股，今日若帶跳空開高，代表買盤氣勢強烈；即使是追高買進，只要跌破前日收盤價立即停損，便能持續參與強者恆強的噴出行情。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    ORIGINAL_CONTEXT:
+      draft_value: 追逐市場妖股、題材龍頭股或連拉漲停之標的。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    MARKET_CONDITION:
+      draft_value: 市場處於主升段或高風險偏好格局。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TIME_CONDITION:
+      draft_value: 09:00～09:15 早盤黃金衝刺期。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    PRICE_CONDITION:
+      draft_value: 昨日最高價為過去歷史或波段高點（$High_0 \ge \max(High_{-20:0})$）；今日開盤跳空開高（$Open_1 > High_0$ 或 $Open_1 > Close_0
+        \times 1.01$）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    VOLUME_CONDITION:
+      draft_value: 開盤第一根量（1分K或5分K）大於前五日開盤均量。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CANDLE_CONDITION:
+      draft_value: 開盤後第一根K棒收紅且不破開盤價。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ORDERFLOW_CONDITION:
+      draft_value: 書中未特別強調，僅稱「買盤積極」。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INDEX_CONDITION:
+      draft_value: 大盤早盤亦為紅盤或未重挫。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SECTOR_CONDITION:
+      draft_value: 同族群股票同步開高。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ENTRY_TRIGGER:
+      draft_value: 今日價格突破開盤第一根高點，或盤中創當日新高時市價追價進場。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    EXIT_TRIGGER:
+      draft_value: 尾盤 13:00～13:20 平倉，或盤中觸及漲停板部分/全數平倉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    STOP_LOSS:
+      draft_value: 絕對防守點為前一日收盤價 $Close_0$（或今日開盤價 $Open_1$）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TAKE_PROFIT:
+      draft_value: 漲停板前一檔全出，或獲利達3%以上分批獲利。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INVALIDATION:
+      draft_value: 開盤跌破昨日收盤價（翻黑）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    REQUIRED_DATA:
+      draft_value: 逐筆 Tick、1分K、日K歷史數據。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    POSSIBLE_FEATURES:
+      draft_value: '`is_prev_day_high_break`, `gap_up_ratio`, `vol_ratio_open_5d`, `intraday_high_break_flag`'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    QUANTIFIABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    BACKTESTABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    AI_INFERENCE:
+      draft_value: 'true'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AI_INFERENCE_DETAIL:
+      draft_value: 作者定義「剛創高」未給出天數窗口，量化需設定過去 60 日或 250 日滾動高點。防守停損若設在「前日收盤價」，若跳空幅度達 4%，單筆停損過大，量化應加入以日內 VWAP 或今日開盤價作為動態停損點。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AMBIGUITY:
+      draft_value: 「買盤氣勢強」未量化。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    LOOKAHEAD_BIAS_RISK:
+      draft_value: LOW
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    SURVIVORSHIP_BIAS_RISK:
+      draft_value: HIGH
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    IMPLEMENTATION_RISK:
+      draft_value: 開高走低「開盤即最高」之出貨黑K（假突破）極易引發連續滑價停損。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    NEEDS_TRANSACTION_COST:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    NEEDS_SLIPPAGE:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    RESEARCH_PRIORITY:
+      draft_value: MEDIUM
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+  execution_allowed: false
+  verified_concept_references:
+  - SV003
+  claimed_source_location_may_be_wrong: true
+  source_attribution_review: 以verified_concept_references及source_issues為準，candidate_fields原文僅作保留草稿。
+  original_claimed_source_preserved: true
+  author_claim_review_note: 複合敘述未整体核驗；已支持原子部分見SV引用，未支持門檻仍是AI候選。
+- candidate_id: AQ_R_003
+  gemini_rule_id: R_003
+  title: 盤中均價線（VWAP）回測不破加碼與跌破停損假說
+  status: AI_QUANTIZED
+  parent_source_status: SOURCE_VERIFIED
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 131
+    evidence_kind: GEMINI_DRAFT_ONLY
+  claimed_source_book: 《100張圖學會K線當沖》
+  claimed_source_chapter: Part-2 2-6「均價線是當沖最重要的一條生命線」
+  claimed_source_page: p.62 - p.67
+  author_claim_status: UNVERIFIABLE
+  gemini_ai_inference_flag: false（作者書中明確指出均價線為當沖第一道防線，跌破即砍）。
+  flag_is_authority: false
+  candidate_fields:
+    TITLE:
+      draft_value: 盤中均價線（VWAP）回測不破加碼與跌破停損假說
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SOURCE_BOOK:
+      draft_value: 《100張圖學會K線當沖》
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_CHAPTER:
+      draft_value: Part-2 2-6「均價線是當沖最重要的一條生命線」
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    SOURCE_PAGE:
+      draft_value: p.62 - p.67
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    DIRECTION:
+      draft_value: BOTH（多方加碼與多單停損）
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CATEGORY:
+      draft_value: ENTRY / EXIT
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AUTHOR_CLAIM:
+      draft_value: 均價線（成交金額 / 成交股數）是當日市場所有進場者的平均持股成本。股價在均價線上代表多方控盤，任何回測接近均價線且量縮不破皆是做多/加碼點；一旦帶量跌破均價線，代表多方全軍覆沒，多單必須無條件停損。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    ORIGINAL_CONTEXT:
+      draft_value: 盤中即時部位監控與加碼退場準則。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    MARKET_CONDITION:
+      draft_value: 任何盤態。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TIME_CONDITION:
+      draft_value: 09:15～11:30。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    PRICE_CONDITION:
+      draft_value: 價格大於當前累積 VWAP（$Price_t > VWAP_t$）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    VOLUME_CONDITION:
+      draft_value: 回測 VWAP 時成交量萎縮，隨後再度出量。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CANDLE_CONDITION:
+      draft_value: 1分K或5分K下影線觸及或接近 VWAP 後收長紅。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ORDERFLOW_CONDITION:
+      draft_value: 委買在 VWAP 處出現大單支撐。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INDEX_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SECTOR_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ENTRY_TRIGGER:
+      draft_value: 價格拉回至距離 VWAP 0.3% 以內未破，隨後出現外盤主動買單（Aggressive Buy）拉開價差時進場/加碼。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    EXIT_TRIGGER:
+      draft_value: 盤中價格跌破 $VWAP_t$ 超過 1～2 個檔位（Tick）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    STOP_LOSS:
+      draft_value: $Price_t < VWAP_t \times (1 - \delta)$（作者定義為直接跌破 VWAP 即砍）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TAKE_PROFIT:
+      draft_value: 創高後爆量停利，或尾盤前平倉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INVALIDATION:
+      draft_value: 股價開盤後始終在 VWAP 之下。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    REQUIRED_DATA:
+      draft_value: 盤中逐筆成交價格與成交量（計算即時滾動 Cumulative Volume-Weighted Average Price）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    POSSIBLE_FEATURES:
+      draft_value: '`dist_to_vwap_pct`, `vwap_touch_count`, `pullback_vol_decay_ratio`, `break_below_vwap_flag`'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    QUANTIFIABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    BACKTESTABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    AI_INFERENCE:
+      draft_value: false（作者書中明確指出均價線為當沖第一道防線，跌破即砍）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AMBIGUITY:
+      draft_value: 「接近均價線」的量化距離容忍度（Tolerance Band）未明確說明。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    LOOKAHEAD_BIAS_RISK:
+      draft_value: NONE（VWAP 計算僅使用 $0$ 到 $t$ 的歷史成交累積）。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    SURVIVORSHIP_BIAS_RISK:
+      draft_value: LOW
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    IMPLEMENTATION_RISK:
+      draft_value: 在無趨勢的日內震盪盤（Choppy Market），價格會反覆上下穿越 VWAP，造成大量「洗盤連續停損」（Whipsaw）。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    NEEDS_TRANSACTION_COST:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    NEEDS_SLIPPAGE:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    RESEARCH_PRIORITY:
+      draft_value: HIGH
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+  execution_allowed: false
+  verified_concept_references:
+  - SV004
+  claimed_source_location_may_be_wrong: true
+  source_attribution_review: 以verified_concept_references及source_issues為準，candidate_fields原文僅作保留草稿。
+  original_claimed_source_preserved: true
+  author_claim_review_note: 複合敘述未整体核驗；已支持原子部分見SV引用，未支持門檻仍是AI候選。
+- candidate_id: AQ_R_004
+  gemini_rule_id: R_004
+  title: 權證自營商避險隔日沖賣壓放空假說（小哥自營比策略）
+  status: AI_QUANTIZED
+  parent_source_status: SOURCE_VERIFIED
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 168
+    evidence_kind: GEMINI_DRAFT_ONLY
+  claimed_source_book: 《人人都能學會股票當沖全圖解》
+  claimed_source_chapter: 第三篇 實戰操作 3-4「權證小哥：自營比大於10%，跟著隔日沖主力賺」
+  claimed_source_page: p.184 - p.197
+  author_claim_status: UNVERIFIABLE
+  gemini_ai_inference_flag: false（小哥在書中將「自營比>10%」、「09:00～09:15」、「正逆價差<1%」明確數字化）。
+  flag_is_authority: false
+  candidate_fields:
+    TITLE:
+      draft_value: 權證自營商避險隔日沖賣壓放空假說（小哥自營比策略）
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SOURCE_BOOK:
+      draft_value: 《人人都能學會股票當沖全圖解》
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_CHAPTER:
+      draft_value: 第三篇 實戰操作 3-4「權證小哥：自營比大於10%，跟著隔日沖主力賺」
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_PAGE:
+      draft_value: p.184 - p.197
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    DIRECTION:
+      draft_value: SHORT
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CATEGORY:
+      draft_value: ENTRY
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AUTHOR_CLAIM:
+      draft_value: 權證隔日沖主力大買認購權證後，發行權證的自營商被迫在現貨市場買進標的股票進行 Delta 避險，造成現貨尾盤大漲。隔日開盤權證主力獲利了結賣出認購權證，自營商必須在現貨市場同步拋售避險股票，導致現貨早盤（09:00～09:15）面臨強大且必然的下殺賣壓，可放空現貨或股票期貨獲利。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    ORIGINAL_CONTEXT:
+      draft_value: 利用衍生品造市商結構性避險特性的跨市場套利當沖。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    MARKET_CONDITION:
+      draft_value: 盤前確認，無特定大盤要求。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TIME_CONDITION:
+      draft_value: 09:00～09:15（黃金拋售期）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    PRICE_CONDITION:
+      draft_value: ''
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    VOLUME_CONDITION:
+      draft_value: 股期開盤有量（避免滑價過大）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CANDLE_CONDITION:
+      draft_value: 現貨或股期開盤第一根K棒（1分K）出量收黑棒，或反彈不過高。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ORDERFLOW_CONDITION:
+      draft_value: 內盤成交比例大增，連續出現外盤大單拋出至內盤成交。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INDEX_CONDITION:
+      draft_value: 大盤早盤未大幅暴漲。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SECTOR_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ENTRY_TRIGGER:
+      draft_value: 09:00 開盤後，見現貨與股期開始出現自營商避險出脫賣單（內盤連續成交），股期跌破開盤價或現貨開高走低跌破第一檔支撐時進場放空。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    EXIT_TRIGGER:
+      draft_value: 09:15 之前，當股價急跌爆大量、買賣盤出現大筆回補單力竭時平倉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    STOP_LOSS:
+      draft_value: 股期或現貨突破當日開盤價，或突破當日早盤高點，立即停損。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TAKE_PROFIT:
+      draft_value: 下跌 1.5%～3% 滿足點，或時間到達 09:15～09:20 權證賣壓宣洩完畢時主動平倉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INVALIDATION:
+      draft_value: 現貨開盤直接跳空漲停（無法放空避險）或跳空重挫 > 5%。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    REQUIRED_DATA:
+      draft_value: 每日盤後券商分點權證進出資料、證交所三大法人買賣超（自營商買賣超區分自行買賣與避險）、標的股票期貨 1-Tick 及 1-Min OHLCV、標的股票現貨逐筆資料。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    POSSIBLE_FEATURES:
+      draft_value: '`dealer_hedging_ratio_eod`, `warrant_delta_turnover_ratio`, `open_gap_pct`, `futures_basis_spread_pct`,
+        `orderflow_bid_ask_trade_ratio`'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    QUANTIFIABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    BACKTESTABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    AI_INFERENCE:
+      draft_value: false（小哥在書中將「自營比>10%」、「09:00～09:15」、「正逆價差<1%」明確數字化）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AMBIGUITY:
+      draft_value: 「大單拋出」、「急跌爆量力竭」需量化。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    LOOKAHEAD_BIAS_RISK:
+      draft_value: NONE（自營比為前一日盤後證交所公開資訊）。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    SURVIVORSHIP_BIAS_RISK:
+      draft_value: LOW（全市場每日皆可客觀計算自營比排名）。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    IMPLEMENTATION_RISK:
+      draft_value: 若盤中遇到主力轉隔日沖為波段拉抬（或現貨發動軋空），自營商反向被迫追買現貨避險，空頭會遭遇劇烈軋空。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    NEEDS_TRANSACTION_COST:
+      draft_value: YES（股期交易成本極低，此策略適合股期）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    NEEDS_SLIPPAGE:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    RESEARCH_PRIORITY:
+      draft_value: HIGH（最優先驗證之微觀結構量化策略）。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+  execution_allowed: false
+  verified_concept_references:
+  - SV011
+  - SV012
+  - SV013
+  - SV014
+  - SV015
+  - SV016
+  claimed_source_location_may_be_wrong: true
+  source_attribution_review: 以verified_concept_references及source_issues為準，candidate_fields原文僅作保留草稿。
+  original_claimed_source_preserved: true
+  author_claim_review_note: 複合敘述未整体核驗；已支持原子部分見SV引用，未支持門檻仍是AI候選。
+- candidate_id: AQ_R_005
+  gemini_rule_id: R_005
+  title: 台指期委買賣成交口數差與1分K布林通道多空假說（林昇線條式當沖）
+  status: AI_QUANTIZED
+  parent_source_status: SOURCE_VERIFIED
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 209
+    evidence_kind: GEMINI_DRAFT_ONLY
+  claimed_source_book: 《人人都能學會股票當沖全圖解》
+  claimed_source_chapter: 第三篇 實戰操作 3-3「林昇：線條式當沖，只要看懂4條線」
+  claimed_source_page: p.166 - p.183
+  author_claim_status: UNVERIFIABLE
+  gemini_ai_inference_flag: 'true'
+  flag_is_authority: false
+  candidate_fields:
+    TITLE:
+      draft_value: 台指期委買賣成交口數差與1分K布林通道多空假說（林昇線條式當沖）
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SOURCE_BOOK:
+      draft_value: 《人人都能學會股票當沖全圖解》
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_CHAPTER:
+      draft_value: 第三篇 實戰操作 3-3「林昇：線條式當沖，只要看懂4條線」
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_PAGE:
+      draft_value: p.166 - p.183
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    DIRECTION:
+      draft_value: BOTH
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CATEGORY:
+      draft_value: MARKET_REGIME / ENTRY
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AUTHOR_CLAIM:
+      draft_value: 散戶習慣掛假單，但「成交口數」絕對無法作假。透過台指期盤中「委買成交總口數」與「委賣成交總口數」之差額，可精確看出大盤實質多空力量；再結合台指期 1分K 布林通道（1倍標準差），突破上軌且口數差多方勝出則做多強勢股，跌破下軌且空方勝出則放空弱勢股。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    ORIGINAL_CONTEXT:
+      draft_value: 股期與現貨當沖的大盤濾網與方向確認。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    MARKET_CONDITION:
+      draft_value: 每日 08:45～09:45。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TIME_CONDITION:
+      draft_value: 開盤後一小時內。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    PRICE_CONDITION:
+      draft_value: 台指期 1分K 收盤價突破布林通道上軌（$Close_t > UpperBand_t$）為多方；跌破布林通道下軌（$Price_t < LowerBand_t$）為空方。（參數：週期取短天期，標準差
+        $\sigma = 1$）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    VOLUME_CONDITION:
+      draft_value: 個股股票期貨當日預估量或近3日均量 > 500口。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CANDLE_CONDITION:
+      draft_value: 個股 1分K 出現與大盤方向一致之趨勢K棒。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ORDERFLOW_CONDITION:
+      draft_value: ''
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INDEX_CONDITION:
+      draft_value: 台指期與加權指數走勢同向。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SECTOR_CONDITION:
+      draft_value: 個股走勢強度強於大盤（大盤回檔時個股抗跌或創高）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ENTRY_TRIGGER:
+      draft_value: 當大盤指標（口數差正向 + 站上1倍標準差上軌）成立，選取強於大盤之個股，於其突破開盤區間高點時買進股票期貨。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    EXIT_TRIGGER:
+      draft_value: 台指期 1分K 跌回布林通道中軌（MA），或口數差翻轉，或時間到達 09:45～10:00。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    STOP_LOSS:
+      draft_value: 個股期貨跌破進場當根 1分K 低點，或台指期灌破布林下軌。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TAKE_PROFIT:
+      draft_value: 個股觸及壓力區，或獲利達 2% 以上分批平倉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INVALIDATION:
+      draft_value: 09:45 後未發動趨勢，強制平倉離場。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    REQUIRED_DATA:
+      draft_value: 台指期逐筆委託與撮合成交資料（包含成交累計內外盤口數）、台指期 1分K、股票期貨逐筆資料。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    POSSIBLE_FEATURES:
+      draft_value: '`tx_net_traded_lots_diff`, `tx_bb_1sigma_pos`, `stock_vs_index_relative_strength_1m`, `stock_ask_bid_trade_diff`'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    QUANTIFIABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    BACKTESTABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    AI_INFERENCE:
+      draft_value: 'true'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AI_INFERENCE_DETAIL:
+      draft_value: 書中提及布林通道「常態分布1倍標準差有68.3%機率在帶內，跑出帶外代表極強勢」，但未給予布林中軌 MA 的滾動均線長度，AI 推導應預設為標準 $MA(20)$ 於 1分K。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AMBIGUITY:
+      draft_value: 「口數差持續擴大」需要量化為斜率門檻（如 $\Delta \text{Diff} > K$ lots/min）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    LOOKAHEAD_BIAS_RISK:
+      draft_value: NONE
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    SURVIVORSHIP_BIAS_RISK:
+      draft_value: LOW
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    IMPLEMENTATION_RISK:
+      draft_value: 1分K配合 1倍標準差之布林帶寬度極窄，極易產生頻繁假突破訊號。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    NEEDS_TRANSACTION_COST:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    NEEDS_SLIPPAGE:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    RESEARCH_PRIORITY:
+      draft_value: HIGH
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+  execution_allowed: false
+  verified_concept_references:
+  - SV010
+  claimed_source_location_may_be_wrong: true
+  source_attribution_review: 以verified_concept_references及source_issues為準，candidate_fields原文僅作保留草稿。
+  original_claimed_source_preserved: true
+  author_claim_review_note: 複合敘述未整体核驗；已支持原子部分見SV引用，未支持門檻仍是AI候選。
+- candidate_id: AQ_R_006
+  gemini_rule_id: R_006
+  title: 關鍵價位帶（樓層式）突破做多與破底放空假說（詹大樓層法）
+  status: AI_QUANTIZED
+  parent_source_status: SOURCE_VERIFIED
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 250
+    evidence_kind: GEMINI_DRAFT_ONLY
+  claimed_source_book: 《人人都能學會股票當沖全圖解》
+  claimed_source_chapter: 第三篇 實戰操作 3-1「詹大：樓層式當沖，找出關鍵價位」
+  claimed_source_page: p.130 - p.147
+  author_claim_status: UNVERIFIABLE
+  gemini_ai_inference_flag: 'true'
+  flag_is_authority: false
+  candidate_fields:
+    TITLE:
+      draft_value: 關鍵價位帶（樓層式）突破做多與破底放空假說（詹大樓層法）
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SOURCE_BOOK:
+      draft_value: 《人人都能學會股票當沖全圖解》
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_CHAPTER:
+      draft_value: 第三篇 實戰操作 3-1「詹大：樓層式當沖，找出關鍵價位」
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    SOURCE_PAGE:
+      draft_value: p.130 - p.147
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    DIRECTION:
+      draft_value: BOTH
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CATEGORY:
+      draft_value: ENTRY / EXIT
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AUTHOR_CLAIM:
+      draft_value: 股價漲跌並非毫無軌跡，而是像在電梯中於樓層（支撐與壓力）之間移動。透過日K線找出近 5～20 日重複出現的密集收盤價/轉折高低點，畫出 3～5 條關鍵價位線（樓層）。盤中突破天花板代表進入上一樓層，順勢做多；跌破地板代表下墜，順勢放空。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    ORIGINAL_CONTEXT:
+      draft_value: 日內震盪與區間突破交易。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    MARKET_CONDITION:
+      draft_value: 震盪盤或區間盤。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TIME_CONDITION:
+      draft_value: 09:05～12:30。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    PRICE_CONDITION:
+      draft_value: 盤前計算好支撐位 $S_1, S_2$ 與壓力位 $R_1, R_2$。盤中即時價格 $Price_t$ 突破 $R_1$ 或跌破 $S_1$。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    VOLUME_CONDITION:
+      draft_value: 突破關鍵價位帶時，必須有大單或 5分K 帶量。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CANDLE_CONDITION:
+      draft_value: 5分K 實體完全收在關鍵價位帶之外（站穩）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ORDERFLOW_CONDITION:
+      draft_value: 突破當下五檔委賣第一檔大單被市價買盤一口氣吃掉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INDEX_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SECTOR_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ENTRY_TRIGGER:
+      draft_value: 5分K 收盤確認站上壓力線 $R_1$（轉為新地板）進場做多；跌破支撐線 $S_1$（轉為新天花板）進場放空。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    EXIT_TRIGGER:
+      draft_value: 上漲至上一層天花板 $R_2$ 遇阻力平倉，或跌至下一層地板 $S_2$ 平倉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    STOP_LOSS:
+      draft_value: 做多跌破進場之關鍵價位 $R_1$ 且未於 3～5 分鐘內收復；做空突破 $S_1$ 停損。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TAKE_PROFIT:
+      draft_value: 到達目標樓層價位獲利了結。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INVALIDATION:
+      draft_value: 盤中價格在兩樓層中間狹幅混亂整理（不操作）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    REQUIRED_DATA:
+      draft_value: 日K歷史OHLCV、盤中 5分K 與 Tick 資料。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    POSSIBLE_FEATURES:
+      draft_value: '`dist_to_key_support_pct`, `dist_to_key_resistance_pct`, `breakout_volume_multiple`, `key_level_density_score`'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    QUANTIFIABLE:
+      draft_value: PARTIAL
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    BACKTESTABLE:
+      draft_value: PARTIAL
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    AI_INFERENCE:
+      draft_value: 'true'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AI_INFERENCE_DETAIL:
+      draft_value: 作者所謂「高頻重複價位」屬人工畫線經驗，量化上需轉換為演算法：如使用核密度估計（Kernel Density Estimation, KDE）計算日K過去20日的高低點分布峰值，或計算成交量分布（Volume
+        Profile / VPVR）的高成交量節點（High Volume Node, HVN）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AMBIGUITY:
+      draft_value: 樓層寬度如果過窄（如僅差 0.5%），交易成本會吃掉所有利潤。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    LOOKAHEAD_BIAS_RISK:
+      draft_value: LOW
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    SURVIVORSHIP_BIAS_RISK:
+      draft_value: MEDIUM
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    IMPLEMENTATION_RISK:
+      draft_value: 在趨勢噴出行情中，所有歷史樓層會被瞬間打穿，若逢高放空會面臨毀滅性虧損。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    NEEDS_TRANSACTION_COST:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    NEEDS_SLIPPAGE:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    RESEARCH_PRIORITY:
+      draft_value: MEDIUM
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+  execution_allowed: false
+  verified_concept_references:
+  - SV033
+  - SV034
+  - SV035
+  claimed_source_location_may_be_wrong: true
+  source_attribution_review: 以verified_concept_references及source_issues為準，candidate_fields原文僅作保留草稿。
+  original_claimed_source_preserved: true
+  author_claim_review_note: 複合敘述未整体核驗；已支持原子部分見SV引用，未支持門檻仍是AI候選。
+- candidate_id: AQ_R_007
+  gemini_rule_id: R_007
+  title: 五檔大單假防守摜破追空假說（Jasper 盤口結構）
+  status: AI_QUANTIZED
+  parent_source_status: SOURCE_VERIFIED
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 288
+    evidence_kind: GEMINI_DRAFT_ONLY
+  claimed_source_book: 《【圖解】最高勝率手機當沖》
+  claimed_source_chapter: 第三章「盤中實戰策略」之「五檔委託單的虛與實」
+  claimed_source_page: EPUB Section A-26, A-27
+  author_claim_status: UNVERIFIABLE
+  gemini_ai_inference_flag: 'true'
+  flag_is_authority: false
+  candidate_fields:
+    TITLE:
+      draft_value: 五檔大單假防守摜破追空假說（Jasper 盤口結構）
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SOURCE_BOOK:
+      draft_value: 《【圖解】最高勝率手機當沖》
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_CHAPTER:
+      draft_value: 第三章「盤中實戰策略」之「五檔委託單的虛與實」
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    SOURCE_PAGE:
+      draft_value: EPUB Section A-26, A-27
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    DIRECTION:
+      draft_value: SHORT
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CATEGORY:
+      draft_value: ENTRY
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AUTHOR_CLAIM:
+      draft_value: 很多新手看到委買五檔掛出數百張、上千張的大買單，以為有主力在防守而跟著買進做多，結果往往被修理。主力真正要買進不會掛在下面給人倒貨；五檔出現異常肥大的委買單往往是主力「假撐盤、真出貨」，一旦該肥大買單被主動大單摜穿或突然撤單（Spoofing），盤面會引發踩踏暴跌，應立刻跟進追空。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    ORIGINAL_CONTEXT:
+      draft_value: 盤中針對弱勢股或高檔盤整股的盤口反轉操作。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    MARKET_CONDITION:
+      draft_value: 個股日內處於弱勢，或大盤開高走低。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TIME_CONDITION:
+      draft_value: 09:15～11:00。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    PRICE_CONDITION:
+      draft_value: 股價在當日相對低檔或 VWAP 之下。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    VOLUME_CONDITION:
+      draft_value: 委買掛單量遠大於委賣掛單量（Order Book Imbalance 倒掛）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CANDLE_CONDITION:
+      draft_value: 不看K線（作者原則），純看跳動。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ORDERFLOW_CONDITION:
+      draft_value: ''
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INDEX_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SECTOR_CONDITION:
+      draft_value: 同族群股票同步走弱。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ENTRY_TRIGGER:
+      draft_value: 見委買巨大防守單被完全擊穿（或成交量爆出且價格穿透該價位）的瞬間，市價（ROD或IOC）追空。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    EXIT_TRIGGER:
+      draft_value: 下跌 2～4 個 Tick 快速回補，或下檔再次出現大量實質換手單時平倉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    STOP_LOSS:
+      draft_value: 嚴格設定 2～3 個 Tick。若價格反彈站回被擊穿的委買價位，無條件砍倉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TAKE_PROFIT:
+      draft_value: 獲利達 1%～2% 或 3～5 個 Tick 分批獲利。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INVALIDATION:
+      draft_value: 委買大單被吃掉後，下一秒買盤立刻湧入並向上反咬。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    REQUIRED_DATA:
+      draft_value: Level 2（L2）完整委託簿快照（深度5檔或全部深度）、逐筆成交資料（含主動買/主動賣屬性與委託撤單事件）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    POSSIBLE_FEATURES:
+      draft_value: '`bid_wall_volume_ratio`, `wall_consumed_speed_ms`, `order_cancellation_ratio`, `post_breakdown_tick_momentum`'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    QUANTIFIABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    BACKTESTABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    AI_INFERENCE:
+      draft_value: 'true'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AI_INFERENCE_DETAIL:
+      draft_value: 作者在書中以手機截圖顯示「委買778張、委賣僅32張，看似支撐強烈，實則隨後大跌」，量化上需嚴謹定義「厚度倍數（Wall Ratio）」與「穿透時間窗口（$T < 500\text{ms}$）」。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AMBIGUITY:
+      draft_value: 需精確區分是「真實成交擊破」還是「主力抽單（Cancellation）」。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    LOOKAHEAD_BIAS_RISK:
+      draft_value: NONE
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    SURVIVORSHIP_BIAS_RISK:
+      draft_value: LOW
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    IMPLEMENTATION_RISK:
+      draft_value: 延遲競爭（Latency Risk）。若系統撮合與下單延遲高於數十毫秒，追空往往成交在反彈低點（空在地板）。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    NEEDS_TRANSACTION_COST:
+      draft_value: YES（高頻 Tick 策略對手續費折讓極度敏感）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    NEEDS_SLIPPAGE:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    RESEARCH_PRIORITY:
+      draft_value: HIGH
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+  execution_allowed: false
+  verified_concept_references:
+  - SV026
+  claimed_source_location_may_be_wrong: true
+  source_attribution_review: 以verified_concept_references及source_issues為準，candidate_fields原文僅作保留草稿。
+  original_claimed_source_preserved: true
+  author_claim_review_note: 複合敘述未整体核驗；已支持原子部分見SV引用，未支持門檻仍是AI候選。
+- candidate_id: AQ_R_008
+  gemini_rule_id: R_008
+  title: 強勢股拉回前低不破且委買轉強做多假說（Jasper 順勢拉回法）
+  status: AI_QUANTIZED
+  parent_source_status: SOURCE_VERIFIED
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 329
+    evidence_kind: GEMINI_DRAFT_ONLY
+  claimed_source_book: 《【圖解】最高勝率手機當沖》
+  claimed_source_chapter: 第三章「盤中實戰策略」之「拉回進場操作法」
+  claimed_source_page: EPUB Section A-30, A-31
+  author_claim_status: UNVERIFIABLE
+  gemini_ai_inference_flag: 'true'
+  flag_is_authority: false
+  candidate_fields:
+    TITLE:
+      draft_value: 強勢股拉回前低不破且委買轉強做多假說（Jasper 順勢拉回法）
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SOURCE_BOOK:
+      draft_value: 《【圖解】最高勝率手機當沖》
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_CHAPTER:
+      draft_value: 第三章「盤中實戰策略」之「拉回進場操作法」
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    SOURCE_PAGE:
+      draft_value: EPUB Section A-30, A-31
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    DIRECTION:
+      draft_value: LONG
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CATEGORY:
+      draft_value: ENTRY
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AUTHOR_CLAIM:
+      draft_value: 絕不追在急噴的第一根紅K，因為手機下單容易滑價被套；正確的高勝率做法是等待強勢股衝高後自然回檔，回檔時觀察成交量是否萎縮且「未跌破早盤前一波起漲低點」。當五檔委賣單被連續外盤大單敲進、委買掛單開始墊高時進場做多。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    ORIGINAL_CONTEXT:
+      draft_value: 早盤強勢股二次發動動能捕捉。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    MARKET_CONDITION:
+      draft_value: 大盤偏多或回檔支撐確認。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TIME_CONDITION:
+      draft_value: 09:15～10:30。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    PRICE_CONDITION:
+      draft_value: ''
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    VOLUME_CONDITION:
+      draft_value: 上漲出量，拉回量縮（拉回成交速度明顯變慢）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CANDLE_CONDITION:
+      draft_value: 股價止跌橫盤 3～5 分鐘。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ORDERFLOW_CONDITION:
+      draft_value: 委買掛單逐檔墊高，外盤成交比例（Trade Aggressiveness）由小於 40% 快速翻轉至 60% 以上。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INDEX_CONDITION:
+      draft_value: 大盤在此時未出現連續急殺。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SECTOR_CONDITION:
+      draft_value: 同族群龍頭股維持強勢或再創新高。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ENTRY_TRIGGER:
+      draft_value: 盤口出現單筆大於百萬以上之外盤主動買單吃穿賣一檔，隨後買一檔立刻補上買單時進場。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    EXIT_TRIGGER:
+      draft_value: 突破前波高點後出現外盤掛大單停滯，或獲利達到 1.5%～3%。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    STOP_LOSS:
+      draft_value: 跌破本次拉回的最低點 $Low_{pullback}$（通常約 3～5 個 Tick）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TAKE_PROFIT:
+      draft_value: 創當日新高後 3～5 檔內分批停利。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INVALIDATION:
+      draft_value: 拉回直接灌破今日起漲點或開盤價。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    REQUIRED_DATA:
+      draft_value: 逐筆成交與委託明細、日內 1分K OHLCV、即時五檔。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    POSSIBLE_FEATURES:
+      draft_value: '`pullback_depth_ratio`, `pullback_volume_decay`, `orderflow_aggressor_flip`, `ticks_to_pullback_low`'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    QUANTIFIABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    BACKTESTABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    AI_INFERENCE:
+      draft_value: 'true'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AI_INFERENCE_DETAIL:
+      draft_value: 作者強調「拉回不破前低」與「買盤變積極」，量化上需將前低定義為日內微結構轉折低（Swing Low），並將買盤轉積極定義為外盤成交量加速度 $\frac{d(Vol_{ask})}{dt}
+        > \theta$。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AMBIGUITY:
+      draft_value: 書中「感覺跌不下去了」為純主觀心理，需以盤口連續 3 檔買盤墊高為量化代理變數。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    LOOKAHEAD_BIAS_RISK:
+      draft_value: NONE
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    SURVIVORSHIP_BIAS_RISK:
+      draft_value: LOW
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    IMPLEMENTATION_RISK:
+      draft_value: 拉回可能演變成「假反彈、真崩跌」的頭肩頂型態。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    NEEDS_TRANSACTION_COST:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    NEEDS_SLIPPAGE:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    RESEARCH_PRIORITY:
+      draft_value: HIGH
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+  execution_allowed: false
+  verified_concept_references:
+  - SV022
+  claimed_source_location_may_be_wrong: true
+  source_attribution_review: 以verified_concept_references及source_issues為準，candidate_fields原文僅作保留草稿。
+  original_claimed_source_preserved: true
+  author_claim_review_note: 複合敘述未整体核驗；已支持原子部分見SV引用，未支持門檻仍是AI候選。
+- candidate_id: AQ_R_009
+  gemini_rule_id: R_009
+  title: 領頭羊帶量發動之同族群連動跟進假說（Jasper 族群效應）
+  status: AI_QUANTIZED
+  parent_source_status: SOURCE_VERIFIED
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 370
+    evidence_kind: GEMINI_DRAFT_ONLY
+  claimed_source_book: 《【圖解】最高勝率手機當沖》
+  claimed_source_chapter: 第三章「盤中實戰策略」之「族群類股連動法」
+  claimed_source_page: EPUB Section A-28, A-29
+  author_claim_status: UNVERIFIABLE
+  gemini_ai_inference_flag: 'true'
+  flag_is_authority: false
+  candidate_fields:
+    TITLE:
+      draft_value: 領頭羊帶量發動之同族群連動跟進假說（Jasper 族群效應）
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SOURCE_BOOK:
+      draft_value: 《【圖解】最高勝率手機當沖》
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_CHAPTER:
+      draft_value: 第三章「盤中實戰策略」之「族群類股連動法」
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    SOURCE_PAGE:
+      draft_value: EPUB Section A-28, A-29
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    DIRECTION:
+      draft_value: LONG
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CATEGORY:
+      draft_value: STOCK_SELECTION / ENTRY
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AUTHOR_CLAIM:
+      draft_value: 資金在台股有極強的族群群聚效應。當某族群指標領頭羊（如散熱雙雄之雙鴻）帶大量急拉甚至直奔漲停時，同族群第二、第三名（如奇鋐、超眾）在 3～5 分鐘內極大概率會出現補漲連動。若能第一時間切入尚未大漲的二線同族群股，勝率極高；但若
+        5 分鐘內二線股毫無動靜，則表示連動失敗，不可戀戰。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    ORIGINAL_CONTEXT:
+      draft_value: 捕捉跨個股盤中資金溢出效應（Spillover Effect）。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    MARKET_CONDITION:
+      draft_value: 族群題材發酵、盤面有明確多頭主流。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TIME_CONDITION:
+      draft_value: 09:05～10:30。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    PRICE_CONDITION:
+      draft_value: ''
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    VOLUME_CONDITION:
+      draft_value: 領頭股成交量暴增（超過其過去 20 分鐘均量 3 倍）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CANDLE_CONDITION:
+      draft_value: 領頭股連續出實體長紅K。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ORDERFLOW_CONDITION:
+      draft_value: 跟隨股 $B$ 的五檔委賣單開始出現連續小筆外盤敲進，有主力轉場試單跡象。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INDEX_CONDITION:
+      draft_value: 大盤方向不與該族群逆向。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SECTOR_CONDITION:
+      draft_value: 同細產業族群分類。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ENTRY_TRIGGER:
+      draft_value: 當領頭股 $A$ 觸及漲停板或維持在最高點，且跟隨股 $B$ 出現第一筆大單敲進外盤時進場做多 $B$。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    EXIT_TRIGGER:
+      draft_value: ''
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    STOP_LOSS:
+      draft_value: 進場後超過 3～5 分鐘 $B$ 仍未跟進發動，或者跌破進場點 2 個 Tick，立即手動停損。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TAKE_PROFIT:
+      draft_value: 跟隨股補漲爆量或接近族群整體漲幅時平倉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INVALIDATION:
+      draft_value: 領頭股為假突破，急拉後立刻反轉大跳水。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    REQUIRED_DATA:
+      draft_value: 即時全市場各產業族群分類對應表、全市場逐筆行情、高頻跨個股共變異矩陣監控。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    POSSIBLE_FEATURES:
+      draft_value: '`leader_3m_return`, `follower_lag_return_diff`, `sector_co_movement_score`, `time_elapsed_since_leader_breakout`'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    QUANTIFIABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    BACKTESTABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    AI_INFERENCE:
+      draft_value: 'true'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AI_INFERENCE_DETAIL:
+      draft_value: 書中僅以經驗說明「看雙鴻拉奇鋐」，量化系統需先進行盤前或歷史「高頻成對回歸（Co-integration & Lead-Lag Cross-Correlation）」計算，確認 $A$
+        與 $B$ 過去 30 日的日內 Lead-Lag 係數顯著大於 0.6，且需嚴格設定「5分鐘發動失效計時器（Time-out Invalidation）」。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AMBIGUITY:
+      draft_value: 領頭羊的定義在實況中可能盤中切換（今天A領漲、明天B領漲）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    LOOKAHEAD_BIAS_RISK:
+      draft_value: LOW
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    SURVIVORSHIP_BIAS_RISK:
+      draft_value: MEDIUM
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    IMPLEMENTATION_RISK:
+      draft_value: 補漲股可能因自身基本面極差而成為「弱勢跟不上」，反而在領頭股拉回時跌得更兇。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    NEEDS_TRANSACTION_COST:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    NEEDS_SLIPPAGE:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    RESEARCH_PRIORITY:
+      draft_value: HIGH
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+  execution_allowed: false
+  verified_concept_references:
+  - SV021
+  claimed_source_location_may_be_wrong: true
+  source_attribution_review: 以verified_concept_references及source_issues為準，candidate_fields原文僅作保留草稿。
+  original_claimed_source_preserved: true
+  author_claim_review_note: 複合敘述未整体核驗；已支持原子部分見SV引用，未支持門檻仍是AI候選。
+- candidate_id: AQ_R_010
+  gemini_rule_id: R_010
+  title: 漲停板未鎖死回跌放空假說（Limit-Up Breakdown Short）
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 412
+    evidence_kind: GEMINI_DRAFT_ONLY
+  claimed_source_book: 《【圖解】最高勝率手機當沖》
+  claimed_source_chapter: 第三章「盤中實戰策略」之「漲停未鎖死操作法」
+  claimed_source_page: EPUB Section A-32, A-33
+  author_claim_status: UNVERIFIABLE
+  gemini_ai_inference_flag: false（書中明確指出觸及漲停未鎖、回跌超過2%為放空進場點）。
+  flag_is_authority: false
+  candidate_fields:
+    TITLE:
+      draft_value: 漲停板未鎖死回跌放空假說（Limit-Up Breakdown Short）
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SOURCE_BOOK:
+      draft_value: 《【圖解】最高勝率手機當沖》
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_CHAPTER:
+      draft_value: 第三章「盤中實戰策略」之「漲停未鎖死操作法」
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    SOURCE_PAGE:
+      draft_value: EPUB Section A-32, A-33
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    DIRECTION:
+      draft_value: SHORT
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CATEGORY:
+      draft_value: ENTRY
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AUTHOR_CLAIM:
+      draft_value: 很多投資人以為碰漲停就是極強，但如果一檔股票多次觸碰漲停板卻無法鎖死（委買排隊量稀少或頻繁被大單砸開），代表主力只是藉由漲停氣勢掩護出貨。當漲停板被摜破且回跌超過 2% 時，早盤追高與排隊買進的隔日沖主力全部被套牢，隨後必定產生停損多殺多骨牌效應，是極高勝率的放空機會。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    ORIGINAL_CONTEXT:
+      draft_value: 捕捉強勢股多空易位的高爆發放空機會。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    MARKET_CONDITION:
+      draft_value: 盤中爆量震盪或中小型投機股。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TIME_CONDITION:
+      draft_value: 09:30～12:30。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    PRICE_CONDITION:
+      draft_value: ''
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    VOLUME_CONDITION:
+      draft_value: 漲停板打開時伴隨當日單量最大之巨量成交。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CANDLE_CONDITION:
+      draft_value: 5分K 收出長上影線或大黑K。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ORDERFLOW_CONDITION:
+      draft_value: 漲停價位原本數千張委買掛單在 1～3 秒內被連續市價大賣單全部擊穿，或委買單主動撤銷後價格崩跌。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INDEX_CONDITION:
+      draft_value: 大盤未能持續創高。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SECTOR_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ENTRY_TRIGGER:
+      draft_value: 跌破漲停板價位且連續出現內盤主動賣單，跌幅達到 1.5%～2% 確認破線時進場放空。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    EXIT_TRIGGER:
+      draft_value: 價格急跌至日內均價線（VWAP）或跌幅達 4%～5% 時平倉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    STOP_LOSS:
+      draft_value: 股價再度反彈逼近漲停板（如距離漲停 2 個 Tick），無條件停損。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TAKE_PROFIT:
+      draft_value: 回補於均價線附近或爆量下影線時。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INVALIDATION:
+      draft_value: 漲停打開後僅回測 0.5% 便再次以萬張大單強勢鎖死。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    REQUIRED_DATA:
+      draft_value: 漲跌停限制價格表、盤中逐筆成交與委託量、跌破速度計算。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    POSSIBLE_FEATURES:
+      draft_value: '`limit_up_touch_count`, `limit_up_unlocked_volume`, `fall_from_limit_up_pct`, `vwap_distance_from_limit_up`'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    QUANTIFIABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    BACKTESTABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    AI_INFERENCE:
+      draft_value: false（書中明確指出觸及漲停未鎖、回跌超過2%為放空進場點）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AMBIGUITY:
+      draft_value: 書中「數次碰漲停」的「數次」未精確量化，建議設定為 $\ge 2$ 次。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    LOOKAHEAD_BIAS_RISK:
+      draft_value: NONE
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    SURVIVORSHIP_BIAS_RISK:
+      draft_value: LOW
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    IMPLEMENTATION_RISK:
+      draft_value: 若主力採取「洗盤式開板」，開板後瞬間回鎖，空單會直接被關在漲停板裡面面臨無法回補或借券費的巨大風險（台股現股當沖先賣若未補需借券）。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    NEEDS_TRANSACTION_COST:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    NEEDS_SLIPPAGE:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    RESEARCH_PRIORITY:
+      draft_value: HIGH（同時具備 Filter 與 Short Strategy 雙重價值）。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+  execution_allowed: false
+  verified_concept_references: []
+  claimed_source_location_may_be_wrong: true
+  source_attribution_review: 以verified_concept_references及source_issues為準，candidate_fields原文僅作保留草稿。
+  original_claimed_source_preserved: true
+  author_claim_review_note: 複合敘述未整体核驗；已支持原子部分見SV引用，未支持門檻仍是AI候選。
+- candidate_id: AQ_R_011
+  gemini_rule_id: R_011
+  title: 早盤三筆分批金字塔加碼部位管理規則
+  status: AI_QUANTIZED
+  parent_source_status: SOURCE_VERIFIED
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 451
+    evidence_kind: GEMINI_DRAFT_ONLY
+  claimed_source_book: 《100張圖學會K線當沖》
+  claimed_source_chapter: Part-1 1-4「進場部位分配與心態控制」
+  claimed_source_page: p.24 - p.28
+  author_claim_status: UNVERIFIABLE
+  gemini_ai_inference_flag: 'true'
+  flag_is_authority: false
+  candidate_fields:
+    TITLE:
+      draft_value: 早盤三筆分批金字塔加碼部位管理規則
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SOURCE_BOOK:
+      draft_value: 《100張圖學會K線當沖》
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_CHAPTER:
+      draft_value: Part-1 1-4「進場部位分配與心態控制」
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    SOURCE_PAGE:
+      draft_value: p.24 - p.28
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    DIRECTION:
+      draft_value: LONG
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CATEGORY:
+      draft_value: RISK / POSITION_SIZING
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AUTHOR_CLAIM:
+      draft_value: 當沖絕對不能一筆敲進滿倉，更嚴禁賠錢攤平。正確做法是將單日預算分為三筆試單：第一筆試單進場後，有獲利拉開成本才准加碼第二筆，再突破確認才敲第三筆；且早盤（09:00～09:30）整體部位絕對不超過總額度的一半，防範早盤劇烈假突破。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    ORIGINAL_CONTEXT:
+      draft_value: 當沖部位風險控制與槓桿控管。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    MARKET_CONDITION:
+      draft_value: 任何盤態。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TIME_CONDITION:
+      draft_value: 09:00～13:00 全日部位管理。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    PRICE_CONDITION:
+      draft_value: ''
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    VOLUME_CONDITION:
+      draft_value: 加碼點必須伴隨買盤外盤成交量放大。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CANDLE_CONDITION:
+      draft_value: 形成階梯式向上（Higher Highs）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ORDERFLOW_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INDEX_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SECTOR_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ENTRY_TRIGGER:
+      draft_value: 符合基本進場訊號敲第 1 筆；訊號確認且獲利達標敲第 2、3 筆。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    EXIT_TRIGGER:
+      draft_value: 只要價格跌破前一筆加碼成本線，全數部位離場。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    STOP_LOSS:
+      draft_value: 第 1 筆虧損達 1.5% 或破防守點即砍，絕不給予加碼攤平機會。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TAKE_PROFIT:
+      draft_value: 整體部位於目標價或尾盤平倉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INVALIDATION:
+      draft_value: 第一筆即看錯虧損。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    REQUIRED_DATA:
+      draft_value: 即時成交回報、未實現損益監控、即時價格。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    POSSIBLE_FEATURES:
+      draft_value: '`current_unrealized_pnl_pct`, `position_step_count`, `time_since_last_entry`'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    QUANTIFIABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    BACKTESTABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    AI_INFERENCE:
+      draft_value: 'true'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AI_INFERENCE_DETAIL:
+      draft_value: 會長書中提出「分三筆買進」、「早盤不打滿」及「賺錢才加碼」原則，量化時需將加碼門檻精確設定為固定的已實現/未實現獲利比率（如 +0.8%、+1.5%），並強制設定單一標的最大曝險上限為總資金之
+        50%。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AMBIGUITY:
+      draft_value: 「拉開成本」的精確百分比在書中為動態口語表達。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    LOOKAHEAD_BIAS_RISK:
+      draft_value: NONE
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    SURVIVORSHIP_BIAS_RISK:
+      draft_value: NONE
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    IMPLEMENTATION_RISK:
+      draft_value: 在震盪盤中，加碼會提高平均成本，導致原本第一筆獲利在反轉時迅速轉為全倉虧損。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    NEEDS_TRANSACTION_COST:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    NEEDS_SLIPPAGE:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    RESEARCH_PRIORITY:
+      draft_value: HIGH
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+  execution_allowed: false
+  verified_concept_references:
+  - SV005
+  - SV006
+  - SV007
+  claimed_source_location_may_be_wrong: true
+  source_attribution_review: 以verified_concept_references及source_issues為準，candidate_fields原文僅作保留草稿。
+  original_claimed_source_preserved: true
+  author_claim_review_note: 複合敘述未整体核驗；已支持原子部分見SV引用，未支持門檻仍是AI候選。
+- candidate_id: AQ_R_012
+  gemini_rule_id: R_012
+  title: 每日最大虧損熔斷關機規則（Jasper 心理與風控防線）
+  status: AI_QUANTIZED
+  parent_source_status: SOURCE_VERIFIED
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 493
+    evidence_kind: GEMINI_DRAFT_ONLY
+  claimed_source_book: 《【圖解】最高勝率手機當沖》
+  claimed_source_chapter: 第四章「心理建設與資金控管」
+  claimed_source_page: EPUB Section A-44, A-45
+  author_claim_status: UNVERIFIABLE
+  gemini_ai_inference_flag: false（作者書中明確以2萬元本金每日虧2,000元即停止交易為例）。
+  flag_is_authority: false
+  candidate_fields:
+    TITLE:
+      draft_value: 每日最大虧損熔斷關機規則（Jasper 心理與風控防線）
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SOURCE_BOOK:
+      draft_value: 《【圖解】最高勝率手機當沖》
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    SOURCE_CHAPTER:
+      draft_value: 第四章「心理建設與資金控管」
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    SOURCE_PAGE:
+      draft_value: EPUB Section A-44, A-45
+      status: SOURCE_MISMATCH
+      eligible_as_author_rule: false
+    DIRECTION:
+      draft_value: BOTH
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CATEGORY:
+      draft_value: RISK / FILTER
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AUTHOR_CLAIM:
+      draft_value: 當沖交易員最致命的死因是「凹單」與「失控情緒化交易（Revenge Trading）」。必須在盤前設定好不可妥協的每日最大虧損金額（設定為當沖操作本金的 10%）；一旦當日累積已實現加上未實現虧損觸及該界限，必須強制關閉軟體、拔掉網路線、立即離場，當日絕對不得再下任何一筆單。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    ORIGINAL_CONTEXT:
+      draft_value: 交易系統最外層的帳戶級風控防護網（System-Level Circuit Breaker）。
+      status: UNVERIFIABLE
+      eligible_as_author_rule: false
+    MARKET_CONDITION:
+      draft_value: 任何市場環境。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TIME_CONDITION:
+      draft_value: 全交易時段（09:00～13:30）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    PRICE_CONDITION:
+      draft_value: 帳戶級即時淨值監控。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    VOLUME_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    CANDLE_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ORDERFLOW_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INDEX_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    SECTOR_CONDITION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    ENTRY_TRIGGER:
+      draft_value: 當日嚴格禁止進場（Trading Halting）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    EXIT_TRIGGER:
+      draft_value: 若觸發時手上仍有未平倉部位，全部以市價單（ROD/IOC）強制全數出清平倉。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    STOP_LOSS:
+      draft_value: 系統帳戶級停止運作。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    TAKE_PROFIT:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    INVALIDATION:
+      draft_value: 無。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    REQUIRED_DATA:
+      draft_value: 交易帳戶即時成交帳務、未平倉損益串流。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    POSSIBLE_FEATURES:
+      draft_value: '`daily_cum_pnl_ratio`, `consecutive_loss_count`, `drawdown_from_daily_peak`'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    QUANTIFIABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    BACKTESTABLE:
+      draft_value: 'YES'
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    AI_INFERENCE:
+      draft_value: false（作者書中明確以2萬元本金每日虧2,000元即停止交易為例）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    AMBIGUITY:
+      draft_value: 無（純帳務數學邊界）。
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    LOOKAHEAD_BIAS_RISK:
+      draft_value: NONE
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    SURVIVORSHIP_BIAS_RISK:
+      draft_value: NONE
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    IMPLEMENTATION_RISK:
+      draft_value: 實務上需防範斷線或強制市價平倉時之極端滑價。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+    NEEDS_TRANSACTION_COST:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    NEEDS_SLIPPAGE:
+      draft_value: 'YES'
+      status: AI_QUANTIZED
+      eligible_as_author_rule: false
+    RESEARCH_PRIORITY:
+      draft_value: HIGH（量化實盤交易系統必備基石）。
+      status: RESEARCH_HYPOTHESIS
+      eligible_as_author_rule: false
+  execution_allowed: false
+  verified_concept_references:
+  - SV028
+  claimed_source_location_may_be_wrong: true
+  source_attribution_review: 以verified_concept_references及source_issues為準，candidate_fields原文僅作保留草稿。
+  original_claimed_source_preserved: true
+  author_claim_review_note: 複合敘述未整体核驗；已支持原子部分見SV引用，未支持門檻仍是AI候選。

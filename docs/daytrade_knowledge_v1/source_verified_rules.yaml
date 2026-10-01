@@ -1,0 +1,590 @@
+schema_version: '1.0'
+knowledge_version: V1
+release_status: RESEARCH_HANDOFF_READY_WITH_QUARANTINED_CLAIMS
+created_date: '2026-10-02'
+timezone: Asia/Taipei
+research_only: true
+production_eligible: false
+verification_policy: 僅直接教材原檔與已查看的圖文支持進 verified_rules；每條為具體語境，績效仍未驗證。
+verified_rules:
+- claim_id: SV001
+  status: SOURCE_VERIFIED
+  claim: 多方標準型態看短天期均線多頭排列、60MA上揚、收盤站上5日線。
+  source_location:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 40
+    printed_page_label: 036-037
+    section: 2-1
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 這是書中偏好的日線選股型態，不含AI的滾動高點窗口或斜率天數。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV002
+  status: SOURCE_VERIFIED
+  claim: A與左方X的收盤價差在10%漲幅之內，用作準備突破前高的描述。
+  source_location:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 40
+    printed_page_label: 036-037
+    section: 2-1
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 原圖未嚴格定義百分比分母或X的機械選取；不能宣稱N=20/60為作者規則。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV003
+  status: SOURCE_VERIFIED
+  claim: 多方連續型態昨日創高，當日開盤最好跳空開高。
+  source_location:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 42
+    printed_page_label: 038-039
+    section: 2-2
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 最好非固定+1%；未指定60/250日新高窗口。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV004
+  status: SOURCE_VERIFIED
+  claim: 極短線均價線防守：跌破均價線出場。
+  source_location:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 58
+    printed_page_label: 054-055
+    section: 3-1
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 這是3-1的一般防守原則；4-3另有以左邊K棒防守的留單情境例子，不能混成全書唯一絕對規則。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV005
+  status: SOURCE_VERIFIED
+  claim: 早盤試單後在再次過高且前筆有價差空間時再分批買進。
+  source_location:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 94
+    printed_page_label: 090-091
+    section: 4-2
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_EXAMPLE
+  context_limits: 例子各買1張共三筆，不是20/20/10%或+0.8%。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV006
+  status: SOURCE_VERIFIED
+  claim: 4-2情境建議早盤部位頂多加到滿倉一半先停手。
+  source_location:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 94
+    printed_page_label: 090-091
+    section: 4-2
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 單一股票持倉信心的語境，分母未機械定義，不是全帳戶保證金一律50%。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV007
+  status: SOURCE_VERIFIED
+  claim: 4-3另一情境分五筆進、早盤三筆、尾盤兩筆，並記大盤佳時早盤可能滿倉。
+  source_location:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 100
+    printed_page_label: 096-097
+    section: 4-3
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_EXAMPLE
+  context_limits: 原文同頁3/5、2/5，且三筆非定額；不可與半倉情境合併成唯一硬限制。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV008
+  status: SOURCE_VERIFIED
+  claim: 左邊K棒支撐價位跌破離場。
+  source_location:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 68
+    printed_page_label: 064-065
+    section: 3-3
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_EXAMPLE
+  context_limits: 表格為當日示例，不支持AI增加3–5分鐘收復容忍。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV009
+  status: SOURCE_VERIFIED
+  claim: 股票價格突破應搭配成交量能。
+  source_location:
+    source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 106
+    printed_page_label: 102-103
+    section: 5-1
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 圖例泰碩3338，沒有固定RVOL2/3倍作通用閾值。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV010
+  status: SOURCE_VERIFIED
+  claim: 林昇的委買成交口數差是委買口數與成交口數差額；委賣成交口數差是委賣口數與成交口數差額。
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 146
+    printed_page_label: '148'
+    section: 3-4
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 不是主動買成交-主動賣成交；供應商細節仍須核對。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV011
+  status: SOURCE_VERIFIED
+  claim: 權證小哥自營比以自營商避險個股買賣超股數除以個股成交股數。
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 191
+    printed_page_label: '193'
+    section: 3-7
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 以股數比，不是Gemini金額比；研究内部小數值不再乘100。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV012
+  status: SOURCE_VERIFIED
+  claim: 自營比絕對值大於10%列口袋名單；正值對應隔日做空、負值對應隔日做多的書中方向。
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 191
+    printed_page_label: '193'
+    section: 3-7
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 作者主張不是因果或樣本外收益已證明。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV013
+  status: SOURCE_VERIFIED
+  claim: 近月股票期貨近1日與近5日平均交易口數大於100口。
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 194
+    printed_page_label: '196'
+    section: 3-7
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 圖5特別標5日平均>100；不能只用單日量替代兩條件。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV014
+  status: SOURCE_VERIFIED
+  claim: 盤中方向相應篩選：做多不要開漲超過2%，做空不要開跌超過2%。
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 202
+    printed_page_label: '204'
+    section: 3-8
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 不是所有做多做空一律abs(gap)<2%；圖表與文字等號邊界留ambiguity。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV015
+  status: SOURCE_VERIFIED
+  claim: 正逆價差幅度=(期貨價-現貨價)/現貨價；做多避正價差>1%，做空避逆價差幅度>1%。
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 205
+    printed_page_label: '207'
+    section: 3-8
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 原表簡写<1%；不得仅套 signed_basis<0.01 而讓大負值通過。方向口徑分別研究。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV016
+  status: SOURCE_VERIFIED
+  claim: 股期委買委賣價差比=(委賣價-委買價)/委買價，建議在0.6%以下。
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 207
+    printed_page_label: '209'
+    section: 3-8
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 不是以mid或現貨為分母；0.5%為AI另一候選。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV017
+  status: SOURCE_VERIFIED
+  claim: 零克連台指期案例用1分鐘KD/MACD輔助，再觀察5分鐘K、KD/MACD及死亡交叉出場。
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 130
+    printed_page_label: '132'
+    section: 台指期案例
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_EXAMPLE
+  context_limits: 案例不支持Gemini對所有情況的高勝率結論。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV018
+  status: SOURCE_VERIFIED
+  claim: 選股先看前一天成交量、漲幅／跌幅／週轉排行。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-23.xhtml
+    text_anchor: 挑選當沖標的法則
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 昨日日終選隔日標的，不能使用當日最終量當早盤篩選。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV019
+  status: SOURCE_VERIFIED
+  claim: 作者建議股價低於300元。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-23.xhtml
+    text_anchor: 找股價低於300元
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 建議，非所有高價標的絕對禁止。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV020
+  status: SOURCE_VERIFIED
+  claim: 50元以下最好超過2萬張；50元以上最好超過1萬張。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-23.xhtml
+    text_anchor: 50元以下的股票最好
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 前文是前日成交量；50整同時落在文字两邊，等號歧義不可自行解決。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV021
+  status: SOURCE_VERIFIED
+  claim: 同族群另一股票5分鐘未連動，注意走勢分歧。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-25.xhtml
+    text_anchor: 沒有連動走勢那就要小心走勢分歧
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 不等於進場後180秒或300秒一律強制出場。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV022
+  status: SOURCE_VERIFIED
+  claim: 新手強勢股等拉回止跌或不破前低；弱勢股等反彈無力或未破前高再進場。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-25.xhtml
+    text_anchor: 拉回時才進場
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 不是2.5%首波、50%回撤、40→60%侵略度或百萬單等固定量化條件。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV023
+  status: SOURCE_VERIFIED
+  claim: 作者用五檔、成交明細，認為5分線對他偏慢且手機切窗影響速度。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-21.xhtml
+    text_anchor: 5分線對我來說是一種落後指標
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 書中A-17也說均線K線可參考，不是嚴禁所有技術指標。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV024
+  status: SOURCE_VERIFIED
+  claim: 均線與K線可作參考，但需熟悉操作和果斷停損。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-17.xhtml
+    text_anchor: 雖然均線、K線沒有不好
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 與完全拋棄/嚴禁的Gemini敘述不同。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV025
+  status: SOURCE_VERIFIED
+  claim: 有五檔成交明細經驗與停損基礎時，作者也做追突破。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-43.xhtml
+    text_anchor: 做突破也是我的當沖手法之一
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 故「Jasper一律嚴禁追高」錯誤。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV026
+  status: SOURCE_VERIFIED
+  claim: 五檔大單防守被突破後，走勢不一定繼續；大單成交有買也有賣。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-43.xhtml
+    text_anchor: 並不一定大單突破後走勢會繼續
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 不能改成肥大買牆必是假撐盤且應立刻追空。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV027
+  status: SOURCE_VERIFIED
+  claim: 百元股通常在3 Tick以內停損。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-32.xhtml
+    text_anchor: 以百元股來說
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_PRACTICE
+  context_limits: 案例同章第一筆實際2 Tick停損；不推廣為所有>100元股0.5–0.8%。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV028
+  status: SOURCE_VERIFIED
+  claim: 初學者可以每月練習本金十分之一設當日損失停手；2萬元對應超過2000元例子。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-39.xhtml
+    text_anchor: 每個月練習當沖的本金10分之1
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_EXAMPLE
+  context_limits: 無已實現+未實現計算法、拔網路、系統强平等明確工程定義。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV029
+  status: SOURCE_VERIFIED
+  claim: 手機當沖停損作者建議ROD市價。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-26.xhtml
+    text_anchor: 停損我的建議是用
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 為作者歷史操作建議；不驗證今日下單制度，也不保證模擬可成交。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV030
+  status: SOURCE_VERIFIED
+  claim: 操作節奏示例：百元股固定20萬倉位、2 Tick停損、3 Tick停利。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-41.xhtml
+    text_anchor: 固定20萬元倉位不追價
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_EXAMPLE
+  context_limits: 不是真實國巨案例，沒有跌後5%損失的案例敘事。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV031
+  status: SOURCE_VERIFIED
+  claim: 連續虧損3到5筆可停單或休息，釐清問題。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-41.xhtml
+    text_anchor: 連續虧損筆數達3到5筆
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 原文允許思考後重新進場，不能擴成必須停至次日。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV032
+  status: SOURCE_VERIFIED
+  claim: 作者說9:00到9:30股票起伏最大，並描述自己在9:30前完成交易。
+  source_location:
+    source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-10.xhtml
+    text_anchor: 起伏最大的時段
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 作者經驗敘述，不支持全天70%成交量/動能或最高勝率的統計值。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV033
+  status: SOURCE_VERIFIED
+  claim: 樓層式當沖從前日熱門股選重複價位，找3到5個關鍵價位帶；站上可做多，跌破可做空。
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 65
+    printed_page_label: '067'
+    section: 2-1
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 是概念，不支持KDE、5至20日窗口或成交密度算法。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV034
+  status: SOURCE_VERIFIED
+  claim: 找價位帶檢視日K開收高低四價及近幾個月重複價格；至少3個關鍵帶。
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 74
+    printed_page_label: '076'
+    section: 2-1 步驟3
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 100到150元股票2到3元間隔是例子；近幾個月未給精確窗口，不能只取收盤價。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+- claim_id: SV035
+  status: SOURCE_VERIFIED
+  claim: 樓層式開盤站上一樓但之後跌破關鍵價位帶，停損出場。
+  source_location:
+    source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 83
+    printed_page_label: 085
+    section: 2-2 狀況3
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  claim_type: AUTHOR_RULE
+  context_limits: 不支持AI固定百分比容忍或5分鐘確認。
+  quantitative_formula_is_author_rule: false
+  production_parameter: false
+  performance_verified: false
+  review_date: '2026-10-02'
+pending_source_claims: []

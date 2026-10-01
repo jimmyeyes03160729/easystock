@@ -1,0 +1,437 @@
+schema_version: '1.0'
+knowledge_version: V1
+release_status: RESEARCH_HANDOFF_READY_WITH_QUARANTINED_CLAIMS
+created_date: '2026-10-02'
+timezone: Asia/Taipei
+research_only: true
+production_eligible: false
+issues:
+- issue_id: I001
+  status: SOURCE_MISMATCH
+  title: R_003 全段 false 標記與未定容忍度並存
+  mismatch_scope: GEMINI_INTERNAL_ATTRIBUTION
+  evidence: R_003 ENTRY_TRIGGER 指定0.3%，EXIT_TRIGGER指定1–2 Tick；AMBIGUITY卻說未明確量化。
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 131
+    evidence_kind: GEMINI_DRAFT_ONLY
+  resolution: false 不可套用整個複合規則。
+  book_source_status: UNVERIFIABLE
+  confirmed_against_book: false
+- issue_id: I002
+  status: SOURCE_MISMATCH
+  title: 族群連動來源章節/案例疑似錯配
+  mismatch_scope: BOOK_DIRECT
+  evidence: A-29威剛、A-31立積、A-33昇揚半導體；A-32寶齡富錦/熱映，直接EPUB核對。
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 685
+    evidence_kind: GEMINI_DRAFT_ONLY
+  resolution: 重建新案例ID；原C_014/15/16均隔離。
+  book_source_status: SOURCE_MISMATCH
+  confirmed_against_book: true
+  source_locations:
+  - source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-29.xhtml
+    text_anchor: 章節開頭實戰日期與股票名稱
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  - source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-31.xhtml
+    text_anchor: 章節開頭實戰日期與股票名稱
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  - source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-32.xhtml
+    text_anchor: 章節開頭實戰日期與股票名稱
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  - source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-33.xhtml
+    text_anchor: 章節開頭實戰日期與股票名稱
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+- issue_id: I003
+  status: SOURCE_MISMATCH
+  title: Smart p156/p170/p186/p192 與 R_004/R_005 範圍
+  mismatch_scope: BOOK_DIRECT_WRONG_CONTENT_AT_CITED_PAGE
+  evidence: 本次228頁版本可讀該頁；p156是林昇指標設定，p170是創意，p186是嘉聯益，p192是自營比介紹。並非Gemini所稱案例。
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 680
+    evidence_kind: GEMINI_DRAFT_ONLY
+  resolution: 撤回缺頁理由，改為實際頁碼/案例內容錯配。
+  book_source_status: SOURCE_MISMATCH
+  confirmed_against_book: true
+  source_locations:
+  - source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 154
+    printed_page_label: '156'
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  - source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 168
+    printed_page_label: '170'
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  - source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 184
+    printed_page_label: '186'
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  - source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 190
+    printed_page_label: '192'
+    section: null
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+- issue_id: I004
+  status: SOURCE_MISMATCH
+  title: C_017 3-Tick 標題與2-Tick理由
+  mismatch_scope: GEMINI_INTERNAL
+  evidence: 同一列型態是嚴格3-Tick停損，進場理由是跌破2 Tick。
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 688
+    evidence_kind: GEMINI_DRAFT_ONLY
+  resolution: 保留衝突，不自行挑一數字。
+  book_source_status: UNVERIFIABLE
+  confirmed_against_book: false
+- issue_id: I005
+  status: RESEARCH_HYPOTHESIS
+  title: 三書VWAP共識
+  mismatch_scope: UNSUPPORTED_GENERALIZATION
+  evidence: P1 反對Jasper以VWAP為核心；缺每書定位。
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 699
+    evidence_kind: GEMINI_DRAFT_ONLY
+  resolution: 撤回共識認定；逐書核對。
+  book_source_status: UNVERIFIABLE
+  confirmed_against_book: false
+- issue_id: I006
+  status: RESEARCH_HYPOTHESIS
+  title: 70%動能與最高勝率
+  mismatch_scope: UNSUPPORTED_EMPIRICAL_CLAIM
+  evidence: 無數據集、動能定義、樣本期間或檢驗。
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 700
+    evidence_kind: GEMINI_DRAFT_ONLY
+  resolution: 不可保存為已證明比例。
+  book_source_status: UNVERIFIABLE
+  confirmed_against_book: false
+- issue_id: I007
+  status: SOURCE_MISMATCH
+  title: Jasper 完全拋棄K線/嚴禁指標
+  mismatch_scope: BOOK_DIRECT
+  evidence: A-17允許均線K線參考、A-21幾乎不看K線為個人極短線語境；不是嚴禁。
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 710
+    evidence_kind: GEMINI_DRAFT_ONLY
+  resolution: 作者絕對化描述未核驗，待EPUB。
+  book_source_status: SOURCE_MISMATCH
+  confirmed_against_book: true
+  source_locations:
+  - source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-17.xhtml
+    text_anchor: 均線、K線沒有不好
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  - source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-21.xhtml
+    text_anchor: 幾乎是不看K線
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+- issue_id: I008
+  status: SOURCE_MISMATCH
+  title: 連動研究條件多版本
+  mismatch_scope: GEMINI_INTERNAL_VARIANTS
+  evidence: R_009 30日lead-lag>0.6及3–5分；TOP4改20日相關>=0.65與進場後180秒。
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 796
+    evidence_kind: GEMINI_DRAFT_ONLY
+  resolution: 拆窗口、統計方法、事件起點，分別研究。
+  book_source_status: UNVERIFIABLE
+  confirmed_against_book: false
+- issue_id: I009
+  status: SOURCE_MISMATCH
+  title: 股期spread 0.6%與0.5%
+  mismatch_scope: GEMINI_INTERNAL_VARIANTS
+  evidence: R_004要求<0.6%；TOP1改<0.5%；不等於basis<1%。
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 728
+    evidence_kind: GEMINI_DRAFT_ONLY
+  resolution: 不宣称书中同一门槛；参数化并明确分母。
+  book_source_status: UNVERIFIABLE
+  confirmed_against_book: false
+- issue_id: I010
+  status: SOURCE_MISMATCH
+  title: 限價觸及與近限價條件混合
+  mismatch_scope: GEMINI_INTERNAL_VARIANTS
+  evidence: R_010要求曾觸漲停；TOP5用距漲停2 ticks且自滚动最高价跌2%，基準不同。
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 819
+    evidence_kind: GEMINI_DRAFT_ONLY
+  resolution: 分拆 exact_touch 与 near_touch、limit-based 与 rolling-high-based。
+  book_source_status: UNVERIFIABLE
+  confirmed_against_book: false
+- issue_id: I011
+  status: SOURCE_MISMATCH
+  title: 留單描述矛盾
+  mismatch_scope: GEMINI_INTERNAL
+  evidence: 01_SUMMARY提1檔昨日留單；05_EXIT称会长绝不留单。
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 615
+    evidence_kind: GEMINI_DRAFT_ONLY
+  resolution: 不推定作者留倉政策，待教材語境。
+  book_source_status: UNVERIFIABLE
+  confirmed_against_book: false
+- issue_id: I012
+  status: UNVERIFIABLE
+  title: 宣稱完整解析三本教材
+  mismatch_scope: COVERAGE_CLAIM
+  evidence: 取得兩份228頁原檔。先前150頁摘要不足以描述本次版本；Gemini完整解析自述仍不是審查證据。
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 1
+    evidence_kind: GEMINI_DRAFT_ONLY
+  resolution: 來源以本次雜湊及coverage為準，不宣稱全面已核驗。
+  book_source_status: UNVERIFIABLE
+  confirmed_against_book: false
+- issue_id: I013
+  status: RESEARCH_HYPOTHESIS
+  title: C_016高度統計顯著/必定下殺/極高勝率
+  mismatch_scope: UNSUPPORTED_EMPIRICAL_CLAIM
+  evidence: 教材案例或敘事無法证明全样本统计效果。
+  gemini_location:
+    artifact: TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md
+    sha256: 8b304bee10641d2581f2c91f4f975d11fa5ccbacedfb00ebc6d9bfe6a8b2d0c9
+    line_1_based: 687
+    evidence_kind: GEMINI_DRAFT_ONLY
+  resolution: 只作假說；需樣本、失敗案例與樣本外檢驗。
+  book_source_status: UNVERIFIABLE
+  confirmed_against_book: false
+- issue_id: I014
+  status: SOURCE_MISMATCH
+  title: R_003章節/頁碼錯配
+  mismatch_scope: BOOK_DIRECT
+  evidence: Gemini Part2 2-6 p62–67；實際3-1均價線p54–57；其p62–67是左邊K棒。
+  source_locations:
+  - source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 58
+    printed_page_label: 054-055
+    section: 3-1
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+  book_source_status: SOURCE_MISMATCH
+  resolution: 隔離錯誤歸屬，保留獨立AI研究候選；未支持的部分維持UNVERIFIABLE。
+- issue_id: I015
+  status: SOURCE_MISMATCH
+  title: R_011部位管理章節錯配
+  mismatch_scope: BOOK_DIRECT
+  evidence: Gemini Part1 1-4 p24–28；實際4-2 p90–91、4-3 p92–97。
+  source_locations:
+  - source_id: B1
+    sha256: 0b58aae3d5611b71dc134b4a6931791fea1795b02a3b69a63ef6dfeb1a5faaf9
+    filename: 100張圖學會K線當沖 - Johnny.pdf
+    pdf_page_1_based: 94
+    printed_page_label: 090-091
+    section: 4-2
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+  book_source_status: SOURCE_MISMATCH
+  resolution: 隔離錯誤歸屬，保留獨立AI研究候選；未支持的部分維持UNVERIFIABLE。
+- issue_id: I016
+  status: SOURCE_MISMATCH
+  title: 自營比金額公式錯配
+  mismatch_scope: BOOK_DIRECT
+  evidence: Gemini金額比不等於作者股數比；把避險股數換成未提供的金額不可接受。
+  source_locations:
+  - source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 191
+    printed_page_label: '193'
+    section: 3-7
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+  book_source_status: SOURCE_MISMATCH
+  resolution: 隔離錯誤歸屬，保留獨立AI研究候選；未支持的部分維持UNVERIFIABLE。
+- issue_id: I017
+  status: SOURCE_MISMATCH
+  title: 林昇口數差公式錯配
+  mismatch_scope: BOOK_DIRECT
+  evidence: 書中是委買口數與成交口數差、委賣口數與成交口數差；不是aggressor buy minus sell。
+  source_locations:
+  - source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 146
+    printed_page_label: '148'
+    section: 3-4
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+  book_source_status: SOURCE_MISMATCH
+  resolution: 隔離錯誤歸屬，保留獨立AI研究候選；未支持的部分維持UNVERIFIABLE。
+- issue_id: I018
+  status: SOURCE_MISMATCH
+  title: R_012/C_018虧損章節錯配
+  mismatch_scope: BOOK_DIRECT
+  evidence: A-44是如何克服凹單，A-45是設定獲利金額；虧損範圍在A-39。且練習本金不是帳戶淨值。
+  source_locations:
+  - source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-39.xhtml
+    text_anchor: 設定虧損範圍
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  confirmed_against_book: true
+  book_source_status: SOURCE_MISMATCH
+  resolution: 隔離錯誤歸屬，保留獨立AI研究候選；未支持的部分維持UNVERIFIABLE。
+- issue_id: I019
+  status: SOURCE_MISMATCH
+  title: R_007/A-27引用不可對應
+  mismatch_scope: BOOK_DIRECT
+  evidence: 本EPUB無A-27.xhtml；A-26是停損停利技巧；盤口大單迷思在A-43。康友700張追空敘事不能由該引用支持。
+  source_locations:
+  - source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-43.xhtml
+    text_anchor: 五檔掛大單迷思
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  confirmed_against_book: true
+  book_source_status: SOURCE_MISMATCH
+  resolution: 隔離錯誤歸屬，保留獨立AI研究候選；未支持的部分維持UNVERIFIABLE。
+- issue_id: I020
+  status: SOURCE_MISMATCH
+  title: R_008/R_009引用錯配
+  mismatch_scope: BOOK_DIRECT
+  evidence: 拉回與同族群方法位於A-25。R_008引A-30/31均為放空案例；R_009引A-28/29不是族群雙鴻奇鋐例。
+  source_locations:
+  - source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-25.xhtml
+    text_anchor: 判斷何時做多
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  confirmed_against_book: true
+  book_source_status: SOURCE_MISMATCH
+  resolution: 隔離錯誤歸屬，保留獨立AI研究候選；未支持的部分維持UNVERIFIABLE。
+- issue_id: I021
+  status: SOURCE_MISMATCH
+  title: R_010作者歸屬與引用錯配
+  mismatch_scope: BOOK_DIRECT
+  evidence: A-32是連動股、A-33是弱勢反彈放空；不支持「漲停回跌2%高勝率追空」的作者規則。
+  source_locations:
+  - source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-33.xhtml
+    text_anchor: 觀察主力操作
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  confirmed_against_book: true
+  book_source_status: SOURCE_MISMATCH
+  resolution: 隔離錯誤歸屬，保留獨立AI研究候選；未支持的部分維持UNVERIFIABLE。
+- issue_id: I022
+  status: SOURCE_MISMATCH
+  title: 固定09:15出場與原書案例矛盾
+  mismatch_scope: BOOK_DIRECT
+  evidence: TPK-KY案例自營比25%，觀察10:10–10:15急跌爆量平倉；非Gemini14%與09:12。大同案例到09:20–09:25。
+  source_locations:
+  - source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 217
+    printed_page_label: '219'
+    section: 3-9
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+  book_source_status: SOURCE_MISMATCH
+  resolution: 隔離錯誤歸屬，保留獨立AI研究候選；未支持的部分維持UNVERIFIABLE。
+- issue_id: I023
+  status: SOURCE_MISMATCH
+  title: Jasper嚴禁追高的絕對化歸屬錯配
+  mismatch_scope: BOOK_DIRECT
+  evidence: A-43說有五檔成交明細經驗和停損基礎可以追突破；是作者手法之一。
+  source_locations:
+  - source_id: B3
+    sha256: d11feacae530d0565b1d22f2c530004518fd42d676f688ffa735716c2b99532c
+    filename: apk.tw_《【圖解】最高勝率手機當沖》.kepub.epub
+    href: OEBPS/Text/A-43.xhtml
+    text_anchor: 做突破也是我的當沖手法之一
+    evidence_method: EPUB_XHTML_TEXT_DIRECTLY_REVIEWED
+  confirmed_against_book: true
+  book_source_status: SOURCE_MISMATCH
+  resolution: 隔離錯誤歸屬，保留獨立AI研究候選；未支持的部分維持UNVERIFIABLE。
+- issue_id: I024
+  status: SOURCE_MISMATCH
+  title: BB中軌完全未指定的說法過度
+  mismatch_scope: BOOK_DIRECT
+  evidence: 圖示中可讀BBandMA30，Gemini說只能預設MA20；圖示參數不必然通用，但應保留而非宣稱沒有。
+  source_locations:
+  - source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 150
+    printed_page_label: '152'
+    section: 圖7
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+  book_source_status: SOURCE_MISMATCH
+  resolution: 隔離錯誤歸屬，保留獨立AI研究候選；未支持的部分維持UNVERIFIABLE。
+- issue_id: I025
+  status: SOURCE_MISMATCH
+  title: R_006樓層法作者與章節引用錯配
+  evidence: 實際為詹大第2章樓層式當沖，非零克連第3章p130–147。原書使用開收高低及近幾個月重複價位，不是只用5–20日收盤價密度。
+  source_locations:
+  - source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 65
+    printed_page_label: '067'
+    section: 2-1
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  - source_id: B2
+    sha256: 651e086649c3079d237a1b42113001b7882588084ae0dcb08f0efeb83610c5db
+    filename: 人人都能學會股票當沖全圖解 - 《Smart智富》真．投資研究室.pdf
+    pdf_page_1_based: 74
+    printed_page_label: '076'
+    section: 2-1
+    evidence_method: PAGE_IMAGE_VISUALLY_REVIEWED
+  confirmed_against_book: true
+  book_source_status: SOURCE_MISMATCH
+  resolution: 原概念另列SV033–035；窗口與聚類算法仍為AI研究。

@@ -1,0 +1,93 @@
+schema_version: '1.0'
+knowledge_version: V1
+release_status: RESEARCH_HANDOFF_READY_WITH_QUARANTINED_CLAIMS
+created_date: '2026-10-02'
+timezone: Asia/Taipei
+research_only: true
+production_eligible: false
+production_defaults: {}
+candidates:
+- risk_id: K01
+  name: daily_loss_example
+  status: SOURCE_VERIFIED
+  parent_source_status: SOURCE_VERIFIED
+  draft_or_prior_claim: 作者初學者每月練習本金例子已核驗；系統帳戶風控門檻仍未設。
+  research_constraint: 保留作者例子待核對，不設定系統 default；會計口徑、曝險與費用另定。
+  enabled: false
+  verified_concept_references:
+  - SV028
+- risk_id: K02
+  name: daily_stop_simulation
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  draft_or_prior_claim: R_012加入已實現+未實現、全倉市價與取消委託。
+  research_constraint: 研究用狀態機先停止新建曝險、管理未成交單與既有部位；停手不等於拔網路或停止風控。
+  enabled: false
+- risk_id: K03
+  name: position_pyramid
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  draft_or_prior_claim: R_011為20/20/10%；06_RISK改30/20/10%，+0.8%與50%上限未核驗。
+  research_constraint: 比例分母（預算/淨值/保證金/授信額度）待定，不混用、不寫入正式預設。
+  enabled: false
+  verified_concept_references:
+  - SV005
+  - SV006
+  - SV007
+- risk_id: K04
+  name: tick_stop
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  draft_or_prior_claim: '>100元2–3 Tick、0.5–0.8% 與「百元股通常3Tick」語境不同。'
+  research_constraint: 依歷史有效tick表逐檔走價；價格跨級距不能以固定tick乘法換算。
+  enabled: false
+  verified_concept_references:
+  - SV027
+  - SV030
+- risk_id: K05
+  name: liquidity_filter
+  status: UNVERIFIABLE
+  parent_source_status: UNVERIFIABLE
+  draft_or_prior_claim: 股價300/500、50元界線、2萬/1萬張及期貨100/500口須逐條驗。
+  research_constraint: 昨日量或當下累積量可用；不可用當日最終量篩早盤，預估量需独立模型。
+  enabled: false
+  verified_concept_references:
+  - SV018
+  - SV019
+  - SV020
+  - SV013
+- risk_id: K06
+  name: single_lot_robot_label
+  status: RESEARCH_HYPOTHESIS
+  parent_source_status: UNVERIFIABLE
+  draft_or_prior_claim: 一張交錯成交即機器人對倒是未證實歸因。
+  research_constraint: 可記小單比率，不輸出操縱判定。
+  enabled: false
+- risk_id: K07
+  name: spoofing_label
+  status: RESEARCH_HYPOTHESIS
+  parent_source_status: UNVERIFIABLE
+  draft_or_prior_claim: 100ms 大單消失不能單憑5檔快照確認撤單或欺騙意圖。
+  research_constraint: 只有快照時輸出 wall_disappearance_proxy 與原因unknown；事件不足標unsupported。
+  enabled: false
+- risk_id: K08
+  name: forced_blacklist_after_limit_failure
+  status: RESEARCH_HYPOTHESIS
+  parent_source_status: UNVERIFIABLE
+  draft_or_prior_claim: TOP5絕對禁止做多為AI新增。
+  research_constraint: 分開比較無filter、事件後有限期限filter與當日filter；不得啟用正式黑名單。
+  enabled: false
+- risk_id: K09
+  name: event_day_filter
+  status: RESEARCH_HYPOTHESIS
+  parent_source_status: UNVERIFIABLE
+  draft_or_prior_claim: 非農、大選、結算末半小時禁交易來源未證。
+  research_constraint: 按可得事件時點研究；不是硬性作者禁令。
+  enabled: false
+- risk_id: K10
+  name: execution_risk
+  status: RESEARCH_HYPOTHESIS
+  parent_source_status: UNVERIFIABLE
+  draft_or_prior_claim: 限價封鎖、市價成交、空單回補等需具體市場規則與資料。
+  research_constraint: 不可假設觸價必成交；資產別、交易資格、借券、結算、稅費均按歷史生效版。
+  enabled: false

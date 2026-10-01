@@ -1,0 +1,278 @@
+schema_version: '1.0'
+knowledge_version: V1
+release_status: RESEARCH_HANDOFF_READY_WITH_QUARANTINED_CLAIMS
+created_date: '2026-10-02'
+timezone: Asia/Taipei
+research_only: true
+production_eligible: false
+definition_origin: 下列公式為 Gemini 草稿與本次審查提出的研究規格，不是經教材驗證的作者公式。
+features:
+- feature_id: F_body_ratio
+  name: body_ratio
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: abs(C-O)/(H-L)
+  required_data: closed_bar_OHLCV
+  edge_case_and_causality: H=L 時 null；拒絕 H<L 或 OHLC 不合法
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_body_return_pct
+  name: body_return_pct
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: (C-O)/O
+  required_data: closed_bar_OHLCV
+  edge_case_and_causality: O<=0 時 null；百分比為小數
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_upper_shadow_ratio
+  name: upper_shadow_ratio
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: (H-max(O,C))/(H-L)
+  required_data: closed_bar_OHLCV
+  edge_case_and_causality: H=L 時 null
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_lower_shadow_ratio
+  name: lower_shadow_ratio
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: (min(O,C)-L)/(H-L)
+  required_data: closed_bar_OHLCV
+  edge_case_and_causality: H=L 時 null
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_close_location_value
+  name: close_location_value
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: (2*C-H-L)/(H-L)
+  required_data: closed_bar_OHLCV
+  edge_case_and_causality: H=L 時 null；區間 [-1,1]
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_gap_open_pct
+  name: gap_open_pct
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: (session_open-prev_session_close)/prev_session_close
+  required_data: point_in_time_daily_prices
+  edge_case_and_causality: 除權息採當時可得參考價一致處理；不混用還原與未還原
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_ma_alignment_score
+  name: ma_alignment_score
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: sign(MA5-MA10)+sign(MA10-MA20)+sign(MA20-MA60)
+  required_data: prior_completed_daily_bars
+  edge_case_and_causality: 日內使用昨日完成日線；至少60筆，無資料不補值
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_dist_to_prev_high_pct
+  name: dist_to_prev_high_pct
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: (max(previous_N_highs)-P_t)/P_t
+  required_data: daily_OHLCV_and_ticks
+  edge_case_and_causality: 不含今日完成日線；另建 close-based 版本，不混成相同 feature
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_dist_to_prev_close_high_pct
+  name: dist_to_prev_close_high_pct
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: (max(previous_N_closes)-P_t)/P_t
+  required_data: daily_OHLCV_and_ticks
+  edge_case_and_causality: 与 high-based 分開；歷史窗口為研究參數
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_dist_to_vwap_pct
+  name: dist_to_vwap_pct
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: (P_t-VWAP_t)/VWAP_t
+  required_data: sequenced_trades
+  edge_case_and_causality: VWAP=sum(price*shares)/sum(shares)；只使用同 session 且已收到的成交
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_relative_volume_open
+  name: relative_volume_open
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: elapsed_open_volume/mean(same_elapsed_open_volume_previous_D_sessions)
+  required_data: intraday_OHLCV
+  edge_case_and_causality: 09:03 不可使用09:05 完整量；基期0時 null
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_volume_ratio_5m
+  name: volume_ratio_5m
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: current_completed_1m_volume/mean(previous_5_completed_1m_volumes)
+  required_data: closed_1m_bars
+  edge_case_and_causality: 原稿名称与窗口含义不一致；明确当前与历史窗口，不含当前分母
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_volume_acceleration
+  name: volume_acceleration
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: (V_t-2*V_prev+V_prev2)/(delta_time^2)
+  required_data: equal_interval_volume_buckets
+  edge_case_and_causality: 定義為區間量二階差；與累計量二階差不同，分別實驗
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_turnover_rate_intraday
+  name: turnover_rate_intraday
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: cumulative_traded_shares/point_in_time_outstanding_shares
+  required_data: trades_and_share_count
+  edge_case_and_causality: shares 單位一致；股份數使用當時已公告版本
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_pullback_vol_decay_ratio
+  name: pullback_vol_decay_ratio
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: pullback_shares_per_second/impulse_shares_per_second
+  required_data: causal_segmented_trades
+  edge_case_and_causality: 段落只可依過去確認；原稿 per tick 平均會受交易頻率偏誤
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_order_book_imbalance_5
+  name: order_book_imbalance_5
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: (sum(BidQty)-sum(AskQty))/(sum(BidQty)+sum(AskQty))
+  required_data: L2_5_levels
+  edge_case_and_causality: 分母0、缺檔、過期quote為null；份額固定單位
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_order_book_imbalance_weighted
+  name: order_book_imbalance_weighted
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: (sum(w_i*BidQty_i)-sum(w_i*AskQty_i))/sum(w_i*(BidQty_i+AskQty_i)), w_i=1/i
+  required_data: L2_5_levels
+  edge_case_and_causality: 不可与 unweighted OBI 共用不註明版本的門檻
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_aggressor_buy_share
+  name: aggressor_buy_share
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: classified_buy_shares/(classified_buy_shares+classified_sell_shares)
+  required_data: trades_with_aggressor_or_quote_inference
+  edge_case_and_causality: '[0,1]；未知不視為買賣，另記 classified coverage'
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_trade_aggressiveness_ratio
+  name: trade_aggressiveness_ratio
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: (classified_buy_shares-classified_sell_shares)/(classified_buy_shares+classified_sell_shares)
+  required_data: trades_with_aggressor_or_quote_inference
+  edge_case_and_causality: '[-1,1]；等於2*buy_share-1；60%買入份額對應delta=0.2而非0.6'
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_bid_wall_thickness_ratio
+  name: bid_wall_thickness_ratio
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: max(BidQty_1to5)/median(BidQty_1to5)
+  required_data: L2_5_levels
+  edge_case_and_causality: median=0時null；與原稿另一個 mean denominator 版本分開
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_bid_wall_mean_ratio
+  name: bid_wall_mean_ratio
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: max(BidQty_1to5)/mean(BidQty_1to5)
+  required_data: L2_5_levels
+  edge_case_and_causality: 原稿3倍mean版本；不混用median
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_quote_flip_rate_1m
+  name: quote_flip_rate_1m
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: best_bid_or_ask_price_change_count/window_seconds
+  required_data: sequenced_quotes
+  edge_case_and_causality: 分開記價格變動與方向交替；數量變動不算價格flip
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_wall_depletion_velocity
+  name: wall_depletion_velocity
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: matched_executed_shares_at_wall/elapsed_seconds
+  required_data: order_events_and_trades
+  edge_case_and_causality: 只有快照無法確認撤單與成交原因；不能輸出確定欺騙標籤
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_dealer_hedging_ratio_eod
+  name: dealer_hedging_amount_ratio_ai
+  status: SOURCE_MISMATCH
+  parent_source_status: SOURCE_MISMATCH
+  formula: dealer_hedging_net_buy_amount/stock_turnover_amount
+  required_data: published_dealer_hedging_data
+  edge_case_and_causality: 原稿金額公式不等於原書股數公式；如研究金額比須另命名、另取得金額資料。
+  availability_timestamp_required: true
+  production_eligible: false
+  disabled: true
+  source_issue: I016
+- feature_id: F_futures_basis_pct
+  name: futures_basis_pct
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: (F_t-S_t)/S_t
+  required_data: synchronized_futures_spot
+  edge_case_and_causality: 正逆價差是有號或絕對值待核對；非 bid-ask spread
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_tx_traded_lots_spread
+  name: tx_traded_lots_spread
+  status: SOURCE_MISMATCH
+  parent_source_status: SOURCE_MISMATCH
+  formula: classified_buy_contracts-classified_sell_contracts
+  required_data: futures_classified_trades
+  edge_case_and_causality: 可作獨立主動成交差假說，但不能冒稱林昇委買賣成交口數差。
+  availability_timestamp_required: true
+  production_eligible: false
+  source_issue: I017
+  disabled: true
+- feature_id: F_sector_lead_lag_return_diff
+  name: sector_lead_lag_return_diff
+  status: AI_QUANTIZED
+  parent_source_status: UNVERIFIABLE
+  formula: leader_trailing_3m_return-follower_trailing_3m_return
+  required_data: synchronized_ticks_and_PIT_sector_map
+  edge_case_and_causality: 領頭股選定只能依t以前；相關係數不等於因果、共整合或lead-lag
+  availability_timestamp_required: true
+  production_eligible: false
+- feature_id: F_dealer_hedging_share_ratio_eod
+  name: dealer_hedging_share_ratio_eod
+  status: AI_QUANTIZED
+  parent_source_status: SOURCE_VERIFIED
+  verified_concept_references:
+  - SV011
+  - SV012
+  formula: dealer_hedging_net_buy_shares / stock_total_traded_shares
+  required_data: published_PIT_dealer_hedging_net_shares_and_total_shares
+  availability_timestamp_required: true
+  edge_case_and_causality: 前日已發布資料，分母0時null；輸出小數比例，10%=0.10；不混自行買賣。
+  production_eligible: false
+- feature_id: F_futures_bid_ask_spread_pct_book
+  name: futures_bid_ask_spread_pct_book
+  status: AI_QUANTIZED
+  parent_source_status: SOURCE_VERIFIED
+  verified_concept_references:
+  - SV016
+  formula: (ask1-bid1)/bid1
+  required_data: synchronized_futures_L1
+  edge_case_and_causality: bid1<=0或quote過期時null；不要替換成mid denominator而沿用書中0.6%。
+  production_eligible: false
