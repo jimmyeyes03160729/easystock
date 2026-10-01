@@ -112,10 +112,17 @@
 
 - [ ] **觸底反彈 AI 學習**
   - [x] Phase 1：凍結正式 `range-rebound-0.3` Baseline；研究回放不修改正式 feed / Top 3。
-  - [x] Phase 1：版本化 Dataset schema、D0 特徵、PASSED / PENDING 候選與 deterministic Near Miss / rejected control。
-  - [x] Phase 1：永豐逐日封存 K 棒 point-in-time backfill、D1 open 與 10 交易日 label、1/3/5/10/20D outcome。
-  - [x] Phase 1：私有 SQLite、每日收集與成熟 label 排程、Dataset Audit / leakage guard。
-  - [ ] Phase 2：Baseline / Logistic Regression / HistGradientBoosting 比較。
+  - [x] Phase 1：版本化 Dataset / Feature schema v1，共 26 個特徵；收集 PASSED / PENDING / NEAR_MISS / REJECTED_CONTROL。
+  - [x] Phase 1：Historical Backfill 2023-09-04～2026-10-01，共 742 個交易日、100 檔、897 筆 Dataset；D1 open、10 交易日 label、1/3/5/10/20D outcome、MFE / MAE 已完成。
+  - [x] Phase 1：私有 SQLite `/home/ubuntu/easystock-learning-data/rebound/dataset.sqlite`、每日 22:30 收集 / label timer、Dataset Audit / leakage guard 已完成；future leakage 0、duplicate 0、critical 0。
+  - [ ] **Phase 1.5：資料補強**：K 線 coverage 由目前 58.23% 補到至少 90%，優先補齊歷史行情缺口。
+  - [ ] Phase 1.5：建立可 point-in-time 重建的歷史 Market Context（TAIEX / OTC / 類股日資料、stock vs market / sector、market regime）；不得把今天的玉山即時資料倒灌過去。
+  - [ ] Phase 1.5：補歷史財務 point-in-time / publication date；無法證明當時已公開的財務資料維持 null，不可 future leakage。
+  - [ ] Phase 1.5：維持兩個研究 profile：`rebound-tech-v1`（技術 + 量價 + Market Context）與 `rebound-full-v1`（再加 Financial PIT），避免財務 PIT 不足阻塞全部研究。
+  - [ ] Phase 1.5：重跑 Backfill / Labels / Audit，成熟可訓練樣本目前 237 筆，先累積到至少 500～1,000 筆再做正式模型比較。
+  - [ ] Phase 1.5：TIMEOUT 目前 154 / 237，Phase 2 前需評估三分類（SUCCESS / FAIL / TIMEOUT）或兩階段模型，避免只做 SUCCESS vs FAIL 丟掉大部分樣本。
+  - [ ] Phase 2：Baseline / Logistic Regression / HistGradientBoosting 正式比較；目前只允許 pipeline sanity check，不得 Candidate / Shadow。
+  - [ ] Phase 2：Walk-forward + 10 交易日 embargo + holdout；以相同 Top 3 訊號數比較 Target Hit Rate、5D / 10D return、MFE / MAE、PF、Drawdown、Brier。
   - [ ] Phase 2：Shadow 驗證，再決定是否 Applied；不自動晉升。
 
 - [ ] **永豐實盤當沖後台（Owner-only）**
@@ -738,6 +745,56 @@ AI 上線前必須先統一正式定義，避免同一個「rebound」標籤混�
 
 目前規劃優先以較完整的 `range-rebound` 邏輯作為正式基準，之後將核心演算法搬到 VM / Python，前端 JS 只負責顯示。
 
+### Phase 1 實作結果（2026-10-01）
+
+Phase 1 已完成並部署：
+- Baseline：`range-rebound-0.3`，正式 Web / Chrome / Top 3 未被研究管線修改。
+- 私有 Dataset：`/home/ubuntu/easystock-learning-data/rebound/dataset.sqlite`。
+- Dataset / Feature schema：v1，共 26 個特徵。
+- Candidate kinds：PASSED / PENDING / NEAR_MISS / REJECTED_CONTROL。
+- Historical Backfill：2023-09-04～2026-10-01，共 742 個交易日、100 檔、43,210 個有封存行情的股票交易日。
+- Dataset rows：897。
+- 成熟 Label：SUCCESS 29、FAIL 54、TIMEOUT 154、AMBIGUOUS 0；成熟且可訓練 237，UNLABELED 660。
+- K 線 coverage：58.23%；已有 K 線之 volume coverage 100%。
+- Historical Financial PIT coverage：0%。
+- Historical Market Context coverage：0%。
+- Near Miss：89（net_rr 87、距支撐 2）；明確淘汰股票以 deterministic control sample 分開保存。
+- Leakage Audit：future leakage 0、duplicate ID 0、critical 0、warning 6。
+- 研究排程：交易日 22:30（Asia/Taipei）自動執行。
+- Phase 1 完成 commit / deploy：`31a4170b170a82b8df9ce8a96e0fd3143ddd2113`；VM HEAD / origin/main / release-info 一致，failed systemd units = 0。
+- 尚未訓練任何正式 Rebound AI 模型，尚未啟用 Shadow。
+
+### Phase 1.5：資料補強（正式 Phase 2 前）
+
+目前主要瓶頸不是模型程式，而是 point-in-time coverage 與成熟樣本數。
+
+優先順序：
+1. **K 線 coverage**：目前 58.23%，先補到至少 90%。不得用 future-adjusted / 不可驗證資料污染歷史 replay。
+2. **Historical Market Context**：以歷史日資料建立可重建的 TAIEX / OTC / 類股 context，不依賴今天才接上的即時玉山資料。
+3. **Historical Financial PIT**：必須保存真正 publication / filing date；只有能證明在 signal_date 當時已公開的數值才能進 feature。
+4. 重跑 Backfill / Label / Audit，持續由每日 timer 累積 forward samples。
+5. Mature trainable rows 目前 237；正式模型比較前目標先累積到至少 500～1,000 筆。
+
+建議第一批 Historical Market Context：
+- taiex_return_1d / 5d / 20d
+- otc_return_1d / 5d / 20d
+- stock_vs_market_5d / 20d
+- sector_return_5d
+- stock_vs_sector_5d
+- market_regime
+
+研究 profile 分開：
+- `rebound-tech-v1`：技術面 + 量價 + 可驗證 Market Context。
+- `rebound-full-v1`：上述特徵 + 可驗證 Financial PIT。
+
+若 Financial PIT 尚未完整，不應阻擋 technical profile 繼續累積與研究，但不得把目前最新財務資料倒灌到歷史 signal_date。
+
+目前成熟 Label 分布中 TIMEOUT 為 154 / 237，約佔多數。Phase 2 不應直接只做 SUCCESS vs FAIL 二分類而丟棄 TIMEOUT。正式模型設計前需比較：
+- 三分類：SUCCESS / FAIL / TIMEOUT。
+- 或兩階段：先判斷 10 日內是否產生明確結果，再對有結果樣本判 SUCCESS vs FAIL。
+
+在 Phase 1.5 完成前，只允許模型 pipeline / feature sanity check；不可稱為 Candidate、不可上 Shadow、不可影響正式 rebound_feed。
+
 ### AI 定位
 第一階段不讓 AI 直接取代既有反彈規則。
 
@@ -891,13 +948,14 @@ Shadow
 Applied Model
 ```
 
-資料成熟度初步規劃：
-- < 60 個交易日：收集研究資料
-- 60～120 個交易日：允許 Candidate
-- >= 120 個交易日：正式 Walk-forward 評估
-- 通過 forward shadow 才能 Applied
-
-若歷史 K 線資料足夠，可做 Historical Bootstrap，但必須避免 future leakage、current-universe bias 與不同策略版本混用。
+資料成熟度與目前決策：
+- Phase 1 已完成 Historical Bootstrap 與 leakage audit。
+- 目前 K 線 coverage 58.23%、成熟可訓練 237 筆，尚不足以可靠比較完整 Baseline / Logistic / HistGradientBoosting。
+- Phase 1.5 先將 K 線 coverage 補到至少 90%，並補可驗證 Market Context / Financial PIT。
+- Mature trainable rows 先累積到至少 500～1,000 筆，再進正式 Walk-forward 模型比較。
+- 每日 forward data 繼續自動累積；歷史 Bootstrap 只能使用 signal_date 當時可取得的資料。
+- 通過 walk-forward / holdout / forward shadow 才能 Applied。
+- 必須避免 future leakage、current-universe bias 與不同 strategy_version 混用。
 
 ### UI / 對外顯示
 第一階段顯示：
