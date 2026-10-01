@@ -114,6 +114,32 @@ def _release_signal() -> dict:
     return _signal('deployment_release', '部署版本', state, detail, metrics=release)
 
 
+def _history_collection_state(progress: dict, workers: dict) -> tuple[str, str]:
+    reason = str(progress.get('stop_reason', ''))
+    if reason.startswith('error') or reason == 'credentials_missing':
+        return 'error', '目前停止原因：' + reason
+    if reason in ('quota_exhausted', 'quota_reserve', 'disk_reserve', 'transient_error', 'user_stopped'):
+        return 'warning', '抓取已暫停，目前停止原因：' + reason
+    if reason in ('pair_limit', 'pair_limit_or_plan_complete', 'downloading'):
+        if not workers.get('available'):
+            return 'idle', '已保存最近進度；尚未取得 VM 執行狀態，無法確認是否正在抓取或排程接續。'
+        worker = str(workers.get('history_download', '')).lower()
+        if worker == 'active':
+            return 'ok', '抓取工作正在執行；下方數量為最近保存的進度。'
+        if worker == 'failed':
+            return 'error', '抓取服務失敗；下方為最近保存的進度，請檢查服務錯誤。'
+        if worker != 'inactive':
+            return 'warning', '抓取服務狀態尚未穩定；下方為最近保存的進度。'
+        if str(workers.get('history_download_timer', '')).lower() != 'active':
+            return 'warning', '抓取目前未執行，而且自動排程未啟用；已保存進度。'
+        next_at = workers.get('history_download_next')
+        suffix = f'下次排程：{next_at}。' if next_at else '等待下一次排程。'
+        return 'idle', '本輪已停止，已保存進度；排程已啟用，僅在設定的抓取時段接續。' + suffix
+    if reason == 'outside_window':
+        return 'idle', '目前不在抓取時段，等待下一次排程。'
+    return 'ok', '目前停止原因：' + (reason or '持續處理中')
+
+
 def snapshot(store) -> dict:
     """Return safe status summaries only; no secrets, paths, commands or actions."""
     learning = _root('EASYSTOCK_LEARNING_DATA', '/home/ubuntu/easystock-learning-data')
@@ -217,12 +243,7 @@ def snapshot(store) -> dict:
     if progress is None:
         signals.append(_signal('history_collection', '歷史資料補抓', 'idle' if history_error == 'not_started' else 'error', '尚未產生歷史資料進度。' if history_error == 'not_started' else '無法讀取歷史資料進度。'))
     else:
-        stop_reason = str(progress.get('stop_reason', ''))
-        state = 'error' if stop_reason.startswith('error') or stop_reason == 'credentials_missing' else 'warning' if stop_reason == 'quota_exhausted' else 'idle' if stop_reason == 'outside_window' else 'ok'
-        if stop_reason in ('pair_limit','pair_limit_or_plan_complete'):
-            detail = '本輪已達設定的處理上限，已保存進度；系統會在下一次排程自動接續。'
-        else:
-            detail = '目前不在抓取時段，等待下一次排程。' if stop_reason == 'outside_window' else '目前停止原因：' + (stop_reason or '持續處理中')
+        state, detail = _history_collection_state(progress, workers)
         signals.append(_signal('history_collection', '歷史資料補抓', state, detail, _updated_at(history_path), {
             'completed_stock_days': _positive_int(progress.get('archived_stock_days')),
             'target_stock_days': _positive_int(progress.get('target_stock_days')),

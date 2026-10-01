@@ -1,7 +1,7 @@
 [Unit]
-Description=EasyStock history every day at 14:00 Taipei and resume after reboot
+Description=EasyStock history batches every 15 minutes within the configured Taipei window
 [Timer]
-OnCalendar=*-*-* 14:00:00 Asia/Taipei
+OnCalendar=*-*-* *:0/15:00 Asia/Taipei
 OnBootSec=3min
 Persistent=true
 AccuracySec=1min
