@@ -69,3 +69,26 @@ def test_snapshot_correction_is_not_silent(tmp_path):
         changed=deepcopy(source);changed[-1]['amount']+=1
         with pytest.raises(ValueError,match='bar_changed'):
             run(db,{'2330':changed},[day])
+
+
+def test_expanding_archive_coverage_preserves_snapshot_and_label(tmp_path):
+    source=bars();day=source[-1]['time']
+    extra=deepcopy(source)
+    for bar in extra:
+        bar['amount']*=2
+    with connect(tmp_path/'db.sqlite') as db:
+        run(db,{'2330':source},[day])
+        before=db.execute('SELECT id,snapshot FROM candidates').fetchone()
+        db.execute('UPDATE candidates SET label=? WHERE id=?', ('{"sentinel":true}',before['id']))
+        db.commit()
+        result=run(db,{'2330':source,'2615':extra},[day])
+        after=db.execute('SELECT snapshot,label FROM candidates WHERE id=?',(before['id'],)).fetchone()
+        assert after['snapshot']==before['snapshot']
+        assert after['label']=='{"sentinel":true}'
+        assert result['candidate_snapshots_reused']==1
+        assert result['candidate_events']==1
+        assert db.execute('SELECT symbols_scanned FROM scan_days WHERE day=?',(day,)).fetchone()[0]==2
+        changed=json.loads(before['snapshot'])
+        changed['features']['amount_rank']=0.5
+        with pytest.raises(ValueError,match='candidate_snapshot_changed'):
+            save_candidate(db,changed)

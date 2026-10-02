@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, time
 from pathlib import Path
 
 from .collector import collect
+from . import STRATEGY_VERSION, FEATURE_SCHEMA_VERSION
 from .schema import connect, save_bar, save_candidate
 
 DEFAULT_SOURCE=Path('/home/ubuntu/easystock-history-expanded-data')
@@ -78,11 +79,19 @@ def run(db, histories: dict[str,list[dict]], days: list[str], *,
     db.executemany('INSERT OR IGNORE INTO trading_days(day) VALUES(?)',((day,) for day in calendar))
     for symbol,bars in histories.items():
         for bar in bars: save_bar(db,symbol,bar)
-    scanned=0; saved=0
+    scanned=0; saved=0; reused=0
     for n,day in enumerate(days,start=1):
         todays=[(symbol,bars,indexed[symbol][day]) for symbol,bars in sorted(histories.items()) if day in indexed[symbol]]
         amounts=sorted((bars[i]['amount'] for _,bars,i in todays),reverse=True)
+        # Archive coverage can grow between runs, changing cross-sectional
+        # ranks. Existing PIT snapshots and their labels remain immutable.
+        frozen={row[0] for row in db.execute('''SELECT symbol FROM candidates
+            WHERE strategy_version=? AND feature_schema_version=? AND signal_date=?''',
+            (STRATEGY_VERSION,FEATURE_SCHEMA_VERSION,day))}
         for symbol,bars,i in todays:
+            if symbol in frozen:
+                reused+=1
+                continue
             prefix=bars[max(0,i-251):i+1]
             rank=(amounts.index(bars[i]['amount'])+1)/len(amounts) if amounts else None
             row=collect(symbol,prefix,day,amount_rank=rank)
@@ -96,7 +105,8 @@ def run(db, histories: dict[str,list[dict]], days: list[str], *,
         db.commit()
         if n%20==0:print(f'[rebound] candidates {n}/{len(days)} sessions',file=sys.stderr,flush=True)
     return {'trading_days_scanned':len(days),'symbols_scanned':len(histories),
-            'stock_days_scanned':scanned,'candidate_events':saved}
+            'stock_days_scanned':scanned,'candidate_events':saved,
+            'candidate_snapshots_reused':reused}
 
 
 def main():
