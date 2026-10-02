@@ -1,0 +1,154 @@
+version: "2.0.0-canonical"
+generated_at: "2026-10-02T14:26:00+08:00"
+governance_policy: "STRICT_SOURCE_AUDIT_WHITELIST"
+
+# ==============================================================================
+# KNOWLEDGE V2 CANONICAL SOURCE WHITELIST
+# Only claims and concepts derived from these sources are eligible for
+# SOURCE_VERIFIED or AUTHOR_EXAMPLE status in Knowledge V2.
+# ==============================================================================
+
+audited_source_batches:
+  batch_a:
+    batch_name: "Quant Fundamentals, Risk & Expectancy"
+    status: "AUDITED_VERIFIED"
+    sources:
+      - id: "SRC_OSHAUGHNESSY"
+        title_zh: "投資策略實戰分析"
+        title_en: "What Works on Wall Street"
+        author: "James P. O'Shaughnessy"
+        core_contributions:
+          - "Quantitative backtesting methodology"
+          - "Multi-factor decile ranking and spread persistence"
+          - "Survivorship bias and lookahead bias mitigation"
+        verification_scope: "Portfolio construction, factor persistence, data hygiene"
+
+      - id: "SRC_CALVIN_TSAI"
+        title_zh: "程式交易快穩準"
+        title_en: "Fast, Stable and Accurate Program Trading"
+        author: "Calvin Tsai (蔡至誠/資深量化專家)"
+        core_contributions:
+          - "Taiwan market execution realities and slippage"
+          - "Out-of-sample (OOS) validation and parameter stability"
+          - "Systematic risk gates and drawdown controls"
+        verification_scope: "Taiwan-specific trading mechanics, parameter robustness, execution friction"
+
+      - id: "SRC_VAN_THARP"
+        title_zh: "通向財務自由之路"
+        title_en: "Trade Your Way to Financial Freedom"
+        author: "Van K. Tharp"
+        core_contributions:
+          - "R-multiple distribution accounting"
+          - "Mathematical Expectancy framework: E = (P_win * AW) - (P_loss * AL)"
+          - "Position Sizing models (fixed fractional, volatility-adjusted)"
+          - "System Quality Number (SQN) formulation"
+        verification_scope: "Trade evaluation metrics, position sizing, expectancy modeling"
+
+  batch_b:
+    batch_name: "Price Action, Range & Volume Spread"
+    status: "AUDITED_VERIFIED"
+    sources:
+      - id: "SRC_LARRY_WILLIAMS"
+        title_zh: "短線交易秘訣"
+        title_en: "Long-Term Secrets to Short-Term Trading"
+        author: "Larry Williams"
+        core_contributions:
+          - "Range Expansion concept and intraday volatility bursts"
+          - "Oops opening gap failure pattern"
+          - "Day-of-week and time-of-day seasonal volatility cycles"
+        verification_scope: "Intraday momentum, opening range dynamics, volatility cycles"
+
+      - id: "SRC_ANNA_COULLING"
+        title_zh: "量價分析"
+        title_en: "A Complete Guide To Volume Price Analysis"
+        author: "Anna Coulling"
+        core_contributions:
+          - "Volume Price Analysis (VPA) core methodology"
+          - "Stopping Volume (ultra-high volume absorption at support)"
+          - "Low Volume Test (testing supply/demand absorption)"
+          - "Effort vs Result (spread-to-volume anomaly detection)"
+        verification_scope: "Tick/bar volume confirmation, absorption patterns, effort/result divergence"
+
+      - id: "SRC_VICTOR_SPERANDEO"
+        title_zh: "專業投機原理"
+        title_en: "Trader Vic: Methods of a Wall Street Master"
+        author: "Victor Sperandeo"
+        core_contributions:
+          - "2B Reversal pattern (false breakout and swift failure)"
+          - "1-2-3 Trend Change pattern (trendline break, retest failure, pivot breach)"
+          - "Swing High/Swing Low structure definition"
+          - "Strict confirmation timestamp separation (pivot_time -> confirmation_time -> signal_time)"
+        verification_scope: "Structural reversal patterns, causal trend validation, risk/reward definition"
+
+  batch_c:
+    batch_name: "Market Regime, Stage Analysis & Relative Strength"
+    status: "AUDITED_VERIFIED"
+    sources:
+      - id: "SRC_STAN_WEINSTEIN"
+        title_zh: "史丹·溫斯坦操作精要"
+        title_en: "Stan Weinstein's Secrets For Profiting in Bull and Bear Markets"
+        author: "Stan Weinstein"
+        core_contributions:
+          - "Four-Stage Analysis (Stage 1 Base, Stage 2 Markup, Stage 3 Distribution, Stage 4 Decline)"
+          - "Relative Strength (RS) vs broader market benchmark"
+          - "Breakout volume expansion criteria"
+        verification_scope: "Macro/market regime filtering, relative strength ranking, candidate pool selection"
+
+      - id: "SRC_12_TRICKS"
+        title_zh: "12招獨門秘技"
+        author: "Taiwan Daytrade Masters"
+        core_contributions:
+          - "Taiwan intraday candidate selection heuristics"
+          - "Opening auction momentum and tick volume pressure"
+          - "Intraday support/resistance pivot levels"
+        verification_scope: "Taiwan market microstructure, intraday candidate pool filtering"
+
+      - id: "SRC_KEY_PIVOTS"
+        title_zh: "關鍵買賣點"
+        title_en: "How to Trade In Stocks / Key Pivot Points"
+        author: "Jesse Livermore / Technical Compilation"
+        core_contributions:
+          - "Pivotal points of change and trend continuation"
+          - "Volume surge at inflection price levels"
+        verification_scope: "Intraday breakout timing, pivot level validation"
+
+  ancillary_authorized:
+    - id: "SRC_KNOWLEDGE_V1"
+      title_zh: "Knowledge V1 原審台股當沖三書"
+      status: "SEALED_BASELINE"
+      commit: "bf4a2d577fa4055454975127f0c67289cd1eca04"
+    - id: "SRC_EASYSTOCK_FACTS"
+      title_zh: "EasyStock 既有代碼與生產事實"
+      status: "VERIFIED_CODEBASE_FACTS"
+    - id: "SRC_TWSE_OFFICIAL"
+      title_zh: "臺灣證券交易所官方規章"
+      status: "OFFICIAL_SOURCE"
+
+# ==============================================================================
+# UNAUDITED / QUARANTINED SOURCES (REMOVED FROM CANONICAL V2)
+# Any concept attributed to these authors MUST be labeled FUTURE_SOURCE_REVIEW
+# and isolated into future_source_candidates.yaml.
+# ==============================================================================
+
+quarantined_sources:
+  - author: "Mark Minervini"
+    reason: "No formal source audit in V2 cycle"
+    quarantined_claims: ["Volatility Contraction Pattern (VCP)", "Specific MA Trend Template"]
+  - author: "Al Brooks"
+    reason: "No formal source audit in V2 cycle"
+    quarantined_claims: ["Bar-by-Bar Price Action", "H1/H2/L1/L2 Counting", "Micro Wedge Reversals"]
+  - author: "Tom Williams"
+    reason: "No formal source audit in V2 cycle"
+    quarantined_claims: ["Volume Spread Analysis (VSA) specific terminology", "No Demand Bar", "No Supply Bar", "Upthrust"]
+  - author: "Richard Wyckoff"
+    reason: "No formal source audit in V2 cycle"
+    quarantined_claims: ["Phase A-E Accumulation/Distribution Schematics", "Spring", "Sign of Strength (SOS)"]
+  - author: "Perry Kaufman"
+    reason: "No formal source audit in V2 cycle"
+    quarantined_claims: ["Efficiency Ratio (ER)", "Kaufman Adaptive Moving Average (KAMA)"]
+  - author: "Robert Pardo"
+    reason: "No formal source audit in V2 cycle"
+    quarantined_claims: ["Walk-Forward Efficiency (WFE)", "Walk-Forward Matrix Design"]
+  - author: "David Aronson"
+    reason: "No formal source audit in V2 cycle"
+    quarantined_claims: ["White's Reality Check (WRC)", "Multiple Hypothesis Data-Snooping Adjustment"]

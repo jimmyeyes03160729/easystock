@@ -1,0 +1,168 @@
+version: "2.0.0-canonical"
+generated_at: "2026-10-02T14:27:15+08:00"
+governance_policy: "CRITICAL_RULE_5_P1_PRIORITY_REBUILD"
+
+description: >
+  Rebuilt Research Priorities for Knowledge V2.
+  All P1 priorities are strictly grounded in:
+  1) Existing EasyStock repo capabilities & Phase 1 tools
+  2) Knowledge V1 verified baseline
+  3) Audited Batch A, B, and C sources
+  Zero un-audited authors (Al Brooks, Minervini, Tom Williams, Wyckoff, etc.) are permitted in P1.
+
+priorities:
+  # ============================================================================
+  # P1: CORE CANONICAL RESEARCH INITIATIVES (IMMEDIATE PHASE 2 CANDIDATES)
+  # ============================================================================
+  p1_core:
+    - rank: 1
+      id: "P1_01_PULLBACK_VOLUME_DECAY"
+      name: "Pullback Volume Decay & Causal Swing Resumption"
+      canonical_sources:
+        - "SRC_ANNA_COULLING (Volume Price Analysis - healthy retracement volume drying up)"
+        - "SRC_VICTOR_SPERANDEO (Retest volume exhaustion)"
+        - "SRC_KNOWLEDGE_V1 (Taiwan Daytrade Book 1 & 2)"
+      repo_foundation:
+        status: "EXISTING_REUSED"
+        module: "daytrade_learning/knowledge_v1/features.py"
+        tools: "causal_tools.CausalSwingSegmenter.volume_decay_ratio"
+      research_focus: "Validate predictive power of causal volume decay ratio on subsequent continuation bars without lookahead bias."
+
+    - rank: 2
+      id: "P1_02_RANGE_EXPANSION"
+      name: "Range Expansion (RE) & Intraday Volatility Bursts"
+      canonical_sources:
+        - "SRC_LARRY_WILLIAMS (Short-term range expansion initiating high-probability trend legs)"
+      repo_foundation:
+        status: "NEW_RESEARCH"
+        requires: "K-bar true range normalized by trailing 5/10/20-period ATR from existing market_data."
+      research_focus: "Formulate range expansion breakout conditions and measure intraday directional follow-through."
+
+    - rank: 3
+      id: "P1_03_EFFORT_VS_RESULT"
+      name: "Effort vs Result: Volume-to-Spread Divergence"
+      canonical_sources:
+        - "SRC_ANNA_COULLING (High volume with narrow spread = hidden absorption; Wide spread with dry volume = false move)"
+      repo_foundation:
+        status: "EXISTING_PARTIAL"
+        tools: "KnowledgeV1Features.body_ratio, relative_volume_open, volume_acceleration"
+      research_focus: "Construct ratio of normalized body spread to normalized volume; test anomaly persistence at intraday pivots."
+
+    - rank: 4
+      id: "P1_04_STOPPING_VOLUME"
+      name: "Stopping Volume & Institutional Absorption"
+      canonical_sources:
+        - "SRC_ANNA_COULLING (Ultra-high volume halting a downswing; market makers absorbing panic selling)"
+      repo_foundation:
+        status: "EXISTING_PARTIAL"
+        tools: "lower_shadow_ratio, close_location_value, surge_60s"
+      research_focus: "Detect high-volume lower-wick rejection candles at daily/intraday support levels."
+
+    - rank: 5
+      id: "P1_05_SPERANDEO_2B_REVERSAL"
+      name: "Victor Sperandeo 2B False Breakout Rule"
+      canonical_sources:
+        - "SRC_VICTOR_SPERANDEO (Trader Vic: False breakout of prior swing high/low followed by prompt failure)"
+      repo_foundation:
+        status: "EXISTING_REUSED_PREREQUISITES"
+        tools: "dist_to_prev_high_pct, dist_to_prev_low_pct, CausalSwingSegmenter"
+      research_focus: "Strictly separate pivot_time, confirmation_time, and signal_time to evaluate 2B reversal success rates."
+
+    - rank: 6
+      id: "P1_06_SPERANDEO_123_REVERSAL"
+      name: "Victor Sperandeo 1-2-3 Trend Change Structure"
+      canonical_sources:
+        - "SRC_VICTOR_SPERANDEO (1. Break trendline, 2. Retest failure, 3. Take out prior minor pivot)"
+      repo_foundation:
+        status: "EXISTING_PARTIAL"
+        tools: "CausalSwingSegmenter swing points and trendline projection"
+      research_focus: "Algorithmic formalization of 1-2-3 trend termination without forward-peeking pivot definitions."
+
+    - rank: 7
+      id: "P1_07_INTRADAY_RELATIVE_STRENGTH"
+      name: "Intraday Relative Strength (RS) vs Index & Sector"
+      canonical_sources:
+        - "SRC_STAN_WEINSTEIN (Stage analysis RS line outperforming market index)"
+        - "SRC_CALVIN_TSAI (Stock vs TAIEX return divergence as institutional alpha driver)"
+      repo_foundation:
+        status: "EXISTING_REUSED_DATA"
+        tools: "vm_runtime/esun_marketdata (provides real-time and historical index benchmarks)"
+      research_focus: "Compute rolling intraday stock alpha (R_stock - R_index) to filter long candidates during market pullbacks."
+
+    - rank: 8
+      id: "P1_08_R_MULTIPLE_EXPECTANCY"
+      name: "R-Multiple Distribution & Mathematical Expectancy Architecture"
+      canonical_sources:
+        - "SRC_VAN_THARP (E = P_win * AW - P_loss * AL; trade quality measured in initial risk units R)"
+        - "SRC_CALVIN_TSAI (Slippage and friction subtraction)"
+      repo_foundation:
+        status: "EXISTING_REUSED"
+        module: "daytrade_learning/knowledge_v1/backtest_dataset.py"
+      research_focus: "Implement standardized trade outcome evaluation using R-multiples instead of raw dollar or percentage returns."
+
+    - rank: 9
+      id: "P1_09_FEATURE_INTERACTION_TESTS"
+      name: "Existing Phase 1 Feature Interaction & Orthogonality"
+      canonical_sources:
+        - "SRC_OSHAUGHNESSY (Multi-factor orthogonality and factor correlation matrix)"
+        - "SRC_KNOWLEDGE_V1 (VWAP dual-scope, CLV, and Aggressor flow synergy)"
+      repo_foundation:
+        status: "EXISTING_REUSED"
+        module: "daytrade_learning/knowledge_v1/features.py"
+      research_focus: "Test pairwise interaction between Dual-Scope VWAP distance, CLV, and Aggressor buy share (外盤比)."
+
+    - rank: 10
+      id: "P1_10_CANDIDATE_POOL_REGIME_FILTER"
+      name: "Intraday Candidate Pool & Stage Analysis Regime Governance"
+      canonical_sources:
+        - "SRC_STAN_WEINSTEIN (Stage 2 Markup for longs, avoid Stage 4 Decline)"
+        - "SRC_12_TRICKS (Candidate pool liquidity, opening volume ranking, gap filters)"
+      repo_foundation:
+        status: "EXISTING_PARTIAL"
+        module: "candidate_rules.yaml & strategy_engine.py selection filters"
+      research_focus: "Establish multi-tier pre-market and opening regime filters to restrict execution only to Stage 2 momentum stocks."
+
+  # ============================================================================
+  # P2: SECONDARY REFINEMENTS (STRUCTURED PARAMETER GRIDS & EXECUTION FRICTION)
+  # ============================================================================
+  p2_secondary:
+    - id: "P2_01_OOPS_GAP_REVERSAL"
+      name: "Larry Williams Oops Opening Gap Reversal Grid"
+      canonical_sources: ["SRC_LARRY_WILLIAMS"]
+    - id: "P2_02_LOW_VOLUME_TEST"
+      name: "Anna Coulling Low Volume Test at Support/Resistance"
+      canonical_sources: ["SRC_ANNA_COULLING"]
+    - id: "P2_03_VAN_THARP_POSITION_SIZING"
+      name: "Volatility-Targeted Position Sizing Models"
+      canonical_sources: ["SRC_VAN_THARP", "SRC_CALVIN_TSAI"]
+    - id: "P2_04_SLIPPAGE_DECAY_CURVE"
+      name: "Taiwan Market Tick Liquidity & Slippage Decay Curve"
+      canonical_sources: ["SRC_CALVIN_TSAI"]
+
+  # ============================================================================
+  # P3: ADVANCED EXPLORATORY (STATISTICAL MACHINE LEARNING EXPERIMENTS)
+  # ============================================================================
+  p3_exploratory:
+    - id: "P3_01_SWING_FRACTAL_CLUSTERING"
+      name: "Multi-Timeframe Swing Fractal Clustering"
+    - id: "P3_02_TICK_IMBALANCE_MICROSTRUCTURE"
+      name: "Order Book Microstructure Imbalance Dynamics"
+
+  # ============================================================================
+  # P4: QUARANTINED (BLOCKED PENDING DEDICATED SOURCE AUDIT)
+  # ============================================================================
+  p4_quarantined:
+    - id: "P4_01_AL_BROOKS_BAR_PRICE_ACTION"
+      quarantined_author: "Al Brooks"
+    - id: "P4_02_MINERVINI_VCP"
+      quarantined_author: "Mark Minervini"
+    - id: "P4_03_TOM_WILLIAMS_VSA_PROPRIETARY"
+      quarantined_author: "Tom Williams"
+    - id: "P4_04_WYCKOFF_PHASE_SCHEMATICS"
+      quarantined_author: "Richard Wyckoff"
+    - id: "P4_05_KAUFMAN_KAMA_NOISE"
+      quarantined_author: "Perry Kaufman"
+    - id: "P4_06_PARDO_WFE_MATRIX"
+      quarantined_author: "Robert Pardo"
+    - id: "P4_07_ARONSON_WHITE_REALITY_CHECK"
+      quarantined_author: "David Aronson"

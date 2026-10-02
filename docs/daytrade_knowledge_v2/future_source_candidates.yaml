@@ -1,0 +1,104 @@
+version: "2.0.0-quarantine"
+generated_at: "2026-10-02T14:26:30+08:00"
+quarantine_policy: "CRITICAL_RULE_1_ISOLATION"
+
+description: >
+  Concepts, patterns, and methodologies introduced in the Gemini Final Master Merge draft
+  that originate from authors/books not formally audited in Knowledge V2 (Batch A/B/C).
+  These concepts are preserved for future research cycles but are strictly prohibited
+  from Knowledge V2 Canonical SOURCE_VERIFIED status.
+
+candidates:
+  - id: "FSC_MINERVINI_VCP"
+    author: "Mark Minervini"
+    book_reference: "Trade Like a Stock Market Wizard"
+    concept_name: "Volatility Contraction Pattern (VCP)"
+    status: "FUTURE_SOURCE_REVIEW"
+    disallowed_labels: ["SOURCE_VERIFIED", "AUTHOR_EXAMPLE", "DIRECTLY_SUPPORTED"]
+    description: "Series of successive contractions in price range accompanied by decreasing volume prior to breakout."
+    easystock_mapping_candidate: "Multi-swing range contraction metric"
+    prerequisite_for_promotion: "Full source citation audit against original text in future cycle"
+
+  - id: "FSC_MINERVINI_TREND_TEMPLATE"
+    author: "Mark Minervini"
+    book_reference: "Trade Like a Stock Market Wizard"
+    concept_name: "Trend Template Moving Average Hierarchy"
+    status: "FUTURE_SOURCE_REVIEW"
+    disallowed_labels: ["SOURCE_VERIFIED", "AUTHOR_EXAMPLE", "DIRECTLY_SUPPORTED"]
+    description: "Strict 150/200-day moving average alignment criteria for identifying institutional momentum."
+    easystock_mapping_candidate: "Daily moving average filter"
+    prerequisite_for_promotion: "Full source citation audit against original text in future cycle"
+
+  - id: "FSC_BROOKS_BAR_BY_BAR"
+    author: "Al Brooks"
+    book_reference: "Reading Price Charts Bar by Bar / Price Action Series"
+    concept_name: "Bar-by-Bar Price Action & 2nd Entries (H1/H2, L1/L2)"
+    status: "FUTURE_SOURCE_REVIEW"
+    disallowed_labels: ["SOURCE_VERIFIED", "AUTHOR_EXAMPLE", "DIRECTLY_SUPPORTED"]
+    description: "Granular micro-structure price action counting, high/low bar attempts, and wedge tops/bottoms."
+    easystock_mapping_candidate: "Intraday bar attempt counter"
+    prerequisite_for_promotion: "Full source citation audit against original text in future cycle"
+
+  - id: "FSC_BROOKS_MICRO_WEDGE"
+    author: "Al Brooks"
+    book_reference: "Reading Price Charts Bar by Bar"
+    concept_name: "Micro Wedge Reversal"
+    status: "FUTURE_SOURCE_REVIEW"
+    disallowed_labels: ["SOURCE_VERIFIED", "AUTHOR_EXAMPLE", "DIRECTLY_SUPPORTED"]
+    description: "Three-push pattern against current trend signaling exhaustion and high probability reversal."
+    easystock_mapping_candidate: "Three-push swing pattern segmenter"
+    prerequisite_for_promotion: "Full source citation audit against original text in future cycle"
+
+  - id: "FSC_TOM_WILLIAMS_VSA"
+    author: "Tom Williams"
+    book_reference: "Master the Markets"
+    concept_name: "Volume Spread Analysis (VSA) Specific Patterns"
+    status: "FUTURE_SOURCE_REVIEW"
+    disallowed_labels: ["SOURCE_VERIFIED", "AUTHOR_EXAMPLE", "DIRECTLY_SUPPORTED"]
+    description: "Proprietary VSA patterns: Upthrust, Pseudo Upthrust, No Demand Bar, No Supply Bar."
+    easystock_mapping_candidate: "High spread low volume / narrow spread high volume detectors"
+    note: "Generic effort vs result is audited under Anna Coulling (Batch B); specific Tom Williams trademark definitions remain quarantined."
+    prerequisite_for_promotion: "Full source citation audit against original text in future cycle"
+
+  - id: "FSC_WYCKOFF_SCHEMATICS"
+    author: "Richard Wyckoff"
+    book_reference: "The Wyckoff Method of Trading in Stocks"
+    concept_name: "Wyckoff Accumulation/Distribution Phase A-E Schematics"
+    status: "FUTURE_SOURCE_REVIEW"
+    disallowed_labels: ["SOURCE_VERIFIED", "AUTHOR_EXAMPLE", "DIRECTLY_SUPPORTED"]
+    description: "Formal schematic labeling: Preliminary Support (PS), Selling Climax (SC), Automatic Rally (AR), Secondary Test (ST), Spring, Sign of Strength (SOS)."
+    easystock_mapping_candidate: "Multi-hour structural phase recognizer"
+    note: "General climax absorption is audited under Anna Coulling (Batch B); formal Wyckoff structural phases require independent audit."
+    prerequisite_for_promotion: "Full source citation audit against original text in future cycle"
+
+  - id: "FSC_KAUFMAN_ER_KAMA"
+    author: "Perry Kaufman"
+    book_reference: "Trading Systems and Methods"
+    concept_name: "Efficiency Ratio (ER) & Adaptive Moving Average (KAMA)"
+    status: "FUTURE_SOURCE_REVIEW"
+    disallowed_labels: ["SOURCE_VERIFIED", "AUTHOR_EXAMPLE", "DIRECTLY_SUPPORTED"]
+    description: "Market noise measurement via price net change divided by sum of absolute changes; adaptive smoothing."
+    easystock_mapping_candidate: "Intraday noise filter"
+    prerequisite_for_promotion: "Full source citation audit against original text in future cycle"
+
+  - id: "FSC_PARDO_WALK_FORWARD"
+    author: "Robert Pardo"
+    book_reference: "The Evaluation and Optimization of Trading Strategies"
+    concept_name: "Walk-Forward Efficiency (WFE) & Walk-Forward Matrix"
+    status: "FUTURE_SOURCE_REVIEW"
+    disallowed_labels: ["SOURCE_VERIFIED", "AUTHOR_EXAMPLE", "DIRECTLY_SUPPORTED"]
+    description: "Formal definition of WFE = (Annualized OOS Return / Annualized In-Sample Return) and rolling window optimization matrix."
+    easystock_mapping_candidate: "Quant research backtest validator"
+    note: "General OOS and parameter stability are audited under Calvin Tsai (Batch A); Pardo's specific formulaic WFE is held for future source audit or treated as QUANT_RESEARCH_BEST_PRACTICE."
+    prerequisite_for_promotion: "Full source citation audit against original text in future cycle"
+
+  - id: "FSC_ARONSON_EVIDENCE_BASED"
+    author: "David Aronson"
+    book_reference: "Evidence-Based Technical Analysis"
+    concept_name: "White's Reality Check (WRC) & Data-Snooping Correction"
+    status: "FUTURE_SOURCE_REVIEW"
+    disallowed_labels: ["SOURCE_VERIFIED", "AUTHOR_EXAMPLE", "DIRECTLY_SUPPORTED"]
+    description: "Bootstrap statistical testing to adjust p-values across multiple hypothesis tests and rule evaluations."
+    easystock_mapping_candidate: "Multi-strategy significance testing"
+    note: "Held as QUANT_RESEARCH_BEST_PRACTICE until formal source audit."
+    prerequisite_for_promotion: "Full source citation audit against original text in future cycle"

@@ -1,0 +1,271 @@
+version: "2.0.0-canonical"
+generated_at: "2026-10-02T14:26:45+08:00"
+governance_policy: "CRITICAL_RULE_2_RESTORE_PHASE_1_REPO_FACTS"
+
+description: >
+  Corrected Feature Master for Knowledge V2.
+  All Phase 1 existing features and partial wrappers previously mislabeled as
+  NEW_RESEARCH (or current_easystock_equivalent: null) are restored to
+  EXISTING_REUSED or EXISTING_PARTIAL.
+
+features:
+  # ============================================================================
+  # 1. CANDLE GEOMETRY FEATURES (RESTORED FROM REPO FACTS)
+  # ============================================================================
+  - feature_id: "FEAT_UPPER_SHADOW_RATIO"
+    feature_name: "upper_shadow_ratio"
+    canonical_classification: "EXISTING_REUSED"
+    former_mislabeled_status: "NEW_RESEARCH"
+    repo_implementation:
+      module: "daytrade_learning/knowledge_v1/features.py"
+      callable: "KnowledgeV1Features.upper_shadow_ratio"
+      production_delegate: "strategy_engine.upper_wick_ratio"
+    causal_semantics: "Returns None if High <= Low. Strictly prevents division by zero or false shadow substitution."
+    audited_source_support:
+      - source_id: "SRC_ANNA_COULLING"
+        claim: "Upper wick/shadow reflects rejection of higher prices (effort without upward result)."
+      - source_id: "SRC_KNOWLEDGE_V1"
+        claim: "Taiwan Daytrade Book 1: Upper shadow ratio as intraday resistance signal."
+    parameter_provenance: "AI_QUANTIZED / PARAMETER_GRID (e.g. shadow > 0.35/0.40 are test candidates, not hard thresholds)"
+
+  - feature_id: "FEAT_LOWER_SHADOW_RATIO"
+    feature_name: "lower_shadow_ratio"
+    canonical_classification: "EXISTING_REUSED"
+    former_mislabeled_status: "NEW_RESEARCH"
+    repo_implementation:
+      module: "daytrade_learning/knowledge_v1/features.py"
+      callable: "KnowledgeV1Features.lower_shadow_ratio"
+      formula: "(min(open, close) - low) / (high - low)"
+    causal_semantics: "Returns None if High <= Low. Measures lower buying absorption wick."
+    audited_source_support:
+      - source_id: "SRC_ANNA_COULLING"
+        claim: "Lower wick reflects responsive buying absorption at support levels."
+      - source_id: "SRC_KNOWLEDGE_V1"
+        claim: "Lower shadow ratio underpins intraday rebound and hammer patterns."
+    parameter_provenance: "AI_QUANTIZED / PARAMETER_GRID"
+
+  - feature_id: "FEAT_CLOSE_LOCATION_VALUE"
+    feature_name: "close_location_value (CLV / bar_position)"
+    canonical_classification: "EXISTING_REUSED"
+    former_mislabeled_status: "NEW_RESEARCH"
+    repo_implementation:
+      module: "daytrade_learning/knowledge_v1/features.py"
+      callable: "KnowledgeV1Features.close_location_value"
+      production_delegate: "strategy_engine.bar_position"
+      mapping: "Linearly maps bar_position in [0, 1] to CLV in [-1.0, 1.0]"
+    causal_semantics: "CLV = ((close - low) - (high - close)) / (high - low). Returns None if High <= Low."
+    audited_source_support:
+      - source_id: "SRC_ANNA_COULLING"
+        claim: "Close location relative to bar range denotes bull/bear victory within the timeframe."
+      - source_id: "SRC_LARRY_WILLIAMS"
+        claim: "Close near high/low signals directional momentum continuation."
+    parameter_provenance: "CANONICAL_FORMULA (mathematical normalization in [-1, 1])"
+
+  # ============================================================================
+  # 2. SWING & VOLUME DECAY FEATURES (RESTORED FROM REPO FACTS)
+  # ============================================================================
+  - feature_id: "FEAT_PULLBACK_VOL_DECAY_RATIO"
+    feature_name: "pullback_vol_decay_ratio"
+    canonical_classification: "EXISTING_REUSED"
+    former_mislabeled_status: "NEW_RESEARCH"
+    repo_implementation:
+      module: "daytrade_learning/knowledge_v1/features.py"
+      callable: "KnowledgeV1Features.pullback_vol_decay_ratio"
+      segmenter_delegate: "causal_tools.CausalSwingSegmenter.volume_decay_ratio"
+    causal_semantics: "Evaluates volume decay along strictly causal swing segments. Returns None if pullback volume is not strictly causal."
+    audited_source_support:
+      - source_id: "SRC_ANNA_COULLING"
+        claim: "Pullbacks on decreasing volume confirm healthy trend continuation; absence of selling pressure."
+      - source_id: "SRC_VICTOR_SPERANDEO"
+        claim: "Retest of broken levels or moving averages must show diminishing volume."
+    parameter_provenance: "AI_QUANTIZED / PARAMETER_GRID (e.g. decay 40%/50% are candidate grid parameters, not canonical facts)"
+
+  - feature_id: "FEAT_DIST_TO_PREV_HIGH_PCT"
+    feature_name: "dist_to_prev_high_pct"
+    canonical_classification: "EXISTING_REUSED"
+    former_mislabeled_status: "NEW_RESEARCH"
+    repo_implementation:
+      module: "daytrade_learning/knowledge_v1/features.py"
+      callable: "KnowledgeV1Features.dist_to_prev_high_pct"
+      formula: "(max(prior_highs) - current_price) / current_price"
+    causal_semantics: "Causal prior highs slice excluding current bar to prevent lookahead bias."
+    audited_source_support:
+      - source_id: "SRC_VICTOR_SPERANDEO"
+        claim: "Proximity to prior swing high sets up 2B false breakout or genuine breakout."
+      - source_id: "SRC_12_TRICKS"
+        claim: "Intraday high testing and distance to ceiling."
+    parameter_provenance: "CANONICAL_FORMULA"
+
+  - feature_id: "FEAT_DIST_TO_PREV_LOW_PCT"
+    feature_name: "dist_to_prev_low_pct"
+    canonical_classification: "EXISTING_REUSED"
+    former_mislabeled_status: "NEW_RESEARCH"
+    repo_implementation:
+      module: "daytrade_learning/knowledge_v1/features.py"
+      callable: "KnowledgeV1Features.dist_to_prev_low_pct"
+      formula: "(current_price - min(prior_lows)) / current_price"
+    causal_semantics: "Causal prior lows slice excluding current bar."
+    audited_source_support:
+      - source_id: "SRC_VICTOR_SPERANDEO"
+        claim: "Proximity to prior swing low sets up 2B false breakdown or support test."
+    parameter_provenance: "CANONICAL_FORMULA"
+
+  # ============================================================================
+  # 3. VOLUME, ACCELERATION & FLOW FEATURES (RESTORED FROM REPO FACTS)
+  # ============================================================================
+  - feature_id: "FEAT_RELATIVE_VOLUME"
+    feature_name: "relative_volume (RVOL)"
+    canonical_classification: "EXISTING_PARTIAL"
+    former_mislabeled_status: "NEW_RESEARCH"
+    repo_implementation:
+      module: "daytrade_learning/knowledge_v1/features.py"
+      callables:
+        - "KnowledgeV1Features.relative_volume_open (opening RVOL vs prior sessions)"
+        - "KnowledgeV1Features.volume_ratio_5m (trailing 5-bar relative volume)"
+    causal_semantics: "Partially covers opening and short-term window RVOL; full intraday historical time-of-day curve is partial."
+    audited_source_support:
+      - source_id: "SRC_ANNA_COULLING"
+        claim: "Volume must always be judged relative to preceding context and session norms."
+      - source_id: "SRC_STAN_WEINSTEIN"
+        claim: "Breakouts must be accompanied by a marked expansion in relative volume."
+    parameter_provenance: "AI_QUANTIZED / PARAMETER_GRID"
+
+  - feature_id: "FEAT_VOLUME_ACCELERATION"
+    feature_name: "volume_acceleration"
+    canonical_classification: "EXISTING_REUSED"
+    former_mislabeled_status: "NEW_RESEARCH"
+    repo_implementation:
+      module: "daytrade_learning/knowledge_v1/features.py"
+      callable: "KnowledgeV1Features.volume_acceleration"
+      formula: "Discrete 2nd-order acceleration: (V_t - 2*V_{t-1} + V_{t-2})"
+    causal_semantics: "Requires at least 3 completed volume observations; strictly causal."
+    audited_source_support:
+      - source_id: "SRC_ANNA_COULLING"
+        claim: "Rapid volume surge acceleration indicates institutional commitment or climax entry."
+    parameter_provenance: "CANONICAL_FORMULA (mathematical second difference)"
+
+  - feature_id: "FEAT_VWAP_DISTANCE"
+    feature_name: "VWAP distance (dual-scope)"
+    canonical_classification: "EXISTING_REUSED"
+    former_mislabeled_status: "NEW_RESEARCH"
+    repo_implementation:
+      module: "daytrade_learning/knowledge_v1/features.py"
+      callables:
+        - "KnowledgeV1Features.dist_to_bar_vwap_pct (Typical Price K-bar VWAP)"
+        - "KnowledgeV1Features.dist_to_broker_avg_price_pct (Exchange cumulative average)"
+      production_delegate: "strategy_engine.calculate_vwap & intraday_live.price_vs_avg_pct"
+    causal_semantics: "Strict dual-scope separation between typical-price K-bar VWAP and official exchange trade average."
+    audited_source_support:
+      - source_id: "SRC_KNOWLEDGE_V1"
+        claim: "Taiwan Daytrade books: VWAP as key intraday dynamic support/resistance benchmark."
+      - source_id: "SRC_CALVIN_TSAI"
+        claim: "Execution benchmark and institutional participation price."
+    parameter_provenance: "AI_QUANTIZED / PARAMETER_GRID (e.g. ±0.1% or -0.4% are research grid candidates, NOT canonical thresholds)"
+
+  - feature_id: "FEAT_BUY_RATIO_60S"
+    feature_name: "buy_ratio_60s / aggressor_buy_share"
+    canonical_classification: "EXISTING_REUSED"
+    former_mislabeled_status: "NEW_RESEARCH"
+    repo_implementation:
+      module: "daytrade_learning/knowledge_v1/features.py"
+      callable: "KnowledgeV1Features.aggressor_buy_share"
+      production_origin: "intraday_live.buy_ratio_60s"
+    causal_semantics: "Strict Null-Policy: returns None if classified volume <= 0 (never defaults to 0.0)."
+    audited_source_support:
+      - source_id: "SRC_KNOWLEDGE_V1"
+        claim: "Taiwan Daytrade: Active buying tick pressure (外盤比 / 買盤力道)."
+      - source_id: "SRC_12_TRICKS"
+        claim: "Tick-level aggression confirming breakout validity."
+    parameter_provenance: "CANONICAL_RATIO / PARAMETER_GRID"
+
+  - feature_id: "FEAT_SURGE_METRICS"
+    feature_name: "surge_60s / volume surge"
+    canonical_classification: "EXISTING_PARTIAL"
+    former_mislabeled_status: "NEW_RESEARCH"
+    repo_implementation:
+      module: "vm_runtime/intraday_live.py"
+      field: "surge_60s"
+    causal_semantics: "Measures 60-second rolling volume surge in live stream; requires historical persistence adapter in research."
+    audited_source_support:
+      - source_id: "SRC_LARRY_WILLIAMS"
+        claim: "Sudden expansion in tick volume heralds short-term explosive range moves."
+      - source_id: "SRC_ANNA_COULLING"
+        claim: "Volume surge at support/resistance pivots."
+    parameter_provenance: "AI_QUANTIZED / EASYSTOCK_EXISTING_PARAMETER"
+
+  # ============================================================================
+  # 4. GENUINE NEW RESEARCH FEATURES (CANONICAL BATCH A/B/C AUDITED ADDITIONS)
+  # ============================================================================
+  - feature_id: "FEAT_RANGE_EXPANSION_RATIO"
+    feature_name: "range_expansion_ratio"
+    canonical_classification: "NEW_RESEARCH"
+    repo_implementation:
+      module: null
+      planned_module: "daytrade_learning/knowledge_v2/features.py"
+    causal_semantics: "True bar range / rolling average true range over N prior bars."
+    audited_source_support:
+      - source_id: "SRC_LARRY_WILLIAMS"
+        claim: "Range Expansion (RE) signals the initiation of strong directional momentum."
+    parameter_provenance: "RESEARCH_HYPOTHESIS / PARAMETER_GRID"
+
+  - feature_id: "FEAT_OOPS_GAP_PATTERN"
+    feature_name: "oops_gap_pattern"
+    canonical_classification: "NEW_RESEARCH"
+    repo_implementation:
+      module: null
+      planned_module: "daytrade_learning/knowledge_v2/rules.py"
+    causal_semantics: "Gap open below prior day low, subsequent intraday reclaim of prior day low."
+    audited_source_support:
+      - source_id: "SRC_LARRY_WILLIAMS"
+        claim: "Oops! Pattern: trapped opening panic followed by aggressive mean reversion."
+    parameter_provenance: "AUTHOR_EXAMPLE"
+
+  - feature_id: "FEAT_STOPPING_VOLUME_FLAG"
+    feature_name: "stopping_volume_flag"
+    canonical_classification: "NEW_RESEARCH"
+    repo_implementation:
+      module: null
+      planned_module: "daytrade_learning/knowledge_v2/features.py"
+    causal_semantics: "Ultra-high volume on wide downward candle followed by high CLV or hammer rejection."
+    audited_source_support:
+      - source_id: "SRC_ANNA_COULLING"
+        claim: "Stopping volume represents institutional absorption halting a declining move."
+    parameter_provenance: "RESEARCH_HYPOTHESIS / PARAMETER_GRID"
+
+  - feature_id: "FEAT_SPERANDEO_2B_PATTERN"
+    feature_name: "sperandeo_2b_pattern"
+    canonical_classification: "NEW_RESEARCH"
+    repo_implementation:
+      module: null
+      planned_module: "daytrade_learning/knowledge_v2/rules.py"
+    causal_semantics: "New high/low established, followed by reversal crossing back below/above pivot. Requires confirmation_time separation."
+    audited_source_support:
+      - source_id: "SRC_VICTOR_SPERANDEO"
+        claim: "2B Rule: In an uptrend, if price makes a new high but immediately fails and closes below prior high, trend is terminating."
+    parameter_provenance: "AUTHOR_EXAMPLE"
+
+  - feature_id: "FEAT_SPERANDEO_123_PATTERN"
+    feature_name: "sperandeo_123_pattern"
+    canonical_classification: "NEW_RESEARCH"
+    repo_implementation:
+      module: null
+      planned_module: "daytrade_learning/knowledge_v2/rules.py"
+    causal_semantics: "1. Trendline break; 2. Retest failure (higher low or lower high); 3. Break of previous swing pivot."
+    audited_source_support:
+      - source_id: "SRC_VICTOR_SPERANDEO"
+        claim: "1-2-3 Rule for definitive trend change confirmation."
+    parameter_provenance: "AUTHOR_EXAMPLE"
+
+  - feature_id: "FEAT_INTRADAY_RELATIVE_STRENGTH"
+    feature_name: "intraday_relative_strength"
+    canonical_classification: "NEW_RESEARCH"
+    repo_implementation:
+      module: null
+      planned_module: "daytrade_learning/knowledge_v2/features.py"
+    causal_semantics: "Stock intraday percent change minus broader market benchmark (TX / E.SUN index) percent change."
+    audited_source_support:
+      - source_id: "SRC_STAN_WEINSTEIN"
+        claim: "Relative strength line must show outperformance against the overall market."
+      - source_id: "SRC_CALVIN_TSAI"
+        claim: "Stock-to-index relative momentum as robust institutional alpha filter."
+    parameter_provenance: "CANONICAL_FORMULA"

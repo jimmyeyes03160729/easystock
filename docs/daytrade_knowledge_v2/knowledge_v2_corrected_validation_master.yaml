@@ -1,0 +1,211 @@
+version: "2.0.0-canonical"
+generated_at: "2026-10-02T14:27:00+08:00"
+governance_policy: "CRITICAL_RULE_3_AND_4_VALIDATION_AND_THRESHOLDS"
+
+description: >
+  Corrected Validation Master and Hard Threshold Reclassification for Knowledge V2.
+  All numeric thresholds and statistical validation methods are classified strictly into:
+  - SOURCE_VERIFIED_THRESHOLD
+  - AUTHOR_EXAMPLE
+  - AI_QUANTIZED
+  - EASYSTOCK_EXISTING_PARAMETER
+  - RESEARCH_GOVERNANCE_CANDIDATE
+  - QUANT_RESEARCH_BEST_PRACTICE
+  - FUTURE_SOURCE_REVIEW
+  None of these may act as direct hard PASS/FAIL gates for Phase 2 without canonical justification.
+
+# ==============================================================================
+# 1. HARD THRESHOLD RECLASSIFICATION (CRITICAL RULE 3)
+# ==============================================================================
+threshold_reclassifications:
+  - threshold_id: "TH_VWAP_BAND_01"
+    raw_expression: "VWAP ±0.1%"
+    reclassified_status: "AI_QUANTIZED"
+    former_status: "CANONICAL_HARD_GATE"
+    rationale: "Artificial micro-band generated during AI synthesis; original books define VWAP touch/cross conceptually, not fixed ±0.1%."
+    research_role: "PARAMETER_GRID_CANDIDATE: [±0.05%, ±0.10%, ±0.15%, ±0.20%]"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_VWAP_BELOW_04"
+    raw_expression: "VWAP -0.4%"
+    reclassified_status: "AI_QUANTIZED"
+    former_status: "CANONICAL_HARD_GATE"
+    rationale: "Arbitrary discount threshold; requires empirical distribution calibration on Taiwan intraday tick data."
+    research_role: "PARAMETER_GRID_CANDIDATE"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_VOL_DECAY_40"
+    raw_expression: "volume decay 40%"
+    reclassified_status: "AI_QUANTIZED"
+    former_status: "CANONICAL_HARD_GATE"
+    rationale: "Coulling & Sperandeo state volume must diminish on pullbacks; 40% is an AI-quantized parameter."
+    research_role: "PARAMETER_GRID_CANDIDATE: [30%, 40%, 50%, 60%]"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_VOL_DECAY_50"
+    raw_expression: "volume decay 50%"
+    reclassified_status: "AI_QUANTIZED"
+    former_status: "CANONICAL_HARD_GATE"
+    rationale: "Same as above; half-volume decay is an empirical hypothesis."
+    research_role: "PARAMETER_GRID_CANDIDATE"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_SHADOW_35"
+    raw_expression: "shadow ratio >= 35%"
+    reclassified_status: "AI_QUANTIZED"
+    former_status: "CANONICAL_HARD_GATE"
+    rationale: "Books emphasize long wick rejection without specifying a fixed 35% geometric boundary."
+    research_role: "PARAMETER_GRID_CANDIDATE: [25%, 33%, 35%, 50%]"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_SHADOW_40"
+    raw_expression: "shadow ratio >= 40%"
+    reclassified_status: "AI_QUANTIZED"
+    former_status: "CANONICAL_HARD_GATE"
+    rationale: "AI quantized boundary for dominant wick confirmation."
+    research_role: "PARAMETER_GRID_CANDIDATE"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_TRAILING_04"
+    raw_expression: "trailing stop 0.4%"
+    reclassified_status: "EASYSTOCK_EXISTING_PARAMETER"
+    former_status: "CANONICAL_HARD_GATE"
+    rationale: "Inherited from EasyStock production config/strategy_rules.py; not an author-specified book rule."
+    research_role: "BASELINE_PARAMETER_BENCHMARK"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_20D_HIGH_DIST_3"
+    raw_expression: "20-day high distance < 3%"
+    reclassified_status: "AI_QUANTIZED"
+    former_status: "CANONICAL_HARD_GATE"
+    rationale: "Weinstein and Taiwan daytrade sources specify 'near recent highs'; <3% is an engineering proxy."
+    research_role: "PARAMETER_GRID_CANDIDATE: [<2%, <3%, <5%]"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_SECTOR_60"
+    raw_expression: "sector strength > 60%"
+    reclassified_status: "AI_QUANTIZED"
+    former_status: "CANONICAL_HARD_GATE"
+    rationale: "Quantile percentile proxy for sector momentum."
+    research_role: "PARAMETER_GRID_CANDIDATE"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_MIN_2_STOCKS"
+    raw_expression: ">= 2 stocks per candidate cluster"
+    reclassified_status: "AI_QUANTIZED"
+    former_status: "CANONICAL_HARD_GATE"
+    rationale: "Cluster verification heuristic from Taiwan daytrade practice; engineering threshold."
+    research_role: "RESEARCH_HYPOTHESIS"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_RISK_1_2_PCT"
+    raw_expression: "1% - 2% account risk per trade"
+    reclassified_status: "AUTHOR_EXAMPLE"
+    former_status: "CANONICAL_HARD_GATE"
+    source: "SRC_VAN_THARP"
+    rationale: "Van Tharp explicitly provides 1%-2% as an illustrative rule-of-thumb example for retail position sizing, not an inviolable law."
+    research_role: "CAPITAL_ALLOCATION_GUIDELINE"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_OOS_30"
+    raw_expression: "OOS test ratio >= 30%"
+    reclassified_status: "RESEARCH_GOVERNANCE_CANDIDATE"
+    former_status: "CANONICAL_HARD_GATE"
+    source: "SRC_CALVIN_TSAI"
+    rationale: "Calvin Tsai emphasizes out-of-sample data splitting; 30% is a standard quantitative partition rule."
+    research_role: "BACKTEST_VALIDATION_SPLIT"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_WFE_50"
+    raw_expression: "Walk-Forward Efficiency (WFE) > 50%"
+    reclassified_status: "RESEARCH_GOVERNANCE_CANDIDATE"
+    former_status: "CANONICAL_HARD_GATE"
+    rationale: "Originally from Robert Pardo (un-audited); downgraded from verified threshold to research governance heuristic."
+    research_role: "QUANT_RESEARCH_BEST_PRACTICE"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_PLATEAU_DEG_20"
+    raw_expression: "Parameter plateau degradation < 20%"
+    reclassified_status: "RESEARCH_GOVERNANCE_CANDIDATE"
+    former_status: "CANONICAL_HARD_GATE"
+    rationale: "Calvin Tsai emphasizes avoiding sharp parameter spikes; 20% degradation tolerance is an empirical rule."
+    research_role: "ROBUSTNESS_METRIC"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_SQN_2"
+    raw_expression: "System Quality Number (SQN) > 2.0"
+    reclassified_status: "AUTHOR_EXAMPLE"
+    former_status: "CANONICAL_HARD_GATE"
+    source: "SRC_VAN_THARP"
+    rationale: "Van Tharp categorizes SQN: 1.6-1.9 Average, 2.0-2.4 Good, 2.5-2.9 Excellent. It is a descriptive score, not a pass/fail blocker."
+    research_role: "DESCRIPTIVE_EVALUATION_METRIC"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_EXPECTANCY_02R"
+    raw_expression: "Expectancy > 0.2R per trade"
+    reclassified_status: "RESEARCH_GOVERNANCE_CANDIDATE"
+    former_status: "CANONICAL_HARD_GATE"
+    source: "SRC_VAN_THARP"
+    rationale: "Positive expectancy (E > 0) is mandatory; requiring specifically > 0.2R is a governance hurdle to cover slippage and commission."
+    research_role: "RESEARCH_VIABILITY_HURDLE"
+    pass_fail_eligibility: false
+
+  - threshold_id: "TH_MONTE_CARLO_1000_95"
+    raw_expression: "Monte Carlo 1000 iterations @ 95% confidence"
+    reclassified_status: "RESEARCH_GOVERNANCE_CANDIDATE"
+    former_status: "CANONICAL_HARD_GATE"
+    rationale: "Standard simulation setup for ruin risk and max drawdown estimation."
+    research_role: "QUANT_RESEARCH_BEST_PRACTICE"
+    pass_fail_eligibility: false
+
+# ==============================================================================
+# 2. VALIDATION CLAIMS & STATISTICAL METHODOLOGY (CRITICAL RULE 4)
+# ==============================================================================
+validation_framework:
+  canonical_batch_a_methods:
+    - method_id: "VAL_OOS_PARTITIONING"
+      name: "Out-of-Sample (OOS) Partitioning & Walk-Forward Validation"
+      canonical_source: "SRC_CALVIN_TSAI"
+      classification: "SOURCE_VERIFIED"
+      description: "Validation across chronologically separated in-sample and out-of-sample periods to detect overfitting."
+
+    - method_id: "VAL_EXPECTANCY_ACCOUNTING"
+      name: "R-Multiple Distribution & Mathematical Expectancy"
+      canonical_source: "SRC_VAN_THARP"
+      classification: "SOURCE_VERIFIED"
+      formula: "E = (P_win * AW) - (P_loss * AL) where AW, AL are measured in R"
+      description: "Strict risk-unit accounting replacing raw currency or nominal percentage returns."
+
+    - method_id: "VAL_SLIPPAGE_FRICTION_MODEL"
+      name: "Taiwan Market Slippage & Friction Reality Model"
+      canonical_source: "SRC_CALVIN_TSAI"
+      classification: "SOURCE_VERIFIED"
+      description: "Mandatory incorporation of transaction taxes (0.15% daytrade tax), exchange fees, and tick bid-ask slippage."
+
+    - method_id: "VAL_MULTI_FACTOR_PERSISTENCE"
+      name: "Decile Ranking & Survivorship-Bias Mitigation"
+      canonical_source: "SRC_OSHAUGHNESSY"
+      classification: "SOURCE_VERIFIED"
+      description: "Evaluation of factor spread persistence across market cycles without lookahead bias."
+
+  downgraded_validation_concepts:
+    - method_id: "VAL_WFE_FORMAL"
+      name: "Formal Walk-Forward Efficiency (WFE) Ratio"
+      original_attribution: "Robert Pardo"
+      reclassified_status: "QUANT_RESEARCH_BEST_PRACTICE"
+      disallowed_labels: ["SOURCE_VERIFIED", "DIRECTLY_SUPPORTED"]
+      note: "Pardo is un-audited in V2. Calvin Tsai provides the canonical backing for OOS validation."
+
+    - method_id: "VAL_WHITES_REALITY_CHECK"
+      name: "White's Reality Check / Bootstrap Data-Snooping Correction"
+      original_attribution: "David Aronson"
+      reclassified_status: "QUANT_RESEARCH_BEST_PRACTICE"
+      disallowed_labels: ["SOURCE_VERIFIED", "DIRECTLY_SUPPORTED"]
+      note: "Aronson is un-audited in V2. Retained as research best practice; not a canonical requirement."
+
+    - method_id: "VAL_PARAMETER_PLATEAU_METRIC"
+      name: "Parameter Plateau Surface Smoothness"
+      original_attribution: "Robert Pardo / Perry Kaufman"
+      reclassified_status: "QUANT_RESEARCH_BEST_PRACTICE"
+      disallowed_labels: ["SOURCE_VERIFIED", "DIRECTLY_SUPPORTED"]
+      note: "Conceptually aligned with Calvin Tsai's parameter stability advice, but specific mathematical 3D surface formulas remain research best practices."
