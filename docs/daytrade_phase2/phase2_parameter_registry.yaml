@@ -1,0 +1,74 @@
+registry_version: "2.0.0"
+governance_policy: "Phase 2A Centralized Parameter Provenance & Cost Governance"
+
+cost_parameters:
+  broker_fee_rate:
+    value: 0.001425
+    category: "SOURCE_PARAMETER"
+    source: "Taiwan Stock Exchange (TWSE) Statutory Fee Rate"
+    description: "Statutory base brokerage commission rate (0.1425%)"
+
+  broker_discount:
+    value: 0.28
+    category: "EASYSTOCK_EXISTING_PARAMETER"
+    source: "EasyStock Account Config (paper_ledger.py)"
+    description: "28折 standard broker fee discount"
+
+  minimum_fee:
+    value: 20.0
+    unit: "TWD"
+    category: "EASYSTOCK_EXISTING_PARAMETER"
+    source: "EasyStock Account Config (paper_ledger.py)"
+    description: "Minimum 20 TWD commission fee per transaction leg"
+
+  daytrade_tax_rate:
+    value: 0.0015
+    category: "SOURCE_PARAMETER"
+    source: "Securities Transaction Tax Act (Day Trading Halved Rate)"
+    description: "Incentive securities transaction tax rate for day-trades (0.15%)"
+
+  normal_tax_rate:
+    value: 0.0030
+    category: "SOURCE_PARAMETER"
+    source: "Securities Transaction Tax Act (Standard Rate)"
+    description: "Standard securities transaction tax rate on stock sales (0.30%)"
+
+  slippage_grid:
+    value: [0.0, 5.0, 10.0, 15.0, 20.0]
+    unit: "bps"
+    category: "RESEARCH_GOVERNANCE_CANDIDATE"
+    source: "Knowledge V2 Research Parameter Candidate"
+    description: "Discretized slippage stress-testing levels"
+
+research_provenance_parameters:
+  PARAM_PB_VOL_DECAY:
+    canonical_id: "PARAM_PB_VOL_DECAY"
+    name: "Pullback Low Volume Test Threshold"
+    default_value: 0.50
+    status: "SOURCE_VERIFIED"
+    author: "Anna Coulling"
+    source_work: "A Complete Guide To Volume Price Analysis"
+    chapter: "Chapter 7"
+    notes: >
+      Source audit confirmed Low Volume Test in pullback consolidation is described in Chapter 7
+      (Support and Resistance / Volume Price Analysis). Chapter 5 is strictly rejected.
+
+  GRID_PB_VOL_DECAY:
+    canonical_id: "GRID_PB_VOL_DECAY"
+    name: "Pullback Volume Decay Parameter Grid"
+    values: [0.35, 0.45, 0.50]
+    status: "AI_QUANTIZED"
+    author: "None (AI Quantized)"
+    source_work: "Knowledge V2 Research Parameter Candidate"
+    notes: >
+      Discretized parameter candidate for research sensitivity analysis. Not provided in original text.
+
+  GRID_EXTENSION_RATIO:
+    canonical_id: "GRID_EXTENSION_RATIO"
+    name: "Price Extension Threshold Grid"
+    values: [1.2, 1.5, 1.8]
+    status: "AI_QUANTIZED"
+    author: "None (AI Quantized)"
+    source_work: "Knowledge V2 Research Parameter Candidate"
+    notes: >
+      Discretized parameter candidate for momentum extension research. Not provided in original text.

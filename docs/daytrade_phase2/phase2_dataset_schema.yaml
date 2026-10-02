@@ -1,0 +1,147 @@
+schema_version: "2.0.0"
+title: "EasyStock Daytrade Research Phase 2A Dataset Schema"
+description: >
+  Specification for Phase 2A research trade records enforcing Single Source of Truth
+  slippage accounting, explicit risk parameters, decomposed MFE/MAE metrics, and
+  event-based forward label boundaries.
+
+fields:
+  symbol:
+    type: string
+    description: "TWSE/TPEx ticker symbol (e.g. '2330')"
+  direction:
+    type: string
+    enum: ["LONG", "SHORT"]
+    description: "Trade direction"
+  quantity:
+    type: integer
+    unit: "shares"
+    description: "Position size in shares (strictly positive)"
+
+  # Timestamps
+  feature_time:
+    type: string
+    format: "ISO-8601 (Asia/Taipei)"
+    description: "Timestamp at or before which features are calculated (feature_time <= signal_time)"
+  signal_time:
+    type: string
+    format: "ISO-8601 (Asia/Taipei)"
+    description: "Timestamp when rule condition fired"
+  decision_available_time:
+    type: string
+    format: "ISO-8601 (Asia/Taipei)"
+    description: "Signal time + safety buffer (e.g. +2s) before order can legally be dispatched"
+  execution_time:
+    type: string
+    format: "ISO-8601 (Asia/Taipei)"
+    description: "Legal bar open or tick execution time (strictly > decision_available_time)"
+  exit_time:
+    type: string
+    format: "ISO-8601 (Asia/Taipei)"
+    description: "Timestamp when position closed (strictly > execution_time)"
+
+  # Purging & Embargo Boundaries
+  sample_time:
+    type: string
+    format: "ISO-8601 (Asia/Taipei)"
+    description: "Event reference time for temporal sorting"
+  label_start_time:
+    type: string
+    format: "ISO-8601 (Asia/Taipei)"
+    description: "Earliest forward timestamp contributing to outcome evaluation"
+  label_end_time:
+    type: string
+    format: "ISO-8601 (Asia/Taipei)"
+    description: "Latest forward timestamp contributing to outcome evaluation; purged if >= test_start"
+
+  # Prices
+  theoretical_entry_price:
+    type: float
+    unit: "TWD"
+    description: "Theoretical entry price before simulated slippage"
+  actual_entry_price:
+    type: float
+    unit: "TWD"
+    description: "Actual simulated fill price embodying entry slippage"
+  theoretical_exit_price:
+    type: float
+    unit: "TWD"
+    description: "Theoretical exit price before simulated slippage"
+  actual_exit_price:
+    type: float
+    unit: "TWD"
+    description: "Actual simulated fill price embodying exit slippage"
+
+  # Risk Fields
+  stop_loss_price:
+    type: float
+    unit: "TWD"
+    description: "Pre-trade initial stop loss price (LONG: < entry; SHORT: > entry)"
+  initial_risk_per_share:
+    type: float
+    unit: "TWD"
+    description: "abs(actual_entry_price - stop_loss_price), strictly positive"
+  initial_risk_amount:
+    type: float
+    unit: "TWD"
+    description: "initial_risk_per_share * quantity"
+
+  # MFE & MAE Decomposition
+  mfe_price:
+    type: float
+    unit: "TWD"
+    description: "Peak favorable excursion price reached while position open"
+  mae_price:
+    type: float
+    unit: "TWD"
+    description: "Peak adverse excursion price reached while position open"
+  mfe_pct:
+    type: float
+    unit: "%"
+    description: "Maximum favorable excursion relative to entry price"
+  mae_pct:
+    type: float
+    unit: "%"
+    description: "Maximum adverse excursion relative to entry price"
+  mfe_R:
+    type: float
+    unit: "R-multiple"
+    description: "MFE in units of initial risk per share (favorable excursion / initial_risk_per_share)"
+  mae_R:
+    type: float
+    unit: "R-multiple"
+    description: "MAE in units of initial risk per share (adverse excursion / initial_risk_per_share, negative)"
+
+  # Accounting & PnL
+  gross_pnl_actual:
+    type: float
+    unit: "TWD"
+    description: "Gross PnL based on actual simulated fill prices"
+  gross_pnl_theoretical:
+    type: float
+    unit: "TWD"
+    description: "Gross PnL based on theoretical prices without slippage"
+  commission_total:
+    type: float
+    unit: "TWD"
+    description: "Total broker commission (entry + exit) with discount and minimum fee"
+  tax_total:
+    type: float
+    unit: "TWD"
+    description: "Securities transaction tax charged on exit"
+  slippage_cost:
+    type: float
+    unit: "TWD"
+    description: "Derived dollar impact of slippage (difference between actual and theoretical fills)"
+  net_pnl:
+    type: float
+    unit: "TWD"
+    description: "Net realized PnL = gross_pnl_actual - commission_total - tax_total (slippage NOT double-counted)"
+  pnl_R:
+    type: float
+    unit: "R-multiple"
+    description: "Net PnL expressed in initial risk multiples (net_pnl / initial_risk_amount)"
+
+  features_snapshot:
+    type: object
+    description: "Causal feature vector computed strictly at or before signal_time"
