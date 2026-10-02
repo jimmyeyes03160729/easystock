@@ -1,0 +1,1894 @@
+run_metadata:
+  run_id: P2B_B1_FULL_HISTORICAL_20261002_001
+  execution_timestamp: '2026-10-03T02:41:13.140415+08:00'
+  elapsed_seconds: 9035.28
+  RESEARCH_ONLY: true
+  INERT_BY_DEFAULT: true
+  survivorship_bias: true
+  point_in_time_universe: false
+  population_name: CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE
+  dataset_snapshot_id: CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002
+  corporate_action_data_status: UNAVAILABLE
+dataset_audit:
+  symbol_count: 100
+  date_count: 726
+  total_stock_days_evaluated: 43390
+  stock_days_complete: 18753
+  stock_days_usable_with_gaps: 24612
+  stock_days_invalid: 25
+  observed_large_gap_count: 12
+candidate_results:
+  P2B_01_PULLBACK_VOLUME_DECAY:
+    candidate_id: P2B_01_PULLBACK_VOLUME_DECAY
+    verdict: REJECT_RESEARCH_CANDIDATE
+    verdict_rationale: 'Negative or uncompetitive net expectancy (Net: -4.519R, OOS:
+      -3.4996R).'
+    metrics_stratification:
+      ALL_USABLE:
+        trade_count: 9114940
+        win_rate: 0.0418
+        avg_win_R: 2.5923
+        avg_loss_R: 4.8293
+        expectancy_R: -4.519
+        gross_expectancy_R: -3.1381
+        net_expectancy_R: -4.519
+        cost_drag_R: 3.9413
+        median_R: -5.12
+        std_R: 2.9897
+        profit_factor: 0.1918
+        SQN: -4563.4737
+        MFE_R: 2.2544
+        MAE_R: 2.6641
+        max_win_R: 99.675
+        max_loss_R: -35.4
+      COMPLETE_ONLY:
+        trade_count: 4813940
+        win_rate: 0.0388
+        avg_win_R: 2.517
+        avg_loss_R: 4.7871
+        expectancy_R: -4.5039
+        gross_expectancy_R: -3.2003
+        net_expectancy_R: -4.5039
+        cost_drag_R: 3.88
+        median_R: -5.12
+        std_R: 2.8764
+        profit_factor: 0.0615
+        SQN: -3435.4736
+        MFE_R: 2.307
+        MAE_R: 2.6959
+        max_win_R: 73.7
+        max_loss_R: -33.9
+      USABLE_WITH_GAPS_ONLY:
+        trade_count: 4301000
+        win_rate: 0.0452
+        avg_win_R: 2.6645
+        avg_loss_R: 4.8768
+        expectancy_R: -4.5358
+        gross_expectancy_R: -3.0685
+        net_expectancy_R: -4.5358
+        cost_drag_R: 4.01
+        median_R: -5.09
+        std_R: 3.1114
+        profit_factor: 0.2515
+        SQN: -3023.3168
+        MFE_R: 2.1956
+        MAE_R: 2.6285
+        max_win_R: 99.675
+        max_loss_R: -35.4
+    walk_forward_evaluation:
+      folds:
+      - fold: 1
+        train_window: 2023-09-27 ~ 2025-01-03
+        test_window: 2025-01-08 ~ 2025-06-24
+        train_trades: 144473
+        test_trades: 54038
+        train_expectancy_R: -4.0029
+        test_expectancy_R: -3.9344
+        test_win_rate: 0.0355
+        test_profit_factor: 0.0533
+      - fold: 2
+        train_window: 2024-03-06 ~ 2025-06-20
+        test_window: 2025-06-25 ~ 2025-11-20
+        train_trades: 157304
+        test_trades: 55346
+        train_expectancy_R: -3.958
+        test_expectancy_R: -3.8129
+        test_win_rate: 0.041
+        test_profit_factor: 0.0464
+      - fold: 3
+        train_window: 2024-08-06 ~ 2025-11-18
+        test_window: 2025-11-21 ~ 2026-04-30
+        train_trades: 160274
+        test_trades: 68625
+        train_expectancy_R: -3.9175
+        test_expectancy_R: -3.6226
+        test_win_rate: 0.051
+        test_profit_factor: 0.0968
+      - fold: 4
+        train_window: 2025-01-06 ~ 2026-04-28
+        test_window: 2026-05-04 ~ 2026-09-29
+        train_trades: 177422
+        test_trades: 129670
+        train_expectancy_R: -3.7818
+        test_expectancy_R: -3.1209
+        test_win_rate: 0.0774
+        test_profit_factor: 0.3328
+      - fold: 5
+        train_window: 2025-06-23 ~ 2026-09-23
+        test_window: 2026-09-30 ~ 2026-10-02
+        train_trades: 253253
+        test_trades: 2755
+        train_expectancy_R: -3.4107
+        test_expectancy_R: -3.4374
+        test_win_rate: 0.0497
+        test_profit_factor: 0.1629
+      IS_expectancy_R: -3.7677
+      OOS_expectancy_R: -3.4996
+      OOS_profit_factor: 0.2922
+      OOS_trade_count: 310434
+      fold_count: 5
+    baseline_comparison:
+      delta_expectancy_R: -4.469
+      delta_win_rate: -0.3982
+      delta_profit_factor: -0.7582
+      delta_MFE_R: 1.1544
+      delta_MAE_R: 1.4141
+    parameter_grid_sensitivity:
+      th_0.35_pb_3:
+        trade_count: 3629360
+        win_rate: 0.0301
+        avg_win_R: 2.7506
+        avg_loss_R: 5.049
+        expectancy_R: -4.8143
+        gross_expectancy_R: -3.366
+        net_expectancy_R: -4.8143
+        cost_drag_R: 4.1537
+        median_R: -5.14
+        std_R: 2.8777
+        profit_factor: 0.1628
+        SQN: -3187.1874
+        MFE_R: 2.0637
+        MAE_R: 2.5932
+        max_win_R: 80.4182
+        max_loss_R: -35.4
+      th_0.45_pb_3:
+        trade_count: 5190780
+        win_rate: 0.0374
+        avg_win_R: 2.7385
+        avg_loss_R: 4.9261
+        expectancy_R: -4.6393
+        gross_expectancy_R: -3.2274
+        net_expectancy_R: -4.6393
+        cost_drag_R: 4.0304
+        median_R: -5.12
+        std_R: 2.967
+        profit_factor: 0.1833
+        SQN: -3562.5462
+        MFE_R: 2.2559
+        MAE_R: 2.7177
+        max_win_R: 99.675
+        max_loss_R: -35.4
+      th_0.5_pb_3:
+        trade_count: 5971880
+        win_rate: 0.0405
+        avg_win_R: 2.7224
+        avg_loss_R: 4.8707
+        expectancy_R: -4.5631
+        gross_expectancy_R: -3.1682
+        net_expectancy_R: -4.5631
+        cost_drag_R: 3.9748
+        median_R: -5.12
+        std_R: 2.9978
+        profit_factor: 0.1905
+        SQN: -3719.7202
+        MFE_R: 2.3242
+        MAE_R: 2.7615
+        max_win_R: 99.675
+        max_loss_R: -35.4
+      th_0.35_pb_5:
+        trade_count: 5557760
+        win_rate: 0.0319
+        avg_win_R: 2.6184
+        avg_loss_R: 5.0007
+        expectancy_R: -4.7579
+        gross_expectancy_R: -3.3246
+        net_expectancy_R: -4.7579
+        cost_drag_R: 4.114
+        median_R: -5.12
+        std_R: 2.8861
+        profit_factor: 0.1658
+        SQN: -3886.4702
+        MFE_R: 2.0192
+        MAE_R: 2.511
+        max_win_R: 80.4182
+        max_loss_R: -35.4
+      th_0.45_pb_5:
+        trade_count: 7932300
+        win_rate: 0.0389
+        avg_win_R: 2.6068
+        avg_loss_R: 4.8814
+        expectancy_R: -4.5901
+        gross_expectancy_R: -3.1928
+        net_expectancy_R: -4.5901
+        cost_drag_R: 3.994
+        median_R: -5.12
+        std_R: 2.963
+        profit_factor: 0.1852
+        SQN: -4363.136
+        MFE_R: 2.1932
+        MAE_R: 2.6265
+        max_win_R: 99.675
+        max_loss_R: -35.4
+      th_0.5_pb_5:
+        trade_count: 9114940
+        win_rate: 0.0418
+        avg_win_R: 2.5923
+        avg_loss_R: 4.8293
+        expectancy_R: -4.519
+        gross_expectancy_R: -3.1381
+        net_expectancy_R: -4.519
+        cost_drag_R: 3.9413
+        median_R: -5.12
+        std_R: 2.9897
+        profit_factor: 0.1918
+        SQN: -4563.4737
+        MFE_R: 2.2544
+        MAE_R: 2.6641
+        max_win_R: 99.675
+        max_loss_R: -35.4
+    slippage_ticks_sensitivity:
+      0_ticks:
+        trade_count: 2278735
+        win_rate: 0.0794
+        avg_win_R: 2.2902
+        avg_loss_R: 2.3271
+        expectancy_R: -1.9605
+        gross_expectancy_R: -0.5777
+        net_expectancy_R: -1.9605
+        cost_drag_R: 1.3828
+        median_R: -2.52
+        std_R: 1.8182
+        profit_factor: 0.726
+        SQN: -1627.6657
+        MFE_R: 2.2544
+        MAE_R: 2.6641
+        max_win_R: 99.675
+        max_loss_R: -10.7918
+      1_ticks:
+        trade_count: 2278735
+        win_rate: 0.0433
+        avg_win_R: 2.6473
+        avg_loss_R: 3.9519
+        expectancy_R: -3.6661
+        gross_expectancy_R: -2.2846
+        net_expectancy_R: -3.6661
+        cost_drag_R: 3.0885
+        median_R: -4.52
+        std_R: 2.0593
+        profit_factor: 0.2629
+        SQN: -2687.4279
+        MFE_R: 2.2544
+        MAE_R: 2.6641
+        max_win_R: 93.685
+        max_loss_R: -15.4
+      2_ticks:
+        trade_count: 2278735
+        win_rate: 0.0266
+        avg_win_R: 2.9785
+        avg_loss_R: 5.6003
+        expectancy_R: -5.3718
+        gross_expectancy_R: -3.9915
+        net_expectancy_R: -5.3718
+        cost_drag_R: 4.7942
+        median_R: -6.52
+        std_R: 2.4018
+        profit_factor: 0.1338
+        SQN: -3376.1676
+        MFE_R: 2.2544
+        MAE_R: 2.6641
+        max_win_R: 87.693
+        max_loss_R: -25.4
+      3_ticks:
+        trade_count: 2278735
+        win_rate: 0.0179
+        avg_win_R: 3.2238
+        avg_loss_R: 7.2653
+        expectancy_R: -7.0775
+        gross_expectancy_R: -5.6985
+        net_expectancy_R: -7.0775
+        cost_drag_R: 6.4998
+        median_R: -8.52
+        std_R: 2.809
+        profit_factor: 0.0798
+        SQN: -3803.4696
+        MFE_R: 2.2544
+        MAE_R: 2.6641
+        max_win_R: 81.703
+        max_loss_R: -35.4
+    exit_policy_sensitivity:
+      FIXED_HORIZON_5M:
+        trade_count: 1822988
+        win_rate: 0.0392
+        avg_win_R: 1.73
+        avg_loss_R: 4.7385
+        expectancy_R: -4.4846
+        gross_expectancy_R: -3.1037
+        net_expectancy_R: -4.4846
+        cost_drag_R: 3.9416
+        median_R: -5.08
+        std_R: 2.8373
+        profit_factor: 0.1538
+        SQN: -2134.1199
+        MFE_R: 1.0944
+        MAE_R: 1.5207
+        max_win_R: 43.1056
+        max_loss_R: -35.4
+      FIXED_HORIZON_15M:
+        trade_count: 1822988
+        win_rate: 0.0441
+        avg_win_R: 2.6518
+        avg_loss_R: 4.8438
+        expectancy_R: -4.5131
+        gross_expectancy_R: -3.1322
+        net_expectancy_R: -4.5131
+        cost_drag_R: 3.9413
+        median_R: -5.08
+        std_R: 2.9947
+        profit_factor: 0.1952
+        SQN: -2034.7931
+        MFE_R: 1.8508
+        MAE_R: 2.2658
+        max_win_R: 64.591
+        max_loss_R: -35.4
+      FIXED_HORIZON_30M:
+        trade_count: 1822988
+        win_rate: 0.044
+        avg_win_R: 3.4435
+        avg_loss_R: 4.891
+        expectancy_R: -4.5241
+        gross_expectancy_R: -3.1432
+        net_expectancy_R: -4.5241
+        cost_drag_R: 3.9413
+        median_R: -5.08
+        std_R: 3.1244
+        profit_factor: 0.2246
+        SQN: -1955.0653
+        MFE_R: 2.5205
+        MAE_R: 2.921
+        max_win_R: 73.538
+        max_loss_R: -35.4
+      FIXED_HORIZON_60M:
+        trade_count: 1822988
+        win_rate: 0.0422
+        avg_win_R: 4.3182
+        avg_loss_R: 4.9209
+        expectancy_R: -4.531
+        gross_expectancy_R: -3.1501
+        net_expectancy_R: -4.531
+        cost_drag_R: 3.9412
+        median_R: -5.08
+        std_R: 3.2694
+        profit_factor: 0.2473
+        SQN: -1871.2273
+        MFE_R: 3.2859
+        MAE_R: 3.6921
+        max_win_R: 99.675
+        max_loss_R: -32.26
+      STOP_TARGET_1_5R_MAX30M:
+        trade_count: 1822988
+        win_rate: 0.0395
+        avg_win_R: 0.5889
+        avg_loss_R: 4.7529
+        expectancy_R: -4.542
+        gross_expectancy_R: -3.1612
+        net_expectancy_R: -4.542
+        cost_drag_R: 3.9413
+        median_R: -5.1
+        std_R: 2.687
+        profit_factor: 0.1275
+        SQN: -2282.313
+        MFE_R: 2.5205
+        MAE_R: 2.921
+        max_win_R: 1.4507
+        max_loss_R: -33.9
+    segmentation_by_year:
+      '2023':
+        trade_count: 525160
+        win_rate: 0.0218
+        avg_win_R: 2.1933
+        avg_loss_R: 5.1433
+        expectancy_R: -4.9836
+        gross_expectancy_R: -3.4737
+        net_expectancy_R: -4.9836
+        cost_drag_R: 4.265
+        median_R: -5.12
+        std_R: 2.6858
+        profit_factor: 0.0258
+        SQN: -1344.665
+        MFE_R: 1.6088
+        MAE_R: 2.1896
+        max_win_R: 36.72
+        max_loss_R: -33.9
+      '2024':
+        trade_count: 2347860
+        win_rate: 0.0248
+        avg_win_R: 2.2569
+        avg_loss_R: 5.0859
+        expectancy_R: -4.9038
+        gross_expectancy_R: -3.4258
+        net_expectancy_R: -4.9038
+        cost_drag_R: 4.2108
+        median_R: -4.96
+        std_R: 2.7577
+        profit_factor: 0.0287
+        SQN: -2724.6677
+        MFE_R: 1.7271
+        MAE_R: 2.2281
+        max_win_R: 45.88
+        max_loss_R: -35.4
+      '2025':
+        trade_count: 2552600
+        win_rate: 0.0336
+        avg_win_R: 2.472
+        avg_loss_R: 5.0044
+        expectancy_R: -4.7531
+        gross_expectancy_R: -3.2518
+        net_expectancy_R: -4.7531
+        cost_drag_R: 4.1365
+        median_R: -4.94
+        std_R: 2.905
+        profit_factor: 0.0345
+        SQN: -2614.046
+        MFE_R: 2.0314
+        MAE_R: 2.4302
+        max_win_R: 73.7
+        max_loss_R: -35.4
+      '2026':
+        trade_count: 3689320
+        win_rate: 0.0612
+        avg_win_R: 2.7448
+        avg_loss_R: 4.4884
+        expectancy_R: -4.046
+        gross_expectancy_R: -2.8285
+        net_expectancy_R: -4.046
+        cost_drag_R: 3.5887
+        median_R: -4.81
+        std_R: 3.1608
+        profit_factor: 0.2258
+        SQN: -2458.7168
+        MFE_R: 2.8363
+        MAE_R: 3.171
+        max_win_R: 99.675
+        max_loss_R: -32.26
+    segmentation_by_time_of_day:
+      MORNING:
+        trade_count: 4587660
+        win_rate: 0.0559
+        avg_win_R: 2.586
+        avg_loss_R: 4.5994
+        expectancy_R: -4.1975
+        gross_expectancy_R: -2.9058
+        net_expectancy_R: -4.1975
+        cost_drag_R: 3.7152
+        median_R: -4.94
+        std_R: 3.1013
+        profit_factor: 0.2507
+        SQN: -2898.9564
+        MFE_R: 2.6273
+        MAE_R: 2.8962
+        max_win_R: 99.675
+        max_loss_R: -35.4
+      MID:
+        trade_count: 2589660
+        win_rate: 0.0312
+        avg_win_R: 2.6612
+        avg_loss_R: 4.9947
+        expectancy_R: -4.7555
+        gross_expectancy_R: -3.3076
+        net_expectancy_R: -4.7555
+        cost_drag_R: 4.1165
+        median_R: -5.17
+        std_R: 2.8897
+        profit_factor: 0.1379
+        SQN: -2648.3002
+        MFE_R: 2.0108
+        MAE_R: 2.5291
+        max_win_R: 80.4182
+        max_loss_R: -32.26
+      AFTERNOON:
+        trade_count: 1937620
+        win_rate: 0.0225
+        avg_win_R: 2.5014
+        avg_loss_R: 5.1358
+        expectancy_R: -4.9639
+        gross_expectancy_R: -3.4613
+        net_expectancy_R: -4.9639
+        cost_drag_R: 4.2426
+        median_R: -5.2
+        std_R: 2.756
+        profit_factor: 0.1196
+        SQN: -2507.1215
+        MFE_R: 1.6972
+        MAE_R: 2.2951
+        max_win_R: 69.056
+        max_loss_R: -32.26
+  P2B_02_RANGE_EXPANSION:
+    candidate_id: P2B_02_RANGE_EXPANSION
+    verdict: REJECT_RESEARCH_CANDIDATE
+    verdict_rationale: 'Negative or uncompetitive net expectancy (Net: -2.9528R, OOS:
+      -2.2561R).'
+    metrics_stratification:
+      ALL_USABLE:
+        trade_count: 18457880
+        win_rate: 0.0905
+        avg_win_R: 1.6794
+        avg_loss_R: 3.4135
+        expectancy_R: -2.9528
+        gross_expectancy_R: -1.9781
+        net_expectancy_R: -2.9528
+        cost_drag_R: 2.7616
+        median_R: -3.63
+        std_R: 2.6275
+        profit_factor: 0.2544
+        SQN: -4828.1439
+        MFE_R: 1.8733
+        MAE_R: 1.7823
+        max_win_R: 255.5854
+        max_loss_R: -35.4
+      COMPLETE_ONLY:
+        trade_count: 11197660
+        win_rate: 0.0895
+        avg_win_R: 1.6583
+        avg_loss_R: 3.4239
+        expectancy_R: -2.9689
+        gross_expectancy_R: -2.0155
+        net_expectancy_R: -2.9689
+        cost_drag_R: 2.7774
+        median_R: -3.59
+        std_R: 2.5938
+        profit_factor: 0.1481
+        SQN: -3830.297
+        MFE_R: 1.8964
+        MAE_R: 1.7703
+        max_win_R: 67.7
+        max_loss_R: -32.274
+      USABLE_WITH_GAPS_ONLY:
+        trade_count: 7260220
+        win_rate: 0.0919
+        avg_win_R: 1.7111
+        avg_loss_R: 3.3975
+        expectancy_R: -2.928
+        gross_expectancy_R: -1.9205
+        net_expectancy_R: -2.928
+        cost_drag_R: 2.7371
+        median_R: -3.87
+        std_R: 2.6786
+        profit_factor: 0.303
+        SQN: -2945.3566
+        MFE_R: 1.8377
+        MAE_R: 1.8007
+        max_win_R: 255.5854
+        max_loss_R: -35.4
+    walk_forward_evaluation:
+      folds:
+      - fold: 1
+        train_window: 2023-09-27 ~ 2025-01-03
+        test_window: 2025-01-08 ~ 2025-06-24
+        train_trades: 245739
+        test_trades: 95895
+        train_expectancy_R: -2.6575
+        test_expectancy_R: -2.6121
+        test_win_rate: 0.0722
+        test_profit_factor: 0.1344
+      - fold: 2
+        train_window: 2024-03-06 ~ 2025-06-20
+        test_window: 2025-06-25 ~ 2025-11-20
+        train_trades: 275497
+        test_trades: 105985
+        train_expectancy_R: -2.638
+        test_expectancy_R: -2.4856
+        test_win_rate: 0.0834
+        test_profit_factor: 0.1248
+      - fold: 3
+        train_window: 2024-08-06 ~ 2025-11-18
+        test_window: 2025-11-21 ~ 2026-04-30
+        train_trades: 286077
+        test_trades: 159286
+        train_expectancy_R: -2.5932
+        test_expectancy_R: -2.3477
+        test_win_rate: 0.0986
+        test_profit_factor: 0.1925
+      - fold: 4
+        train_window: 2025-01-06 ~ 2026-04-28
+        test_window: 2026-05-04 ~ 2026-09-29
+        train_trades: 359222
+        test_trades: 309298
+        train_expectancy_R: -2.4616
+        test_expectancy_R: -2.0217
+        test_win_rate: 0.1306
+        test_profit_factor: 0.387
+      - fold: 5
+        train_window: 2025-06-23 ~ 2026-09-23
+        test_window: 2026-09-30 ~ 2026-10-02
+        train_trades: 573908
+        test_trades: 5163
+        train_expectancy_R: -2.1999
+        test_expectancy_R: -2.1504
+        test_win_rate: 0.1073
+        test_profit_factor: 0.2607
+      IS_expectancy_R: -2.4525
+      OOS_expectancy_R: -2.2561
+      OOS_profit_factor: 0.3599
+      OOS_trade_count: 675627
+      fold_count: 5
+    baseline_comparison:
+      delta_expectancy_R: -2.9028
+      delta_win_rate: -0.3495
+      delta_profit_factor: -0.6956
+      delta_MFE_R: 0.7733
+      delta_MAE_R: 0.5323
+    parameter_grid_sensitivity:
+      th_1.2_lb_3:
+        trade_count: 16915360
+        win_rate: 0.0911
+        avg_win_R: 1.6599
+        avg_loss_R: 3.3913
+        expectancy_R: -2.9314
+        gross_expectancy_R: -1.9675
+        net_expectancy_R: -2.9314
+        cost_drag_R: 2.7435
+        median_R: -3.54
+        std_R: 2.6159
+        profit_factor: 0.2511
+        SQN: -4608.818
+        MFE_R: 1.8521
+        MAE_R: 1.7584
+        max_win_R: 255.5854
+        max_loss_R: -35.4
+      th_1.5_lb_3:
+        trade_count: 13491760
+        win_rate: 0.0899
+        avg_win_R: 1.5845
+        avg_loss_R: 3.3514
+        expectancy_R: -2.9075
+        gross_expectancy_R: -1.9492
+        net_expectancy_R: -2.9075
+        cost_drag_R: 2.7263
+        median_R: -3.58
+        std_R: 2.5815
+        profit_factor: 0.2527
+        SQN: -4136.9559
+        MFE_R: 1.7438
+        MAE_R: 1.6412
+        max_win_R: 255.5854
+        max_loss_R: -35.4
+      th_1.8_lb_3:
+        trade_count: 9221260
+        win_rate: 0.0895
+        avg_win_R: 1.4891
+        avg_loss_R: 3.2651
+        expectancy_R: -2.8394
+        gross_expectancy_R: -1.8978
+        net_expectancy_R: -2.8394
+        cost_drag_R: 2.6693
+        median_R: -3.3967
+        std_R: 2.5295
+        profit_factor: 0.2603
+        SQN: -3408.6197
+        MFE_R: 1.6001
+        MAE_R: 1.4962
+        max_win_R: 255.5854
+        max_loss_R: -35.4
+      th_1.2_lb_5:
+        trade_count: 16631640
+        win_rate: 0.0885
+        avg_win_R: 1.6204
+        avg_loss_R: 3.4055
+        expectancy_R: -2.9605
+        gross_expectancy_R: -1.986
+        net_expectancy_R: -2.9605
+        cost_drag_R: 2.7643
+        median_R: -3.7333
+        std_R: 2.6025
+        profit_factor: 0.2462
+        SQN: -4639.3114
+        MFE_R: 1.7913
+        MAE_R: 1.7003
+        max_win_R: 255.5854
+        max_loss_R: -35.4
+      th_1.5_lb_5:
+        trade_count: 11541600
+        win_rate: 0.0894
+        avg_win_R: 1.4971
+        avg_loss_R: 3.2872
+        expectancy_R: -2.8593
+        gross_expectancy_R: -1.9155
+        net_expectancy_R: -2.8593
+        cost_drag_R: 2.6774
+        median_R: -3.5533
+        std_R: 2.5339
+        profit_factor: 0.2527
+        SQN: -3833.5787
+        MFE_R: 1.6149
+        MAE_R: 1.5206
+        max_win_R: 255.5854
+        max_loss_R: -35.4
+      th_1.8_lb_5:
+        trade_count: 7410000
+        win_rate: 0.0908
+        avg_win_R: 1.3944
+        avg_loss_R: 3.1619
+        expectancy_R: -2.7482
+        gross_expectancy_R: -1.8358
+        net_expectancy_R: -2.7482
+        cost_drag_R: 2.5798
+        median_R: -3.39
+        std_R: 2.4711
+        profit_factor: 0.2669
+        SQN: -3027.3749
+        MFE_R: 1.4724
+        MAE_R: 1.3786
+        max_win_R: 255.5854
+        max_loss_R: -35.4
+    slippage_ticks_sensitivity:
+      0_ticks:
+        trade_count: 4614470
+        win_rate: 0.1804
+        avg_win_R: 1.5721
+        avg_loss_R: 1.7685
+        expectancy_R: -1.166
+        gross_expectancy_R: -0.1913
+        net_expectancy_R: -1.166
+        cost_drag_R: 0.9747
+        median_R: -1.605
+        std_R: 1.7523
+        profit_factor: 0.8759
+        SQN: -1429.3218
+        MFE_R: 1.8733
+        MAE_R: 1.7823
+        max_win_R: 255.5854
+        max_loss_R: -9.8304
+      1_ticks:
+        trade_count: 4614470
+        win_rate: 0.0939
+        avg_win_R: 1.6762
+        avg_loss_R: 2.7754
+        expectancy_R: -2.3572
+        gross_expectancy_R: -1.3825
+        net_expectancy_R: -2.3572
+        cost_drag_R: 2.1659
+        median_R: -2.64
+        std_R: 1.9934
+        profit_factor: 0.3469
+        SQN: -2540.2104
+        MFE_R: 1.8733
+        MAE_R: 1.7823
+        max_win_R: 253.584
+        max_loss_R: -15.4
+      2_ticks:
+        trade_count: 4614470
+        win_rate: 0.0536
+        avg_win_R: 1.8533
+        avg_loss_R: 3.8544
+        expectancy_R: -3.5485
+        gross_expectancy_R: -2.5737
+        net_expectancy_R: -3.5485
+        cost_drag_R: 3.3572
+        median_R: -3.83
+        std_R: 2.3625
+        profit_factor: 0.1721
+        SQN: -3226.4276
+        MFE_R: 1.8733
+        MAE_R: 1.7823
+        max_win_R: 251.5824
+        max_loss_R: -25.4
+      3_ticks:
+        trade_count: 4614470
+        win_rate: 0.0339
+        avg_win_R: 1.9839
+        avg_loss_R: 4.9758
+        expectancy_R: -4.7397
+        gross_expectancy_R: -3.765
+        net_expectancy_R: -4.7397
+        cost_drag_R: 4.5484
+        median_R: -4.89
+        std_R: 2.8098
+        profit_factor: 0.0986
+        SQN: -3623.6273
+        MFE_R: 1.8733
+        MAE_R: 1.7823
+        max_win_R: 249.581
+        max_loss_R: -35.4
+    exit_policy_sensitivity:
+      FIXED_HORIZON_5M:
+        trade_count: 3691576
+        win_rate: 0.071
+        avg_win_R: 1.064
+        avg_loss_R: 3.2177
+        expectancy_R: -2.9137
+        gross_expectancy_R: -1.939
+        net_expectancy_R: -2.9137
+        cost_drag_R: 2.7615
+        median_R: -3.29
+        std_R: 2.3926
+        profit_factor: 0.1848
+        SQN: -2339.8446
+        MFE_R: 1.033
+        MAE_R: 0.9584
+        max_win_R: 111.312
+        max_loss_R: -32.274
+      FIXED_HORIZON_15M:
+        trade_count: 3691576
+        win_rate: 0.09
+        avg_win_R: 1.6259
+        avg_loss_R: 3.4129
+        expectancy_R: -2.9594
+        gross_expectancy_R: -1.9847
+        net_expectancy_R: -2.9594
+        cost_drag_R: 2.7617
+        median_R: -3.5167
+        std_R: 2.5967
+        profit_factor: 0.2516
+        SQN: -2189.7243
+        MFE_R: 1.5777
+        MAE_R: 1.4976
+        max_win_R: 150.3862
+        max_loss_R: -32.274
+      FIXED_HORIZON_30M:
+        trade_count: 3691576
+        win_rate: 0.0969
+        avg_win_R: 2.1437
+        avg_loss_R: 3.518
+        expectancy_R: -2.9695
+        gross_expectancy_R: -1.9948
+        net_expectancy_R: -2.9695
+        cost_drag_R: 2.7617
+        median_R: -3.6
+        std_R: 2.7725
+        profit_factor: 0.2939
+        SQN: -2057.9128
+        MFE_R: 2.0647
+        MAE_R: 1.9685
+        max_win_R: 144.3748
+        max_loss_R: -35.4
+      FIXED_HORIZON_60M:
+        trade_count: 3691576
+        win_rate: 0.0984
+        avg_win_R: 2.7546
+        avg_loss_R: 3.5941
+        expectancy_R: -2.9693
+        gross_expectancy_R: -1.9946
+        net_expectancy_R: -2.9693
+        cost_drag_R: 2.7617
+        median_R: -3.7133
+        std_R: 2.9771
+        profit_factor: 0.3262
+        SQN: -1916.309
+        MFE_R: 2.6266
+        MAE_R: 2.5185
+        max_win_R: 255.5854
+        max_loss_R: -35.4
+      STOP_TARGET_1_5R_MAX30M:
+        trade_count: 3691576
+        win_rate: 0.096
+        avg_win_R: 0.6145
+        avg_loss_R: 3.331
+        expectancy_R: -2.9521
+        gross_expectancy_R: -1.9774
+        net_expectancy_R: -2.9521
+        cost_drag_R: 2.7613
+        median_R: -3.22
+        std_R: 2.3453
+        profit_factor: 0.1954
+        SQN: -2418.5101
+        MFE_R: 2.0647
+        MAE_R: 1.9685
+        max_win_R: 1.4448
+        max_loss_R: -33.9
+    segmentation_by_year:
+      '2023':
+        trade_count: 852600
+        win_rate: 0.0595
+        avg_win_R: 1.4302
+        avg_loss_R: 3.6109
+        expectancy_R: -3.3109
+        gross_expectancy_R: -2.2124
+        net_expectancy_R: -3.3109
+        cost_drag_R: 3.0476
+        median_R: -3.63
+        std_R: 2.5004
+        profit_factor: 0.0723
+        SQN: -1222.6483
+        MFE_R: 1.5133
+        MAE_R: 1.4635
+        max_win_R: 26.88
+        max_loss_R: -32.26
+      '2024':
+        trade_count: 4029260
+        win_rate: 0.065
+        avg_win_R: 1.4862
+        avg_loss_R: 3.6435
+        expectancy_R: -3.3098
+        gross_expectancy_R: -2.2186
+        net_expectancy_R: -3.3098
+        cost_drag_R: 3.0665
+        median_R: -3.64
+        std_R: 2.5581
+        profit_factor: 0.0834
+        SQN: -2597.1643
+        MFE_R: 1.5944
+        MAE_R: 1.4955
+        max_win_R: 52.9
+        max_loss_R: -35.4
+      '2025':
+        trade_count: 4813380
+        win_rate: 0.0768
+        avg_win_R: 1.6073
+        avg_loss_R: 3.5603
+        expectancy_R: -3.1635
+        gross_expectancy_R: -2.0865
+        net_expectancy_R: -3.1635
+        cost_drag_R: 2.9441
+        median_R: -4.24
+        std_R: 2.6015
+        profit_factor: 0.0978
+        SQN: -2667.9489
+        MFE_R: 1.7535
+        MAE_R: 1.663
+        max_win_R: 55.96
+        max_loss_R: -32.26
+      '2026':
+        trade_count: 8762640
+        win_rate: 0.1127
+        avg_win_R: 1.7705
+        avg_loss_R: 3.1979
+        expectancy_R: -2.6381
+        gross_expectancy_R: -1.7852
+        net_expectancy_R: -2.6381
+        cost_drag_R: 2.4932
+        median_R: -3.314
+        std_R: 2.6483
+        profit_factor: 0.2778
+        SQN: -2948.8146
+        MFE_R: 2.1024
+        MAE_R: 2.0107
+        max_win_R: 255.5854
+        max_loss_R: -33.9
+    segmentation_by_time_of_day:
+      MORNING:
+        trade_count: 8689200
+        win_rate: 0.1153
+        avg_win_R: 1.6906
+        avg_loss_R: 3.1613
+        expectancy_R: -2.6017
+        gross_expectancy_R: -1.7372
+        net_expectancy_R: -2.6017
+        cost_drag_R: 2.4836
+        median_R: -3.105
+        std_R: 2.6132
+        profit_factor: 0.3196
+        SQN: -2934.7634
+        MFE_R: 2.0353
+        MAE_R: 1.92
+        max_win_R: 255.5854
+        max_loss_R: -35.4
+      MID:
+        trade_count: 4947020
+        win_rate: 0.0775
+        avg_win_R: 1.702
+        avg_loss_R: 3.5434
+        expectancy_R: -3.1367
+        gross_expectancy_R: -2.1034
+        net_expectancy_R: -3.1367
+        cost_drag_R: 2.9104
+        median_R: -4.13
+        std_R: 2.6125
+        profit_factor: 0.2034
+        SQN: -2670.4606
+        MFE_R: 1.8719
+        MAE_R: 1.7858
+        max_win_R: 72.3768
+        max_loss_R: -35.4
+      AFTERNOON:
+        trade_count: 4821660
+        win_rate: 0.0589
+        avg_win_R: 1.6095
+        avg_loss_R: 3.7102
+        expectancy_R: -3.397
+        gross_expectancy_R: -2.2837
+        net_expectancy_R: -3.397
+        cost_drag_R: 3.1099
+        median_R: -4.34
+        std_R: 2.5819
+        profit_factor: 0.1582
+        SQN: -2889.0654
+        MFE_R: 1.5828
+        MAE_R: 1.5304
+        max_win_R: 70.338
+        max_loss_R: -32.274
+  P2B_03_2B_REVERSAL:
+    candidate_id: P2B_03_2B_REVERSAL
+    verdict: REJECT_RESEARCH_CANDIDATE
+    verdict_rationale: 'Negative or uncompetitive net expectancy (Net: -2.5192R, OOS:
+      -1.8861R).'
+    metrics_stratification:
+      ALL_USABLE:
+        trade_count: 3928440
+        win_rate: 0.1045
+        avg_win_R: 1.2722
+        avg_loss_R: 2.9618
+        expectancy_R: -2.5192
+        gross_expectancy_R: -1.6391
+        net_expectancy_R: -2.5192
+        cost_drag_R: 2.4248
+        median_R: -3.1
+        std_R: 2.3993
+        profit_factor: 0.3232
+        SQN: -2081.0219
+        MFE_R: 1.4613
+        MAE_R: 1.4395
+        max_win_R: 255.5854
+        max_loss_R: -24.5
+      COMPLETE_ONLY:
+        trade_count: 2017460
+        win_rate: 0.1086
+        avg_win_R: 1.2772
+        avg_loss_R: 2.9272
+        expectancy_R: -2.4706
+        gross_expectancy_R: -1.6386
+        net_expectancy_R: -2.4706
+        cost_drag_R: 2.3758
+        median_R: -2.94
+        std_R: 2.337
+        profit_factor: 0.2057
+        SQN: -1501.5503
+        MFE_R: 1.535
+        MAE_R: 1.4879
+        max_win_R: 39.071
+        max_loss_R: -21.323
+      USABLE_WITH_GAPS_ONLY:
+        trade_count: 1910980
+        win_rate: 0.1003
+        avg_win_R: 1.2664
+        avg_loss_R: 2.998
+        expectancy_R: -2.5704
+        gross_expectancy_R: -1.6397
+        net_expectancy_R: -2.5704
+        cost_drag_R: 2.4765
+        median_R: -3.31
+        std_R: 2.4623
+        profit_factor: 0.3564
+        SQN: -1443.0619
+        MFE_R: 1.3834
+        MAE_R: 1.3883
+        max_win_R: 255.5854
+        max_loss_R: -24.5
+    walk_forward_evaluation:
+      folds:
+      - fold: 1
+        train_window: 2023-09-27 ~ 2025-01-03
+        test_window: 2025-01-08 ~ 2025-06-24
+        train_trades: 53328
+        test_trades: 22992
+        train_expectancy_R: -2.3453
+        test_expectancy_R: -2.2748
+        test_win_rate: 0.0661
+        test_profit_factor: 0.134
+      - fold: 2
+        train_window: 2024-03-06 ~ 2025-06-20
+        test_window: 2025-06-25 ~ 2025-11-20
+        train_trades: 62156
+        test_trades: 22066
+        train_expectancy_R: -2.3104
+        test_expectancy_R: -2.1844
+        test_win_rate: 0.0794
+        test_profit_factor: 0.1352
+      - fold: 3
+        train_window: 2024-08-06 ~ 2025-11-18
+        test_window: 2025-11-21 ~ 2026-04-30
+        train_trades: 65059
+        test_trades: 32369
+        train_expectancy_R: -2.2764
+        test_expectancy_R: -1.9766
+        test_win_rate: 0.1099
+        test_profit_factor: 0.2374
+      - fold: 4
+        train_window: 2025-01-06 ~ 2026-04-28
+        test_window: 2026-05-04 ~ 2026-09-29
+        train_trades: 77134
+        test_trades: 64133
+        train_expectancy_R: -2.129
+        test_expectancy_R: -1.5963
+        test_win_rate: 0.1604
+        test_profit_factor: 0.4638
+      - fold: 5
+        train_window: 2025-06-23 ~ 2026-09-23
+        test_window: 2026-09-30 ~ 2026-10-02
+        train_trades: 118385
+        test_trades: 1162
+        train_expectancy_R: -1.8137
+        test_expectancy_R: -2.0112
+        test_win_rate: 0.0938
+        test_profit_factor: 0.2829
+      IS_expectancy_R: -2.1159
+      OOS_expectancy_R: -1.8861
+      OOS_profit_factor: 0.4384
+      OOS_trade_count: 142722
+      fold_count: 5
+    baseline_comparison:
+      delta_expectancy_R: -2.4692
+      delta_win_rate: -0.3355
+      delta_profit_factor: -0.6268
+      delta_MFE_R: 0.3613
+      delta_MAE_R: 0.1895
+    parameter_grid_sensitivity:
+      cb_2_fb_3:
+        trade_count: 2626480
+        win_rate: 0.1
+        avg_win_R: 1.3518
+        avg_loss_R: 3.0827
+        expectancy_R: -2.6393
+        gross_expectancy_R: -1.7217
+        net_expectancy_R: -2.6393
+        cost_drag_R: 2.5251
+        median_R: -3.2573
+        std_R: 2.4677
+        profit_factor: 0.3146
+        SQN: -1733.328
+        MFE_R: 1.5302
+        MAE_R: 1.511
+        max_win_R: 255.5854
+        max_loss_R: -24.5
+      cb_2_fb_5:
+        trade_count: 2804040
+        win_rate: 0.1045
+        avg_win_R: 1.35
+        avg_loss_R: 3.0411
+        expectancy_R: -2.5824
+        gross_expectancy_R: -1.6801
+        net_expectancy_R: -2.5824
+        cost_drag_R: 2.4785
+        median_R: -3.125
+        std_R: 2.4663
+        profit_factor: 0.3301
+        SQN: -1753.3693
+        MFE_R: 1.5411
+        MAE_R: 1.5193
+        max_win_R: 255.5854
+        max_loss_R: -24.5
+      cb_3_fb_3:
+        trade_count: 2580260
+        win_rate: 0.0925
+        avg_win_R: 1.2262
+        avg_loss_R: 3.0495
+        expectancy_R: -2.6541
+        gross_expectancy_R: -1.7388
+        net_expectancy_R: -2.6541
+        cost_drag_R: 2.535
+        median_R: -3.141
+        std_R: 2.3995
+        profit_factor: 0.2888
+        SQN: -1776.7418
+        MFE_R: 1.3815
+        MAE_R: 1.37
+        max_win_R: 255.5854
+        max_loss_R: -21.323
+      cb_3_fb_5:
+        trade_count: 2961140
+        win_rate: 0.0991
+        avg_win_R: 1.2128
+        avg_loss_R: 2.9688
+        expectancy_R: -2.5543
+        gross_expectancy_R: -1.6679
+        net_expectancy_R: -2.5543
+        cost_drag_R: 2.4486
+        median_R: -3.1
+        std_R: 2.3776
+        profit_factor: 0.3138
+        SQN: -1848.7072
+        MFE_R: 1.3852
+        MAE_R: 1.3767
+        max_win_R: 255.5854
+        max_loss_R: -21.323
+    slippage_ticks_sensitivity:
+      0_ticks:
+        trade_count: 982110
+        win_rate: 0.2145
+        avg_win_R: 1.2203
+        avg_loss_R: 1.5724
+        expectancy_R: -0.9732
+        gross_expectancy_R: -0.0944
+        net_expectancy_R: -0.9732
+        cost_drag_R: 0.8789
+        median_R: -1.39
+        std_R: 1.6124
+        profit_factor: 1.0247
+        SQN: -598.1591
+        MFE_R: 1.4613
+        MAE_R: 1.4395
+        max_win_R: 255.5854
+        max_loss_R: -10.1432
+      1_ticks:
+        trade_count: 982110
+        win_rate: 0.1085
+        avg_win_R: 1.2512
+        avg_loss_R: 2.4
+        expectancy_R: -2.0038
+        gross_expectancy_R: -1.1242
+        net_expectancy_R: -2.0038
+        cost_drag_R: 1.9095
+        median_R: -2.2933
+        std_R: 1.8468
+        profit_factor: 0.4368
+        SQN: -1075.3078
+        MFE_R: 1.4613
+        MAE_R: 1.4395
+        max_win_R: 253.584
+        max_loss_R: -12.5
+      2_ticks:
+        trade_count: 982110
+        win_rate: 0.0593
+        avg_win_R: 1.369
+        avg_loss_R: 3.3122
+        expectancy_R: -3.0345
+        gross_expectancy_R: -2.1541
+        net_expectancy_R: -3.0345
+        cost_drag_R: 2.9401
+        median_R: -3.63
+        std_R: 2.1987
+        profit_factor: 0.2222
+        SQN: -1367.7088
+        MFE_R: 1.4613
+        MAE_R: 1.4395
+        max_win_R: 251.5824
+        max_loss_R: -18.5
+      3_ticks:
+        trade_count: 982110
+        win_rate: 0.0358
+        avg_win_R: 1.4865
+        avg_loss_R: 4.2712
+        expectancy_R: -4.0651
+        gross_expectancy_R: -3.1839
+        net_expectancy_R: -4.0651
+        cost_drag_R: 3.9707
+        median_R: -4.65
+        std_R: 2.6213
+        profit_factor: 0.129
+        SQN: -1536.8423
+        MFE_R: 1.4613
+        MAE_R: 1.4395
+        max_win_R: 249.581
+        max_loss_R: -24.5
+    exit_policy_sensitivity:
+      FIXED_HORIZON_5M:
+        trade_count: 785688
+        win_rate: 0.0694
+        avg_win_R: 0.7743
+        avg_loss_R: 2.736
+        expectancy_R: -2.4925
+        gross_expectancy_R: -1.6125
+        net_expectancy_R: -2.4925
+        cost_drag_R: 2.4245
+        median_R: -3.06
+        std_R: 2.1515
+        profit_factor: 0.2089
+        SQN: -1026.8361
+        MFE_R: 0.8026
+        MAE_R: 0.7641
+        max_win_R: 111.312
+        max_loss_R: -24.5
+      FIXED_HORIZON_15M:
+        trade_count: 785688
+        win_rate: 0.0995
+        avg_win_R: 1.1587
+        avg_loss_R: 2.9348
+        expectancy_R: -2.5274
+        gross_expectancy_R: -1.6473
+        net_expectancy_R: -2.5274
+        cost_drag_R: 2.4249
+        median_R: -3.09
+        std_R: 2.3503
+        profit_factor: 0.3099
+        SQN: -953.1645
+        MFE_R: 1.2272
+        MAE_R: 1.2083
+        max_win_R: 150.3862
+        max_loss_R: -24.5
+      FIXED_HORIZON_30M:
+        trade_count: 785688
+        win_rate: 0.1151
+        avg_win_R: 1.5355
+        avg_loss_R: 3.0609
+        expectancy_R: -2.5319
+        gross_expectancy_R: -1.6518
+        net_expectancy_R: -2.5319
+        cost_drag_R: 2.425
+        median_R: -3.125
+        std_R: 2.5176
+        profit_factor: 0.3649
+        SQN: -891.4067
+        MFE_R: 1.6084
+        MAE_R: 1.5932
+        max_win_R: 144.3748
+        max_loss_R: -24.5
+      FIXED_HORIZON_60M:
+        trade_count: 785688
+        win_rate: 0.125
+        avg_win_R: 2.0047
+        avg_loss_R: 3.1682
+        expectancy_R: -2.5214
+        gross_expectancy_R: -1.6413
+        net_expectancy_R: -2.5214
+        cost_drag_R: 2.4251
+        median_R: -3.14
+        std_R: 2.7488
+        profit_factor: 0.4264
+        SQN: -813.043
+        MFE_R: 2.0597
+        MAE_R: 2.0385
+        max_win_R: 255.5854
+        max_loss_R: -24.5
+      STOP_TARGET_1_5R_MAX30M:
+        trade_count: 785688
+        win_rate: 0.1136
+        avg_win_R: 0.603
+        avg_loss_R: 2.9235
+        expectancy_R: -2.5228
+        gross_expectancy_R: -1.6428
+        net_expectancy_R: -2.5228
+        cost_drag_R: 2.4246
+        median_R: -2.955
+        std_R: 2.1761
+        profit_factor: 0.2754
+        SQN: -1027.6033
+        MFE_R: 1.6084
+        MAE_R: 1.5932
+        max_win_R: 1.4372
+        max_loss_R: -24.5
+    segmentation_by_year:
+      '2023':
+        trade_count: 181420
+        win_rate: 0.0641
+        avg_win_R: 1.02
+        avg_loss_R: 3.2379
+        expectancy_R: -2.9648
+        gross_expectancy_R: -1.9535
+        net_expectancy_R: -2.9648
+        cost_drag_R: 2.8006
+        median_R: -3.1
+        std_R: 2.3226
+        profit_factor: 0.0801
+        SQN: -543.7191
+        MFE_R: 1.1809
+        MAE_R: 1.1743
+        max_win_R: 16.95
+        max_loss_R: -21.31
+      '2024':
+        trade_count: 876120
+        win_rate: 0.0691
+        avg_win_R: 1.0442
+        avg_loss_R: 3.21
+        expectancy_R: -2.9159
+        gross_expectancy_R: -1.9104
+        net_expectancy_R: -2.9159
+        cost_drag_R: 2.7647
+        median_R: -3.1255
+        std_R: 2.3346
+        profit_factor: 0.0893
+        SQN: -1169.085
+        MFE_R: 1.2254
+        MAE_R: 1.2114
+        max_win_R: 32.28
+        max_loss_R: -24.5
+      '2025':
+        trade_count: 1075120
+        win_rate: 0.0824
+        avg_win_R: 1.1428
+        avg_loss_R: 3.1098
+        expectancy_R: -2.7594
+        gross_expectancy_R: -1.7685
+        net_expectancy_R: -2.7594
+        cost_drag_R: 2.6164
+        median_R: -3.03
+        std_R: 2.3345
+        profit_factor: 0.1147
+        SQN: -1225.579
+        MFE_R: 1.327
+        MAE_R: 1.3409
+        max_win_R: 25.94
+        max_loss_R: -24.5
+      '2026':
+        trade_count: 1795780
+        win_rate: 0.1392
+        avg_win_R: 1.3851
+        avg_loss_R: 2.7061
+        expectancy_R: -2.1368
+        gross_expectancy_R: -1.3976
+        net_expectancy_R: -2.1368
+        cost_drag_R: 2.1063
+        median_R: -2.83
+        std_R: 2.4185
+        profit_factor: 0.3468
+        SQN: -1183.9781
+        MFE_R: 1.685
+        MAE_R: 1.6366
+        max_win_R: 255.5854
+        max_loss_R: -21.31
+    segmentation_by_time_of_day:
+      MORNING:
+        trade_count: 1605640
+        win_rate: 0.1424
+        avg_win_R: 1.3144
+        avg_loss_R: 2.6692
+        expectancy_R: -2.1021
+        gross_expectancy_R: -1.3519
+        net_expectancy_R: -2.1021
+        cost_drag_R: 2.1085
+        median_R: -2.77
+        std_R: 2.3864
+        profit_factor: 0.3997
+        SQN: -1116.179
+        MFE_R: 1.6381
+        MAE_R: 1.601
+        max_win_R: 255.5854
+        max_loss_R: -24.5
+      MID:
+        trade_count: 1155680
+        win_rate: 0.0913
+        avg_win_R: 1.2547
+        avg_loss_R: 3.0464
+        expectancy_R: -2.6539
+        gross_expectancy_R: -1.7249
+        net_expectancy_R: -2.6539
+        cost_drag_R: 2.5383
+        median_R: -3.319
+        std_R: 2.3718
+        profit_factor: 0.2895
+        SQN: -1202.8615
+        MFE_R: 1.441
+        MAE_R: 1.4016
+        max_win_R: 86.8366
+        max_loss_R: -24.5
+      AFTERNOON:
+        trade_count: 1167120
+        win_rate: 0.0656
+        avg_win_R: 1.1704
+        avg_loss_R: 3.2496
+        expectancy_R: -2.9596
+        gross_expectancy_R: -1.9494
+        net_expectancy_R: -2.9596
+        cost_drag_R: 2.7476
+        median_R: -3.66
+        std_R: 2.3496
+        profit_factor: 0.238
+        SQN: -1360.7817
+        MFE_R: 1.238
+        MAE_R: 1.2548
+        max_win_R: 35.97
+        max_loss_R: -24.5
+  P2B_04_1_2_3_REVERSAL:
+    candidate_id: P2B_04_1_2_3_REVERSAL
+    verdict: REJECT_RESEARCH_CANDIDATE
+    verdict_rationale: 'Negative or uncompetitive net expectancy (Net: -2.0332R, OOS:
+      -1.4714R).'
+    metrics_stratification:
+      ALL_USABLE:
+        trade_count: 322760
+        win_rate: 0.1441
+        avg_win_R: 1.0418
+        avg_loss_R: 2.5511
+        expectancy_R: -2.0332
+        gross_expectancy_R: -1.3095
+        net_expectancy_R: -2.0332
+        cost_drag_R: 1.9658
+        median_R: -2.67
+        std_R: 2.2944
+        profit_factor: 0.4076
+        SQN: -503.4547
+        MFE_R: 1.289
+        MAE_R: 1.2672
+        max_win_R: 24.9062
+        max_loss_R: -21.31
+      COMPLETE_ONLY:
+        trade_count: 152660
+        win_rate: 0.1528
+        avg_win_R: 1.013
+        avg_loss_R: 2.2955
+        expectancy_R: -1.7898
+        gross_expectancy_R: -1.1752
+        net_expectancy_R: -1.7898
+        cost_drag_R: 1.7534
+        median_R: -2.1
+        std_R: 2.0552
+        profit_factor: 0.3125
+        SQN: -340.2584
+        MFE_R: 1.2827
+        MAE_R: 1.2234
+        max_win_R: 22.194
+        max_loss_R: -12.3
+      USABLE_WITH_GAPS_ONLY:
+        trade_count: 170100
+        win_rate: 0.1363
+        avg_win_R: 1.0708
+        avg_loss_R: 2.7762
+        expectancy_R: -2.2517
+        gross_expectancy_R: -1.43
+        net_expectancy_R: -2.2517
+        cost_drag_R: 2.1565
+        median_R: -2.91
+        std_R: 2.4692
+        profit_factor: 0.4261
+        SQN: -376.1047
+        MFE_R: 1.2946
+        MAE_R: 1.3064
+        max_win_R: 24.9062
+        max_loss_R: -21.31
+    walk_forward_evaluation:
+      folds:
+      - fold: 1
+        train_window: 2023-09-27 ~ 2025-01-03
+        test_window: 2025-01-08 ~ 2025-06-24
+        train_trades: 3699
+        test_trades: 1630
+        train_expectancy_R: -2.209
+        test_expectancy_R: -2.0203
+        test_win_rate: 0.1031
+        test_profit_factor: 0.1824
+      - fold: 2
+        train_window: 2024-03-06 ~ 2025-06-20
+        test_window: 2025-06-25 ~ 2025-11-20
+        train_trades: 4311
+        test_trades: 1777
+        train_expectancy_R: -2.1228
+        test_expectancy_R: -1.8679
+        test_win_rate: 0.1154
+        test_profit_factor: 0.2085
+      - fold: 3
+        train_window: 2024-08-06 ~ 2025-11-18
+        test_window: 2025-11-21 ~ 2026-04-30
+        train_trades: 4718
+        test_trades: 2547
+        train_expectancy_R: -2.074
+        test_expectancy_R: -1.5392
+        test_win_rate: 0.1394
+        test_profit_factor: 0.2362
+      - fold: 4
+        train_window: 2025-01-06 ~ 2026-04-28
+        test_window: 2026-05-04 ~ 2026-09-29
+        train_trades: 5930
+        test_trades: 6362
+        train_expectancy_R: -1.7723
+        test_expectancy_R: -1.1884
+        test_win_rate: 0.1955
+        test_profit_factor: 0.5182
+      - fold: 5
+        train_window: 2025-06-23 ~ 2026-09-23
+        test_window: 2026-09-30 ~ 2026-10-02
+        train_trades: 10659
+        test_trades: 101
+        train_expectancy_R: -1.3841
+        test_expectancy_R: -1.7577
+        test_win_rate: 0.0792
+        test_profit_factor: 0.0438
+      IS_expectancy_R: -1.7864
+      OOS_expectancy_R: -1.4714
+      OOS_profit_factor: 0.4936
+      OOS_trade_count: 12417
+      fold_count: 5
+    baseline_comparison:
+      delta_expectancy_R: -1.9832
+      delta_win_rate: -0.2959
+      delta_profit_factor: -0.5424
+      delta_MFE_R: 0.189
+      delta_MAE_R: 0.0172
+    parameter_grid_sensitivity:
+      cb_2:
+        trade_count: 239960
+        win_rate: 0.1303
+        avg_win_R: 1.0021
+        avg_loss_R: 2.7055
+        expectancy_R: -2.2226
+        gross_expectancy_R: -1.446
+        net_expectancy_R: -2.2226
+        cost_drag_R: 2.131
+        median_R: -2.84
+        std_R: 2.3713
+        profit_factor: 0.3764
+        SQN: -459.147
+        MFE_R: 1.2565
+        MAE_R: 1.2435
+        max_win_R: 24.9062
+        max_loss_R: -21.31
+      cb_1:
+        trade_count: 85140
+        win_rate: 0.188
+        avg_win_R: 1.108
+        avg_loss_R: 2.0535
+        expectancy_R: -1.4592
+        gross_expectancy_R: -0.8974
+        net_expectancy_R: -1.4592
+        cost_drag_R: 1.4645
+        median_R: -1.7431
+        std_R: 1.9435
+        profit_factor: 0.4726
+        SQN: -219.0691
+        MFE_R: 1.3728
+        MAE_R: 1.325
+        max_win_R: 22.194
+        max_loss_R: -12.4
+    slippage_ticks_sensitivity:
+      0_ticks:
+        trade_count: 80690
+        win_rate: 0.2591
+        avg_win_R: 1.077
+        avg_loss_R: 1.4433
+        expectancy_R: -0.7903
+        gross_expectancy_R: -0.0674
+        net_expectancy_R: -0.7903
+        cost_drag_R: 0.7229
+        median_R: -1.1308
+        std_R: 1.491
+        profit_factor: 1.0299
+        SQN: -150.5603
+        MFE_R: 1.289
+        MAE_R: 1.2672
+        max_win_R: 24.9062
+        max_loss_R: -6.4
+      1_ticks:
+        trade_count: 80690
+        win_rate: 0.1557
+        avg_win_R: 1.0183
+        avg_loss_R: 2.1053
+        expectancy_R: -1.6189
+        gross_expectancy_R: -0.8955
+        net_expectancy_R: -1.6189
+        cost_drag_R: 1.5515
+        median_R: -1.575
+        std_R: 1.7953
+        profit_factor: 0.5306
+        SQN: -256.1567
+        MFE_R: 1.289
+        MAE_R: 1.2672
+        max_win_R: 23.9054
+        max_loss_R: -9.29
+      2_ticks:
+        trade_count: 80690
+        win_rate: 0.098
+        avg_win_R: 1.0043
+        avg_loss_R: 2.8227
+        expectancy_R: -2.4476
+        gross_expectancy_R: -1.7235
+        net_expectancy_R: -2.4476
+        cost_drag_R: 2.3802
+        median_R: -2.035
+        std_R: 2.2149
+        profit_factor: 0.2998
+        SQN: -313.8942
+        MFE_R: 1.289
+        MAE_R: 1.2672
+        max_win_R: 22.9047
+        max_loss_R: -15.3
+      3_ticks:
+        trade_count: 80690
+        win_rate: 0.0637
+        avg_win_R: 1.014
+        avg_loss_R: 3.5683
+        expectancy_R: -3.2762
+        gross_expectancy_R: -2.5515
+        net_expectancy_R: -3.2762
+        cost_drag_R: 3.2088
+        median_R: -2.5804
+        std_R: 2.6966
+        profit_factor: 0.1836
+        SQN: -345.1116
+        MFE_R: 1.289
+        MAE_R: 1.2672
+        max_win_R: 21.9039
+        max_loss_R: -21.31
+    exit_policy_sensitivity:
+      FIXED_HORIZON_5M:
+        trade_count: 64552
+        win_rate: 0.0929
+        avg_win_R: 0.5916
+        avg_loss_R: 2.295
+        expectancy_R: -2.0268
+        gross_expectancy_R: -1.303
+        net_expectancy_R: -2.0268
+        cost_drag_R: 1.9657
+        median_R: -1.802
+        std_R: 2.0686
+        profit_factor: 0.2677
+        SQN: -248.9323
+        MFE_R: 0.6678
+        MAE_R: 0.6582
+        max_win_R: 7.166
+        max_loss_R: -21.31
+      FIXED_HORIZON_15M:
+        trade_count: 64552
+        win_rate: 0.1322
+        avg_win_R: 0.9141
+        avg_loss_R: 2.5082
+        expectancy_R: -2.0557
+        gross_expectancy_R: -1.3319
+        net_expectancy_R: -2.0557
+        cost_drag_R: 1.9659
+        median_R: -1.89
+        std_R: 2.2341
+        profit_factor: 0.3667
+        SQN: -233.7858
+        MFE_R: 1.0629
+        MAE_R: 1.0608
+        max_win_R: 8.98
+        max_loss_R: -21.31
+      FIXED_HORIZON_30M:
+        trade_count: 64552
+        win_rate: 0.156
+        avg_win_R: 1.2272
+        avg_loss_R: 2.6448
+        expectancy_R: -2.0407
+        gross_expectancy_R: -1.317
+        net_expectancy_R: -2.0407
+        cost_drag_R: 1.9659
+        median_R: -1.983
+        std_R: 2.3893
+        profit_factor: 0.4451
+        SQN: -217.0104
+        MFE_R: 1.4291
+        MAE_R: 1.408
+        max_win_R: 24.9062
+        max_loss_R: -21.31
+      FIXED_HORIZON_60M:
+        trade_count: 64552
+        win_rate: 0.1721
+        avg_win_R: 1.6069
+        avg_loss_R: 2.766
+        expectancy_R: -2.0132
+        gross_expectancy_R: -1.2895
+        net_expectancy_R: -2.0132
+        cost_drag_R: 1.9659
+        median_R: -2.055
+        std_R: 2.5739
+        profit_factor: 0.4997
+        SQN: -198.729
+        MFE_R: 1.8561
+        MAE_R: 1.8008
+        max_win_R: 22.194
+        max_loss_R: -21.31
+      STOP_TARGET_1_5R_MAX30M:
+        trade_count: 64552
+        win_rate: 0.1674
+        avg_win_R: 0.6387
+        avg_loss_R: 2.5664
+        expectancy_R: -2.0298
+        gross_expectancy_R: -1.306
+        net_expectancy_R: -2.0298
+        cost_drag_R: 1.9657
+        median_R: -1.975
+        std_R: 2.1718
+        profit_factor: 0.4161
+        SQN: -237.4545
+        MFE_R: 1.4291
+        MAE_R: 1.408
+        max_win_R: 1.4229
+        max_loss_R: -21.31
+    segmentation_by_year:
+      '2023':
+        trade_count: 12980
+        win_rate: 0.0892
+        avg_win_R: 0.8746
+        avg_loss_R: 2.9746
+        expectancy_R: -2.6312
+        gross_expectancy_R: -1.7449
+        net_expectancy_R: -2.6312
+        cost_drag_R: 2.4353
+        median_R: -2.73
+        std_R: 2.3797
+        profit_factor: 0.1011
+        SQN: -125.9673
+        MFE_R: 1.0869
+        MAE_R: 1.24
+        max_win_R: 9.84
+        max_loss_R: -21.31
+      '2024':
+        trade_count: 60440
+        win_rate: 0.0903
+        avg_win_R: 1.0902
+        avg_loss_R: 3.1268
+        expectancy_R: -2.7459
+        gross_expectancy_R: -1.7719
+        net_expectancy_R: -2.7459
+        cost_drag_R: 2.6181
+        median_R: -2.725
+        std_R: 2.5079
+        profit_factor: 0.1128
+        SQN: -269.1816
+        MFE_R: 1.2419
+        MAE_R: 1.216
+        max_win_R: 16.84
+        max_loss_R: -12.5
+      '2025':
+        trade_count: 80720
+        win_rate: 0.1147
+        avg_win_R: 1.0508
+        avg_loss_R: 2.8338
+        expectancy_R: -2.3883
+        gross_expectancy_R: -1.4879
+        net_expectancy_R: -2.3883
+        cost_drag_R: 2.3085
+        median_R: -2.5
+        std_R: 2.4234
+        profit_factor: 0.1611
+        SQN: -280.0006
+        MFE_R: 1.2608
+        MAE_R: 1.2378
+        max_win_R: 17.18
+        max_loss_R: -21.31
+      '2026':
+        trade_count: 168620
+        win_rate: 0.1818
+        avg_win_R: 1.0368
+        avg_loss_R: 2.1391
+        expectancy_R: -1.5618
+        gross_expectancy_R: -1.0248
+        net_expectancy_R: -1.5618
+        cost_drag_R: 1.5319
+        median_R: -1.7255
+        std_R: 2.0206
+        profit_factor: 0.4246
+        SQN: -317.4007
+        MFE_R: 1.3349
+        MAE_R: 1.3016
+        max_win_R: 24.9062
+        max_loss_R: -12.3
+    segmentation_by_time_of_day:
+      MORNING:
+        trade_count: 170600
+        win_rate: 0.1705
+        avg_win_R: 1.0068
+        avg_loss_R: 2.2418
+        expectancy_R: -1.688
+        gross_expectancy_R: -1.0847
+        net_expectancy_R: -1.688
+        cost_drag_R: 1.668
+        median_R: -2.18
+        std_R: 2.0952
+        profit_factor: 0.4909
+        SQN: -332.7597
+        MFE_R: 1.2661
+        MAE_R: 1.2007
+        max_win_R: 22.194
+        max_loss_R: -12.5
+      MID:
+        trade_count: 89340
+        win_rate: 0.1238
+        avg_win_R: 1.1083
+        avg_loss_R: 2.7938
+        expectancy_R: -2.3106
+        gross_expectancy_R: -1.4866
+        net_expectancy_R: -2.3106
+        cost_drag_R: 2.2126
+        median_R: -2.2879
+        std_R: 2.4246
+        profit_factor: 0.3814
+        SQN: -284.8468
+        MFE_R: 1.367
+        MAE_R: 1.3265
+        max_win_R: 24.9062
+        max_loss_R: -21.31
+      AFTERNOON:
+        trade_count: 62820
+        win_rate: 0.1015
+        avg_win_R: 1.0861
+        avg_loss_R: 2.9902
+        expectancy_R: -2.5764
+        gross_expectancy_R: -1.6681
+        net_expectancy_R: -2.5764
+        cost_drag_R: 2.4237
+        median_R: -2.59
+        std_R: 2.457
+        profit_factor: 0.2476
+        SQN: -262.8169
+        MFE_R: 1.2403
+        MAE_R: 1.3632
+        max_win_R: 14.215
+        max_loss_R: -21.31

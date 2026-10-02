@@ -1,0 +1,167 @@
+registry_version: "2.1.0"
+governance_policy: "Phase 2B Batch 1 Candidate Specification & Feature Reuse Mapping"
+
+research_status_definitions:
+  implementation_status: "VERIFIED (Code complete, causal execution verified, single source of truth passed)"
+  performance_status: "EVALUATED_NEGATIVE (Full historical run completed over 43,390 stock-days; descriptive performance is negative)"
+
+candidates:
+  P2B_01_v1:
+    candidate_id: "P2B_01_v1"
+    name: "Pullback Low Volume Test (v1)"
+    version: "v1"
+    direction: "LONG"
+    directional_implementation_partial: true
+    implementation_status: "VERIFIED"
+    performance_status: "EVALUATED_NEGATIVE"
+    verdict: "REJECT_RESEARCH_CANDIDATE"
+    rejection_scope: "CURRENT_V1_IMPLEMENTATION_ONLY"
+    scope_disclaimer: "Rejection applies strictly to the current single-directional v1 implementation, current parameter space, and current dataset; it does not claim VPA, Volume Price Analysis, or author theories are invalid."
+    small_denominator_vulnerability: true
+    provenance:
+      source_author: "Anna Coulling"
+      work: "A Complete Guide To Volume Price Analysis"
+      chapter: "Chapter 7"
+      status: "SOURCE_VERIFIED"
+      category: "SOURCE_PARAMETER"
+    parameter_grid:
+      thresholds: [0.35, 0.45, 0.50]
+      grid_status: "AI_QUANTIZED"
+      category: "RESEARCH_GOVERNANCE_CANDIDATE"
+      origin: "Knowledge V2 Research Parameter Candidate"
+    feature_reuse:
+      pullback_vol_decay_ratio: "EXISTING_REUSED (KnowledgeV1Features.pullback_vol_decay_ratio)"
+      close_location_value: "EXISTING_REUSED (KnowledgeV1Features.close_location_value)"
+      vwap_distance: "EXISTING_REUSED (KnowledgeV1Features.dist_to_bar_vwap_pct)"
+    data_readiness:
+      implementation: "DATA_READY"
+      full_historical: "PARTIAL_DATA"
+
+  P2B_02_v1:
+    candidate_id: "P2B_02_v1"
+    name: "Intraday Range Expansion Breakout (v1)"
+    version: "v1"
+    direction: "LONG"
+    directional_implementation_partial: true
+    implementation_status: "VERIFIED"
+    performance_status: "EVALUATED_NEGATIVE"
+    verdict: "REJECT_RESEARCH_CANDIDATE"
+    rejection_scope: "CURRENT_V1_IMPLEMENTATION_ONLY"
+    scope_disclaimer: "Rejection applies strictly to the current single-directional v1 implementation, current parameter space, and current dataset; it does not claim Range Expansion, Volatility Breakout, or author theories are invalid."
+    small_denominator_vulnerability: true
+    provenance:
+      source_author: "Larry Williams / Volatility Breakout Principles"
+      work: "Long-Term Secrets to Short-Term Trading"
+      status: "SOURCE_VERIFIED"
+      category: "SOURCE_PARAMETER"
+    parameter_grid:
+      thresholds: [1.2, 1.5, 1.8]
+      grid_status: "AI_QUANTIZED"
+      category: "RESEARCH_GOVERNANCE_CANDIDATE"
+      origin: "Knowledge V2 Research Parameter Candidate"
+    feature_reuse:
+      range_expansion_ratio: "NEW_RESEARCH_FEATURE (RangeExpansionDetector)"
+      close_location_value: "EXISTING_REUSED (KnowledgeV1Features.close_location_value)"
+    data_readiness:
+      implementation: "DATA_READY"
+      full_historical: "PARTIAL_DATA"
+
+  P2B_03_v1:
+    candidate_id: "P2B_03_v1"
+    name: "Victor Sperandeo 2B False Breakout Rule (v1)"
+    version: "v1"
+    direction: "SHORT"
+    directional_implementation_partial: true
+    implementation_status: "VERIFIED"
+    performance_status: "EVALUATED_NEGATIVE"
+    verdict: "REJECT_RESEARCH_CANDIDATE"
+    rejection_scope: "CURRENT_V1_IMPLEMENTATION_ONLY"
+    scope_disclaimer: "Rejection applies strictly to the current single-directional v1 implementation, current parameter space, and current dataset; it does not claim Trader Vic 2B Reversal or author theories are invalid."
+    small_denominator_vulnerability: true
+    provenance:
+      source_author: "Victor Sperandeo (Trader Vic)"
+      work: "Methods of a Wall Street Master"
+      status: "SOURCE_VERIFIED"
+      category: "SOURCE_PARAMETER"
+    parameter_grid:
+      pivot_confirmation_bars: [1, 2]
+      max_failure_bars: [2, 3]
+      grid_status: "AI_QUANTIZED"
+      category: "RESEARCH_GOVERNANCE_CANDIDATE"
+      origin: "Knowledge V2 Research Parameter Candidate"
+    feature_reuse:
+      causal_pivot_detection: "EXISTING_REUSED (CausalSwingSegmenter.find_latest_confirmed_pivot)"
+      breakout_failure_detector: "EXISTING_PARTIAL (TwoBReversalDetector)"
+    data_readiness:
+      implementation: "DATA_READY"
+      full_historical: "PARTIAL_DATA"
+
+  P2B_04_v1:
+    candidate_id: "P2B_04_v1"
+    name: "Victor Sperandeo 1-2-3 Trend Change Rule (v1)"
+    version: "v1"
+    direction: "SHORT"
+    directional_implementation_partial: true
+    implementation_status: "VERIFIED"
+    performance_status: "EVALUATED_NEGATIVE"
+    verdict: "REJECT_RESEARCH_CANDIDATE"
+    rejection_scope: "CURRENT_V1_IMPLEMENTATION_ONLY"
+    scope_disclaimer: "Rejection applies strictly to the current single-directional v1 implementation, current parameter space, and current dataset; it does not claim Trader Vic 1-2-3 Reversal or author theories are invalid."
+    small_denominator_vulnerability: true
+    provenance:
+      source_author: "Victor Sperandeo (Trader Vic)"
+      work: "Methods of a Wall Street Master"
+      status: "SOURCE_VERIFIED"
+      category: "SOURCE_PARAMETER"
+    parameter_grid:
+      confirmation_bars: [1, 2]
+      grid_status: "AI_QUANTIZED"
+      category: "RESEARCH_GOVERNANCE_CANDIDATE"
+      origin: "Knowledge V2 Research Parameter Candidate"
+    feature_reuse:
+      multi_pivot_history: "EXISTING_REUSED (CausalSwingSegmenter)"
+      sequential_state_machine: "EXISTING_PARTIAL (OneTwoThreeDetector)"
+    data_readiness:
+      implementation: "DATA_READY"
+      full_historical: "PARTIAL_DATA"
+
+research_exit_policies:
+  primary_pure_horizons:
+    category: "RESEARCH_GOVERNANCE_CANDIDATE"
+    policies:
+      - name: "FIXED_HORIZON_5M"
+        horizon_minutes: 5
+        description: "Exits position at market on close of 5th minute bar post-entry"
+      - name: "FIXED_HORIZON_15M"
+        horizon_minutes: 15
+        description: "Exits position at market on close of 15th minute bar post-entry"
+      - name: "FIXED_HORIZON_30M"
+        horizon_minutes: 30
+        description: "Exits position at market on close of 30th minute bar post-entry"
+      - name: "FIXED_HORIZON_60M"
+        horizon_minutes: 60
+        description: "Exits position at market on close of 60th minute bar post-entry"
+
+  secondary_exit_candidate:
+    category: "RESEARCH_GOVERNANCE_CANDIDATE"
+    policy:
+      name: "STOP_TARGET_1_5R_MAX30M"
+      target_R: 1.5
+      horizon_minutes: 30
+      description: "Exits on initial stop loss, 1.5R target price, or 30-minute time cutoff"
+
+slippage_sensitivity_grid:
+  canonical_ticks:
+    grid: [0, 1, 2, 3]
+    unit: "ticks"
+    category: "RESEARCH_GOVERNANCE_CANDIDATE"
+    source: "TWSE Statutory Official Tick Size Brackets"
+    description: "Primary sensitivity evaluation using official Taiwan stock exchange tick sizes"
+
+  secondary_bps:
+    grid: [0.0, 5.0, 10.0, 15.0, 20.0]
+    unit: "bps"
+    category: "RESEARCH_GOVERNANCE_CANDIDATE"
+    source: "Knowledge V2 Research Parameter Candidate"
+    description: "Secondary sensitivity evaluation in basis points"
+

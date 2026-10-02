@@ -2,30 +2,30 @@ registry_version: "2.0.0"
 governance_policy: "Phase 2A Centralized Parameter Provenance & Cost Governance"
 
 cost_parameters:
-  broker_fee_rate:
+  BASE_COMMISSION_REFERENCE_RATE:
     value: 0.001425
-    category: "SOURCE_PARAMETER"
-    source: "Taiwan Stock Exchange (TWSE) Statutory Fee Rate"
-    description: "Statutory base brokerage commission rate (0.1425%)"
+    category: "OFFICIAL_MARKET_REFERENCE"
+    source: "Taiwan Stock Exchange (TWSE) Statutory Benchmark Rate Ceiling"
+    description: "Official market reference commission rate (0.1425%). Individual brokerages establish negotiated commission rates, discount schedules, and minimum ticket charges per client account; not a fixed market-wide fee."
 
   broker_discount:
     value: 0.28
     category: "EASYSTOCK_EXISTING_PARAMETER"
-    source: "EasyStock Account Config (paper_ledger.py)"
-    description: "28折 standard broker fee discount"
+    source: "EasyStock Account Config (paper_ledger.py / CONFIGURABLE_BROKER_PARAMETER)"
+    description: "Account-negotiated 28折 broker fee discount; configurable broker parameter, not a market-wide statutory rate."
 
   minimum_fee:
     value: 20.0
     unit: "TWD"
     category: "EASYSTOCK_EXISTING_PARAMETER"
-    source: "EasyStock Account Config (paper_ledger.py)"
-    description: "Minimum 20 TWD commission fee per transaction leg"
+    source: "EasyStock Account Config (paper_ledger.py / CONFIGURABLE_BROKER_PARAMETER)"
+    description: "Account-specific minimum 20 TWD commission fee per transaction leg; configurable broker parameter."
 
   daytrade_tax_rate:
     value: 0.0015
     category: "SOURCE_PARAMETER"
-    source: "Securities Transaction Tax Act (Day Trading Halved Rate)"
-    description: "Incentive securities transaction tax rate for day-trades (0.15%)"
+    source: "Securities Transaction Tax Act Article 2-2 (Day Trading Halved Rate)"
+    description: "Incentive securities transaction tax rate for day-trades (0.15%). Statutory applicability scheduled through Dec 31, 2027 under legislative sunset extension."
 
   normal_tax_rate:
     value: 0.0030
@@ -33,12 +33,35 @@ cost_parameters:
     source: "Securities Transaction Tax Act (Standard Rate)"
     description: "Standard securities transaction tax rate on stock sales (0.30%)"
 
-  slippage_grid:
+  slippage_grid_ticks:
+    value: [0, 1, 2, 3]
+    unit: "ticks"
+    category: "RESEARCH_GOVERNANCE_CANDIDATE"
+    source: "TWSE Official Tick-based Slippage Foundation"
+    description: "Canonical slippage stress-testing grid in ticks [0, 1, 2, 3] mapped via TWSE statutory tick sizes"
+
+  slippage_grid_bps:
     value: [0.0, 5.0, 10.0, 15.0, 20.0]
     unit: "bps"
     category: "RESEARCH_GOVERNANCE_CANDIDATE"
     source: "Knowledge V2 Research Parameter Candidate"
-    description: "Discretized slippage stress-testing levels"
+    description: "Secondary research sensitivity: slippage stress-testing levels in basis points"
+
+research_exit_policies:
+  primary_pure_horizons:
+    values: [5, 15, 30, 60]
+    unit: "minutes"
+    category: "RESEARCH_GOVERNANCE_CANDIDATE"
+    source: "Phase 2A Canonical Fixed Horizon Baseline Policies"
+    description: "Primary pure-horizon exit policies (FIXED_HORIZON_5M, 15M, 30M, 60M)"
+
+  secondary_stop_target_policy:
+    name: "STOP_TARGET_1_5R_MAX30M"
+    target_R: 1.5
+    max_horizon_minutes: 30
+    category: "RESEARCH_GOVERNANCE_CANDIDATE"
+    source: "Phase 2A Asymmetric Risk-Reward Candidate Policy"
+    description: "Secondary exit policy candidate: initial stop loss, 1.5R target price, or 30-minute time cutoff"
 
 research_provenance_parameters:
   PARAM_PB_VOL_DECAY:
@@ -72,3 +95,26 @@ research_provenance_parameters:
     source_work: "Knowledge V2 Research Parameter Candidate"
     notes: >
       Discretized parameter candidate for momentum extension research. Not provided in original text.
+
+diagnostic_parameters:
+  observed_large_gap:
+    canonical_id: "DIAG_OBSERVED_LARGE_GAP"
+    name: "Observed Large Price Discontinuity Indicator"
+    threshold: 0.08
+    unit: "ratio (±8.0%)"
+    status: "RESEARCH_GOVERNANCE_CANDIDATE"
+    purpose: "DIAGNOSTIC_ONLY"
+    rules:
+      - "Never determines corporate action TRUE/FALSE"
+      - "Never used as candidate entry filter"
+      - "Never used as full-run exclusion rule"
+      - "Never affects candidate performance verdict"
+    notes: >
+      Diagnostic indicator of observed price discontinuity (e.g. intraday open-to-close or session-to-session jump exceeding 8%).
+      Corporate action boundary remains UNKNOWN unless an ex-date corporate calendar master is provided.
+
+kbar_label_semantics:
+  HISTORICAL_KBAR_LABEL: "RIGHT_EDGE"
+  STREAMING_KBAR_LABEL: "START_TIME"
+  session_interval_definition: "[ts - 1 minute, ts); bar is causally complete only at ts"
+  closing_auction_attribution: "13:30 closing-auction tick belongs strictly to the 13:30 close bar"

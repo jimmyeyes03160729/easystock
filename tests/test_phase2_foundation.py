@@ -581,7 +581,7 @@ def test_parameter_provenance_audit():
 
 
 def test_cost_parameter_governance():
-    assert COST_PARAMETER_REGISTRY["broker_fee_rate"].category == CostParameterCategory.SOURCE_PARAMETER
+    assert COST_PARAMETER_REGISTRY["broker_fee_rate"].category == CostParameterCategory.OFFICIAL_MARKET_REFERENCE
     assert COST_PARAMETER_REGISTRY["daytrade_tax_rate"].category == CostParameterCategory.SOURCE_PARAMETER
     assert COST_PARAMETER_REGISTRY["broker_discount"].category == CostParameterCategory.EASYSTOCK_EXISTING_PARAMETER
     assert COST_PARAMETER_REGISTRY["minimum_fee"].category == CostParameterCategory.EASYSTOCK_EXISTING_PARAMETER

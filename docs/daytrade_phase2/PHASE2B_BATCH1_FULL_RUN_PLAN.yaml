@@ -1,0 +1,122 @@
+# Phase 2B Batch 1 Full Historical Run Pre-Registration Plan
+# Strictly Pre-Registered Prior to Full Historical Run Execution.
+# Once created and executed, parameters and schedule in this plan are immutable.
+
+plan_metadata:
+  plan_version: "1.0.0"
+  run_id: "P2B_B1_FULL_HISTORICAL_20261002_001"
+  registration_time: "2026-10-02T23:26:00+08:00"
+  baseline_sha: "a33708d8158497e1130d013ea1cfcf6193727817"
+  status: "LOCKED_PRE_REGISTERED"
+
+dataset_scope:
+  dataset_snapshot_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+  population_name: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE"
+  data_source: "Shioaji Historical Archive (/home/ubuntu/easystock-history-expanded-data/raw)"
+  symbol_count: 100
+  calendar_dates: 743
+  date_start: "2023-09-04"
+  date_end: "2026-10-02"
+  total_stock_days_archived: 43390
+  theoretical_target_stock_days: 74300
+  coverage_ratio: 0.5840
+  survivorship_bias: true
+  point_in_time_universe: false
+  universe_bias: "CURRENT_100_LIQUIDITY_FROZEN_POOL"
+
+historical_kbar_semantics:
+  HISTORICAL_KBAR_LABEL: "RIGHT_EDGE"
+  STREAMING_KBAR_LABEL: "START_TIME"
+  session_interval: "[ts - 1 minute, ts); bar complete only at ts"
+  closing_auction: "13:30 closing-auction tick belongs strictly to 13:30 close bar"
+
+candidates:
+  - id: "P2B_01_PULLBACK_VOLUME_DECAY"
+    name: "Pullback Low Volume Test"
+    provenance: "Anna Coulling, VPA, Ch. 7 (SOURCE_VERIFIED)"
+    parameter_grid:
+      vol_decay_threshold: [0.35, 0.45, 0.50]
+      lookback_bars: [3, 5]
+
+  - id: "P2B_02_RANGE_EXPANSION"
+    name: "Range Expansion Breakout"
+    provenance: "Larry Williams, Volatility Breakout (SOURCE_VERIFIED)"
+    parameter_grid:
+      expansion_threshold: [1.2, 1.5, 1.8]
+      lookback_bars: [3, 5]
+
+  - id: "P2B_03_2B_REVERSAL"
+    name: "Trader Vic 2B False Breakout"
+    provenance: "Victor Sperandeo, Wall Street Master (SOURCE_VERIFIED)"
+    parameter_grid:
+      pivot_confirmation_bars: [2, 3]
+      max_failure_bars: [3, 5]
+
+  - id: "P2B_04_1_2_3_REVERSAL"
+    name: "Trader Vic 1-2-3 Trend Change"
+    provenance: "Victor Sperandeo, Wall Street Master (SOURCE_VERIFIED)"
+    parameter_grid:
+      confirmation_bars: [1, 2]
+
+execution_and_exits:
+  primary_exit_horizons:
+    - name: "FIXED_HORIZON_5M"
+      minutes: 5
+    - name: "FIXED_HORIZON_15M"
+      minutes: 15
+    - name: "FIXED_HORIZON_30M"
+      minutes: 30
+    - name: "FIXED_HORIZON_60M"
+      minutes: 60
+  secondary_exit:
+    name: "STOP_TARGET_1_5R_MAX30M"
+    target_R: 1.5
+    max_minutes: 30
+
+slippage_and_cost_governance:
+  canonical_slippage_grid_ticks: [0, 1, 2, 3]
+  secondary_slippage_bps: [0.0, 5.0, 10.0, 15.0, 20.0]
+  cost_model:
+    BASE_COMMISSION_REFERENCE_RATE: 0.001425
+    broker_discount: 0.28
+    minimum_fee: 20.0
+    daytrade_tax_rate: 0.0015
+    normal_tax_rate: 0.0030
+    daytrade_tax_sunset: "2027-12-31"
+
+stock_day_policy:
+  expected_session_marks: 266
+  classes:
+    COMPLETE: "All 266 expected session marks present, zero duplicates, monotonic timestamps, zero out-of-session marks."
+    USABLE_WITH_GAPS: "Session boundaries present (09:01 <= first, 13:25 <= last), actual bars >= 10, intermediate gaps present (PARTIAL_UNKNOWN_MISSINGNESS)."
+    INVALID: "Excluded from analysis (< 10 bars, duplicates, non-monotonic, or out-of-session marks)."
+  stratification_outputs:
+    - "ALL_USABLE"
+    - "COMPLETE_ONLY"
+    - "USABLE_WITH_GAPS_ONLY"
+  forward_fill_policy: "NO_ARTIFICIAL_FORWARD_FILL"
+
+corporate_action_governance:
+  status: "UNAVAILABLE"
+  boundary_state: "UNKNOWN"
+  observed_large_gap:
+    threshold: 0.08
+    provenance_status: "RESEARCH_GOVERNANCE_CANDIDATE"
+    purpose: "DIAGNOSTIC_ONLY"
+    rules:
+      - "Never determines corporate action TRUE/FALSE"
+      - "Never used as candidate entry filter"
+      - "Never used as full-run exclusion rule"
+      - "Never affects candidate performance verdict"
+
+walk_forward_schedule:
+  splitter: "EventWalkForwardSplitter"
+  number_of_folds: 5
+  train_window_months: 12
+  test_window_months: 4
+  step_window_months: 4
+  purge: "Event-based label overlap purge"
+  embargo_minutes: 15
+  parameter_selection: "TRAINING_DATA_ONLY"
+  out_of_sample_evaluation: "SINGLE_OOS_EVALUATION"
+  oos_tuning_allowed: false

@@ -20,7 +20,9 @@ from typing import Any
 
 class CostParameterCategory(str, Enum):
     SOURCE_PARAMETER = "SOURCE_PARAMETER"
+    OFFICIAL_MARKET_REFERENCE = "OFFICIAL_MARKET_REFERENCE"
     EASYSTOCK_EXISTING_PARAMETER = "EASYSTOCK_EXISTING_PARAMETER"
+    CONFIGURABLE_BROKER_PARAMETER = "CONFIGURABLE_BROKER_PARAMETER"
     RESEARCH_GOVERNANCE_CANDIDATE = "RESEARCH_GOVERNANCE_CANDIDATE"
 
 
@@ -33,37 +35,42 @@ class CostParameterDefinition:
     description: str
 
 
-# Centralized Cost Governance Parameters
-PARAM_BROKER_FEE_RATE = CostParameterDefinition(
-    name="broker_fee_rate",
-    value=0.001425,
-    category=CostParameterCategory.SOURCE_PARAMETER,
-    source="Taiwan Stock Exchange (TWSE) Statutory Fee Rate",
-    description="Standard statutory broker commission rate of 0.1425%",
+# Canonical Base Commission Reference Rate
+BASE_COMMISSION_REFERENCE_RATE: float = 0.001425
+
+PARAM_BASE_COMMISSION_REFERENCE_RATE = CostParameterDefinition(
+    name="BASE_COMMISSION_REFERENCE_RATE",
+    value=BASE_COMMISSION_REFERENCE_RATE,
+    category=CostParameterCategory.OFFICIAL_MARKET_REFERENCE,
+    source="Taiwan Stock Exchange (TWSE) Statutory Benchmark Rate Ceiling",
+    description="Official market reference commission rate (0.1425%). Individual brokerages establish negotiated commission rates, discount schedules, and minimum ticket charges per client account; not a fixed market-wide fee.",
 )
+
+# Backwards compatibility alias
+PARAM_BROKER_FEE_RATE = PARAM_BASE_COMMISSION_REFERENCE_RATE
 
 PARAM_BROKER_DISCOUNT = CostParameterDefinition(
     name="broker_discount",
     value=0.28,
     category=CostParameterCategory.EASYSTOCK_EXISTING_PARAMETER,
-    source="EasyStock Account Configuration (paper_ledger.py)",
-    description="Broker fee discount 28% (28折)",
+    source="EasyStock Account Configuration (paper_ledger.py / CONFIGURABLE_BROKER_PARAMETER)",
+    description="Account-negotiated broker fee discount 28% (28折); configurable broker parameter, not a market-wide statutory rate.",
 )
 
 PARAM_MINIMUM_FEE = CostParameterDefinition(
     name="minimum_fee",
     value=20.0,
     category=CostParameterCategory.EASYSTOCK_EXISTING_PARAMETER,
-    source="EasyStock Account Configuration (paper_ledger.py)",
-    description="Minimum broker commission per order of 20 TWD",
+    source="EasyStock Account Configuration (paper_ledger.py / CONFIGURABLE_BROKER_PARAMETER)",
+    description="Account-specific minimum broker commission per order of 20 TWD; configurable broker parameter.",
 )
 
 PARAM_DAYTRADE_TAX_RATE = CostParameterDefinition(
     name="daytrade_tax_rate",
     value=0.0015,
     category=CostParameterCategory.SOURCE_PARAMETER,
-    source="Statutory Day-Trading Securities Transaction Tax Act",
-    description="Incentive day-trade securities transaction tax rate of 0.15%",
+    source="Securities Transaction Tax Act Article 2-2 (Day-Trading Incentive Tax Rate)",
+    description="Statutory halved day-trade securities transaction tax rate of 0.15% (Applicability scheduled through Dec 31, 2027 under legislative sunset extension).",
 )
 
 PARAM_NORMAL_TAX_RATE = CostParameterDefinition(
@@ -74,24 +81,34 @@ PARAM_NORMAL_TAX_RATE = CostParameterDefinition(
     description="Standard securities transaction tax rate of 0.30%",
 )
 
+PARAM_SLIPPAGE_GRID_TICKS = CostParameterDefinition(
+    name="slippage_grid_ticks",
+    value=[0, 1, 2, 3],
+    category=CostParameterCategory.RESEARCH_GOVERNANCE_CANDIDATE,
+    source="TWSE Official Tick-based Slippage Foundation",
+    description="Canonical slippage stress-test grid in ticks [0, 1, 2, 3] mapped via TWSE tick sizes",
+)
+
 PARAM_SLIPPAGE_GRID = CostParameterDefinition(
     name="slippage_grid",
     value=[0.0, 5.0, 10.0, 15.0, 20.0],
     category=CostParameterCategory.RESEARCH_GOVERNANCE_CANDIDATE,
     source="Knowledge V2 Research Parameter Candidate",
-    description="Slippage stress-test grid in basis points (bps)",
+    description="Secondary research sensitivity: slippage stress-test grid in basis points (bps)",
 )
 
 COST_PARAMETER_REGISTRY: dict[str, CostParameterDefinition] = {
     p.name: p for p in [
-        PARAM_BROKER_FEE_RATE,
+        PARAM_BASE_COMMISSION_REFERENCE_RATE,
         PARAM_BROKER_DISCOUNT,
         PARAM_MINIMUM_FEE,
         PARAM_DAYTRADE_TAX_RATE,
         PARAM_NORMAL_TAX_RATE,
+        PARAM_SLIPPAGE_GRID_TICKS,
         PARAM_SLIPPAGE_GRID,
     ]
 }
+COST_PARAMETER_REGISTRY["broker_fee_rate"] = PARAM_BASE_COMMISSION_REFERENCE_RATE
 
 
 def get_twse_tick_size(price: float) -> float:

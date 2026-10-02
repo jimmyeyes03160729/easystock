@@ -161,13 +161,15 @@ class CausalExecutionClock:
         signal_time: datetime,
         bars: Sequence[MarketBar],
         direction: str = "LONG",
-        slippage_bps: float = 0.0,
+        slippage_ticks: int = 0,
+        slippage_bps: Optional[float] = None,
         feature_time: Optional[datetime] = None,
     ) -> dict[str, Any]:
         """Simulates market entry on the next legal bar open.
         
-        Returns a dict containing all timing, fill prices, and status.
-        If no legal bar exists, status is 'NO_CAUSAL_EXECUTION' with prices set to None.
+        Slippage Semantics:
+        - Canonical: slippage_ticks in [0, 1, 2, 3] ticks, mapped via TWSE official tick size.
+        - Secondary sensitivity: slippage_bps.
         """
         st = parse_phase2_timestamp(signal_time)
         ft = parse_phase2_timestamp(feature_time) if feature_time is not None else st
@@ -194,12 +196,20 @@ class CausalExecutionClock:
             execution_time=actual_et,
         )
 
+        from .costs import get_twse_tick_size
+
         theoretical_price = legal_bar.open
+        if slippage_bps is not None:
+            slip_amount = theoretical_price * (slippage_bps / 10000.0)
+        else:
+            tick_sz = get_twse_tick_size(theoretical_price)
+            slip_amount = slippage_ticks * tick_sz
+
         dir_upper = direction.upper()
         if dir_upper == "LONG":
-            actual_price = theoretical_price * (1.0 + slippage_bps / 10000.0)
+            actual_price = theoretical_price + slip_amount
         elif dir_upper == "SHORT":
-            actual_price = theoretical_price * (1.0 - slippage_bps / 10000.0)
+            actual_price = theoretical_price - slip_amount
         else:
             raise ValueError(f"Unsupported direction: {direction}")
 

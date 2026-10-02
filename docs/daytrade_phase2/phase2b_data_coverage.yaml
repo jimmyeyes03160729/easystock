@@ -1,0 +1,102 @@
+audit_version: "1.1.0"
+audit_date: "2026-10-02"
+data_source: "Shioaji Historical Archive (/home/ubuntu/easystock-history-expanded-data)"
+
+overall_status:
+  IMPLEMENTATION_DATA_STATUS: "DATA_READY"
+  FULL_HISTORICAL_RESEARCH_DATA_STATUS: "PARTIAL_DATA"
+  CORPORATE_ACTION_DATA_STATUS: "UNAVAILABLE"
+
+coverage_summary:
+  ohlcv_coverage:
+    granularity: "1-minute bars"
+    fields: ["ts", "Open", "High", "Low", "Close", "Volume", "Amount"]
+    status: "IMPLEMENTATION_READY_HISTORICALLY_PARTIAL"
+    historical_kbar_label: "RIGHT_EDGE"
+    streaming_kbar_label: "START_TIME"
+    session_interval_definition: "[ts - 1 minute, ts); bar complete only at ts"
+    closing_auction_attribution: "13:30 closing-auction tick belongs strictly to the 13:30 close bar"
+
+  tick_coverage:
+    fields: ["ts", "close", "volume", "tick_type", "bid_price", "ask_price"]
+    status: "AVAILABLE_IN_ARCHIVE"
+    notes: "Raw tick data archived alongside 1-minute bars for verified dates"
+
+  symbol_coverage:
+    pool_size: 100
+    pool_type: "Frozen active Taiwan top-liquidity equities snapshot (TWSE/TPEx)"
+    whole_market_coverage: false
+
+  trading_date_coverage:
+    calendar_dates_planned: 743
+    calendar_start: "2023-09-04"
+    calendar_end: "2026-10-02"
+    archived_stock_days: 43390
+    target_stock_days: 74300
+    completion_ratio: 0.5840
+    missing_date_ratio: 0.4160
+
+  stock_day_completeness_policy:
+    expected_session_bars: 266
+    session_structure:
+      continuous_matching_window: "09:00 - 13:25 (265 1-minute bars with right-edge timestamps 09:01 to 13:25)"
+      closing_call_auction_window: "13:25 - 13:30 (order accumulation, no continuous matching; 13:26-13:29 have zero trades by exchange rule)"
+      closing_match_timestamp: "13:30 (single call auction match)"
+    evaluation_fields:
+      - "expected_session_marks"
+      - "actual_bar_count"
+      - "missing_mark_count"
+      - "first_bar_time"
+      - "last_bar_time"
+      - "duplicate_count"
+      - "monotonic_timestamp"
+      - "out_of_session_count"
+      - "observed_large_gap"
+      - "corporate_action_boundary"
+    classes:
+      COMPLETE: "actual_bar_count == 266, all 266 expected session marks present, duplicate_count == 0, monotonic_timestamp == true, out_of_session_count == 0"
+      USABLE_WITH_GAPS: "10 <= actual_bar_count < 266, first_bar_time <= 09:01, last_bar_time >= 13:25, duplicate_count == 0, monotonic_timestamp == true, out_of_session_count == 0; intermediate gaps present. Tagged as PARTIAL_UNKNOWN_MISSINGNESS because 1-minute historical kbars cannot distinguish NO_TRADE_MINUTE from MISSING_DATA without exchange-level order book or raw tick feeds. Retained for intraday research but never silently pooled with COMPLETE."
+      INVALID: "actual_bar_count < 10, duplicate_count > 0, monotonic_timestamp == false, or out_of_session_count > 0; strictly excluded by default from historical research runs."
+    imputation_policy: "NO_ARTIFICIAL_FORWARD_FILL; non-existent bars remain absent to preserve true market structure"
+    removal_of_arbitrary_threshold: "The arbitrary '>= 265' rule has been eliminated in favor of exact 266 TWSE expected session mark coverage."
+
+  corporate_action_governance:
+    status: "UNAVAILABLE"
+    boundary_state: "UNKNOWN (tri-state enum: UNKNOWN, TRUE, FALSE; strictly defaults to UNKNOWN due to absence of corporate action calendar/ex-date master)"
+    gap_detection: "observed_large_gap is tracked separately as a boolean indicator (±8.0%); status: RESEARCH_GOVERNANCE_CANDIDATE, purpose: DIAGNOSTIC_ONLY. Never determines corporate action, never used as entry filter or exclusion rule, never affects candidate performance verdict."
+
+  biases_and_limitations:
+    survivorship_concern: "HIGH - Pool is frozen current 100 stocks snapshot; delisted and bankrupt firms excluded, inducing upward survivorship bias"
+    universe_selection_bias: "HIGH - Top-liquidity snapshot reflects modern liquidity, not historical point-in-time constituent lists"
+    corporate_action_boundary: "UNAVAILABLE - Raw historical prices unadjusted for cash dividends and stock splits; multi-day lookback features (prior day high/low, multi-day range) crossing ex-dates are subject to unadjusted price gap artifacts. Tagged strictly as UNKNOWN."
+    lookahead_mitigation: "Strict point-in-time CompletedBar enforcement and CausalExecutionClock (+2s buffer)"
+
+candidate_data_readiness:
+  P2B_01_PULLBACK_VOLUME_DECAY:
+    implementation_status: "DATA_READY"
+    full_historical_status: "PARTIAL_DATA"
+    corporate_action_risk: "LOW_INTRADAY (cross-day lookback limited to previous session reference)"
+    required_data: ["1-minute OHLCV", "Bar Volume"]
+    notes: "Data schema is ready for implementation; full historical performance inference is constrained by 58.4% coverage and frozen universe."
+
+  P2B_02_RANGE_EXPANSION:
+    implementation_status: "DATA_READY"
+    full_historical_status: "PARTIAL_DATA"
+    corporate_action_risk: "LOW_INTRADAY (intraday expansion relative to rolling window)"
+    required_data: ["1-minute OHLCV", "High-Low Spread"]
+    notes: "Data schema is ready for implementation; full historical performance inference is constrained by 58.4% coverage and frozen universe."
+
+  P2B_03_2B_REVERSAL:
+    implementation_status: "DATA_READY"
+    full_historical_status: "PARTIAL_DATA"
+    corporate_action_risk: "MEDIUM (multi-session pivot lookback crosses corporate action boundaries without adjustment)"
+    required_data: ["1-minute OHLCV", "Causal Swing Pivots"]
+    notes: "Data schema is ready for implementation; full historical performance inference is constrained by 58.4% coverage and frozen universe."
+
+  P2B_04_1_2_3_REVERSAL:
+    implementation_status: "DATA_READY"
+    full_historical_status: "PARTIAL_DATA"
+    corporate_action_risk: "MEDIUM (multi-session 1-2-3 pivot sequence crosses corporate action boundaries without adjustment)"
+    required_data: ["1-minute OHLCV", "Sequential Multi-Pivot History"]
+    notes: "Data schema is ready for implementation; full historical performance inference is constrained by 58.4% coverage and frozen universe."
+

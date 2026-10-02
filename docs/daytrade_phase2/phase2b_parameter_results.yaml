@@ -1,0 +1,717 @@
+execution_date: '2026-10-02'
+research_semantics:
+  IMPLEMENTATION_DATA_STATUS: DATA_READY
+  FULL_HISTORICAL_RESEARCH_DATA_STATUS: PARTIAL_DATA
+  CORPORATE_ACTION_DATA_STATUS: UNAVAILABLE
+  CORPORATE_ACTION_BOUNDARY_DEFAULT: UNKNOWN
+  OBSERVED_GAP_SEPARATED_FROM_CORPORATE_ACTION: true
+  SAMPLE_STATUS: SMOKE_VALIDATION_PASS
+  DECISION_STATUS: SMALL_SAMPLE_NON_DECISIONAL
+  SLIPPAGE_GRID_CANONICAL: '[0, 1, 2, 3] ticks (TWSE statutory tick sizes)'
+  COMPLETENESS_POLICY: 'EXPECTED_SESSION_TIMESTAMP_COVERAGE (266 session marks: 265
+    continuous 09:01-13:25 + 1 close 13:30; arbitrary 265 hard threshold removed)'
+validation_sample:
+  symbols:
+  - '1101'
+  - '2317'
+  dates:
+  - '2023-09-27'
+  - '2023-09-28'
+  total_bars_evaluated: 1063
+  stock_day_completeness:
+  - symbol: '1101'
+    date: '2023-09-27'
+    status: USABLE_WITH_GAPS
+    expected_session_bars: 266
+    actual_bar_count: 265
+    missing_session_bars: 1
+    session_coverage_pct: 99.62
+    missingness_type: PARTIAL_UNKNOWN_MISSINGNESS
+    duplicate_count: 0
+    monotonic_timestamp: true
+    corporate_action_boundary: UNKNOWN
+    observed_large_gap: false
+    rejection_reason: 'MISSING_SESSION_TIMESTAMPS: 1-minute bars alone cannot distinguish
+      NO_TRADE_MINUTE from MISSING_DATA'
+  - symbol: '2317'
+    date: '2023-09-27'
+    status: COMPLETE
+    expected_session_bars: 266
+    actual_bar_count: 266
+    missing_session_bars: 0
+    session_coverage_pct: 100.0
+    missingness_type: NONE
+    duplicate_count: 0
+    monotonic_timestamp: true
+    corporate_action_boundary: UNKNOWN
+    observed_large_gap: false
+    rejection_reason: null
+  - symbol: '1101'
+    date: '2023-09-28'
+    status: COMPLETE
+    expected_session_bars: 266
+    actual_bar_count: 266
+    missing_session_bars: 0
+    session_coverage_pct: 100.0
+    missingness_type: NONE
+    duplicate_count: 0
+    monotonic_timestamp: true
+    corporate_action_boundary: UNKNOWN
+    observed_large_gap: false
+    rejection_reason: null
+  - symbol: '2317'
+    date: '2023-09-28'
+    status: COMPLETE
+    expected_session_bars: 266
+    actual_bar_count: 266
+    missing_session_bars: 0
+    session_coverage_pct: 100.0
+    missingness_type: NONE
+    duplicate_count: 0
+    monotonic_timestamp: true
+    corporate_action_boundary: UNKNOWN
+    observed_large_gap: false
+    rejection_reason: null
+parameter_results:
+- candidate_id: P2B_01_PULLBACK_VOLUME_DECAY
+  parameter_set_id: PB_thresh_0.35_slip_0ticks
+  parameters:
+    threshold: 0.35
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 0
+  trade_count: 17
+  win_rate: 0.0
+  expectancy_R: -2.2228
+  median_R: -2.78
+  profit_factor: 0.0
+  SQN: -11.4741
+  MFE_R: 0.1471
+  MAE_R: -1.0294
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.2728
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_01_PULLBACK_VOLUME_DECAY
+  parameter_set_id: PB_thresh_0.35_slip_1ticks
+  parameters:
+    threshold: 0.35
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 1
+  trade_count: 31
+  win_rate: 0.0
+  expectancy_R: -2.7783
+  median_R: -2.39
+  profit_factor: 0.0
+  SQN: -17.8735
+  MFE_R: 0.0
+  MAE_R: -1.1398
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.8283
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_01_PULLBACK_VOLUME_DECAY
+  parameter_set_id: PB_thresh_0.35_slip_2ticks
+  parameters:
+    threshold: 0.35
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 2
+  trade_count: 31
+  win_rate: 0.0
+  expectancy_R: -2.398
+  median_R: -2.26
+  profit_factor: 0.0
+  SQN: -29.9962
+  MFE_R: 0.0
+  MAE_R: -1.0726
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.448
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_01_PULLBACK_VOLUME_DECAY
+  parameter_set_id: PB_thresh_0.35_slip_3ticks
+  parameters:
+    threshold: 0.35
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 3
+  trade_count: 31
+  win_rate: 0.0
+  expectancy_R: -2.268
+  median_R: -2.195
+  profit_factor: 0.0
+  SQN: -41.7545
+  MFE_R: 0.0
+  MAE_R: -1.0495
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.318
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_01_PULLBACK_VOLUME_DECAY
+  parameter_set_id: PB_thresh_0.45_slip_0ticks
+  parameters:
+    threshold: 0.45
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 0
+  trade_count: 20
+  win_rate: 0.0
+  expectancy_R: -2.1869
+  median_R: -2.78
+  profit_factor: 0.0
+  SQN: -11.328
+  MFE_R: 0.25
+  MAE_R: -1.0
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.2369
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_01_PULLBACK_VOLUME_DECAY
+  parameter_set_id: PB_thresh_0.45_slip_1ticks
+  parameters:
+    threshold: 0.45
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 1
+  trade_count: 34
+  win_rate: 0.0
+  expectancy_R: -2.701
+  median_R: -2.39
+  profit_factor: 0.0
+  SQN: -17.7441
+  MFE_R: 0.0196
+  MAE_R: -1.1176
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.751
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_01_PULLBACK_VOLUME_DECAY
+  parameter_set_id: PB_thresh_0.45_slip_2ticks
+  parameters:
+    threshold: 0.45
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 2
+  trade_count: 35
+  win_rate: 0.0
+  expectancy_R: -2.4238
+  median_R: -2.26
+  profit_factor: 0.0
+  SQN: -23.1193
+  MFE_R: 0.0071
+  MAE_R: -1.0857
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.4738
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_01_PULLBACK_VOLUME_DECAY
+  parameter_set_id: PB_thresh_0.45_slip_3ticks
+  parameters:
+    threshold: 0.45
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 3
+  trade_count: 35
+  win_rate: 0.0
+  expectancy_R: -2.2699
+  median_R: -2.195
+  profit_factor: 0.0
+  SQN: -35.5731
+  MFE_R: 0.0
+  MAE_R: -1.0524
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.3199
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_01_PULLBACK_VOLUME_DECAY
+  parameter_set_id: PB_thresh_0.5_slip_0ticks
+  parameters:
+    threshold: 0.5
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 0
+  trade_count: 20
+  win_rate: 0.0
+  expectancy_R: -2.1869
+  median_R: -2.78
+  profit_factor: 0.0
+  SQN: -11.328
+  MFE_R: 0.25
+  MAE_R: -1.0
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.2369
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_01_PULLBACK_VOLUME_DECAY
+  parameter_set_id: PB_thresh_0.5_slip_1ticks
+  parameters:
+    threshold: 0.5
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 1
+  trade_count: 35
+  win_rate: 0.0
+  expectancy_R: -2.7318
+  median_R: -2.39
+  profit_factor: 0.0
+  SQN: -18.0931
+  MFE_R: 0.019
+  MAE_R: -1.1143
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.7818
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_01_PULLBACK_VOLUME_DECAY
+  parameter_set_id: PB_thresh_0.5_slip_2ticks
+  parameters:
+    threshold: 0.5
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 2
+  trade_count: 36
+  win_rate: 0.0
+  expectancy_R: -2.4368
+  median_R: -2.26
+  profit_factor: 0.0
+  SQN: -23.7258
+  MFE_R: 0.0069
+  MAE_R: -1.0833
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.4868
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_01_PULLBACK_VOLUME_DECAY
+  parameter_set_id: PB_thresh_0.5_slip_3ticks
+  parameters:
+    threshold: 0.5
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 3
+  trade_count: 36
+  win_rate: 0.0
+  expectancy_R: -2.2789
+  median_R: -2.195
+  profit_factor: 0.0
+  SQN: -36.3695
+  MFE_R: 0.0
+  MAE_R: -1.0509
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.3289
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_02_RANGE_EXPANSION
+  parameter_set_id: RE_thresh_1.2_slip_0ticks
+  parameters:
+    threshold: 1.2
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 0
+  trade_count: 19
+  win_rate: 0.0
+  expectancy_R: -1.9106
+  median_R: -1.89
+  profit_factor: 0.0
+  SQN: -12.6662
+  MFE_R: 0.6053
+  MAE_R: -0.8947
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.9606
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_02_RANGE_EXPANSION
+  parameter_set_id: RE_thresh_1.2_slip_1ticks
+  parameters:
+    threshold: 1.2
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 1
+  trade_count: 19
+  win_rate: 0.0
+  expectancy_R: -1.9063
+  median_R: -1.9267
+  profit_factor: 0.0
+  SQN: -21.1461
+  MFE_R: 0.0789
+  MAE_R: -0.9298
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.9563
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_02_RANGE_EXPANSION
+  parameter_set_id: RE_thresh_1.2_slip_2ticks
+  parameters:
+    threshold: 1.2
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 2
+  trade_count: 19
+  win_rate: 0.0
+  expectancy_R: -1.9208
+  median_R: -1.945
+  profit_factor: 0.0
+  SQN: -29.4489
+  MFE_R: 0.0132
+  MAE_R: -0.9474
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.9708
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_02_RANGE_EXPANSION
+  parameter_set_id: RE_thresh_1.2_slip_3ticks
+  parameters:
+    threshold: 1.2
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 3
+  trade_count: 19
+  win_rate: 0.0
+  expectancy_R: -1.9332
+  median_R: -1.956
+  profit_factor: 0.0
+  SQN: -37.6958
+  MFE_R: 0.0
+  MAE_R: -0.9579
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.9832
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_02_RANGE_EXPANSION
+  parameter_set_id: RE_thresh_1.5_slip_0ticks
+  parameters:
+    threshold: 1.5
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 0
+  trade_count: 17
+  win_rate: 0.0
+  expectancy_R: -1.8901
+  median_R: -1.89
+  profit_factor: 0.0
+  SQN: -12.0002
+  MFE_R: 0.6176
+  MAE_R: -0.9118
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.9401
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_02_RANGE_EXPANSION
+  parameter_set_id: RE_thresh_1.5_slip_1ticks
+  parameters:
+    threshold: 1.5
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 1
+  trade_count: 17
+  win_rate: 0.0
+  expectancy_R: -1.8963
+  median_R: -1.9267
+  profit_factor: 0.0
+  SQN: -19.9976
+  MFE_R: 0.0882
+  MAE_R: -0.9412
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.9463
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_02_RANGE_EXPANSION
+  parameter_set_id: RE_thresh_1.5_slip_2ticks
+  parameters:
+    threshold: 1.5
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 2
+  trade_count: 17
+  win_rate: 0.0
+  expectancy_R: -1.9142
+  median_R: -1.945
+  profit_factor: 0.0
+  SQN: -27.8143
+  MFE_R: 0.0147
+  MAE_R: -0.9559
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.9642
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_02_RANGE_EXPANSION
+  parameter_set_id: RE_thresh_1.5_slip_3ticks
+  parameters:
+    threshold: 1.5
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 3
+  trade_count: 17
+  win_rate: 0.0
+  expectancy_R: -1.9282
+  median_R: -1.956
+  profit_factor: 0.0
+  SQN: -35.5742
+  MFE_R: 0.0
+  MAE_R: -0.9647
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.9782
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_02_RANGE_EXPANSION
+  parameter_set_id: RE_thresh_1.8_slip_0ticks
+  parameters:
+    threshold: 1.8
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 0
+  trade_count: 10
+  win_rate: 0.0
+  expectancy_R: -1.7621
+  median_R: -1.835
+  profit_factor: 0.0
+  SQN: -7.6704
+  MFE_R: 0.6
+  MAE_R: -0.85
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.8121
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_02_RANGE_EXPANSION
+  parameter_set_id: RE_thresh_1.8_slip_1ticks
+  parameters:
+    threshold: 1.8
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 1
+  trade_count: 10
+  win_rate: 0.0
+  expectancy_R: -1.8156
+  median_R: -1.9083
+  profit_factor: 0.0
+  SQN: -12.8467
+  MFE_R: 0.1167
+  MAE_R: -0.9
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.8656
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_02_RANGE_EXPANSION
+  parameter_set_id: RE_thresh_1.8_slip_2ticks
+  parameters:
+    threshold: 1.8
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 2
+  trade_count: 10
+  win_rate: 0.0
+  expectancy_R: -1.8546
+  median_R: -1.9359
+  profit_factor: 0.0
+  SQN: -17.9413
+  MFE_R: 0.025
+  MAE_R: -0.925
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.9046
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_02_RANGE_EXPANSION
+  parameter_set_id: RE_thresh_1.8_slip_3ticks
+  parameters:
+    threshold: 1.8
+    exit_policy: FIXED_HORIZON_15M
+  slippage_ticks: 3
+  trade_count: 10
+  win_rate: 0.0
+  expectancy_R: -1.8806
+  median_R: -1.9505
+  profit_factor: 0.0
+  SQN: -23.0114
+  MFE_R: 0.0
+  MAE_R: -0.94
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.9306
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_03_2B_REVERSAL
+  parameter_set_id: 2B_conf_1_slip_0ticks
+  parameters:
+    pivot_confirmation_bars: 1
+    exit_policy: STOP_TARGET_1_5R_MAX30M
+  slippage_ticks: 0
+  trade_count: 3
+  win_rate: 0.0
+  expectancy_R: -1.89
+  median_R: -1.89
+  profit_factor: 0.0
+  SQN: 0.0
+  MFE_R: 0.0
+  MAE_R: -1.6667
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.94
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_03_2B_REVERSAL
+  parameter_set_id: 2B_conf_1_slip_1ticks
+  parameters:
+    pivot_confirmation_bars: 1
+    exit_policy: STOP_TARGET_1_5R_MAX30M
+  slippage_ticks: 1
+  trade_count: 3
+  win_rate: 0.0
+  expectancy_R: -1.9267
+  median_R: -1.9267
+  profit_factor: 0.0
+  SQN: 0.0
+  MFE_R: 0.0
+  MAE_R: -1.4445
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.9767
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_03_2B_REVERSAL
+  parameter_set_id: 2B_conf_1_slip_2ticks
+  parameters:
+    pivot_confirmation_bars: 1
+    exit_policy: STOP_TARGET_1_5R_MAX30M
+  slippage_ticks: 2
+  trade_count: 3
+  win_rate: 0.0
+  expectancy_R: -1.945
+  median_R: -1.945
+  profit_factor: 0.0
+  SQN: 0.0
+  MFE_R: 0.0
+  MAE_R: -1.3333
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -1.995
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_03_2B_REVERSAL
+  parameter_set_id: 2B_conf_2_slip_0ticks
+  parameters:
+    pivot_confirmation_bars: 2
+    exit_policy: STOP_TARGET_1_5R_MAX30M
+  slippage_ticks: 0
+  trade_count: 3
+  win_rate: 0.0
+  expectancy_R: -2.1867
+  median_R: -1.89
+  profit_factor: 0.0
+  SQN: -7.3708
+  MFE_R: 0.3333
+  MAE_R: -2.3333
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.2367
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_03_2B_REVERSAL
+  parameter_set_id: 2B_conf_2_slip_1ticks
+  parameters:
+    pivot_confirmation_bars: 2
+    exit_policy: STOP_TARGET_1_5R_MAX30M
+  slippage_ticks: 1
+  trade_count: 3
+  win_rate: 0.0
+  expectancy_R: -2.0811
+  median_R: -1.9267
+  profit_factor: 0.0
+  SQN: -13.4759
+  MFE_R: 0.0
+  MAE_R: -1.7778
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.1311
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_03_2B_REVERSAL
+  parameter_set_id: 2B_conf_2_slip_2ticks
+  parameters:
+    pivot_confirmation_bars: 2
+    exit_policy: STOP_TARGET_1_5R_MAX30M
+  slippage_ticks: 2
+  trade_count: 3
+  win_rate: 0.0
+  expectancy_R: -2.05
+  median_R: -1.945
+  profit_factor: 0.0
+  SQN: -19.5238
+  MFE_R: 0.0
+  MAE_R: -1.5556
+  verdict: REJECT_RESEARCH_CANDIDATE
+  verdict_reason: 'Candidate fails to outperform baseline (expectancy delta: -2.1
+    R)'
+  slippage_bps: null
+- candidate_id: P2B_04_1_2_3_REVERSAL
+  parameter_set_id: 123_conf_1_slip_0ticks
+  parameters:
+    confirmation_bars: 1
+    exit_policy: STOP_TARGET_1_5R_MAX30M
+  slippage_ticks: 0
+  trade_count: 0
+  win_rate: 0.0
+  expectancy_R: 0.0
+  median_R: 0.0
+  profit_factor: 0.0
+  SQN: 0.0
+  MFE_R: 0.0
+  MAE_R: 0.0
+  verdict: DATA_INSUFFICIENT
+  verdict_reason: 'Insufficient sample size: 0.0 trades < 2 required'
+  slippage_bps: null
+- candidate_id: P2B_04_1_2_3_REVERSAL
+  parameter_set_id: 123_conf_1_slip_1ticks
+  parameters:
+    confirmation_bars: 1
+    exit_policy: STOP_TARGET_1_5R_MAX30M
+  slippage_ticks: 1
+  trade_count: 0
+  win_rate: 0.0
+  expectancy_R: 0.0
+  median_R: 0.0
+  profit_factor: 0.0
+  SQN: 0.0
+  MFE_R: 0.0
+  MAE_R: 0.0
+  verdict: DATA_INSUFFICIENT
+  verdict_reason: 'Insufficient sample size: 0.0 trades < 2 required'
+  slippage_bps: null
+- candidate_id: P2B_04_1_2_3_REVERSAL
+  parameter_set_id: 123_conf_1_slip_2ticks
+  parameters:
+    confirmation_bars: 1
+    exit_policy: STOP_TARGET_1_5R_MAX30M
+  slippage_ticks: 2
+  trade_count: 0
+  win_rate: 0.0
+  expectancy_R: 0.0
+  median_R: 0.0
+  profit_factor: 0.0
+  SQN: 0.0
+  MFE_R: 0.0
+  MAE_R: 0.0
+  verdict: DATA_INSUFFICIENT
+  verdict_reason: 'Insufficient sample size: 0.0 trades < 2 required'
+  slippage_bps: null
+- candidate_id: P2B_04_1_2_3_REVERSAL
+  parameter_set_id: 123_conf_2_slip_0ticks
+  parameters:
+    confirmation_bars: 2
+    exit_policy: STOP_TARGET_1_5R_MAX30M
+  slippage_ticks: 0
+  trade_count: 0
+  win_rate: 0.0
+  expectancy_R: 0.0
+  median_R: 0.0
+  profit_factor: 0.0
+  SQN: 0.0
+  MFE_R: 0.0
+  MAE_R: 0.0
+  verdict: DATA_INSUFFICIENT
+  verdict_reason: 'Insufficient sample size: 0.0 trades < 2 required'
+  slippage_bps: null
+- candidate_id: P2B_04_1_2_3_REVERSAL
+  parameter_set_id: 123_conf_2_slip_1ticks
+  parameters:
+    confirmation_bars: 2
+    exit_policy: STOP_TARGET_1_5R_MAX30M
+  slippage_ticks: 1
+  trade_count: 0
+  win_rate: 0.0
+  expectancy_R: 0.0
+  median_R: 0.0
+  profit_factor: 0.0
+  SQN: 0.0
+  MFE_R: 0.0
+  MAE_R: 0.0
+  verdict: DATA_INSUFFICIENT
+  verdict_reason: 'Insufficient sample size: 0.0 trades < 2 required'
+  slippage_bps: null
+- candidate_id: P2B_04_1_2_3_REVERSAL
+  parameter_set_id: 123_conf_2_slip_2ticks
+  parameters:
+    confirmation_bars: 2
+    exit_policy: STOP_TARGET_1_5R_MAX30M
+  slippage_ticks: 2
+  trade_count: 0
+  win_rate: 0.0
+  expectancy_R: 0.0
+  median_R: 0.0
+  profit_factor: 0.0
+  SQN: 0.0
+  MFE_R: 0.0
+  MAE_R: 0.0
+  verdict: DATA_INSUFFICIENT
+  verdict_reason: 'Insufficient sample size: 0.0 trades < 2 required'
+  slippage_bps: null

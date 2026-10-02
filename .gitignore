@@ -57,3 +57,7 @@ release-info.json
 rebound_learning/data/
 rebound-dataset-audit.json
 rebound-dataset-audit.md
+data/
+*.raw_trades.json*
+*.raw_trades.parquet
+docs/daytrade_phase2/raw_trades/
