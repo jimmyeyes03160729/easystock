@@ -161,7 +161,7 @@ def snapshot(store) -> dict:
             'ok' if paper_trade.get('status') == 'running' else 'idle',
             '模擬買進已啟用；非交易時段不會執行，會等待下一個交易時段。' if paper_trade.get('status') == 'running' else '模擬買進目前已暫停；不會等待開盤或建立模擬買進。',
             _timestamp(paper_trade.get('updated_at')),
-            {'initial_capital': paper_trade.get('initial_capital'), 'current_capital': paper_trade.get('current_capital')},
+            {key:paper_trade.get(key) for key in ('daily_buy_limit','daily_buy_used','daily_buy_remaining')},
         ),
         _signal(
             'market_credentials', '行情資料憑證',

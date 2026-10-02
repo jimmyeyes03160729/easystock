@@ -87,9 +87,7 @@ class AccountTests(unittest.TestCase):
         self.db=Path(self.folder.name)/'state.sqlite'
         self.env=patch.dict(os.environ,{'EASYSTOCK_ADMIN_DB':str(self.db)})
         self.env.start()
-        Store(initial=dict(min_price=1,max_price=1000,max_gain_pct=5))
-        with sqlite3.connect(self.db) as db:
-            db.execute('INSERT OR REPLACE INTO paper_trade_settings VALUES(1,200000,200000,\'running\',\'2026-09-24\',0)')
+        Store(initial=dict(min_price=1,max_price=1000,max_gain_pct=5)).start_paper_trade(200000)
 
     def tearDown(self):
         self.env.stop();self.folder.cleanup()
@@ -120,6 +118,7 @@ class AccountTests(unittest.TestCase):
         with ThreadPoolExecutor(2) as pool:
             events=list(pool.map(lambda _:m.close_position('TEST',101,NOW,'test'),range(2)))
         self.assertEqual(sum(x is not None for x in events),1)
+        with sqlite3.connect(self.db) as db:db.execute('UPDATE paper_trade_settings SET daily_buy_limit=400000')
         self.open(m,symbol='OTHER')
         m.close_position('OTHER',101,NOW,'test')
         with sqlite3.connect(self.db) as db:
@@ -129,11 +128,11 @@ class AccountTests(unittest.TestCase):
     def test_settlement_failure_keeps_both_positions(self):
         m=self.manager();self.open(m)
         with sqlite3.connect(self.db) as db:
-            db.execute("CREATE TRIGGER fail_settle BEFORE UPDATE ON paper_trade_settings BEGIN SELECT RAISE(ABORT,'fixture'); END")
+            db.execute("CREATE TRIGGER fail_settle BEFORE INSERT ON paper_trade_fills WHEN NEW.side='SELL' BEGIN SELECT RAISE(ABORT,'fixture'); END")
         with self.assertRaises(sqlite3.IntegrityError):m.close_position('TEST',101,NOW,'test')
         self.assertTrue(m.has_open_position('TEST'))
         self.assertEqual(len(paper_account.open_positions()),1)
-        with sqlite3.connect(self.db) as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM paper_trade_logs').fetchone()[0],0)
+        with sqlite3.connect(self.db) as db:self.assertEqual(db.execute('SELECT settlement_status FROM paper_trade_logs').fetchone()[0],'pending')
 
     def test_receipt_retry_does_not_settle_twice(self):
         fill=paper_account.buy('TEST','TEST',100)
@@ -150,6 +149,7 @@ class AccountTests(unittest.TestCase):
     def test_hybrid_target_and_technical_policy(self):
         m=self.manager();self.open(m)
         self.assertEqual(m.on_tick('TEST',101.2,NOW)['trade']['exit_reason'],'固定停利')
+        with sqlite3.connect(self.db) as db:db.execute('UPDATE paper_trade_settings SET daily_buy_limit=400000')
         m=self.manager(technical_exit_enabled=False);self.open(m,'OTHER')
         self.assertIsNone(m.on_strategy_result('OTHER',{'vetoes':['跌破VWAP'],'price':99.7},NOW))
         self.assertEqual(m.on_tick('OTHER',99,NOW)['trade']['exit_reason'],'固定停損')
@@ -171,7 +171,7 @@ class EngineTests(unittest.TestCase):
             is_exit_event=lambda event: isinstance(event, dict) and event.get('type') == 'EXIT',
             push_line_text=Mock(),format_entry_message=Mock(return_value='entry'))
         exec(compile(ast.Module(body=[method],type_ignores=[]),'<engine>','exec'),self.ns)
-        self.manager=PositionManager(research_mode=True, before_open=Mock(return_value=dict(status='insufficient_cash',shares=0)))
+        self.manager=PositionManager(research_mode=True, before_open=Mock(return_value=dict(status='skipped',skip_reason='daily_buy_limit_exceeded',shares=0)))
         self.engine=types.SimpleNamespace(bars=types.SimpleNamespace(rows5=lambda _: [{}],rows15=lambda _:[{}]),
             candidates={'TEST':{}},market_level='GREEN',market_valid_until=NOW.timestamp()+30,
             entry_mode='rules',collect_only=False,last_prices={'TEST':100},manager=self.manager,scanner_top_symbols={'TEST'},
@@ -187,7 +187,7 @@ class EngineTests(unittest.TestCase):
         self.engine.store.write_entry.assert_called_once()
         p = self.engine.learning.entry.call_args.args[0]['position']
         self.assertEqual(p['paper_execution'], 'SKIPPED')
-        self.assertEqual(p['paper_skip_reason'], 'insufficient_cash')
+        self.assertEqual(p['paper_skip_reason'], 'daily_buy_limit_exceeded')
         self.assertIsNone(p['paper_trade_id'])
         self.ns['push_line_text'].assert_not_called()
         self.assertFalse(self.engine.entry_symbols)

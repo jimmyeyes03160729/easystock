@@ -205,9 +205,9 @@ def register_admin(app, store=None, verifier=None):
     def post_paper_trade_start():
         authenticated(True)
         data = body()
-        cap = data.get('initial_capital')
-        if cap is None:
-            raise ValueError('缺少本金金額。')
+        if set(data) != {'daily_buy_limit'}:
+            raise ValueError('請提供 daily_buy_limit 每日買進額度。')
+        cap = data['daily_buy_limit']
         return jsonify(store.start_paper_trade(cap))
 
     @bp.post('/admin/paper-trade/toggle')

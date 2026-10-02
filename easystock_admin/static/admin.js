@@ -33,7 +33,7 @@ function renderHealth(data){
     const badge=document.createElement('span');badge.className='health-badge';badge.textContent=healthBadge(row);head.append(title,badge);
     const detail=document.createElement('p');detail.textContent=row.detail||'沒有附加說明。';card.append(head,detail);
     const metrics=document.createElement('div');metrics.className='health-metrics';
-    const names={setting_version:'設定版本',samples:'樣本',labeled:'已標記',candidate_count:'候選數',completed_stock_days:'完成股票日',target_stock_days:'目標股票日',failed_stock_days:'失敗股票日',initial_capital:'起始本金',current_capital:'目前資金'};
+    const names={setting_version:'設定版本',samples:'樣本',labeled:'已標記',candidate_count:'候選數',completed_stock_days:'完成股票日',target_stock_days:'目標股票日',failed_stock_days:'失敗股票日',daily_buy_limit:'每日買進額度',daily_buy_used:'今日已用額度',daily_buy_remaining:'今日剩餘額度'};
     for(const [key,value] of Object.entries(row.metrics||{})){const metric=healthMetric(names[key]||key,value);if(metric)metrics.append(metric);}
     if(row.updated_at){const updated=document.createElement('span');updated.textContent=`更新 ${new Date(row.updated_at).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}`;metrics.append(updated);}
     if(metrics.childNodes.length)card.append(metrics);target.append(card);

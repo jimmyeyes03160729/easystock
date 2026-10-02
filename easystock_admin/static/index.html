@@ -75,14 +75,24 @@
 </div>
 
 <section class="panel paper-trade admin-tab-panel" id="paperTradePanel">
-<h2>當沖模擬動態帳本</h2>
-<p class="hint">以設定本金模擬實盤開倉（扣除 0.15% 證交稅與手續費折讓），每日損益直接滾入次日可用資金。</p>
+<h2>每日當沖買進額度</h2>
+<p class="hint">額度只計當日買進成交本金，賣出不回補。手續費、證交稅與損益獨立計算；新交易日重新取得設定額度。</p>
 
 <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0;">
   <div style="background:var(--bg,#111);padding:14px;border-radius:8px;border:1px solid var(--border,#333);">
-    <div style="font-size:12px;color:var(--muted,#888);">目前可用資金 (滾動)</div>
-    <div id="simCurrentCapital" style="font-size:24px;font-weight:bold;margin-top:4px;color:#4ade80;">-- 元</div>
-    <div id="simReturnRate" style="font-size:11px;color:var(--muted,#888);margin-top:4px;">累計損益: -- 元 (0.00%)</div>
+    <div style="font-size:12px;color:var(--muted,#888);">今日剩餘買進額度</div>
+    <div id="simRemaining" style="font-size:24px;font-weight:bold;margin-top:4px;color:#4ade80;">-- 元</div>
+    <div>每日買進額度：<span id="simDailyLimit">--</span></div>
+    <div>今日已使用額度：<span id="simUsed">--</span></div>
+    <div id="simReturnRate" style="font-size:11px;color:var(--muted,#888);margin-top:4px;">交易資金報酬率：--</div>
+  </div>
+  <div style="background:var(--bg,#111);padding:14px;border-radius:8px;border:1px solid var(--border,#333);">
+    <div>今日已實現損益（費稅前）：<span id="simGrossPnl">--</span></div>
+    <div>今日手續費：<span id="simFees">--</span></div>
+    <div>今日證交稅：<span id="simTax">--</span></div>
+    <div>今日淨損益：<span id="simNetPnl">--</span></div>
+    <div>累積淨損益：<span id="simCumulativePnl">--</span></div>
+    <div>模擬累積權益：<span id="simEquity">--</span></div>
   </div>
   <div style="background:var(--bg,#111);padding:14px;border-radius:8px;border:1px solid var(--border,#333);">
     <div style="font-size:12px;color:var(--muted,#888);">模擬運行狀態</div>
@@ -92,13 +102,13 @@
 </div>
 
 <form id="paperTradeForm" style="margin-bottom:16px;">
-  <label for="simInitialInput">設定模擬起始本金</label>
+  <label for="simDailyLimitInput">每日當沖買進額度</label>
   <div class="number" style="display:flex;align-items:center;gap:8px;max-width:320px;margin:8px 0;">
-    <input id="simInitialInput" name="initial_capital" type="number" min="1000" max="100000000" step="1000" value="100000" required>
+    <input id="simDailyLimitInput" name="daily_buy_limit" type="number" min="1000" max="100000000" step="1000" value="1000000" required>
     <span>元</span>
   </div>
   <div class="actions" style="display:flex;gap:10px;margin-top:10px;">
-    <button class="primary" id="btnSimStart" type="submit">重設本金並開始</button>
+    <button class="primary" id="btnSimStart" type="submit">儲存額度 / 啟動模擬</button>
     <button id="btnSimToggle" type="button">暫停 / 啟動模擬</button>
   </div>
   <p id="simActionStatus" role="status" aria-live="polite" style="font-size:12px;margin-top:8px;"></p>
@@ -135,10 +145,10 @@
     <thead>
       <tr style="border-bottom:1px solid var(--border,#333);color:var(--muted,#888);text-align:left;">
         <th style="padding:6px 4px;">日期</th>
-        <th style="padding:6px 4px;">起始額度</th>
+        <th style="padding:6px 4px;">每日買進額度</th>
         <th style="padding:6px 4px;">當日標的</th>
         <th style="padding:6px 4px;">當日淨損益</th>
-        <th style="padding:6px 4px;">結算後餘額</th>
+        <th style="padding:6px 4px;">模擬累積權益</th>
       </tr>
     </thead>
     <tbody id="simLogsTableBody">

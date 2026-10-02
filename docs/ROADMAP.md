@@ -1975,3 +1975,14 @@ https://api.jimmyeyes.com/config
 7. 依版本與主題整理。
 8. 不因「紀錄」而修改正式功能程式碼。
 9. 不影響目前正式版本，除非使用者另行要求。
+# Paper 模擬：起始本金制 → 每日當沖買進額度制
+
+- [x] `daily_buy_limit` 與由當日 BUY fills 重建的 used / remaining。
+- [x] SELL 不恢復額度；費稅與 PnL / Equity 獨立計算。
+- [x] Owner 調整額度保留已用額度與持倉。
+- [x] Admin API / UI、Health 與每日盤後摘要使用新語意。
+- [x] Research-only 與 episode 去重、re-arm 相容；額度不足仍完整追蹤。
+- [x] Additive、idempotent migration；原欄位值驗證、備份與回歸測試。
+- [ ] VM migration 與正式交易日驗收（需可連線的 VM shell）。
+
+詳見 [PAPER_DAILY_BUY_LIMIT.md](PAPER_DAILY_BUY_LIMIT.md)。

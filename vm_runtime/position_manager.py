@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Paper Trade Position & Capital Manager
-動態權益部位計算與結算模組
+Paper research positions and daily BUY limit execution
+研究部位追蹤與每日額度模擬成交
 """
 
 from __future__ import annotations
@@ -43,12 +43,18 @@ class PaperWallet:
     def is_active(self) -> bool:
         return self.state.get("status") == "running"
 
-    def current_capital(self) -> float:
-        return float(self.state.get("current_capital") or self.state.get("initial_capital", 100000.0))
+    def daily_buy_limit(self) -> float:
+        return float(self.refresh()['daily_buy_limit'])
 
-    def open_fill(self, symbol, name, price):
+    def daily_buy_used(self) -> float:
+        return float(self.refresh()['daily_buy_used'])
+
+    def daily_buy_remaining(self) -> float:
+        return float(self.refresh()['daily_buy_remaining'])
+
+    def open_fill(self, symbol, name, price, execution_id=None):
         from paper_account import buy
-        return buy(symbol, name, price)
+        return buy(symbol, name, price, execution_id=execution_id)
 
     def try_buy(self, symbol, name, price):
         return self.open_fill(symbol, name, price).get('shares', 0)
@@ -77,7 +83,7 @@ class PositionManager:
     Easystock 當沖部位管理器 V2
 
     research_mode separates accepted strategy episodes from paper execution.
-    Paper callbacks retain cash/re-entry constraints; research closes independently.
+    Paper callbacks retain daily-limit/re-entry constraints; research closes independently.
     Legacy callers can retain fill-only behavior with research_mode=False.
     不呼叫 Shioaji Order / Deal。
     """
@@ -387,7 +393,7 @@ class PositionManager:
                 research_execution='TRACKED', paper_execution='NOT_ATTEMPTED',
                 paper_skip_reason=None, paper_trade_id=None, paper_attempted=False,
                 **(decision_evidence or {}))
-            # Persist acceptance before touching the separate cash ledger.
+            # Persist acceptance before touching the separate execution ledger.
             self._persist(position)
             self.positions[str(symbol)] = position
             if self.before_open:
@@ -400,7 +406,7 @@ class PositionManager:
                     fill = {'status': 'daily_entry_limit'}
                 else:
                     try:
-                        fill = self.before_open(symbol=str(symbol), name=name, price=price)
+                        fill = self.before_open(symbol=str(symbol), name=name, price=price, execution_id=identity)
                     except Exception:
                         fill = {'status': 'execution_unconfirmed'}
                 if (isinstance(fill, dict) and fill.get('status') == 'bought'

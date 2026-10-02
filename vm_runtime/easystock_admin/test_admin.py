@@ -70,7 +70,7 @@ class StoreTests(unittest.TestCase):
             result = snapshot(self.s)
         paper = next(row for row in result['signals'] if row['key'] == 'paper_trade')
         self.assertEqual(paper['state'], 'ok')
-        self.assertEqual(paper['metrics']['current_capital'], 200000)
+        self.assertEqual(paper['metrics']['daily_buy_limit'], 200000)
 
     def test_health_reports_unidentified_deployment_as_warning(self):
         from easystock_admin.health import snapshot

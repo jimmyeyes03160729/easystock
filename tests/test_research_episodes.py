@@ -27,8 +27,9 @@ def setup(tmp_path, monkeypatch):
     with sqlite3.connect(wallet) as db:
         paper_ledger.init_schema(db)
         db.execute("INSERT INTO meta VALUES('paper_trade_period_current','fixture')")
-        db.execute("INSERT INTO paper_trade_periods VALUES('fixture','2026-10-01',199652,'fixture')")
-        db.execute("INSERT INTO paper_trade_settings VALUES(1,199652,199652,'running','2026-10-01',0)")
+        db.execute("INSERT INTO paper_trade_periods(id,created_at,starting_cash,archive_path) VALUES('fixture','2026-10-01',1000000,'fixture')")
+        db.execute("INSERT INTO paper_trade_settings(id,initial_capital,current_capital,status,start_date,updated_at) VALUES(1,1000000,1000000,'running','2026-10-01',0)")
+        paper_ledger.migrate(db)
     research = ResearchStore(tmp_path / 'research.sqlite')
     buy = Mock(side_effect=lambda **kw: paper_ledger.buy(**kw, path=wallet, timestamp=ENTRY))
     sell = Mock(side_effect=lambda symbol, exit_price, exit_reason, trade_id:
@@ -58,10 +59,10 @@ def test_insufficient_cash_keeps_research_and_cash_unchanged(setup):
     p = event['position']
     assert p['research_execution'] == 'TRACKED'
     assert p['paper_execution'] == 'SKIPPED'
-    assert p['paper_skip_reason'] == 'insufficient_cash'
+    assert p['paper_skip_reason'] == 'daily_buy_limit_exceeded'
     assert p['research_trade_id'] and p['episode_id']
     assert p['paper_trade_id'] is None and p['trade_id'] is None
-    assert query(setup, 'SELECT current_capital FROM paper_trade_settings') == [(199652,)]
+    assert query(setup, 'SELECT current_capital FROM paper_trade_settings') == [(1000000,)]
     assert query(setup, 'SELECT COUNT(*) FROM paper_trade_fills') == [(0,)]
     assert len(setup.store.trades()) == 1
 
@@ -103,7 +104,7 @@ def test_research_only_all_exit_rules_never_settle_wallet(setup, exit_kind):
     for key in ('pnl_pct','mfe_pct','mae_pct','exit_reason','exit_time','research_net_pnl_pct'):
         assert event['trade'][key] is not None
     setup.sell.assert_not_called()
-    assert query(setup, 'SELECT current_capital FROM paper_trade_settings') == [(199652,)]
+    assert query(setup, 'SELECT current_capital FROM paper_trade_settings') == [(1000000,)]
     assert query(setup, 'SELECT COUNT(*) FROM paper_trade_fills') == [(0,)]
 
 
@@ -130,7 +131,7 @@ def test_filled_trade_one_episode_one_settlement_and_separate_ids(setup):
     assert p['paper_trade_id'] != p['research_trade_id']
     assert p['trade_id'] == p['paper_trade_id']
     assert len(setup.store.trades()) == 1
-    assert query(setup, 'SELECT current_capital FROM paper_trade_settings') == [(99612,)]
+    assert query(setup, "SELECT SUM(gross) FROM paper_trade_fills WHERE side='BUY'") == [(1000000,)]
     event = setup.manager.on_tick('2303', 102, ENTRY+timedelta(minutes=1))
     assert event['trade']['settlement']['status'] == 'sold'
     assert setup.manager.close_position('2303', 102, ENTRY, 'duplicate') is None
@@ -149,6 +150,24 @@ def test_paper_daily_limit_does_not_remove_research(setup):
     assert p['paper_execution'] == 'SKIPPED'
     assert p['paper_skip_reason'] == 'daily_entry_limit'
     setup.buy.assert_not_called()
+
+
+@pytest.mark.parametrize('increase_limit',[False,True])
+def test_second_research_episode_checks_cumulative_buy_limit(setup,increase_limit):
+    setup.manager.allow_reentry=True
+    first=enter(setup,symbol='2303',price=100)['position']
+    setup.manager.on_tick('2303',102,ENTRY+timedelta(minutes=1))
+    if increase_limit:
+        with sqlite3.connect(setup.wallet) as db:
+            db.execute('UPDATE paper_trade_settings SET daily_buy_limit=2000000')
+    setup.manager.observe_entry_predicate('2303',False,SECOND)
+    second=enter(setup,symbol='2303',price=100,at=SECOND+timedelta(seconds=1))['position']
+    assert first['episode_id'] != second['episode_id']
+    assert second['paper_execution']==('FILLED' if increase_limit else 'SKIPPED')
+    if not increase_limit:
+        assert second['paper_skip_reason']=='daily_buy_limit_exceeded'
+    assert query(setup,"SELECT SUM(gross) FROM paper_trade_fills WHERE side='BUY'")==[(2000000 if increase_limit else 1000000,)]
+    assert setup.buy.call_count == 2
 
 
 def test_restart_keeps_research_only_extrema_and_does_not_retry_buy(setup):
@@ -183,7 +202,7 @@ def test_rearm_state_survives_restart(setup):
 def test_research_close_persists_when_paper_settlement_temporarily_fails(setup):
     enter(setup, symbol='2303', price=100)
     with sqlite3.connect(setup.wallet) as db:
-        db.execute("CREATE TRIGGER fail_sell BEFORE UPDATE ON paper_trade_settings BEGIN SELECT RAISE(ABORT,'fixture'); END")
+        db.execute("CREATE TRIGGER fail_sell BEFORE INSERT ON paper_trade_fills WHEN NEW.side='SELL' BEGIN SELECT RAISE(ABORT,'fixture'); END")
     event = setup.manager.on_tick('2303',102,ENTRY+timedelta(minutes=1))
     assert event['trade']['status'] == 'CLOSED'
     assert event['trade']['paper_settlement_pending']
@@ -210,7 +229,8 @@ def test_summary_contains_research_only_and_filled_without_wallet_fields(setup):
     assert summary['source'] == 'research_store'
     assert summary['research_trades'] == summary['research_closed'] == 2
     assert summary['paper_filled'] == 1
-    assert summary['paper_skipped'] == summary['paper_skipped_insufficient_cash'] == 1
+    assert summary['paper_skipped'] == summary['paper_skipped_daily_buy_limit'] == 1
+    assert summary['paper_skipped_insufficient_cash'] == 0
     assert (summary['wins'],summary['losses']) == (1,1)
     assert summary['net_pnl_pct'] is not None
     assert summary['avg_mfe_pct'] is not None and summary['avg_mae_pct'] is not None
@@ -260,7 +280,7 @@ def test_research_report_uses_store_even_if_journal_exit_is_missing(setup):
     assert tracking['source'] == 'research_store'
     assert tracking['accepted_count'] == tracking['closed_count'] == 1
     assert tracking['paper_filled'] == 0
-    assert tracking['paper_skipped_insufficient_cash'] == 1
+    assert tracking['paper_skipped_daily_buy_limit'] == 1
 
 
 def test_summary_selects_durable_research_date_without_journal(setup):

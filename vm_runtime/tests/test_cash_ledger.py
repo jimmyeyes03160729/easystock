@@ -1,4 +1,4 @@
-"""Regression for the production 8/10-column period cash ledger, offline only."""
+"""Regression for daily BUY limits and additive cash-era migration, offline only."""
 import os
 from pathlib import Path
 import sqlite3
@@ -21,8 +21,9 @@ class CashLedgerTests(unittest.TestCase):
         with sqlite3.connect(self.path) as db:
             ledger.init_schema(db)
             db.execute("INSERT INTO meta VALUES('paper_trade_period_current','fixture')")
-            db.execute("INSERT INTO paper_trade_periods VALUES('fixture','2026-09-01',200000,'fixture')")
-            db.execute("INSERT INTO paper_trade_settings VALUES(1,200000,200000,'running','2026-09-01',0)")
+            db.execute("INSERT INTO paper_trade_periods(id,created_at,starting_cash,archive_path) VALUES('fixture','2026-09-01',100000,'fixture')")
+            db.execute("INSERT INTO paper_trade_settings(id,initial_capital,current_capital,status,start_date,updated_at) VALUES(1,100000,100000,'running','2026-09-01',0)")
+            ledger.migrate(db)
 
     def tearDown(self):self.env.stop();self.tmp.cleanup()
     def query(self,sql):
@@ -40,14 +41,15 @@ class CashLedgerTests(unittest.TestCase):
 
     def test_cash_roundtrip_and_receipt(self):
         self.assertEqual(len(self.query('PRAGMA table_info(paper_trade_positions)')),8)
-        self.assertEqual(len(self.query('PRAGMA table_info(paper_trade_logs)')),10)
+        self.assertIn('daily_buy_used',[r[1] for r in self.query('PRAGMA table_info(paper_trade_logs)')])
         buy=account.buy('2330','fixture',100)
         self.assertEqual(buy['shares'],1000)
-        self.assertEqual(self.query('SELECT current_capital FROM paper_trade_settings')[0][0],99960)
+        self.assertEqual(ledger.snapshot(self.path)['settings']['daily_buy_remaining'],0)
         self.assertEqual(account.open_positions()[0]['trade_id'],buy['trade_id'])
         sell=account.sell('2330',101,trade_id=buy['trade_id'])
         self.assertEqual(sell['net_pnl'],768)
-        self.assertEqual(sell['end_balance'],200768)
+        self.assertEqual(sell['equity'],100768)
+        self.assertEqual(sell['daily_buy_remaining'],0)
         self.assertEqual(self.query('SELECT net_pnl,costs,trades_count,settlement_status FROM paper_trade_logs'),[(768,232,1,'settled')])
         again=account.sell('2330',102,trade_id=buy['trade_id'])
         self.assertTrue(again['already_settled'])
@@ -57,14 +59,14 @@ class CashLedgerTests(unittest.TestCase):
         with ThreadPoolExecutor(2) as pool:
             results=list(pool.map(lambda s:account.buy(s,s,100),['2330','2317']))
         self.assertEqual(sum(r['status']=='bought' for r in results),1)
-        self.assertEqual(self.query('SELECT current_capital FROM paper_trade_settings'),[(99960,)])
+        self.assertEqual(ledger.snapshot(self.path)['settings']['daily_buy_used'],100000)
 
     def test_failed_sell_rolls_back_fills_cash_and_position(self):
         buy=account.buy('2330','fixture',100)
         with sqlite3.connect(self.path) as db:
             db.execute("CREATE TRIGGER fail_sell BEFORE INSERT ON paper_trade_fills WHEN NEW.side='SELL' BEGIN SELECT RAISE(ABORT,'fixture'); END")
         with self.assertRaises(sqlite3.IntegrityError):account.sell('2330',101,trade_id=buy['trade_id'])
-        self.assertEqual(self.query('SELECT current_capital FROM paper_trade_settings'),[(99960,)])
+        self.assertEqual(ledger.snapshot(self.path)['settings']['daily_buy_used'],100000)
         self.assertEqual(len(account.open_positions()),1)
         self.assertEqual(self.query('SELECT settlement_status FROM paper_trade_logs'),[('pending',)])
         self.assertEqual(len(self.query('SELECT * FROM paper_trade_fills')),1)
@@ -72,6 +74,7 @@ class CashLedgerTests(unittest.TestCase):
     def test_missing_period_and_old_receipt_cannot_close_new_position(self):
         first=account.buy('2330','fixture',100)
         account.sell('2330',101,trade_id=first['trade_id'])
+        with sqlite3.connect(self.path) as db:db.execute('UPDATE paper_trade_settings SET daily_buy_limit=200000')
         second=account.buy('2330','fixture',100)
         account.sell('2330',105,trade_id=first['trade_id'])
         self.assertEqual(account.open_positions()[0]['trade_id'],second['trade_id'])

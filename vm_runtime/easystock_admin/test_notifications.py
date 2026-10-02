@@ -104,9 +104,9 @@ class NotificationTests(unittest.TestCase):
             n.update(self.store, {'line_trade': False, 'line_summary': False, 'telegram_trade': False, 'telegram_summary': False, 'version': 1})
 
     def test_summary_reads_canonical_paper_log_including_zero_trades(self):
+        self.store.start_paper_trade(100000)
         with closing(sqlite3.connect(self.store.path)) as db, db:
-            db.execute("INSERT INTO paper_trade_settings VALUES(1,100000,100000,'running','2026-10-01',0)")
-            db.execute("INSERT INTO paper_trade_logs VALUES('2026-10-01',100000,100000,0,'',0,0,0)")
+            db.execute("UPDATE paper_trade_settings SET start_date='2026-10-01'")
         text = build_daily_summary(self.store.path, '2026-10-01')
         self.assertIn('今日模擬當沖 0 筆', text); self.assertIn('100,000.00', text)
 

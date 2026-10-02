@@ -70,7 +70,8 @@ class StoreTests(unittest.TestCase):
             result = snapshot(self.s)
         paper = next(row for row in result['signals'] if row['key'] == 'paper_trade')
         self.assertEqual(paper['state'], 'ok')
-        self.assertEqual(paper['metrics']['current_capital'], 200000)
+        self.assertEqual(paper['metrics']['daily_buy_limit'], 200000)
+        self.assertEqual(paper['metrics']['daily_buy_remaining'], 200000)
 
     def test_health_reports_unidentified_deployment_as_warning(self):
         from easystock_admin.health import snapshot
@@ -202,6 +203,15 @@ class StoreTests(unittest.TestCase):
         self.assertTrue(first['has_more']);self.assertTrue(second['has_more']);self.assertFalse(third['has_more'])
 
 class WebTests(unittest.TestCase):
+    def test_paper_start_uses_daily_limit_and_rejects_cash_payload(self):
+        csrf=self.login().json['csrf']
+        ok=self.post('paper-trade/start',{'daily_buy_limit':1000000},csrf)
+        self.assertEqual(ok.status_code,200)
+        self.assertEqual(ok.json['settings']['daily_buy_limit'],1000000)
+        self.assertNotIn('current_capital',ok.json['settings'])
+        old=self.post('paper-trade/start',{'initial_capital':1000000},csrf)
+        self.assertEqual(old.status_code,400)
+
     def setUp(self):
         from flask import Flask
         from easystock_admin.web import register_admin

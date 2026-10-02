@@ -40,6 +40,7 @@ FILES = [
     "easystock_admin/web.py",
     "easystock_admin/static/index.html",
     "easystock_admin/static/admin.js",
+    "easystock_admin/static/paper-trade.js",
     "trade_notifications.py",
     "daytrade_summary_push.py",
     "line_bot.py",

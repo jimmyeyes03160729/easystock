@@ -15,18 +15,22 @@
   function render(data) {
     if (!data || !data.settings) return;
     const s = data.settings;
-    const cur = Number(s.current_capital || s.initial_capital);
-    const init = Number(s.initial_capital || 100000);
-    const pnl = cur - init;
-    const ret = init > 0 ? ((pnl / init) * 100).toFixed(2) : '0.00';
-
-    const curEl = document.getElementById('simCurrentCapital');
-    if (curEl) curEl.textContent = `${cur.toLocaleString()} 元`;
+    const input=document.getElementById('simDailyLimitInput');
+    if (input && document.activeElement !== input && input.dataset.savedLimit !== String(s.daily_buy_limit)) {
+      input.value=s.daily_buy_limit;
+      input.dataset.savedLimit=String(s.daily_buy_limit);
+    }
+    const amounts = {simRemaining:s.daily_buy_remaining,simDailyLimit:s.daily_buy_limit,
+      simUsed:s.daily_buy_used,simGrossPnl:s.realized_pnl,simFees:s.fees,simTax:s.tax,
+      simNetPnl:s.net_pnl,simCumulativePnl:s.cumulative_net_pnl,simEquity:s.equity};
+    for (const [id,amount] of Object.entries(amounts)) {
+      const node=document.getElementById(id);
+      if (node) node.textContent = amount == null ? '--' : `${Number(amount).toLocaleString()} 元`;
+    }
 
     const retEl = document.getElementById('simReturnRate');
     if (retEl) {
-      retEl.textContent = `累計損益: ${pnl >= 0 ? '+' : ''}${pnl.toLocaleString()} 元 (${ret}%)`;
-      retEl.style.color = pnl > 0 ? '#f87171' : pnl < 0 ? '#4ade80' : 'var(--muted,#888)';
+      retEl.textContent = `交易資金報酬率（淨損益／買進使用額度）：${s.return_pct == null ? '--' : Number(s.return_pct).toFixed(2)+'%'}`;
     }
 
     const badge = document.getElementById('simStatusBadge');
@@ -37,7 +41,7 @@
     }
 
     const startEl = document.getElementById('simStartDate');
-    if (startEl) startEl.textContent = `起始日期: ${s.start_date || '--'} (本金 ${init.toLocaleString()})`;
+    if (startEl) startEl.textContent = `起始日期: ${s.start_date || '--'}`;
 
     // 渲染持倉部位
     const posBox = document.getElementById('simPositionsContainer');
@@ -85,10 +89,10 @@
           const color = log.net_pnl > 0 ? '#f87171' : log.net_pnl < 0 ? '#4ade80' : 'inherit';
           return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
             <td style="padding:6px 4px;font-family:monospace;">${log.date}</td>
-            <td style="padding:6px 4px;">${Number(log.start_balance).toLocaleString()}</td>
+            <td style="padding:6px 4px;">${log.daily_buy_limit == null ? '舊帳本未保存' : Number(log.daily_buy_limit).toLocaleString()}</td>
             <td style="padding:6px 4px;">${log.symbols || '--'}</td>
             <td style="padding:6px 4px;font-weight:bold;color:${color};">${log.net_pnl >= 0 ? '+' : ''}${Number(log.net_pnl).toLocaleString()}</td>
-            <td style="padding:6px 4px;font-weight:bold;">${Number(log.end_balance).toLocaleString()}</td>
+            <td style="padding:6px 4px;font-weight:bold;">${Number(log.equity_end).toLocaleString()}</td>
           </tr>`;
         }).join('');
       }
@@ -112,7 +116,7 @@
     if (form) {
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const cap = Number(document.getElementById('simInitialInput').value);
+        const cap = Number(document.getElementById('simDailyLimitInput').value);
         const statusEl = document.getElementById('simActionStatus');
         statusEl.textContent = '設定中...';
         try {
@@ -120,11 +124,11 @@
           const res = await fetch('/admin/paper-trade/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-            body: JSON.stringify({ initial_capital: cap })
+            body: JSON.stringify({ daily_buy_limit: cap })
           });
           const data = await res.json();
           if (res.ok) {
-            statusEl.textContent = `已成功啟動！起始本金設為 ${cap.toLocaleString()} 元。`;
+            statusEl.textContent = `已儲存每日買進額度 ${cap.toLocaleString()} 元並啟動模擬；今日已用額度保留。`;
             render(data);
           } else {
             statusEl.textContent = data.error || '設定失敗';

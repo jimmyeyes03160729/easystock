@@ -100,6 +100,7 @@ chmod 600 release-info.json
 .venv/bin/python3 tests/test_paper_legacy.py -q
 .venv/bin/python3 tests/test_research_schedule.py -q
 .venv/bin/python3 deploy/verify_paper_ledger.py --runtime /home/ubuntu/easystock
+.venv/bin/python3 deploy/migrate_paper_daily_limit.py --apply --backup-dir "$backup"
 python3 - <<'PY'
 from pathlib import Path
 import os

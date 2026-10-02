@@ -110,10 +110,13 @@ class Store:
             ''')
             from .notifications import initialize as initialize_notifications
             initialize_notifications(db)
+            db.execute('BEGIN IMMEDIATE')
             if not db.execute('SELECT 1 FROM settings WHERE id=1').fetchone():
                 db.execute('INSERT OR IGNORE INTO settings VALUES(1,?,1,?)', (json.dumps(validate(initial) if initial is not None else defaults()), time.time()))
             if not db.execute('SELECT 1 FROM pipeline_settings WHERE id=1').fetchone():
                 db.execute('INSERT OR IGNORE INTO pipeline_settings VALUES(1,?,1,?)', (json.dumps(PIPELINE_DEFAULTS), time.time()))
+            import paper_ledger
+            paper_ledger.migrate(db)
         self.path.chmod(0o600)
 
     @contextmanager
@@ -169,37 +172,30 @@ class Store:
         return self.get_pipeline_settings()
 
     def get_paper_trade(self):
+        import paper_ledger
+        with closing(sqlite3.connect(self.path)) as db:
+            exists = db.execute('SELECT 1 FROM paper_trade_settings WHERE id=1').fetchone()
+        if not exists:
+            return {'settings':paper_trade_defaults(),'positions':[],'events':[],'logs':[]}
+        return paper_ledger.snapshot(self.path)
+
+    def start_paper_trade(self, daily_buy_limit):
+        if isinstance(daily_buy_limit, bool) or not isinstance(daily_buy_limit, (int, float)) or not math.isfinite(daily_buy_limit) or not 0 < daily_buy_limit <= 100000000:
+            raise ValueError('請輸入大於 0 且不超過一億元的每日買進額度。')
+        cap = round(float(daily_buy_limit), 2)
+        if cap <= 0:
+            raise ValueError('每日買進額度至少 0.01 元。')
+        import paper_ledger
+        today_str = paper_ledger.now().date().isoformat()
         with self.tx() as db:
-            row = db.execute('SELECT initial_capital,current_capital,status,start_date,updated_at FROM paper_trade_settings WHERE id=1').fetchone()
-            if not row:
-                settings = {'initial_capital': 100000.0, 'current_capital': 100000.0, 'status': 'stopped', 'start_date': '', 'updated_at': time.time()}
-            else:
-                settings = {'initial_capital': row[0], 'current_capital': row[1], 'status': row[2], 'start_date': row[3], 'updated_at': row[4]}
-
-            positions = []
-            for r in db.execute('SELECT symbol,name,entry_price,shares,entry_time FROM paper_trade_positions').fetchall():
-                positions.append({'symbol': r[0], 'name': r[1], 'entry_price': r[2], 'shares': r[3], 'entry_time': r[4]})
-
-            today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime('%Y-%m-%d')
-            events = []
-            for r in db.execute('SELECT time_str,symbol,name,price,action,reason FROM paper_trade_events WHERE date=? ORDER BY id DESC LIMIT 25', (today,)).fetchall():
-                events.append({'time': r[0], 'symbol': r[1], 'name': r[2], 'price': r[3], 'action': r[4], 'reason': r[5]})
-
-            logs = []
-            for r in db.execute('SELECT date,start_balance,end_balance,net_pnl,symbols,costs,trades_count FROM paper_trade_logs ORDER BY date DESC LIMIT 30').fetchall():
-                logs.append({'date': r[0], 'start_balance': r[1], 'end_balance': r[2], 'net_pnl': r[3], 'symbols': r[4], 'costs': r[5], 'trades_count': r[6]})
-
-            return {'settings': settings, 'positions': positions, 'events': events, 'logs': logs}
-
-    def start_paper_trade(self, initial_capital):
-        if isinstance(initial_capital, bool) or not isinstance(initial_capital, (int, float)) or not math.isfinite(initial_capital) or initial_capital <= 0:
-            raise ValueError('請輸入大於 0 的有效本金。')
-        cap = round(float(initial_capital), 2)
-        today_str = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime('%Y-%m-%d')
-        with self.tx() as db:
-            db.execute('''INSERT OR REPLACE INTO paper_trade_settings(id, initial_capital, current_capital, status, start_date, updated_at)
-                          VALUES(1, ?, ?, 'running', ?, ?)''', (cap, cap, today_str, time.time()))
-            self._audit(db, 'google', 'paper_trade_start', {'initial_capital': cap, 'start_date': today_str})
+            db.execute('''INSERT OR IGNORE INTO paper_trade_settings(id,initial_capital,current_capital,status,start_date,updated_at)
+                          VALUES(1,?,?,'stopped',?,?)''',(cap,cap,today_str,time.time()))
+            paper_ledger.migrate(db)
+            pid=paper_ledger.period(db)
+            if any(r['entry_date'] != today_str for r in paper_ledger.open_positions(db,pid)):
+                raise ValueError('存在跨日未結部位；禁止啟動新交易，請先核對。')
+            db.execute("UPDATE paper_trade_settings SET daily_buy_limit=?,status='running',updated_at=? WHERE id=1",(cap,time.time()))
+            self._audit(db, 'google', 'paper_trade_start', {'daily_buy_limit': cap, 'semantics_version':paper_ledger.SEMANTICS})
         return self.get_paper_trade()
 
     def toggle_paper_trade(self):
@@ -211,8 +207,11 @@ class Store:
                 today_str = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime('%Y-%m-%d')
                 db.execute('''INSERT INTO paper_trade_settings(id, initial_capital, current_capital, status, start_date, updated_at)
                               VALUES(1, 100000.0, 100000.0, ?, ?, ?)''', (next_status, today_str, time.time()))
-            else:
-                db.execute('UPDATE paper_trade_settings SET status=?, updated_at=? WHERE id=1', (next_status, time.time()))
+            import paper_ledger
+            paper_ledger.migrate(db)
+            if next_status == 'running' and any(r['entry_date'] != paper_ledger.now().date().isoformat() for r in paper_ledger.open_positions(db,paper_ledger.period(db))):
+                raise ValueError('存在跨日未結部位；禁止啟動新交易。')
+            db.execute('UPDATE paper_trade_settings SET status=?, updated_at=? WHERE id=1', (next_status, time.time()))
             self._audit(db, 'google', 'paper_trade_toggle', {'status': next_status})
         return self.get_paper_trade()
 
@@ -302,32 +301,33 @@ def read_pipeline_settings():
         db.close()
 
 
+def paper_trade_defaults():
+    return {'daily_buy_limit':100000.0,'daily_buy_used':0.0,'daily_buy_remaining':100000.0,
+            'status':'stopped','start_date':'','performance_base':100000.0,
+            'cumulative_net_pnl':0.0,'equity':100000.0,'net_pnl':0.0,'fees':0.0,'tax':0.0}
+
+
 def read_paper_trade_settings():
     path = db_path()
     if not path.exists():
-        return {'initial_capital': 100000.0, 'current_capital': 100000.0, 'status': 'stopped', 'start_date': ''}
+        return paper_trade_defaults()
     uri = path.resolve().as_uri() + '?mode=ro'
     db = sqlite3.connect(uri, uri=True, timeout=1)
     try:
         tbl = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='paper_trade_settings'").fetchone()
         if not tbl:
-            return {'initial_capital': 100000.0, 'current_capital': 100000.0, 'status': 'stopped', 'start_date': ''}
-        row = db.execute('SELECT initial_capital,current_capital,status,start_date FROM paper_trade_settings WHERE id=1').fetchone()
+            return paper_trade_defaults()
+        row = db.execute('SELECT 1 FROM paper_trade_settings WHERE id=1').fetchone()
         if not row:
-            return {'initial_capital': 100000.0, 'current_capital': 100000.0, 'status': 'stopped', 'start_date': ''}
-        return {'initial_capital': row[0], 'current_capital': row[1], 'status': row[2], 'start_date': row[3]}
+            return paper_trade_defaults()
+        import paper_ledger
+        return paper_ledger.snapshot(path)['settings']
     finally:
         db.close()
 
 
 def record_paper_trade_settlement(date_str, start_bal, end_bal, net_pnl, symbols_str, costs=0.0, trades_count=1):
-    path = db_path()
-    with closing(sqlite3.connect(path, timeout=5)) as db, db:
-        db.execute('''
-            INSERT OR REPLACE INTO paper_trade_logs(date, start_balance, end_balance, net_pnl, symbols, costs, trades_count, created_at)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (str(date_str), float(start_bal), float(end_bal), float(net_pnl), str(symbols_str), float(costs), int(trades_count), time.time()))
-        db.execute('UPDATE paper_trade_settings SET current_capital=?, updated_at=? WHERE id=1', (float(end_bal), time.time()))
+    raise RuntimeError('Deprecated cash settlement; use paper_ledger.sell with a position identity')
 
 
 def log_paper_trade_event(symbol: str, name: str, price: float, action: str, reason: str):
@@ -343,16 +343,11 @@ def log_paper_trade_event(symbol: str, name: str, price: float, action: str, rea
 
 
 def set_paper_position(symbol: str, name: str, price: float, shares: int):
-    path = db_path()
-    time_str = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime('%H:%M:%S')
-    with closing(sqlite3.connect(path, timeout=5)) as db, db:
-        db.execute('INSERT OR REPLACE INTO paper_trade_positions VALUES(?, ?, ?, ?, ?)', (str(symbol), str(name), float(price), int(shares), time_str))
+    raise RuntimeError('Use paper_ledger.buy; positions require a corresponding BUY fill')
 
 
 def clear_paper_position(symbol: str):
-    path = db_path()
-    with closing(sqlite3.connect(path, timeout=5)) as db, db:
-        db.execute('DELETE FROM paper_trade_positions WHERE symbol=?', (str(symbol),))
+    raise RuntimeError('Use paper_ledger.sell; positions require a settlement receipt')
 
 
 def get_paper_position(symbol: str) -> dict | None:

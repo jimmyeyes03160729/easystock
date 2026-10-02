@@ -156,6 +156,7 @@ def trade_summary(live, session_date, research_rows=None):
                             row.get('execution_kind') == 'paper_fill' for row in all_rows),
         'paper_skipped': sum(row.get('paper_execution') == 'SKIPPED' for row in all_rows),
         'paper_skipped_insufficient_cash': sum(row.get('paper_skip_reason') == 'insufficient_cash' for row in all_rows),
+        'paper_skipped_daily_buy_limit': sum(row.get('paper_skip_reason') == 'daily_buy_limit_exceeded' for row in all_rows),
         "count": len(rows), "wins": wins, "losses": losses,
         'net_pnl_pct': sum(net) if net and len(net) == len(rows) else None,
         'gross_pnl_pct': sum(gross_pnl) if gross_pnl else None,

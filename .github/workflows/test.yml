@@ -48,6 +48,7 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm test
       - run: node tests/test_admin_ui.cjs
+      - run: node tests/test_paper_limit_ui.cjs
       - run: node tests/test_asset_versions.cjs
       - name: Install Chrome extension build dependencies
         run: pnpm --dir chrome-extension install --frozen-lockfile --ignore-scripts
