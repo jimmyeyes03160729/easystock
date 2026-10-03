@@ -59,3 +59,20 @@ passed; root/vm_runtime execution-core byte equality passed. Deployment pending.
 Admin fixture isolates systemd state; Linux optional sklearn dependency is
 installed only in the isolated test environment, not the production venv.
 Windows full-suite collection requires Linux fcntl and is not counted as pass.
+
+## Deployment guard
+
+Code commit 096300a49803e79db2558380041836b81ab639d5 pushed to origin/main.
+Canonical updater exited 1 before changing the checkout because
+easystock-history-train.service was running (started 22:10:14 Taipei).
+The updater restored the previously enabled intraday timer. No job was killed.
+VM checkout remains 77793c391a7a3d39f7911771134ddf2b52c36a0e;
+this is NOT VM DEPLOYED. Deployment completion and release verification remain
+pending, and the compliance roadmap item is deliberately unchecked.
+
+A same-chat five-minute follow-up is configured to wait silently while guard
+jobs remain active, then run the canonical updater and record its exit result,
+release identity, timer state and unchanged ledger integrity. It must never
+fabricate a live case or stop production work. Desktop follow-up requires the
+computer and Codex app to remain running; completion is not guaranteed while
+they are offline. The follow-up must stop after successful final verification.
