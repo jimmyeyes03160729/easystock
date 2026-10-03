@@ -1,0 +1,54 @@
+contract_metadata:
+  phase: "PHASE_2C"
+  purpose: "UNSEEN_FUTURE_INDEPENDENT_CONFIRMATION_CONTRACT"
+  contract_timestamp: "2026-10-03T11:00:00+08:00"
+  governance: "PRE_COMMITMENT_PRIOR_TO_UNSEEN_DATA_OBSERVATION"
+
+governance_rules:
+  NO_PEEKING_BEFORE_EVALUATION: true
+  EVALUATION_HORIZON_STATUS: "RESEARCH_GOVERNANCE_CANDIDATE"
+  fixed_horizon_rule: "Evaluation horizon is frozen prior to inspecting any post-2026-10-02 performance. Stopping time cannot be dynamically adjusted based on results."
+  insufficient_sample_rule: "If fewer than minimum_signal_count signals are collected within the 60 trading days window, the verdict is INSUFFICIENT_CONFIRMATION_SAMPLE. Extending the evaluation window until results improve is strictly prohibited."
+
+scope:
+  confirmation_start_date: "AFTER_2026_10_02"
+  evaluation_horizon: "60_TRADING_DAYS"
+  minimum_signal_count: 500
+  data_nature: "TRULY_UNSEEN_FUTURE_MARKET_DATES"
+  eligibility: "Dates strictly occurring on or after 2026-10-05 (next TWSE trading session)"
+
+f01_frozen_definition:
+  source: "FROZEN_FROM_PHASE2B_BATCH2"
+  filter_id: "F01_MARKET_REGIME"
+  parameter_id: "F01_REGIME_VWAP"
+  semantics: "UNIVERSE_EQUAL_WEIGHTED_MARKET_PROXY_INTRADAY_DIRECTION"
+  condition:
+    LONG: "proxy_cum_return >= 0.0"
+    SHORT: "proxy_cum_return <= 0.0"
+  leave_one_out: true
+  official_index: false
+  research_proxy: true
+  immutable_rule: "F01 definition must strictly remain F01_v1 from Phase 2B. Creating F01_v2, adjusting trend thresholds, adding volatility gates, or modifying opening rules under this contract is strictly prohibited. Any new logic requires a separate preregistered candidate and new confirmation contract."
+
+primary_endpoints:
+  PRIMARY_1: "delta_theoretical_return_pct"
+  PRIMARY_2: "delta_net_return_pct"
+  endpoint_priority_rule: "Primary endpoints are non-negotiable. If delta_theoretical_return_pct or delta_net_return_pct fails, switching to secondary metrics (such as Sharpe or R) is strictly prohibited."
+
+supportive_endpoints:
+  - "retention_rate"
+  - "delta_trading_friction_pct"
+  - "candidate_breakdown"
+  - "date_cluster_diagnostic"
+
+evaluation_verdict_criteria:
+  pass_condition:
+    - "OOS delta theoretical return > 0.0"
+    - "OOS delta net return > 0.0"
+    - "total_evaluated_signals >= minimum_signal_count"
+  verdict_labels:
+    pass: "INDEPENDENT_CONFIRMATION_PASS"
+    fail: "INDEPENDENT_CONFIRMATION_FAIL"
+    insufficient_sample: "INSUFFICIENT_CONFIRMATION_SAMPLE"
+
+execution_status: "STANDBY_UNEXECUTED_IN_PHASE_2C_A"

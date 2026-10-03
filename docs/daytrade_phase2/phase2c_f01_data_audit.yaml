@@ -1,0 +1,64 @@
+audit_metadata:
+  phase: "PHASE_2C_A"
+  purpose: "DATA_AVAILABILITY_AUDIT_FOR_F01_FOLLOWUP"
+  audit_timestamp: "2026-10-03T10:48:00+08:00"
+  governance: "READ_ONLY_DATA_AUDIT_STRICT_NO_SYNTHETIC_DATA_NO_BACKFILL"
+  OFFICIAL_INDEX_REPLICATION_STATUS: "DATA_UNAVAILABLE"
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+
+series_audits:
+  taiex_historical_1m_and_daily:
+    series_name: "TWSE_TAIEX_IX0001"
+    status: "DATA_UNAVAILABLE"
+    notes: "Historical raw store only archives individual stock 1m kbars. No official TAIEX IX0001 series is present."
+
+  otc_historical_1m_and_daily:
+    series_name: "TPEX_OTC_INDEX"
+    status: "DATA_UNAVAILABLE"
+    notes: "No official OTC/TPEX index series exists in historical raw store."
+
+  electronics_sector_index:
+    series_name: "TWSE_ELECTRONICS_INDEX"
+    status: "DATA_UNAVAILABLE"
+    notes: "No sector index series exists in historical archive."
+
+  semiconductor_sector_index:
+    series_name: "TWSE_SEMICONDUCTOR_INDEX"
+    status: "DATA_UNAVAILABLE"
+    notes: "No semiconductor sector index exists in historical archive."
+
+  financials_sector_index:
+    series_name: "TWSE_FINANCIALS_INDEX"
+    status: "DATA_UNAVAILABLE"
+    notes: "No financials sector index exists in historical archive."
+
+  shipping_sector_index:
+    series_name: "TWSE_SHIPPING_INDEX"
+    status: "DATA_UNAVAILABLE"
+    notes: "No shipping sector index exists in historical archive."
+
+  official_index_1m:
+    series_name: "OFFICIAL_INDEX_1M"
+    status: "DATA_UNAVAILABLE"
+    notes: "No 1-minute official benchmark series available."
+
+  official_index_daily:
+    series_name: "OFFICIAL_INDEX_DAILY"
+    status: "DATA_UNAVAILABLE"
+    notes: "No official benchmark daily series available."
+
+  market_breadth_historical:
+    series_name: "MARKET_BREADTH"
+    status: "PARTIAL_DATA"
+    notes: "Whole-market breadth unavailable; 100-stock universe breadth available as Leave-One-Out RESEARCH_PROXY."
+
+  point_in_time_sector_mapping:
+    series_name: "SYMBOL_TO_SECTOR_PIT_MAPPING"
+    status: "DATA_UNAVAILABLE"
+    notes: "selection.json contains static category codes for 55 original stocks only; no point-in-time historical sector reclassifications or mappings exist."
+
+replication_contract:
+  interface_name: "OfficialMarketContextProvider"
+  implementation_status: "IMPLEMENTATION_CONTRACT_ONLY"
+  mock_or_synthetic_data_allowed: false

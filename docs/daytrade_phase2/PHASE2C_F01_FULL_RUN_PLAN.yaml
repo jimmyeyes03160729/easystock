@@ -1,0 +1,123 @@
+plan_metadata:
+  phase: "PHASE_2C"
+  title: "Phase 2C F01 Market Context Follow-up Study Full Historical Run Plan"
+  plan_version: "1.0.0"
+  creation_timestamp: "2026-10-03T11:05:00+08:00"
+  baseline_sha: "ac5b660fc2b4d39f9e92b73a2a09584bfec0cd00"
+  frozen_status: true
+
+governance_and_classification:
+  study_type: "PREREGISTERED_FOLLOWUP_ON_PREVIOUSLY_OBSERVED_DATA"
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  purpose: "MECHANISM_AND_FAILURE_REGIME_ANALYSIS"
+  is_not:
+    - "strategy optimization"
+    - "new alpha discovery"
+    - "production promotion"
+  F01_STATUS: "FILTER_IMPROVES_RESEARCH_SIGNAL"
+  PRODUCTION_READY: false
+
+dataset_specification:
+  historical_dataset_range: "2023-09-27 ~ 2026-10-02"
+  total_historical_calendar_span: "3 years"
+  raw_universe_scope: "55 symbols (legacy archive) expanding to 100 symbols (2026 archive)"
+  total_expected_stock_days: 43390
+  data_split:
+    walk_forward_folds: 5
+    split_type: "ANCHORED_WALK_FORWARD"
+    train_test_structure: "Fold-by-fold strictly causal out-of-sample evaluation"
+
+mechanism_hypotheses_and_strata:
+  H01_trend:
+    description: "Market trend strength quantiles"
+    quantiles: ["Q1", "Q2", "Q3", "Q4"]
+    governance: "QUANTILE_TRAIN_ONLY: boundaries calibrated strictly on train fold and frozen for OOS."
+  H02_volatility:
+    description: "Intraday realized volatility tertiles"
+    tertiles: ["LOW", "MID", "HIGH"]
+    causality_guard: "Completed bars up to signal_time only."
+  H03_opening_direction:
+    description: "Opening window directional state"
+    windows:
+      - name: "OPENING_15M"
+        interval: "[09:00, 09:15)"
+        available_at_or_after: "09:15:00"
+      - name: "OPENING_30M"
+        interval: "[09:00, 09:30)"
+        available_at_or_after: "09:30:00"
+    right_edge_semantics: "Historical KBar timestamp represents bar close. Window [09:00, 09:15) available at >= 09:15:00. Signals at 09:14:59 strictly NOT_AVAILABLE."
+    strata: ["OPENING_DIRECTION_POSITIVE", "OPENING_DIRECTION_NEUTRAL", "OPENING_DIRECTION_NEGATIVE", "NOT_AVAILABLE"]
+  H04_time_of_day:
+    description: "Intraday trading phases"
+    intervals:
+      OPEN: "[09:00, 10:00)"
+      MID: "[10:00, 12:00)"
+      LATE: "[12:00, 13:30]"
+    invariant: "TIME_BUCKET_MEMBERSHIP_COUNT == 1"
+    strata: ["OPEN", "MID", "LATE"]
+  H05_proxy_breadth:
+    description: "Active proxy peer breadth"
+    strata: ["BREADTH_34_54", "BREADTH_55_79", "BREADTH_80_99", "INSUFFICIENT_BREADTH"]
+    out_of_range_policy:
+      insufficient_breadth: "peer_count < 34 labeled INSUFFICIENT_BREADTH, retained in accounting."
+      exceed_max_universe: "peer_count > 99 raises CAUSALITY_OR_METADATA_FAILURE and halts run."
+  H06_candidate_direction:
+    description: "Directional and candidate breakdown"
+    directions: ["LONG", "SHORT"]
+    candidates: ["P2B_01_v1", "P2B_02_v1", "P2B_03_v1", "P2B_04_v1"]
+    strata: ["LONG", "SHORT", "P2B_01_v1", "P2B_02_v1", "P2B_03_v1", "P2B_04_v1"]
+  H07_failure_regime:
+    description: "Post-outcome day-level failure diagnosis"
+    classification:
+      - "IMPROVED_DAY: daily_delta_theoretical_return_pct > 0"
+      - "DEGRADED_DAY: daily_delta_theoretical_return_pct <= 0"
+    DESCRIPTIVE_POST_OUTCOME_CLASSIFICATION: true
+    strata: ["IMPROVED_DAY", "DEGRADED_DAY"]
+    governance_mandate: "Descriptive mechanism diagnosis only; strictly prohibited from entering live/decision filter path."
+
+search_and_stratification_rules:
+  ONE_DIMENSIONAL_ONLY: true
+  CARTESIAN_SEARCH_ALLOWED: false
+  allowed_multidimensional_reports:
+    - "year x hypothesis_stratum"
+    - "candidate x hypothesis_stratum"
+  anti_cherry_picking:
+    NO_STRATA_DELETION: true
+    NO_STRATA_MERGING: true
+    NO_THRESHOLD_ADDITION: true
+    NO_THRESHOLD_SHIFTING: true
+    NO_FILTER_CREATION: true
+
+output_schema:
+  per_stratum_metrics:
+    - "unique_signals"
+    - "filtered_signals"
+    - "retention_rate"
+    - "unfiltered_theoretical_return_pct"
+    - "filtered_theoretical_return_pct"
+    - "delta_theoretical_return_pct"
+    - "unfiltered_trading_friction_pct"
+    - "filtered_trading_friction_pct"
+    - "delta_trading_friction_pct"
+    - "unfiltered_net_return_pct"
+    - "filtered_net_return_pct"
+    - "delta_net_return_pct"
+  mandatory_breakdowns:
+    - "year"
+    - "candidate"
+    - "direction"
+    - "completeness_status: COMPLETE_ONLY vs USABLE_WITH_GAPS"
+
+language_restrictions:
+  permitted_verdicts:
+    - "MECHANISM_PATTERN_OBSERVED"
+    - "MECHANISM_PATTERN_NOT_OBSERVED"
+    - "FAILURE_REGIME_OBSERVED"
+    - "NO_CLEAR_MECHANISM"
+    - "DATA_INSUFFICIENT"
+  strictly_prohibited_terms:
+    - "VALIDATED_ALPHA"
+    - "INDEPENDENT_CONFIRMATION"
+    - "PROVEN_REGIME"
+    - "PRODUCTION_READY"

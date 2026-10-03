@@ -1,0 +1,40 @@
+{
+  "files": [
+    {
+      "relative_path": "daytrade_learning/phase2/f01_followup/__init__.py",
+      "sha256": "46cf3729f51b15cca4a5b0e98a64700325563242dd92665a66157b479a315356"
+    },
+    {
+      "relative_path": "daytrade_learning/phase2/f01_followup/breadth_context.py",
+      "sha256": "52ce682d596e2b7f201b28f146c700525f87f613c83cfc5cc6da0f33400d1b97"
+    },
+    {
+      "relative_path": "daytrade_learning/phase2/f01_followup/full_phase2c_runner.py",
+      "sha256": "c9d7f6881213936cea8a20d16ad052692b381ba84a6ec0ff602219484facfa69"
+    },
+    {
+      "relative_path": "daytrade_learning/phase2/f01_followup/mechanism_runner.py",
+      "sha256": "b317cceaac737cd1972a6878d9ca65d2967274cfaefea85e07aa6c7c650f1e7f"
+    },
+    {
+      "relative_path": "daytrade_learning/phase2/f01_followup/official_context.py",
+      "sha256": "5ee7714717b37f358d44ad32fc34e443b4babf5d13125d1f8d12f8892127b99e"
+    },
+    {
+      "relative_path": "daytrade_learning/phase2/f01_followup/opening_context.py",
+      "sha256": "9ddaabbecdf2c4c7a065d7e2666e5b55dd20fa8cf09349c38754c8e0eec91fbc"
+    },
+    {
+      "relative_path": "daytrade_learning/phase2/f01_followup/result_store.py",
+      "sha256": "8daddda1f852182d8cd4e88b6de31010adaa7cd8d49d5e1dd1b2a82dd5f50f4d"
+    },
+    {
+      "relative_path": "daytrade_learning/phase2/f01_followup/trend_context.py",
+      "sha256": "754233f105fa2fe59ffdde8eefbc15e619be935a0b4cc3b5e4766aad56cccce1"
+    },
+    {
+      "relative_path": "daytrade_learning/phase2/f01_followup/volatility_context.py",
+      "sha256": "a386583a6f0f5d32e2a6efc37a0f06e9a406c869ba02645fc48f27645c03c980"
+    }
+  ]
+}

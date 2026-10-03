@@ -1,0 +1,148 @@
+registry_metadata:
+  phase: "PHASE_2C_A"
+  purpose: "F01_MARKET_CONTEXT_MECHANISM_HYPOTHESIS_REGISTRY"
+  registration_timestamp: "2026-10-03T10:50:00+08:00"
+  governance: "PRE_REGISTERED_PRIOR_TO_PHASE_2C_ANALYSIS"
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  preregistration_status: "PREREGISTERED_FOLLOWUP_ON_PREVIOUSLY_OBSERVED_DATA"
+  primary_metrics:
+    - "delta_theoretical_return_pct"
+    - "delta_net_return_pct"
+  secondary_metrics:
+    - "delta_trading_friction_pct"
+    - "net_expectancy_R"
+    - "profit_factor"
+    - "win_rate"
+    - "MFE_R"
+    - "MAE_R"
+  anti_cherry_picking_rules:
+    - "NO_STRATA_DELETION: All pre-registered strata must be reported in full."
+    - "NO_STRATA_MERGING: Strata boundaries cannot be merged post-hoc."
+    - "NO_THRESHOLD_ADDITION: No new threshold splits allowed after observing data."
+    - "NO_THRESHOLD_SHIFTING: Pre-registered threshold values cannot be adjusted."
+    - "NO_FILTER_CREATION: Mechanism observations strictly prohibited from generating new trading filters."
+  search_governance:
+    ONE_DIMENSIONAL_ONLY: true
+    CARTESIAN_SEARCH_ALLOWED: false
+    allowed_multidimensional_reports:
+      - "year x hypothesis_stratum"
+      - "candidate x hypothesis_stratum"
+  quantile_governance:
+    QUANTILE_TRAIN_ONLY: true
+    rule: "Quantile cutoff boundaries calibrated strictly on TRAIN/IS folds. OOS uses frozen train boundaries. Never recomputed on OOS."
+    full_sample_label: "FULL_SAMPLE_DESCRIPTIVE_ONLY"
+
+hypotheses:
+  - hypothesis_id: "H01_MARKET_TREND_STRENGTH"
+    description: "F01 filter edge is concentrated in periods where proxy trend strength is pronounced."
+    features:
+      - name: "proxy_intraday_return"
+        semantics: "(proxy_close_t - proxy_open_0901) / proxy_open_0901"
+      - name: "proxy_direction_consistency"
+        semantics: "Fraction of 1m bars from 09:01 to signal_time where bar direction matches overall proxy return direction."
+    strata:
+      - "Q1"
+      - "Q2"
+      - "Q3"
+      - "Q4"
+    calibration_rule: "Quantile cutoff boundaries calibrated strictly on TRAIN/IS folds. OOS uses frozen train boundaries."
+
+  - hypothesis_id: "H02_MARKET_VOLATILITY"
+    description: "F01 filter edge is more pronounced in high-volatility market regimes than in low-volatility regimes."
+    features:
+      - name: "realized_volatility"
+        semantics: "Standard deviation of causal 1m proxy returns from 09:01 to signal_time."
+      - name: "intraday_range"
+        semantics: "(max(proxy_high_0901_to_t) - min(proxy_low_0901_to_t)) / proxy_open_0901"
+    causality_guard: "Strictly completed bars up to signal_time only. Prohibits full-day range, close-to-close vol, or future bars."
+    strata:
+      - "LOW"
+      - "MID"
+      - "HIGH"
+    calibration_rule: "Fixed causal tertiles calibrated on historical observations."
+
+  - hypothesis_id: "H03_OPENING_DIRECTION"
+    description: "Early session market direction establishes market state that influences F01 effectiveness."
+    windows:
+      - name: "OPENING_15M"
+        interval: "[09:00, 09:15)"
+        available_at_or_after: "09:15:00"
+      - name: "OPENING_30M"
+        interval: "[09:00, 09:30)"
+        available_at_or_after: "09:30:00"
+    right_edge_semantics: "Historical KBar timestamp represents bar close. Window [09:00, 09:15) available at >= 09:15:00. Signals at 09:14:59 (or 09:14 in 1m resolution) are strictly NOT_AVAILABLE."
+    strata:
+      - "OPENING_DIRECTION_POSITIVE"
+      - "OPENING_DIRECTION_NEUTRAL"
+      - "OPENING_DIRECTION_NEGATIVE"
+      - "NOT_AVAILABLE"
+
+  - hypothesis_id: "H04_TIME_OF_DAY"
+    description: "F01 filter performance exhibits distinct behavior across market intraday phases."
+    intervals:
+      OPEN: "[09:00, 10:00)"
+      MID: "[10:00, 12:00)"
+      LATE: "[12:00, 13:30]"
+    invariant: "TIME_BUCKET_MEMBERSHIP_COUNT == 1"
+    strata:
+      - "OPEN"
+      - "MID"
+      - "LATE"
+    anti_cherry_picking_rule: "Fixed half-open time boundaries; no post-hoc minute interval optimization."
+
+  - hypothesis_id: "H05_PROXY_BREADTH"
+    description: "F01 filter edge magnitude depends on proxy peer breadth (active constituent count)."
+    feature: "proxy_constituent_count_at_t"
+    pre_registered_buckets:
+      - bucket_id: "BREADTH_34_54"
+        min_peers: 34
+        max_peers: 54
+        note: "Corresponds to legacy ~55-symbol universe days."
+      - bucket_id: "BREADTH_55_79"
+        min_peers: 55
+        max_peers: 79
+        note: "Intermediate / transitional archive days."
+      - bucket_id: "BREADTH_80_99"
+        min_peers: 80
+        max_peers: 99
+        note: "Corresponds to expanded 100-symbol universe days."
+      - bucket_id: "INSUFFICIENT_BREADTH"
+        max_peers: 33
+        note: "Active peers < 34. Explicit status, strictly NO silent drop."
+    out_of_range_policy:
+      insufficient_breadth: "peer_count < 34 labeled INSUFFICIENT_BREADTH; retained in accounting."
+      exceed_max_universe: "peer_count > 99 raises CAUSALITY_OR_METADATA_FAILURE and halts run."
+    strata:
+      - "BREADTH_34_54"
+      - "BREADTH_55_79"
+      - "BREADTH_80_99"
+      - "INSUFFICIENT_BREADTH"
+
+  - hypothesis_id: "H06_CANDIDATE_DIRECTION"
+    description: "F01 filter impacts LONG candidates and SHORT candidates differently."
+    groups:
+      - group_id: "DIRECTION"
+        strata: ["LONG", "SHORT"]
+      - group_id: "CANDIDATES"
+        strata: ["P2B_01_v1", "P2B_02_v1", "P2B_03_v1", "P2B_04_v1"]
+    strata:
+      - "LONG"
+      - "SHORT"
+      - "P2B_01_v1"
+      - "P2B_02_v1"
+      - "P2B_03_v1"
+      - "P2B_04_v1"
+    invariance_rule: "Candidate definitions frozen from Phase 2B; no parameter changes."
+
+  - hypothesis_id: "H07_FAILURE_REGIME"
+    description: "Examines market conditions characteristic of days where F01 degraded performance, focusing on 2025."
+    classification:
+      - "IMPROVED_DAY: daily_delta_theoretical_return_pct > 0"
+      - "DEGRADED_DAY: daily_delta_theoretical_return_pct <= 0"
+    known_period: "2025 calendar year (KNOWN_FAILURE_PERIOD_ANALYSIS)"
+    DESCRIPTIVE_POST_OUTCOME_CLASSIFICATION: true
+    strata:
+      - "IMPROVED_DAY"
+      - "DEGRADED_DAY"
+    governance_mandate: "Descriptive mechanism diagnosis only; strictly prohibited from entering live/decision filter path or being claimed as predictive regime."

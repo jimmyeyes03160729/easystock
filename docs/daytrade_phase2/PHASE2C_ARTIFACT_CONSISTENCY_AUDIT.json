@@ -1,0 +1,22 @@
+{
+  "all_match": true,
+  "audit_description": "Exhaustive consistency audit verifying WFA metadata freeze, table cells, and narrative numerics.",
+  "audit_timestamp": "2026-10-03T21:17:55+08:00",
+  "cross_review_numeric_match": true,
+  "direct_answer_numeric_match": true,
+  "fold_count_match": true,
+  "fold_dates_match": true,
+  "frozen_fold_metadata_match": true,
+  "immutable_wfa_exact_match": true,
+  "incomplete_terminal_match": true,
+  "mismatch_count": 0,
+  "mismatches": [],
+  "oos_signal_count_match": true,
+  "source_cross_review": "docs/daytrade_phase2/PHASE2C_RESULT_CROSS_REVIEW.md",
+  "source_immutable_full_run_summary": "docs/daytrade_phase2/phase2c_f01_full_run_summary.yaml",
+  "source_report": "docs/daytrade_phase2/phase2c_f01_corrected_report.md",
+  "source_summary": "docs/daytrade_phase2/phase2c_f01_corrected_summary.yaml",
+  "table_cells_match": true,
+  "total_checks": 349,
+  "train_boundaries_match": true
+}
