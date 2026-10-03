@@ -1,0 +1,109 @@
+registry_metadata:
+  phase: "PHASE_2B_BATCH_2"
+  purpose: "PRE_REGISTRATION_FILTER_PARAMETERS"
+  registration_timestamp: "2026-10-03T07:10:00+08:00"
+  governance: "PRE_REGISTERED_PRIOR_TO_RESEARCH_EVALUATION"
+  scopes:
+    confirmatory_scope:
+      - "F01_MARKET_REGIME"
+      - "F02_RELATIVE_STRENGTH"
+      - "F04_HIGHER_TIMEFRAME_CONTEXT"
+      - "F05_LIQUIDITY_CANDIDATE_POOL"
+    data_insufficient_scope:
+      - "F03_SECTOR_STRENGTH"
+    pairwise_scope: "EXPLORATORY_POST_SMOKE"
+
+filter_parameters:
+  - parameter_id: "F01_REGIME_VWAP"
+    filter_family: "F01_MARKET_REGIME"
+    target_candidates: ["P2B_01_v1", "P2B_02_v1", "P2B_03_v1", "P2B_04_v1"]
+    values:
+      - condition: "MARKET_ABOVE_VWAP"
+        applies_to: "LONG"
+      - condition: "MARKET_BELOW_VWAP"
+        applies_to: "SHORT"
+    provenance: "RESEARCH_GOVERNANCE_CANDIDATE"
+    status: "CANDIDATE_PRE_REGISTERED"
+    causal_semantics: "Evaluated at signal_time using only past closed 1m bars from session open (09:01) to signal_time."
+
+  - parameter_id: "F01_REGIME_INTRADAY_RETURN"
+    filter_family: "F01_MARKET_REGIME"
+    target_candidates: ["P2B_01_v1", "P2B_02_v1", "P2B_03_v1", "P2B_04_v1"]
+    values:
+      thresholds_pct: [-0.3, 0.0, 0.3]
+    provenance: "RESEARCH_GOVERNANCE_CANDIDATE"
+    status: "CANDIDATE_PRE_REGISTERED"
+    causal_semantics: "Market return from 09:01 open to signal_time bar close."
+
+  - parameter_id: "F02_RELATIVE_STRENGTH_WINDOW"
+    filter_family: "F02_RELATIVE_STRENGTH"
+    target_candidates: ["P2B_01_v1", "P2B_02_v1", "P2B_03_v1", "P2B_04_v1"]
+    values:
+      windows_minutes: [5, 15, 30, 60]
+      threshold_tiers:
+        LONG:
+          tier_positive: "rs > 0.001"
+          tier_neutral: "-0.001 <= rs <= 0.001"
+          tier_negative: "rs < -0.001"
+        SHORT:
+          tier_negative: "rs < -0.001"
+          tier_neutral: "-0.001 <= rs <= 0.001"
+          tier_positive: "rs > 0.001"
+    provenance: "RESEARCH_GOVERNANCE_CANDIDATE"
+    status: "CANDIDATE_PRE_REGISTERED"
+    causal_semantics: "Calculates (stock_return_window - market_return_window) strictly using closed bars up to signal_time."
+
+  - parameter_id: "F03_SECTOR_STRENGTH"
+    filter_family: "F03_SECTOR_STRENGTH"
+    target_candidates: ["P2B_01_v1", "P2B_02_v1", "P2B_03_v1", "P2B_04_v1"]
+    values:
+      status: "DATA_INSUFFICIENT"
+      point_in_time_sector_mapping: false
+    provenance: "RESEARCH_GOVERNANCE_CANDIDATE"
+    status: "DATA_INSUFFICIENT"
+    causal_semantics: "Sector series unavailable in raw archive; sector mapping non-point-in-time."
+
+  - parameter_id: "F04_HIGHER_TIMEFRAME_CONTEXT"
+    filter_family: "F04_HIGHER_TIMEFRAME_CONTEXT"
+    target_candidates: ["P2B_01_v1", "P2B_02_v1", "P2B_03_v1", "P2B_04_v1"]
+    values:
+      timeframes: ["5m", "15m", "30m"]
+      conditions:
+        - name: "HTF_BAR_DIRECTION"
+          rule: "Last closed HTF bar close >= open for LONG, close <= open for SHORT"
+        - name: "HTF_VWAP"
+          rule: "Last closed HTF bar close >= HTF VWAP for LONG, close <= HTF VWAP for SHORT"
+    provenance: "RESEARCH_GOVERNANCE_CANDIDATE"
+    status: "CANDIDATE_PRE_REGISTERED"
+    causal_semantics: "Strictly completed/closed higher-timeframe bars only. At minute 09:37, 5m context accesses 09:30-09:35 closed bar. Current forming bar 09:35-09:40 is strictly prohibited and raises an error if accessed."
+
+  - parameter_id: "F05_LIQUIDITY_CANDIDATE_POOL"
+    filter_family: "F05_LIQUIDITY_CANDIDATE_POOL"
+    target_candidates: ["P2B_01_v1", "P2B_02_v1", "P2B_03_v1", "P2B_04_v1"]
+    values:
+      lookback_minutes: [30, 60]
+      percentile_ranks: [0.50, 0.75]
+      min_rolling_traded_value_twd: [10000000.0, 50000000.0]
+    provenance: "RESEARCH_GOVERNANCE_CANDIDATE"
+    status: "CANDIDATE_PRE_REGISTERED"
+    causal_semantics: "Computed rolling volume and estimated traded value (sum of close * volume) strictly up to signal_time. Never accesses post-signal bars or end-of-day total volume."
+
+pairwise_combinations:
+  scope: "EXPLORATORY_POST_SMOKE"
+  confirmatory_status: false
+  ranking_eligible: false
+  promotion_eligible: false
+  anti_cherry_picking_mandate: "Pairwise combinations are strictly exploratory post-smoke. If single filters evaluate negative, pairwise combinations cannot be mined or promoted."
+  combinations:
+    - id: "PAIR_01_F01_F02"
+      filter_a: "F01_REGIME_INTRADAY_DIRECTION"
+      filter_b: "F02_RELATIVE_STRENGTH_15M"
+    - id: "PAIR_02_F01_F04"
+      filter_a: "F01_REGIME_INTRADAY_DIRECTION"
+      filter_b: "F04_HTF_5M_DIRECTION"
+    - id: "PAIR_03_F01_F05"
+      filter_a: "F01_REGIME_INTRADAY_DIRECTION"
+      filter_b: "F05_LIQUIDITY_30M"
+    - id: "PAIR_04_F02_F05"
+      filter_a: "F02_RELATIVE_STRENGTH_15M"
+      filter_b: "F05_LIQUIDITY_30M"

@@ -1,0 +1,265 @@
+{
+  "section_1_f01_oos": {
+    "folds": [
+      {
+        "fold_id": 1,
+        "train_start": "2023-09-27",
+        "train_end": "2025-01-03",
+        "test_start": "2025-01-07",
+        "test_end": "2025-06-23",
+        "complete_fold": true,
+        "OOS_unique_signals": 94089,
+        "unfiltered_OOS_signals": 173878,
+        "OOS_retention_rate": 0.5411,
+        "unfiltered_theoretical_return_pct": -0.0932,
+        "filtered_theoretical_return_pct": -0.0901,
+        "delta_theoretical_return_pct": 0.0031,
+        "unfiltered_net_return_pct": -0.7343,
+        "filtered_net_return_pct": -0.7351,
+        "delta_net_return_pct": -0.0008,
+        "delta_trading_friction_pct": 0.0039
+      },
+      {
+        "fold_id": 2,
+        "train_start": "2024-03-06",
+        "train_end": "2025-06-20",
+        "test_start": "2025-06-24",
+        "test_end": "2025-11-19",
+        "complete_fold": true,
+        "OOS_unique_signals": 97459,
+        "unfiltered_OOS_signals": 184374,
+        "OOS_retention_rate": 0.5286,
+        "unfiltered_theoretical_return_pct": -0.0929,
+        "filtered_theoretical_return_pct": -0.0904,
+        "delta_theoretical_return_pct": 0.0025,
+        "unfiltered_net_return_pct": -0.7485,
+        "filtered_net_return_pct": -0.7503,
+        "delta_net_return_pct": -0.0018,
+        "delta_trading_friction_pct": 0.0043
+      },
+      {
+        "fold_id": 3,
+        "train_start": "2024-08-06",
+        "train_end": "2025-11-18",
+        "test_start": "2025-11-20",
+        "test_end": "2026-04-29",
+        "complete_fold": true,
+        "OOS_unique_signals": 137046,
+        "unfiltered_OOS_signals": 262600,
+        "OOS_retention_rate": 0.5219,
+        "unfiltered_theoretical_return_pct": -0.0827,
+        "filtered_theoretical_return_pct": -0.0772,
+        "delta_theoretical_return_pct": 0.0055,
+        "unfiltered_net_return_pct": -0.7078,
+        "filtered_net_return_pct": -0.7041,
+        "delta_net_return_pct": 0.0037,
+        "delta_trading_friction_pct": 0.0018
+      },
+      {
+        "fold_id": 4,
+        "train_start": "2025-01-06",
+        "train_end": "2026-04-28",
+        "test_start": "2026-04-30",
+        "test_end": "2026-09-24",
+        "complete_fold": true,
+        "OOS_unique_signals": 265655,
+        "unfiltered_OOS_signals": 512041,
+        "OOS_retention_rate": 0.5188,
+        "unfiltered_theoretical_return_pct": -0.0672,
+        "filtered_theoretical_return_pct": -0.0603,
+        "delta_theoretical_return_pct": 0.0069,
+        "unfiltered_net_return_pct": -0.6745,
+        "filtered_net_return_pct": -0.6679,
+        "delta_net_return_pct": 0.0066,
+        "delta_trading_friction_pct": 0.0003
+      },
+      {
+        "fold_id": 5,
+        "train_start": "2025-06-23",
+        "train_end": "2026-09-23",
+        "test_start": "2026-09-29",
+        "test_end": "2026-10-02",
+        "complete_fold": false,
+        "OOS_unique_signals": 5173,
+        "unfiltered_OOS_signals": 9497,
+        "OOS_retention_rate": 0.5447,
+        "unfiltered_theoretical_return_pct": -0.0985,
+        "filtered_theoretical_return_pct": -0.0851,
+        "delta_theoretical_return_pct": 0.0134,
+        "unfiltered_net_return_pct": -0.7292,
+        "filtered_net_return_pct": -0.7188,
+        "delta_net_return_pct": 0.0104,
+        "delta_trading_friction_pct": 0.003
+      }
+    ],
+    "complete_folds_count": 4,
+    "complete_folds_positive_theo_count": 4,
+    "complete_folds_positive_net_count": 2,
+    "complete_folds_only_delta_theo_pct": 0.0045,
+    "complete_folds_only_delta_net_pct": 0.0019,
+    "trade_weighted_complete_folds_delta_theo_pct": 0.0053,
+    "trade_weighted_complete_folds_delta_net_pct": 0.0034
+  },
+  "section_2_candidate_level": {
+    "candidate_results": {
+      "P2B_01_v1": {
+        "unfiltered_unique_signals": 455747,
+        "filtered_unique_signals": 232170,
+        "retention_rate": 0.5094,
+        "delta_theoretical_return_pct": 0.0019,
+        "delta_trading_friction_pct": 0.0045,
+        "delta_net_return_pct": -0.0026,
+        "unfiltered_net_pct": -0.7802,
+        "filtered_net_pct": -0.7828
+      },
+      "P2B_02_v1": {
+        "unfiltered_unique_signals": 922894,
+        "filtered_unique_signals": 486139,
+        "retention_rate": 0.5268,
+        "delta_theoretical_return_pct": 0.0049,
+        "delta_trading_friction_pct": 0.0022,
+        "delta_net_return_pct": 0.0027,
+        "unfiltered_net_pct": -0.693,
+        "filtered_net_pct": -0.6903
+      },
+      "P2B_03_v1": {
+        "unfiltered_unique_signals": 196422,
+        "filtered_unique_signals": 104368,
+        "retention_rate": 0.5313,
+        "delta_theoretical_return_pct": 0.0058,
+        "delta_trading_friction_pct": -0.0003,
+        "delta_net_return_pct": 0.0061,
+        "unfiltered_net_pct": -0.6586,
+        "filtered_net_pct": -0.6525
+      },
+      "P2B_04_v1": {
+        "unfiltered_unique_signals": 16138,
+        "filtered_unique_signals": 9774,
+        "retention_rate": 0.6057,
+        "delta_theoretical_return_pct": 0.0085,
+        "delta_trading_friction_pct": 0.0012,
+        "delta_net_return_pct": 0.0073,
+        "unfiltered_net_pct": -0.6548,
+        "filtered_net_pct": -0.6475
+      }
+    },
+    "positive_theo_candidate_count": 4,
+    "positive_net_candidate_count": 3
+  },
+  "section_3_attribution": {
+    "delta_slippage_pct": 0.001,
+    "delta_commission_pct": 0.0012,
+    "delta_tax_pct": 0.0,
+    "delta_total_trading_friction_pct": 0.0022,
+    "delta_theoretical_return_pct": 0.0047,
+    "delta_net_return_pct": 0.0025,
+    "accounting_identity_holds": true,
+    "attribution_name": "SIGNAL_EDGE_IMPROVEMENT_WITH_HIGHER_FRICTION",
+    "attribution_rationale": "Theoretical return improved by +0.0047% and net return improved by +0.0025% despite trading friction increasing by +0.0022%. Therefore, improvement is purely signal-driven and NOT from lower-friction selection."
+  },
+  "section_4_and_5_clustering_robustness": {
+    "cluster_count": 726,
+    "delta_theoretical": {
+      "mean": 0.0048,
+      "median": -0.0,
+      "standard_error": 0.0015,
+      "ci95_clustered": [
+        0.0018,
+        0.0077
+      ],
+      "ci95_bootstrap": [
+        0.0018,
+        0.0078
+      ],
+      "bootstrap_positive_prob": 0.9988
+    },
+    "delta_net": {
+      "mean": 0.0033,
+      "median": -0.0047,
+      "standard_error": 0.0017,
+      "ci95_clustered": [
+        0.0,
+        0.0066
+      ],
+      "ci95_bootstrap": [
+        0.0001,
+        0.0066
+      ],
+      "bootstrap_positive_prob": 0.9785
+    },
+    "cross_sectional_breadth_percentiles": {
+      "p10": 1155,
+      "p25": 1366,
+      "median": 1699,
+      "p75": 2493,
+      "p90": 4581,
+      "min": 227,
+      "max": 7592
+    },
+    "breadth_bucket_robustness": {
+      "LOW": {
+        "date_count": 242,
+        "mean_delta_theo_pct": 0.0067,
+        "mean_delta_net_pct": 0.0063
+      },
+      "MID": {
+        "date_count": 241,
+        "mean_delta_theo_pct": 0.0002,
+        "mean_delta_net_pct": -0.0026
+      },
+      "HIGH": {
+        "date_count": 243,
+        "mean_delta_theo_pct": 0.0073,
+        "mean_delta_net_pct": 0.0063
+      }
+    },
+    "sim_counts_by_cid": {
+      "P2B_01_v1": 455747,
+      "P2B_02_v1": 922894,
+      "P2B_03_v1": 196422,
+      "P2B_04_v1": 16138
+    }
+  },
+  "section_6_year_strata": {
+    "by_year": {
+      "2023": {
+        "signal_count": 78608,
+        "retention": 0.5025,
+        "delta_theoretical_return_pct": 0.0043,
+        "delta_net_return_pct": 0.0035
+      },
+      "2024": {
+        "signal_count": 365684,
+        "retention": 0.5223,
+        "delta_theoretical_return_pct": 0.0034,
+        "delta_net_return_pct": 0.0006
+      },
+      "2025": {
+        "signal_count": 426091,
+        "retention": 0.5333,
+        "delta_theoretical_return_pct": 0.0006,
+        "delta_net_return_pct": -0.0032
+      },
+      "2026": {
+        "signal_count": 720818,
+        "retention": 0.5198,
+        "delta_theoretical_return_pct": 0.0081,
+        "delta_net_return_pct": 0.0074
+      }
+    },
+    "by_strata": {
+      "COMPLETE_ONLY": {
+        "signal_count": 902400,
+        "retention": 0.5194,
+        "delta_theoretical_return_pct": 0.0048,
+        "delta_net_return_pct": 0.0032
+      },
+      "USABLE_WITH_GAPS": {
+        "signal_count": 688801,
+        "retention": 0.5281,
+        "delta_theoretical_return_pct": 0.0046,
+        "delta_net_return_pct": 0.0019
+      }
+    }
+  }
+}

@@ -1,0 +1,52 @@
+audit_metadata:
+  phase: "PHASE_2B_BATCH_2"
+  purpose: "DATA_AVAILABILITY_AUDIT"
+  audit_timestamp: "2026-10-03T07:05:00+08:00"
+  governance_rule: "READ_ONLY_AUDIT_NO_PROXY_SUBSTITUTION_WITHOUT_GOVERNANCE"
+
+series_audits:
+  market_index_series:
+    series_name: "TWSE_TAIEX_IX0001_1M"
+    status: "DATA_UNAVAILABLE"
+    notes: "Historical raw directory only archives 100 stock symbols (4-digit codes). No IX0001 or OTC index kbars present in raw historical store."
+    proxy_designated: "UNIVERSE_EQUAL_WEIGHTED_MARKET_PROXY"
+    proxy_status: "RESEARCH_PROXY"
+    proxy_provenance: "Cross-sectional equal-weighted average return of active universe stocks at each 1m bar. Strictly causal prior to signal_time."
+
+  sector_series:
+    series_name: "TWSE_SECTOR_INDICES"
+    status: "DATA_UNAVAILABLE"
+    notes: "No sector index 1m series exists in raw historical store."
+    mapping_status: "PARTIAL_DATA"
+    point_in_time_sector_mapping: false
+    sector_provenance: "selection.json provides snapshot category code for 55 original stocks only as of 2026-09-10; missing for expanded 45 stocks. No historical point-in-time sector reclassifications."
+    verdict: "DATA_INSUFFICIENT"
+
+  stock_intraday_bars:
+    series_name: "STOCK_1M_KBARS"
+    status: "DATA_READY"
+    coverage: "100 stocks, 728 trading dates (2023-09-27 to 2026-10-02)"
+    notes: "Clean 1m bars with open, high, low, close, volume. Right-edge timestamp semantics enforced."
+
+  stock_daily_bars:
+    series_name: "STOCK_DAILY_KBARS"
+    status: "DATA_READY"
+    coverage: "Derived causally from completed 1m bars or prior-day completed session close."
+    notes: "No forward-looking leak across session boundaries."
+
+  volume_traded_value:
+    series_name: "ROLLING_VOLUME_AND_NOTIONAL"
+    status: "DATA_READY"
+    coverage: "Derived from 1m bar volume and close * volume over causal rolling lookback windows."
+    notes: "Strictly excludes future minutes of the day and post-session total volume."
+
+  market_breadth:
+    series_name: "MARKET_BREADTH"
+    status: "PARTIAL_DATA"
+    notes: "Whole-market breadth unavailable; 100-stock universe breadth available as RESEARCH_PROXY under survivor pool limitation."
+
+limitations_and_governance:
+  survivorship_bias: true
+  point_in_time_universe: false
+  point_in_time_sector_mapping: false
+  market_index_proxy_used: true

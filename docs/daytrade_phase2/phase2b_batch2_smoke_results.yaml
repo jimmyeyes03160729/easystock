@@ -1,0 +1,368 @@
+metadata:
+  phase: PHASE_2B_BATCH_2
+  purpose: SMOKE_SAMPLE_VALIDATION
+  timestamp: '2026-10-03T07:20:19.041204+08:00'
+  symbols:
+  - '1101'
+  - '2317'
+  - '1802'
+  - '2834'
+  available_dates:
+  - '2023-09-27'
+  - '2023-09-28'
+  - '2023-10-02'
+  - '2023-10-03'
+  - '2023-10-04'
+  - '2023-10-05'
+  - '2023-10-06'
+  - '2023-10-11'
+  total_raw_signals: 541
+  total_simulated_signals: 503
+  total_dropped_signals: 38
+  signal_funnel_identity_pass: true
+  drop_reasons:
+    INVALID_INITIAL_RISK: 36
+    STOP_LOSS_VIOLATION: 1
+    NO_LEGAL_EXECUTION: 1
+  signals_per_candidate:
+    P2B_01_v1: 384
+    P2B_02_v1: 133
+    P2B_03_v1: 23
+    P2B_04_v1: 1
+  market_proxy_used: true
+  market_proxy_type: UNIVERSE_EQUAL_WEIGHTED_MARKET_PROXY
+  leave_one_out_proxy: true
+  target_excluded: true
+  official_index: false
+  missing_constituent_policy: EXCLUDE_FROM_CURRENT_CROSS_SECTION
+  historical_volume_unit: LOTS
+  volume_unit_evidence: archive Amount / (close * volume) median = 1000.0000 across
+    26,139 sampled bars
+  traded_value_source: ARCHIVE_AMOUNT_PRIMARY
+  approximated_traded_value: false
+  survivorship_bias: true
+  point_in_time_universe: false
+  point_in_time_sector_mapping: false
+  implementation_review: PASS_WITH_BLOCKERS_RESOLVED
+  ready_for_full_batch2_run: false
+filter_comparisons:
+- filter_id: F01_REGIME_INTRADAY_DIRECTION
+  filter_family: F01_MARKET_REGIME
+  filter_condition: LEAVE_ONE_OUT_PROXY_INTRADAY_DIRECTION
+  unfiltered:
+    count: 503
+    theoretical_gross_R: -0.1834
+    net_R: -2.4424
+    theoretical_return_pct: -0.1059
+    net_return_pct: -0.9242
+    cost_pct: 0.8183
+    win_rate: 0.0099
+    profit_factor: 0.0096
+    risk_distribution:
+      mean_risk_pct: 0.4564
+      median_risk_pct: 0.3759
+      p25_risk_pct: 0.2611
+      p75_risk_pct: 0.5236
+      mean_risk_ticks: 1.9066
+      median_risk_ticks: 2.0
+      p25_risk_ticks: 1.0
+      p75_risk_ticks: 2.0
+  filtered:
+    count: 236
+    theoretical_gross_R: -0.1364
+    net_R: -2.4328
+    theoretical_return_pct: -0.0748
+    net_return_pct: -0.875
+    cost_pct: 0.8003
+    win_rate: 0.0212
+    profit_factor: 0.0173
+    risk_distribution:
+      mean_risk_pct: 0.4502
+      median_risk_pct: 0.3409
+      p25_risk_pct: 0.2625
+      p75_risk_pct: 0.5236
+      mean_risk_ticks: 1.8771
+      median_risk_ticks: 2.0
+      p25_risk_ticks: 1.0
+      p75_risk_ticks: 2.0
+  retention_rate: 0.4658
+  delta_theoretical_gross_R: 0.047
+  delta_net_R: 0.0096
+  delta_theoretical_return_pct: 0.0311
+  delta_cost_pct: -0.018
+  delta_net_return_pct: 0.0492
+  effect_attribution: SIGNAL_EDGE_IMPROVEMENT
+  implementation_status: VERIFIED
+  performance_status: NOT_EVALUATED
+  smoke_validation_pass: true
+  notes: Keeps LONG only if leave-one-out peer proxy return >= 0; keeps SHORT only
+    if <= 0.
+- filter_id: F02_RELATIVE_STRENGTH_15M
+  filter_family: F02_RELATIVE_STRENGTH
+  filter_condition: LEAVE_ONE_OUT_RS_15M_NON_ADVERSE
+  unfiltered:
+    count: 503
+    theoretical_gross_R: -0.1834
+    net_R: -2.4424
+    theoretical_return_pct: -0.1059
+    net_return_pct: -0.9242
+    cost_pct: 0.8183
+    win_rate: 0.0099
+    profit_factor: 0.0096
+    risk_distribution:
+      mean_risk_pct: 0.4564
+      median_risk_pct: 0.3759
+      p25_risk_pct: 0.2611
+      p75_risk_pct: 0.5236
+      mean_risk_ticks: 1.9066
+      median_risk_ticks: 2.0
+      p25_risk_ticks: 1.0
+      p75_risk_ticks: 2.0
+  filtered:
+    count: 357
+    theoretical_gross_R: -0.1929
+    net_R: -2.3301
+    theoretical_return_pct: -0.1167
+    net_return_pct: -0.9483
+    cost_pct: 0.8317
+    win_rate: 0.0112
+    profit_factor: 0.0091
+    risk_distribution:
+      mean_risk_pct: 0.4944
+      median_risk_pct: 0.4511
+      p25_risk_pct: 0.2625
+      p75_risk_pct: 0.6061
+      mean_risk_ticks: 2.0056
+      median_risk_ticks: 2.0
+      p25_risk_ticks: 1.0
+      p75_risk_ticks: 3.0
+  retention_rate: 0.7061
+  delta_theoretical_gross_R: -0.0095
+  delta_net_R: 0.1123
+  delta_theoretical_return_pct: -0.0108
+  delta_cost_pct: 0.0134
+  delta_net_return_pct: -0.0241
+  effect_attribution: NEUTRAL_OR_DEGRADED
+  implementation_status: VERIFIED
+  performance_status: NOT_EVALUATED
+  smoke_validation_pass: true
+  notes: Keeps LONG if RS >= -0.001; keeps SHORT if RS <= 0.001 against peer proxy.
+- filter_id: F03_SECTOR_STRENGTH
+  filter_family: F03_SECTOR_STRENGTH
+  filter_condition: SECTOR_SERIES_CHECK
+  unfiltered:
+    count: 503
+    theoretical_gross_R: -0.1834
+    net_R: -2.4424
+    theoretical_return_pct: -0.1059
+    net_return_pct: -0.9242
+    cost_pct: 0.8183
+    win_rate: 0.0099
+    profit_factor: 0.0096
+    risk_distribution:
+      mean_risk_pct: 0.4564
+      median_risk_pct: 0.3759
+      p25_risk_pct: 0.2611
+      p75_risk_pct: 0.5236
+      mean_risk_ticks: 1.9066
+      median_risk_ticks: 2.0
+      p25_risk_ticks: 1.0
+      p75_risk_ticks: 2.0
+  filtered:
+    count: 503
+    theoretical_gross_R: -0.1834
+    net_R: -2.4424
+    theoretical_return_pct: -0.1059
+    net_return_pct: -0.9242
+    cost_pct: 0.8183
+    win_rate: 0.0099
+    profit_factor: 0.0096
+    risk_distribution:
+      mean_risk_pct: 0.4564
+      median_risk_pct: 0.3759
+      p25_risk_pct: 0.2611
+      p75_risk_pct: 0.5236
+      mean_risk_ticks: 1.9066
+      median_risk_ticks: 2.0
+      p25_risk_ticks: 1.0
+      p75_risk_ticks: 2.0
+  retention_rate: 1.0
+  delta_theoretical_gross_R: 0.0
+  delta_net_R: 0.0
+  delta_theoretical_return_pct: 0.0
+  delta_cost_pct: 0.0
+  delta_net_return_pct: 0.0
+  effect_attribution: NEUTRAL_OR_DEGRADED
+  implementation_status: VERIFIED
+  performance_status: NOT_EVALUATED
+  smoke_validation_pass: true
+  notes: Records DATA_INSUFFICIENT; retains 100% of signals unmutated.
+- filter_id: F04_HTF_5M_DIRECTION
+  filter_family: F04_HIGHER_TIMEFRAME_CONTEXT
+  filter_condition: LAST_CLOSED_5M_BAR_DIRECTION
+  unfiltered:
+    count: 503
+    theoretical_gross_R: -0.1834
+    net_R: -2.4424
+    theoretical_return_pct: -0.1059
+    net_return_pct: -0.9242
+    cost_pct: 0.8183
+    win_rate: 0.0099
+    profit_factor: 0.0096
+    risk_distribution:
+      mean_risk_pct: 0.4564
+      median_risk_pct: 0.3759
+      p25_risk_pct: 0.2611
+      p75_risk_pct: 0.5236
+      mean_risk_ticks: 1.9066
+      median_risk_ticks: 2.0
+      p25_risk_ticks: 1.0
+      p75_risk_ticks: 2.0
+  filtered:
+    count: 416
+    theoretical_gross_R: -0.1895
+    net_R: -2.5157
+    theoretical_return_pct: -0.1062
+    net_return_pct: -0.9339
+    cost_pct: 0.8278
+    win_rate: 0.0096
+    profit_factor: 0.0071
+    risk_distribution:
+      mean_risk_pct: 0.4482
+      median_risk_pct: 0.3759
+      p25_risk_pct: 0.2611
+      p75_risk_pct: 0.5195
+      mean_risk_ticks: 1.8293
+      median_risk_ticks: 2.0
+      p25_risk_ticks: 1.0
+      p75_risk_ticks: 2.0
+  retention_rate: 0.8318
+  delta_theoretical_gross_R: -0.0061
+  delta_net_R: -0.0733
+  delta_theoretical_return_pct: -0.0003
+  delta_cost_pct: 0.0095
+  delta_net_return_pct: -0.0097
+  effect_attribution: NEUTRAL_OR_DEGRADED
+  implementation_status: VERIFIED
+  performance_status: NOT_EVALUATED
+  smoke_validation_pass: true
+  notes: Requires last closed 5m bar bullish for LONG, bearish for SHORT.
+- filter_id: F05_LIQUIDITY_30M
+  filter_family: F05_LIQUIDITY_CANDIDATE_POOL
+  filter_condition: MIN_ROLLING_TRADED_VALUE_10M
+  unfiltered:
+    count: 503
+    theoretical_gross_R: -0.1834
+    net_R: -2.4424
+    theoretical_return_pct: -0.1059
+    net_return_pct: -0.9242
+    cost_pct: 0.8183
+    win_rate: 0.0099
+    profit_factor: 0.0096
+    risk_distribution:
+      mean_risk_pct: 0.4564
+      median_risk_pct: 0.3759
+      p25_risk_pct: 0.2611
+      p75_risk_pct: 0.5236
+      mean_risk_ticks: 1.9066
+      median_risk_ticks: 2.0
+      p25_risk_ticks: 1.0
+      p75_risk_ticks: 2.0
+  filtered:
+    count: 445
+    theoretical_gross_R: -0.1925
+    net_R: -2.3863
+    theoretical_return_pct: -0.109
+    net_return_pct: -0.9003
+    cost_pct: 0.7913
+    win_rate: 0.0112
+    profit_factor: 0.0102
+    risk_distribution:
+      mean_risk_pct: 0.4607
+      median_risk_pct: 0.3759
+      p25_risk_pct: 0.2611
+      p75_risk_pct: 0.5236
+      mean_risk_ticks: 1.973
+      median_risk_ticks: 2.0
+      p25_risk_ticks: 1.0
+      p75_risk_ticks: 3.0
+  retention_rate: 0.8706
+  delta_theoretical_gross_R: -0.0091
+  delta_net_R: 0.0561
+  delta_theoretical_return_pct: -0.0031
+  delta_cost_pct: -0.027
+  delta_net_return_pct: 0.0239
+  effect_attribution: NEUTRAL_OR_DEGRADED
+  implementation_status: VERIFIED
+  performance_status: NOT_EVALUATED
+  smoke_validation_pass: true
+  notes: Requires rolling 30m traded value >= 10M TWD prior to signal.
+signal_funnel:
+  total_raw_signals: 541
+  total_simulated_signals: 503
+  total_dropped_signals: 38
+  drop_reasons_breakdown:
+    INVALID_INITIAL_RISK: 36
+    STOP_LOSS_VIOLATION: 1
+    NO_LEGAL_EXECUTION: 1
+  dropped_signals_sample:
+  - signal_event_id: P2B_01_v1_1802_202309270941
+    candidate_id: P2B_01_v1
+    symbol: '1802'
+    signal_time: '2023-09-27T09:41:00+08:00'
+    drop_stage: RISK_VALIDATION
+    drop_reason: INVALID_INITIAL_RISK
+  - signal_event_id: P2B_01_v1_1802_202309271017
+    candidate_id: P2B_01_v1
+    symbol: '1802'
+    signal_time: '2023-09-27T10:17:00+08:00'
+    drop_stage: RISK_VALIDATION
+    drop_reason: INVALID_INITIAL_RISK
+  - signal_event_id: P2B_01_v1_1802_202309271018
+    candidate_id: P2B_01_v1
+    symbol: '1802'
+    signal_time: '2023-09-27T10:18:00+08:00'
+    drop_stage: RISK_VALIDATION
+    drop_reason: INVALID_INITIAL_RISK
+  - signal_event_id: P2B_01_v1_1802_202309280905
+    candidate_id: P2B_01_v1
+    symbol: '1802'
+    signal_time: '2023-09-28T09:05:00+08:00'
+    drop_stage: RISK_VALIDATION
+    drop_reason: INVALID_INITIAL_RISK
+  - signal_event_id: P2B_01_v1_1101_202309280924
+    candidate_id: P2B_01_v1
+    symbol: '1101'
+    signal_time: '2023-09-28T09:24:00+08:00'
+    drop_stage: RISK_VALIDATION
+    drop_reason: INVALID_INITIAL_RISK
+  - signal_event_id: P2B_01_v1_1802_202309280953
+    candidate_id: P2B_01_v1
+    symbol: '1802'
+    signal_time: '2023-09-28T09:53:00+08:00'
+    drop_stage: RISK_VALIDATION
+    drop_reason: INVALID_INITIAL_RISK
+  - signal_event_id: P2B_01_v1_2834_202309281001
+    candidate_id: P2B_01_v1
+    symbol: '2834'
+    signal_time: '2023-09-28T10:01:00+08:00'
+    drop_stage: RISK_VALIDATION
+    drop_reason: INVALID_INITIAL_RISK
+  - signal_event_id: P2B_01_v1_2834_202309281006
+    candidate_id: P2B_01_v1
+    symbol: '2834'
+    signal_time: '2023-09-28T10:06:00+08:00'
+    drop_stage: RISK_VALIDATION
+    drop_reason: INVALID_INITIAL_RISK
+  - signal_event_id: P2B_01_v1_1802_202309281059
+    candidate_id: P2B_01_v1
+    symbol: '1802'
+    signal_time: '2023-09-28T10:59:00+08:00'
+    drop_stage: RISK_VALIDATION
+    drop_reason: INVALID_INITIAL_RISK
+  - signal_event_id: P2B_01_v1_2834_202309281108
+    candidate_id: P2B_01_v1
+    symbol: '2834'
+    signal_time: '2023-09-28T11:08:00+08:00'
+    drop_stage: RISK_VALIDATION
+    drop_reason: INVALID_INITIAL_RISK

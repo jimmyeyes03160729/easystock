@@ -114,6 +114,34 @@ from .result_store import (
     CandidateParameterResult,
 )
 
+from .context_filters import (
+    ResearchMarketRegime,
+    MarketRegimeSnapshot,
+    RelativeStrengthFilter,
+    RelativeStrengthSnapshot,
+    SectorStrengthFilter,
+    SectorFilterStatus,
+    HigherTimeframeAggregator,
+    HigherTimeframeSnapshot,
+    IncompleteBarAccessError,
+    LiquidityFilter,
+    LiquiditySnapshot,
+)
+
+from .batch2_filter_runner import (
+    RawSignalEvent,
+    DroppedSignalRecord,
+    RiskDistributionSummary,
+    TradePerformanceSummary,
+    FilterComparisonResult,
+    Batch2FilterRunner,
+    compute_performance_summary,
+)
+
+from .batch2_result_store import (
+    Batch2ResultStore,
+)
+
 __all__ = [
     "RESEARCH_ONLY",
     "INERT_BY_DEFAULT",
@@ -170,4 +198,23 @@ __all__ = [
     "EXIT_STOP_TARGET_1_5R",
     "ResearchResultStore",
     "CandidateParameterResult",
+    "ResearchMarketRegime",
+    "MarketRegimeSnapshot",
+    "RelativeStrengthFilter",
+    "RelativeStrengthSnapshot",
+    "SectorStrengthFilter",
+    "SectorFilterStatus",
+    "HigherTimeframeAggregator",
+    "HigherTimeframeSnapshot",
+    "IncompleteBarAccessError",
+    "LiquidityFilter",
+    "LiquiditySnapshot",
+    "RawSignalEvent",
+    "DroppedSignalRecord",
+    "RiskDistributionSummary",
+    "TradePerformanceSummary",
+    "FilterComparisonResult",
+    "Batch2FilterRunner",
+    "compute_performance_summary",
+    "Batch2ResultStore",
 ]
