@@ -8,8 +8,9 @@
   market-gate JSONL and a read-only validation command were added.
 - [ ] Research/Paper natural over-limit event: inspect durable events after a
   complete trading session. Synthetic 3189 scenarios do not close live validation.
-- [ ] Paper daytrade execution alignment: code and regression implemented;
-  close only after Linux tests and deployment verification. Fresh bid/ask depth,
+- [x] Paper daytrade execution alignment: CODE VERIFIED and VM DEPLOYED
+  on 2026-10-03 after canonical updater exit 0 and release/ledger verification.
+  Fresh bid/ask depth,
   explicit eligibility, pending unfilled exits and canonical cost assumptions
   are described in DAYTRADE_COMPLIANCE_REVIEW_2026-10-03.md.
 

@@ -1,6 +1,7 @@
 # Paper execution and live validation review — 2026-10-03
 
-Status: CODE VERIFIED; deployment verification pending; live validation remains open.
+Status: CODE VERIFIED; VM DEPLOYED on 2026-10-03; READY_FOR_LIVE_VALIDATION.
+Deployment evidence is in LIVE_DAYTRADE_VALIDATION_2026-10-03.md.
 The requested `DAYTRADE_COMPLIANCE_REVIEW_2026-09-30.md` was absent from main
 and its Git history. This review records newly checked official sources.
 
