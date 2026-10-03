@@ -1,0 +1,4 @@
+nas.env
+.ssh/
+known_hosts
+easystock_nas_ed25519*
