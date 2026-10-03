@@ -1,0 +1,72 @@
+# EasyStock Holdout Instance — Phase 2C Future 60-Day Pristine Partition
+# Authority: CENTRAL_RESEARCH_GOVERNANCE
+# Holdout Contract: First 60 Eligible Trading Days Starting 2026-10-05
+# Invariant: RESERVED_UNTOUCHED — Zero Performance/Outcome Exposure
+
+schema_version: "PRISTINE_HOLDOUT_POLICY_v1"
+holdout_id: "PHASE2C_FUTURE_60D"
+dataset_id: "PHASE2C_FUTURE_CONFIRMATION_60D"
+dataset_family_id: "TWSE_EQUITY_INTRADAY"
+dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+created_at: "2026-10-04T00:00:00+08:00"
+source_artifact: "docs/daytrade_phase2/PHASE2C_F01_FUTURE_CONFIRMATION_CONTRACT.yaml"
+source_commit: "8ceb6a94"
+
+lifecycle:
+  status: "RESERVED_UNTOUCHED"
+  history:
+    - state: "RESERVED_UNTOUCHED"
+      timestamp: "2026-10-04T00:00:00+08:00"
+      reason: "Initial formal holdout governance reservation."
+
+partition_definition:
+  start_rule: "FIRST_ELIGIBLE_TRADING_DAY_AFTER_2026_10_02"
+  expected_start_date: "2026-10-05"
+  selection_rule: "FIRST_60_ELIGIBLE_TRADING_DAYS"
+  holdout_end_date: null
+  target_eligible_days: 60
+  eligible_days_collected: 0
+  collected_eligible_trading_days: []
+
+eligibility_preregistration:
+  criteria:
+    - "official_or_canonical_trading_calendar_day == true"
+    - "required_dataset_partition_exists == true"
+    - "ingestion_success == true"
+    - "schema_valid == true"
+    - "checksum_valid == true"
+  prohibited_selection_criteria:
+    - "trading_volume"
+    - "stock_pool_symbol_count"
+    - "f01_calculability"
+    - "signal_count"
+    - "market_activity_level"
+    - "market_return"
+    - "market_volatility"
+    - "candidate_performance"
+  outcome_dependent_skipping_prohibited: true
+
+access_governance:
+  human_outcome_access: false
+  ai_outcome_access: false
+  automated_research_outcome_access: false
+  performance_seen: false
+  inspected_metadata:
+    - "file_existence"
+    - "ingestion_success"
+    - "schema_version"
+    - "checksum"
+    - "trading_calendar_membership"
+  market_data_inspected: []
+
+unseal_readiness:
+  ready_to_unseal: false
+  unseal_authorized: false
+  authorization_record: null
+
+confirmation_contract:
+  confirmation_mode: "ONE_SHOT"
+  decision_rules_status: "NOT_YET_PREREGISTERED"
+  independent_confirmation_completed: false
+  confirmation_outcome: null
+  production_ready: false

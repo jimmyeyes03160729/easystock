@@ -1,0 +1,165 @@
+# EasyStock Pristine Holdout Policy Specification v1
+# Authority: CENTRAL_RESEARCH_GOVERNANCE
+# Purpose: Authoritative governance contract for unexposed out-of-sample data partitions,
+#          blinded collection rules, freeze-hash authorization, and one-shot confirmation.
+# Source Classification: MODERN_GOVERNANCE_EXTENSION
+# Academic Reference: Robert Pardo (2008), The Evaluation and Optimization of Trading Strategies
+#                     (Principles: unseen out-of-sample testing, walk-forward integrity, overfitting control)
+
+schema_version: "PRISTINE_HOLDOUT_POLICY_v1"
+policy_name: "EASYSTOCK_PRISTINE_HOLDOUT_POLICY"
+created_at: "2026-10-04T00:00:00+08:00"
+authority: "CENTRAL_RESEARCH_GOVERNANCE"
+source_classification: "MODERN_GOVERNANCE_EXTENSION"
+
+pardo_core_principles:
+  - "strictly_unseen_out_of_sample_data"
+  - "no_data_peeking_during_optimization"
+  - "walk_forward_evaluation_with_pristine_holdouts"
+  - "overfitting_prevention_through_sample_isolation"
+
+lifecycle_states:
+  - name: "RESERVED_UNTOUCHED"
+    description: "Holdout is formally reserved in governance; zero outcome or market data exposure."
+    is_terminal: false
+    pristine: true
+  - name: "COLLECTING_BLINDED"
+    description: "Eligible trading days are being ingested into the holdout partition under strict blinded isolation."
+    is_terminal: false
+    pristine: true
+  - name: "READY_TO_UNSEAL"
+    description: "Exactly 60 eligible trading days have been collected under blind audit. Ready for authorization."
+    is_terminal: false
+    pristine: true
+  - name: "UNSEALED_FOR_CONFIRMATION"
+    description: "Holdout has been unsealed following verified freeze-hashes for a single preregistered evaluation."
+    is_terminal: false
+    pristine: false
+  - name: "CONFIRMATION_COMPLETED"
+    description: "One-shot confirmation evaluation execution finished and result vocabulary recorded."
+    is_terminal: false
+    pristine: false
+  - name: "CONSUMED"
+    description: "Holdout partition is fully consumed; exposure recorded in OOS Consumption Ledger."
+    is_terminal: true
+    pristine: false
+  - name: "INVALIDATED"
+    description: "Holdout encountered protocol breach (e.g. data peek, missing freeze hash, outcome-dependent skipping)."
+    is_terminal: true
+    pristine: false
+
+state_transitions:
+  RESERVED_UNTOUCHED:
+    - "COLLECTING_BLINDED"
+    - "INVALIDATED"
+  COLLECTING_BLINDED:
+    - "READY_TO_UNSEAL"
+    - "INVALIDATED"
+    - "CONSUMED"
+  READY_TO_UNSEAL:
+    - "UNSEALED_FOR_CONFIRMATION"
+    - "INVALIDATED"
+  UNSEALED_FOR_CONFIRMATION:
+    - "CONFIRMATION_COMPLETED"
+    - "INVALIDATED"
+  CONFIRMATION_COMPLETED:
+    - "CONSUMED"
+    - "INVALIDATED"
+  CONSUMED: []
+  INVALIDATED: []
+
+re_pristining_prohibited: true
+
+blinded_access_rules:
+  allowed_metadata_whitelist:
+    - "file_existence"
+    - "ingestion_success"
+    - "schema_version"
+    - "checksum"
+    - "trading_calendar_membership"
+  prohibited_access:
+    - "ohlcv_values"
+    - "row_count_activity_statistics"
+    - "feature_values"
+    - "feature_distributions"
+    - "labels"
+    - "signals"
+    - "candidate_outputs"
+    - "pnl"
+    - "returns"
+    - "aggregate_metrics"
+    - "subgroup_metrics"
+
+access_policy:
+  human_outcome_access_allowed_before_unseal: false
+  ai_outcome_access_allowed_before_unseal: false
+  automated_research_outcome_access_allowed_before_unseal: false
+  ai_governance_principle: "AI access to outcome data counts strictly as research exposure without exception."
+
+eligible_trading_day_rule:
+  target_eligible_days: 60
+  preregistered_eligibility_criteria:
+    - "official_or_canonical_trading_calendar_day == true"
+    - "required_dataset_partition_exists == true"
+    - "ingestion_success == true"
+    - "schema_valid == true"
+    - "checksum_valid == true"
+  prohibited_selection_criteria:
+    - "trading_volume"
+    - "stock_pool_symbol_count"
+    - "f01_calculability"
+    - "signal_count"
+    - "market_activity_level"
+    - "market_return"
+    - "market_volatility"
+    - "candidate_performance"
+  outcome_dependent_skipping_prohibited: true
+
+unseal_authorization_requirements:
+  required_fields:
+    - "authorization_id"
+    - "authorized_at"
+    - "authorized_by"
+    - "trial_id"
+    - "objective_spec_hash"
+    - "trial_preregistration_hash"
+    - "dataset_registry_hash"
+    - "pre_unseal_oos_consumption_ledger_hash"
+    - "holdout_policy_hash"
+    - "code_commit_sha"
+    - "cost_model_hash"
+    - "evaluation_plan_hash"
+
+unseal_consumption_atomicity:
+  consumption_event_required_before_outcome_access: true
+  atomic_state_transition_required: true
+  enforcement_rule: >
+    Before ANY first outcome-bearing read, authorization must PASS,
+    the holdout consumption event must be registered, and status must
+    atomically transition to UNSEALED_FOR_CONFIRMATION. Outcome access
+    is strictly forbidden prior to consumption registration.
+
+confirmation_contract:
+  mode: "ONE_SHOT"
+  max_unseal_evaluations: 1
+  vocabulary:
+    - "SUPPORTED_WITHIN_PREREGISTERED_SCOPE"
+    - "NOT_SUPPORTED"
+    - "INCONCLUSIVE"
+    - "INVALIDATED"
+  production_readiness_decoupled: true
+  production_ready_invariant: "Production readiness is strictly false and cannot be altered by confirmation outcome."
+
+invalidation_triggers:
+  - "EARLY_OUTCOME_PEEK"
+  - "PARTIAL_OUTCOME_PEEK"
+  - "INTERIM_METRIC_PEEK"
+  - "SUBGROUP_PEEK"
+  - "PARAMETER_CHANGED_AFTER_UNSEAL"
+  - "OBJECTIVE_CHANGED_AFTER_UNSEAL"
+  - "DATASET_SCOPE_CHANGED_AFTER_UNSEAL"
+  - "CODE_CHANGED_AFTER_UNSEAL"
+  - "COST_MODEL_CHANGED_AFTER_UNSEAL"
+  - "UNREGISTERED_DATA_ACCESS"
+  - "HOLDOUT_DAY_SELECTION_BY_OUTCOME"
+  - "LINEAGE_MISMATCH"
