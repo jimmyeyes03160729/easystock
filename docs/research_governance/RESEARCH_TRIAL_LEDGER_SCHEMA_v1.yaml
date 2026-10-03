@@ -1,0 +1,348 @@
+# EasyStock Research Governance — Research Trial Ledger Schema v1
+# Formal schema definition for research trial ledger records.
+
+schema_version: "1.2.0"
+title: "Research Trial Ledger Entry Schema"
+description: >
+  Defines the mandatory structure, constraints, and audit invariants
+  for all quantitative day-trading research trials in EasyStock.
+
+type: "object"
+required:
+  - "trial_id"
+  - "parent_trial_id"
+  - "created_at"
+  - "study_name"
+  - "research_stage"
+  - "ledger_record_type"
+  - "recorded_after_experiment"
+  - "provenance"
+  - "hypothesis"
+  - "objective"
+  - "data"
+  - "exposure_state"
+  - "search"
+  - "governance"
+  - "result"
+
+properties:
+  trial_id:
+    type: "string"
+    pattern: "^TRIAL_[A-Z0-9_]+$"
+    description: "Unique identifier for the research trial"
+
+  parent_trial_id:
+    type: ["string", "null"]
+    description: "Identifier of the predecessor trial from which this trial is derived, or null for root"
+
+  created_at:
+    type: "string"
+    format: "date-time"
+    description: "ISO 8601 timestamp of trial creation or backfill record generation"
+
+  study_name:
+    type: "string"
+    description: "Descriptive title of the study"
+
+  research_stage:
+    type: "string"
+    enum:
+      - "PHASE_2A"
+      - "PHASE_2B_BATCH_1"
+      - "PHASE_2B_BATCH_2"
+      - "PHASE_2C"
+      - "PHASE_2D"
+      - "PHASE_3"
+      - "EXPLORATORY"
+
+  ledger_record_type:
+    type: "string"
+    enum:
+      - "PREREGISTERED_TRIAL"
+      - "LEGACY_BACKFILL"
+      - "EXPLORATORY_SPIKE"
+
+  recorded_after_experiment:
+    type: "boolean"
+    description: "True if the ledger entry was compiled post-hoc (e.g. legacy backfill), false if recorded a priori"
+
+  provenance:
+    type: "object"
+    required:
+      - "source_classification"
+      - "source_refs"
+    properties:
+      source_classification:
+        type: "string"
+        enum:
+          - "SOURCE_VERIFIED_LITERATURE"
+          - "CANONICAL_INTERNAL_PRIMITIVE"
+          - "EXPLORATORY_HEURISTIC"
+          - "HISTORICAL_REUSE"
+      source_refs:
+        type: "array"
+        items:
+          type: "string"
+
+  hypothesis:
+    type: "object"
+    required:
+      - "statement"
+      - "preregistered"
+      - "exploratory"
+    properties:
+      statement:
+        type: "string"
+      preregistered:
+        type: "boolean"
+      exploratory:
+        type: "boolean"
+
+  objective:
+    type: "object"
+    required:
+      - "spec_version"
+      - "primary_metric"
+      - "direction"
+      - "baseline"
+      - "frozen_before_search"
+    properties:
+      spec_version:
+        type: "string"
+      primary_metric:
+        type: "string"
+      direction:
+        type: "string"
+        enum:
+          - "MAXIMIZE"
+          - "MINIMIZE"
+          - "PASS_FAIL"
+          - "MECHANISM_EXPLANATION"
+          - "DESCRIPTIVE"
+      baseline:
+        type: "string"
+      frozen_before_search:
+        type: "boolean"
+      preregistered:
+        type: "boolean"
+      historical_information_incomplete:
+        type: "boolean"
+
+  data:
+    type: "object"
+    required:
+      - "dataset_id"
+      - "start_date"
+      - "end_date"
+      - "universe"
+      - "discovery_data_reused"
+      - "independent_confirmation"
+    properties:
+      dataset_id:
+        type: "string"
+      dataset_family_id:
+        type: "string"
+        description: "Coarse dataset family identifier (e.g. TWSE_EQUITY_INTRADAY)"
+      dataset_lineage_id:
+        type: "string"
+        description: "Underlying raw data source lineage identifier"
+      start_date:
+        type: "string"
+        format: "date"
+      end_date:
+        type: "string"
+        format: "date"
+      universe:
+        type: "string"
+      discovery_data_reused:
+        type: "boolean"
+      independent_confirmation:
+        type: "boolean"
+
+  exposure_state:
+    type: "object"
+    required:
+      - "train_seen"
+      - "validation_seen"
+      - "oos_seen"
+      - "future_holdout_seen"
+      - "exposures"
+    properties:
+      train_seen:
+        type: "boolean"
+        description: "Summary cache flag for training data seen"
+      validation_seen:
+        type: "boolean"
+        description: "Summary cache flag for validation data seen"
+      oos_seen:
+        type: "boolean"
+        description: "Summary cache flag for out-of-sample data seen"
+      future_holdout_seen:
+        type: "boolean"
+        description: "Summary cache flag for future holdout data seen"
+      exposed_dimensions:
+        type: "array"
+        items:
+          type: "string"
+        description: "Summary list of research dimensions, slices, or features exposed to researchers"
+      exposures:
+        type: "array"
+        description: "Authoritative list of dataset- and slice-scoped exposure records"
+        items:
+          type: "object"
+          required:
+            - "exposure_id"
+            - "dataset_id"
+            - "start_date"
+            - "end_date"
+            - "role"
+            - "seen"
+            - "exposed_dimensions"
+            - "source_trial_id"
+            - "first_seen_at"
+          properties:
+            exposure_id:
+              type: "string"
+            dataset_id:
+              type: "string"
+            dataset_family_id:
+              type: "string"
+            dataset_lineage_id:
+              type: "string"
+            start_date:
+              type: "string"
+              format: "date"
+            end_date:
+              type: ["string", "null"]
+              format: "date"
+            role:
+              type: "string"
+              enum:
+                - "TRAIN"
+                - "VALIDATION"
+                - "OOS"
+                - "HOLDOUT"
+                - "DESCRIPTIVE"
+            seen:
+              type: "boolean"
+            exposed_dimensions:
+              type: "array"
+              items:
+                type: "string"
+            source_trial_id:
+              type: "string"
+            first_seen_at:
+              type: "string"
+              format: "date-time"
+
+  confirmation_claim:
+    type: ["object", "null"]
+    description: "Optional explicit confirmation slice and independence claim"
+    properties:
+      dataset_id:
+        type: "string"
+      dataset_family_id:
+        type: "string"
+      dataset_lineage_id:
+        type: "string"
+      start_date:
+        type: "string"
+        format: "date"
+      end_date:
+        type: ["string", "null"]
+        format: "date"
+      role:
+        type: "string"
+        enum:
+          - "FUTURE_CONFIRMATION"
+      intended_independent_confirmation:
+        type: "boolean"
+      confirmation_status:
+        type: "string"
+        enum:
+          - "RESERVED_UNTOUCHED"
+          - "IN_PROGRESS"
+          - "COMPLETED"
+          - "ABANDONED"
+      performance_seen:
+        type: "boolean"
+      independent_confirmation_completed:
+        type: "boolean"
+      independent_confirmation:
+        type: "boolean"
+
+  search:
+    type: "object"
+    required:
+      - "parameters_searched"
+      - "search_space"
+      - "trial_count"
+      - "post_hoc_changes"
+    properties:
+      candidate_count:
+        type: "integer"
+      parameter_combination_count:
+        type: "integer"
+      unique_signal_events:
+        type: "integer"
+      exit_policy_count:
+        type: "integer"
+      slippage_level_count:
+        type: "integer"
+      simulation_evaluations_per_signal:
+        type: "integer"
+      simulation_rows:
+        type: "integer"
+      parameters_searched:
+        type: "array"
+        items:
+          type: "string"
+      search_space:
+        type: "object"
+      trial_count:
+        type: ["integer", "null"]
+        minimum: 0
+      post_hoc_changes:
+        type: "boolean"
+
+  governance:
+    type: "object"
+    required:
+      - "plan_hash"
+      - "registry_hash"
+      - "no_oos_tuning"
+      - "production_effect"
+    properties:
+      plan_hash:
+        type: ["string", "null"]
+      registry_hash:
+        type: ["string", "null"]
+      no_oos_tuning:
+        type: "boolean"
+      production_effect:
+        type: "string"
+        enum:
+          - "NONE"
+
+  result:
+    type: "object"
+    required:
+      - "status"
+      - "decision"
+      - "sealed_commit"
+      - "notes"
+    properties:
+      status:
+        type: "string"
+        enum:
+          - "SEALED"
+          - "REJECTED"
+          - "SUPERSEDED"
+          - "IN_PROGRESS"
+          - "DATA_INSUFFICIENT"
+      decision:
+        type: "string"
+      sealed_commit:
+        type: ["string", "null"]
+      notes:
+        type: "string"

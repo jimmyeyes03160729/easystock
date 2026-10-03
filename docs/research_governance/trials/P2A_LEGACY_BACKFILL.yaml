@@ -1,0 +1,84 @@
+# EasyStock Research Trial Ledger — Legacy Backfill
+# Trial: Phase 2A Foundation
+# NOTE: This is a retrospective legacy backfill compiled post-hoc.
+
+trial_id: "TRIAL_P2A_FOUNDATION"
+parent_trial_id: null
+created_at: "2026-10-02T22:04:00+08:00"
+study_name: "Phase 2A Causal Primitives and Accounting Foundation"
+research_stage: "PHASE_2A"
+ledger_record_type: "LEGACY_BACKFILL"
+recorded_after_experiment: true
+
+provenance:
+  source_classification: "CANONICAL_INTERNAL_PRIMITIVE"
+  source_refs:
+    - "docs/daytrade_phase2/PHASE2A_IMPLEMENTATION_REPORT.md"
+    - "docs/daytrade_phase2/phase2_dataset_schema.yaml"
+
+hypothesis:
+  statement: "Establishment of rigorous mathematical, causal chronological ordering, slippage single source of truth, and event-based purge/embargo walk-forward splitters."
+  preregistered: false
+  exploratory: false
+
+objective:
+  spec_version: "LEGACY_NONE"
+  primary_metric: "PRIMITIVE_CORRECTNESS"
+  direction: "PASS_FAIL"
+  baseline: "LEGACY_SYSTEM"
+  frozen_before_search: false
+  preregistered: false
+  historical_information_incomplete: true
+
+data:
+  dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2023-09-04"
+  end_date: "2026-10-02"
+  universe: "100_STOCK_LIQUIDITY_POOL"
+  discovery_data_reused: false
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: true
+  validation_seen: false
+  oos_seen: false
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "causal_clock_timing"
+    - "purge_embargo_split_logic"
+    - "slippage_accounting_primitives"
+  exposures:
+    - exposure_id: "EXP_P2A_PRIMITIVE_DEV"
+      dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+      dataset_family_id: "TWSE_EQUITY_INTRADAY"
+      dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+      start_date: "2023-09-04"
+      end_date: "2026-10-02"
+      role: "TRAIN"
+      seen: true
+      exposed_dimensions:
+        - "causal_clock_timing"
+        - "purge_embargo_split_logic"
+        - "slippage_accounting_primitives"
+      source_trial_id: "TRIAL_P2A_FOUNDATION"
+      first_seen_at: "2026-10-02T22:04:00+08:00"
+
+search:
+  parameters_searched: []
+  search_space: {}
+  trial_count: 0
+  post_hoc_changes: false
+
+governance:
+  plan_hash: null
+  registry_hash: null
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "SEALED"
+  decision: "PRIMITIVES_ACCEPTED_AS_CANONICAL_FOUNDATION"
+  sealed_commit: "a33708d8158497e1130d013ea1cfcf6193727817"
+  notes: "Historical primitives established without live or paper trading changes. Backfilled retrospectively into trial ledger."

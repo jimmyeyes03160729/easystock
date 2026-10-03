@@ -1,0 +1,102 @@
+# EasyStock Research Trial Ledger — Legacy Backfill
+# Trial: Phase 2B Batch 2 Context Filter Evaluation
+# NOTE: This is a retrospective legacy backfill compiled post-hoc.
+
+trial_id: "TRIAL_P2B_BATCH2_FILTER_STUDY"
+parent_trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+created_at: "2026-10-03T07:20:00+08:00"
+study_name: "Phase 2B Batch 2 Context Filter Evaluation"
+research_stage: "PHASE_2B_BATCH_2"
+ledger_record_type: "LEGACY_BACKFILL"
+recorded_after_experiment: true
+
+provenance:
+  source_classification: "EXPLORATORY_HEURISTIC"
+  source_refs:
+    - "docs/daytrade_phase2/PHASE2B_BATCH2_FULL_RUN_PLAN.yaml"
+    - "docs/daytrade_phase2/phase2b_batch2_full_run_summary.yaml"
+    - "docs/daytrade_phase2/PHASE2B_BATCH2_REPORT.md"
+    - "docs/daytrade_phase2/phase2b_batch2_filter_registry.yaml"
+    - "docs/daytrade_phase2/phase2b_batch2_cross_review_audit.json"
+
+hypothesis:
+  statement: "Evaluation of 5 context filter families (F01 Market Regime, F02 Relative Strength, F03 Sector Strength, F04 Higher Timeframe, F05 Liquidity Pool) against Batch 1 baseline candidates."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "LEGACY_NONE"
+  primary_metric: "oos_delta_net_return_pct"
+  direction: "MAXIMIZE"
+  baseline: "UNFILTERED_BATCH1_CANDIDATES"
+  frozen_before_search: false
+  preregistered: false
+  historical_information_incomplete: true
+
+data:
+  dataset_id: "2026-09-10_FROZEN_100_STOCK_POOL"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2023-09-04"
+  end_date: "2026-10-02"
+  universe: "100_STOCK_LIQUIDITY_POOL"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: true
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "F01_market_regime_net_delta"
+    - "F02_relative_strength_net_delta"
+    - "F03_sector_strength_insufficient"
+    - "F04_higher_timeframe_net_delta"
+    - "F05_liquidity_pool_net_delta"
+    - "pairwise_filter_interactions"
+  exposures:
+    - exposure_id: "EXP_P2B_BATCH2_OOS_HISTORICAL"
+      dataset_id: "2026-09-10_FROZEN_100_STOCK_POOL"
+      dataset_family_id: "TWSE_EQUITY_INTRADAY"
+      dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+      start_date: "2023-09-04"
+      end_date: "2026-10-02"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "F01_market_regime_net_delta"
+        - "F02_relative_strength_net_delta"
+        - "F03_sector_strength_insufficient"
+        - "F04_higher_timeframe_net_delta"
+        - "F05_liquidity_pool_net_delta"
+        - "pairwise_filter_interactions"
+      source_trial_id: "TRIAL_P2B_BATCH2_FILTER_STUDY"
+      first_seen_at: "2026-10-03T07:20:00+08:00"
+
+search:
+  parameters_searched:
+    - "F01_proxy_direction_trend"
+    - "F02_rs_window_minutes"
+    - "F04_htf_sma_alignment"
+    - "F05_liquidity_top_rank"
+  search_space:
+    F01: "intraday_direction + trend_slope_15m"
+    F02: "windows: [5, 15, 30, 60], neutral_band: 0.001"
+    F03: "DATA_INSUFFICIENT (Sector mapping unavailable)"
+    F04: "SMA_20 / SMA_60 alignment"
+    F05: "liquidity ranks: 30, 50, 70"
+  trial_count: 5
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "3a86300fae4e5bc0125c56d78a94cbbf8c39e01362e4f0c4bbceebffbb12c803"
+  registry_hash: "9a499d691060938a16dbd783a45c3aeec0463cfa2a893cb6d860e6f6a96bc38c"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "SEALED"
+  decision: "F01_SELECTED_FOR_FOLLOWUP_F02_F05_REJECTED"
+  sealed_commit: "ac5b660fc2b4d39f9e92b73a2a09584bfec0cd00"
+  notes: "Batch 2 evaluated 5 filter families. F01 showed signal quality improvement with higher friction; F02, F04, F05 degraded net return; F03 lacked sector mapping data. Formal objective spec not established a priori. Backfilled retrospectively."

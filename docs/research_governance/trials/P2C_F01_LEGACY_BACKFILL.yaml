@@ -1,0 +1,140 @@
+# EasyStock Research Trial Ledger — Legacy Backfill
+# Trial: Phase 2C F01 Market Context Follow-up Study
+# NOTE: This is a retrospective legacy backfill compiled post-hoc upon Phase 2C seal.
+
+trial_id: "TRIAL_P2C_F01_MECHANISM_FOLLOWUP"
+parent_trial_id: "TRIAL_P2B_BATCH2_FILTER_STUDY"
+created_at: "2026-10-03T11:01:00+08:00"
+study_name: "Phase 2C F01 Market Context Follow-up Study"
+research_stage: "PHASE_2C"
+ledger_record_type: "LEGACY_BACKFILL"
+recorded_after_experiment: true
+
+provenance:
+  source_classification: "HISTORICAL_REUSE"
+  source_refs:
+    - "docs/daytrade_phase2/PHASE2C_F01_FULL_RUN_PLAN.yaml"
+    - "docs/daytrade_phase2/phase2c_f01_hypothesis_registry.yaml"
+    - "docs/daytrade_phase2/PHASE2C_F01_FUTURE_CONFIRMATION_CONTRACT.yaml"
+    - "docs/daytrade_phase2/phase2c_f01_full_run_summary.yaml"
+    - "docs/daytrade_phase2/phase2c_f01_corrected_summary.yaml"
+    - "docs/daytrade_phase2/phase2c_f01_corrected_report.md"
+    - "docs/daytrade_phase2/PHASE2C_RESULT_CROSS_REVIEW.md"
+    - "docs/daytrade_phase2/phase2c_accounting_residual_audit.json"
+    - "docs/daytrade_phase2/PHASE2C_ARTIFACT_CONSISTENCY_AUDIT.json"
+
+hypothesis:
+  statement: "Preregistered mechanism and failure regime analysis of F01 market regime context across trend, volatility, opening windows, time of day, breadth, candidate directions, and failure regimes."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "delta_net_return_pct"
+  direction: "MECHANISM_EXPLANATION"
+  baseline: "F01_BATCH2_BASELINE"
+  frozen_before_search: true
+  preregistered: false
+  historical_information_incomplete: true
+
+data:
+  dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2023-09-27"
+  end_date: "2026-10-02"
+  dataset_end: "2026-10-02"
+  universe: "100_STOCK_LIQUIDITY_POOL"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: true
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "F01 overall result"
+    - "H01 trend-direction buckets"
+    - "H02 volatility buckets"
+    - "H03 opening 15m/30m buckets"
+    - "H04 time-of-day"
+    - "H05 breadth"
+    - "H06 LONG/SHORT/candidate breakdown"
+    - "H07 year/failure-regime descriptive results"
+  exposures:
+    - exposure_id: "EXP_P2C_OOS_HISTORICAL"
+      dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+      dataset_family_id: "TWSE_EQUITY_INTRADAY"
+      dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+      start_date: "2023-09-27"
+      end_date: "2026-10-02"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "F01 overall result"
+        - "H01 trend-direction buckets"
+        - "H02 volatility buckets"
+        - "H03 opening 15m/30m buckets"
+        - "H04 time-of-day"
+        - "H05 breadth"
+        - "H06 LONG/SHORT/candidate breakdown"
+        - "H07 year/failure-regime descriptive results"
+      source_trial_id: "TRIAL_P2C_F01_MECHANISM_FOLLOWUP"
+      first_seen_at: "2026-10-03T11:16:57+08:00"
+
+confirmation_claim:
+  dataset_id: "PHASE2C_FUTURE_CONFIRMATION_60D"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2026-10-05"
+  end_date: null
+  role: "FUTURE_CONFIRMATION"
+  intended_independent_confirmation: true
+  confirmation_status: "RESERVED_UNTOUCHED"
+  performance_seen: false
+  independent_confirmation_completed: false
+
+search:
+  parameters_searched:
+    - "H01_trend_quartiles"
+    - "H02_volatility_strata"
+    - "H03_opening_direction_15m_30m"
+    - "H04_time_of_day_buckets"
+    - "H05_breadth_buckets"
+    - "H06_candidate_direction_breakdown"
+    - "H07_failure_regime_classification"
+  search_space:
+    H01: "Q1, Q2, Q3, Q4"
+    H02: "LOW, MID, HIGH"
+    H03: "POSITIVE, NEUTRAL, NEGATIVE, NOT_AVAILABLE"
+    H04: "OPEN, MID, LATE"
+    H05: "BREADTH_34_54, BREADTH_55_79, BREADTH_80_99, INSUFFICIENT"
+    H06: "LONG, SHORT, P2B_01, P2B_02, P2B_03, P2B_04"
+    H07: "IMPROVED_DAY, DEGRADED_DAY, 2023, 2024, 2025, 2026"
+  trial_count: 0
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "3524f1ad6ed79cc6c14f1c0cdae0ee294527bf81e84699bdad76b587900baeb9"
+  registry_hash: "ed0063f20a7468e5deb4a1c61943f6585bd65036e0e1e045a2290597bfcb612e"
+  future_confirmation_contract_hash: "7693656abd9ea3b0a109888ed14517476c950bc68a9f82ee42e04ae3383d3c46"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "SEALED"
+  decision: "DIRECTIONAL_ASYMMETRY_OBSERVED_CONSISTENTLY_ACROSS_4_COMPLETE_FOLDS"
+  sealed_commit: "8ceb6a94c6ed353cf9ddb250f8c4aab60e278577"
+  PHASE2C_SEALED: true
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    Phase 2C sealed at commit 8ceb6a94c6ed353cf9ddb250f8c4aab60e278577.
+    The 8 historical dimensions listed in exposed_dimensions have been directly
+    inspected by researchers and AI; they are contaminated (degrees of freedom expended)
+    and must NEVER be treated as pristine out-of-sample evidence in subsequent research.
+    Future confirmation contract (PHASE2C_FUTURE_CONFIRMATION_60D) remains pristine,
+    unobserved, and untouched (confirmation_status: RESERVED_UNTOUCHED).

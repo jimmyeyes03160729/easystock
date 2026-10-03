@@ -1,0 +1,105 @@
+# EasyStock Research Trial Ledger — Legacy Backfill
+# Trial: Phase 2B Batch 1 Core Candidate Search
+# NOTE: This is a retrospective legacy backfill compiled post-hoc.
+
+trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+parent_trial_id: "TRIAL_P2A_FOUNDATION"
+created_at: "2026-10-02T23:26:00+08:00"
+study_name: "Phase 2B Batch 1 Core Candidate Search"
+research_stage: "PHASE_2B_BATCH_1"
+ledger_record_type: "LEGACY_BACKFILL"
+recorded_after_experiment: true
+
+provenance:
+  source_classification: "SOURCE_VERIFIED_LITERATURE"
+  source_refs:
+    - "docs/daytrade_phase2/PHASE2B_BATCH1_FULL_RUN_PLAN.yaml"
+    - "docs/daytrade_phase2/phase2b_batch1_full_run_summary.yaml"
+    - "docs/daytrade_phase2/PHASE2B_BATCH1_REPORT.md"
+    - "docs/daytrade_phase2/phase2b_candidate_registry.yaml"
+
+hypothesis:
+  statement: "Evaluation of 4 source-verified literature candidates (P2B_01 VPA Volume Decay, P2B_02 Range Expansion, P2B_03 2B False Breakout, P2B_04 1-2-3 Trend Change) on historical sample."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "LEGACY_NONE"
+  primary_metric: "delta_net_return_pct"
+  direction: "MAXIMIZE"
+  baseline: "UNFILTERED_RAW_BARS"
+  frozen_before_search: false
+  preregistered: false
+  historical_information_incomplete: true
+
+data:
+  dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2023-09-04"
+  end_date: "2026-10-02"
+  universe: "100_STOCK_LIQUIDITY_POOL"
+  discovery_data_reused: false
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: true
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "candidate_parameter_grids_18_combinations"
+    - "unique_signals_1591201"
+    - "simulation_rows_31824020"
+    - "candidate_baseline_net_returns"
+  exposures:
+    - exposure_id: "EXP_P2B_BATCH1_OOS_HISTORICAL"
+      dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+      dataset_family_id: "TWSE_EQUITY_INTRADAY"
+      dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+      start_date: "2023-09-04"
+      end_date: "2026-10-02"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "candidate_parameter_grids_18_combinations"
+        - "unique_signals_1591201"
+        - "simulation_rows_31824020"
+        - "candidate_baseline_net_returns"
+      source_trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+      first_seen_at: "2026-10-03T02:41:13+08:00"
+
+search:
+  candidate_count: 4
+  parameter_combination_count: 18
+  unique_signal_events: 1591201
+  exit_policy_count: 5
+  slippage_level_count: 4
+  simulation_evaluations_per_signal: 20
+  simulation_rows: 31824020
+  trial_count: null
+  parameters_searched:
+    - "vol_decay_threshold"
+    - "lookback_bars"
+    - "expansion_threshold"
+    - "pivot_confirmation_bars"
+    - "max_failure_bars"
+    - "confirmation_bars"
+  search_space:
+    P2B_01: "vol_decay: [0.35, 0.45, 0.50], lookback: [3, 5] (6 combos)"
+    P2B_02: "expansion: [1.2, 1.5, 1.8], lookback: [3, 5] (6 combos)"
+    P2B_03: "pivot_bars: [2, 3], max_failure_bars: [3, 5] (4 combos)"
+    P2B_04: "confirmation_bars: [1, 2] (2 combos)"
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "fca939c41f7095763ce80fc84460279a0d973a3fbccb2904f2fb01f0f9f3a304"
+  registry_hash: "UNKNOWN"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "SEALED"
+  decision: "ALL_4_CANDIDATES_REJECTED_STANDALONE_ACCEPTED_FOR_CONTEXT_FILTER_STUDY"
+  sealed_commit: "b351e6b2c32ad9f19c8375d99c19423ab31a0ee8"
+  notes: "Batch 1 evaluated 1,591,201 unique pattern signal events across 43,390 stock-days generating 31,824,020 simulation rows (18 parameter combinations across 4 candidates, 5 exit horizons, 4 slippage levels). Parameter trials count not formally registered a priori; trial_count set to null with historical_information_incomplete=true. Backfilled retrospectively."
