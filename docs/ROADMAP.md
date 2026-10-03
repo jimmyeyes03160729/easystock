@@ -31,6 +31,17 @@
   - 若要回補 2026-10-01 景碩研究交易，只能使用當時已保存的 Tick / K 線 / ENTRY evidence 重播，不得使用收盤後資訊反推進場，避免 look-ahead leakage。
   - 每日盤後研究摘要需分開顯示：策略有效訊號 / Research Trades / Paper 成交 / Paper 因資金限制未成交，避免資金約束污染模型研究統計。
 
+- [ ] **下一版 Paper 模擬：改為每日當沖買進額度制，移除本金 / 累積權益語意**
+  - 本次只記錄，不立即改程式；等下一次 Paper / 後台改版時一次完成。
+  - EasyStock Paper 定位改為「每日當沖買進額度」，不是現金本金帳戶。
+  - 例如設定 `daily_buy_limit=1,000,000`，代表當日所有 BUY gross 累計最多 100 萬；SELL 不回補當日額度，隔一交易日後自然重新從 0 使用。
+  - 後台移除「模擬起始本金 / 目前資金 / 模擬累積權益」等概念，不再顯示類似「模擬累積權益 199,809 元」。
+  - 新版只顯示：每日當沖買進額度、今日已使用、今日剩餘、額度使用率、今日淨損益、累積淨損益等績效統計。
+  - `initial_capital` / `current_capital` / `starting_cash` / `start_balance` / `end_balance` 等舊欄位可為歷史 migration 相容保留，但不得再控制 Paper BUY，也不得作為新版 UI 的「本金 / 權益」呈現。
+  - 不建立 `performance_base` / `paper_equity`；長期績效若需圖表，改用「累積淨損益曲線」，從 0 元起算。
+  - 額度只計 BUY 成交本金，不計買進手續費、賣出手續費與證交稅；損益不影響隔日額度。
+  - Research Trade 仍與 Paper execution 解耦；超過每日額度只標記 `paper_skip_reason=daily_buy_limit_exceeded`，Research 仍完整追蹤。
+
 - [ ] **首頁 LOGO 圖片效能優化**
   - 2026-09-30 發現首頁 LOGO 圖片檔案偏大，首次載入時讀圖時間明顯。
   - 下一輪修正需先確認目前 LOGO 實際檔案尺寸、像素尺寸、格式與瀏覽器解碼成本。
@@ -144,14 +155,16 @@
 
 - [x] **首頁 AI 復盤改版：淘汰舊 OpenAI 每日文字復盤**
   - 已完成：首頁改為「每日盤後研究摘要」，主要讀取 `daytrade_learning_status` / `research_summary`，不再以 `dual_review_status` 作為主要狀態來源。
+  - 2026-10-03 補充：目前盤後 AI 不直接改變正式策略 / 交易決策，公開首頁不再需要 AI 在線 / 離線 / Provider 燈號；研究資料可繼續保留，但 AI 狀態僅在 Owner / Admin 需要時查看。
   - 已加入 stale / freshness 判斷，過期資料不再顯示成目前正常狀態。
   - 已顯示可驗證的交易、樣本、Label、模型、runtime 與 validation 指標；沒有資料時明確顯示待資料 / 待確認。
   - AI 改為每週 Architecture Review 或異常觸發分析，不再每天固定產生文字復盤。
   - 已完成 GitHub main → VM canonical deploy 與 release identity 驗收；VM / origin/main / GitHub main SHA 已一致。
 
 - [ ] **API / 資料源健康燈號**
-  - 首頁新增脫敏後的 API / 資料源狀態，只顯示核心行情與資料服務。
-  - 第一階段包含：永豐行情、玉山行情、Fugle、Firebase，以及必要的 AI Provider 狀態。
+  - 首頁新增脫敏後的 API / 資料源狀態，只顯示真正影響首頁 / 行情可用性的核心資料服務。
+  - 第一階段包含：永豐行情、玉山行情、Fugle、Firebase。
+  - **首頁不顯示任何 AI Provider / AI 盤後 / AI Review 燈號**；目前 AI 盤後不直接影響正式交易或首頁核心功能，AI 詳細狀態僅保留 Owner / Admin 後台。
   - LINE / Telegram 不放首頁公開燈號，僅保留在 Owner / Admin 後台自行查看。
   - 公開狀態統一為 ONLINE / DEGRADED / OFFLINE / UNKNOWN；收盤後行情源可顯示 MARKET CLOSED，不誤判離線。
   - 判定以實際資料 freshness / 最近成功資料時間為主，不只看 HTTP 200 或 WebSocket 是否仍連線。
@@ -161,8 +174,7 @@
 - [ ] **AI Architecture Guardian 系統健檢**
   - 每日 Tests / CodeQL / Secret Scan / Dependabot / Trivy / 自訂安全規則。
   - 每週 AI Architecture Review。
-  - 首頁顯示 SAFE / REVIEW / DANGER / UNKNOWN 摘要。
-  - Private Admin 顯示 Critical / High / Medium / Low 詳細報告。
+  - 不在公開首頁放 AI / Guardian 狀態燈；結果與 Critical / High / Medium / Low 詳細報告放 Owner / Private Admin。
   - 第一階段只掃描、分析、報告、通知，不直接修改交易系統。
 
 - [ ] **GitHub / 模型核心保護與 Public / Private Core 拆分**
@@ -388,6 +400,63 @@ Research 層允許同股同日多次交易，但需同時滿足：
 8. 盤後摘要能同時顯示 Research Trade 與 Paper execution 統計。
 9. model / strategy / market gate 拒絕的標的不應被偽造成 Research Trade。
 10. root 與 `vm_runtime` 對應邏輯不得 drift。
+
+---
+
+## 下一版 Paper 模擬：每日當沖買進額度制（待下一次改版一次完成）
+
+### 定位
+Paper Trading 不再模擬「有一筆本金、買進扣現金、賣出補回現金」的現金帳戶，而是模擬固定的每日當沖買進額度。
+
+```text
+daily_buy_limit
+      ↓
+今天 BUY gross 累計
+      ↓
+daily_buy_used
+      ↓
+daily_buy_remaining
+```
+
+範例：每日額度 1,000,000 元，今日先買 300,000 元後即剩 700,000 元；即使該筆之後賣出，當日剩餘額度仍為 700,000 元。下一交易日依當日 BUY fills 自然重新從 0 使用，不另做午夜 reset job。
+
+### 下一版一次移除的舊概念
+公開 / Admin UI 不再顯示：
+- 模擬起始本金。
+- 目前模擬帳戶資金。
+- 可用現金。
+- 模擬累積權益。
+- 任何由 PnL 推導出的「目前本金 / Equity」。
+
+尤其目前類似「模擬累積權益 199,809 元」的顯示，在下一版一併移除。
+
+舊 DB 欄位如 `initial_capital`、`current_capital`、`starting_cash`、`start_balance`、`end_balance` 可因 migration / 歷史相容暫留，但不能再作為 BUY gate 或新版 UI 語意。
+
+### 新版後台
+至少顯示：
+- 每日當沖買進額度。
+- 今日已使用額度。
+- 今日剩餘額度。
+- 今日額度使用率。
+- 今日已實現損益。
+- 今日手續費。
+- 今日證交稅。
+- 今日淨損益。
+- 累積淨損益。
+
+若保留長期圖表，使用「累積淨損益曲線」，基準從 0 元開始，不再做虛擬 Equity Curve。
+
+### 額度規則
+- `daily_buy_used = SUM(BUY gross)`。
+- BUY 手續費不吃額度。
+- SELL 金額不回補額度。
+- SELL 手續費 / 稅不影響額度。
+- 今日 / 歷史 PnL 不改變明日 `daily_buy_limit`。
+- 額度不足時 Paper 標記 `daily_buy_limit_exceeded`。
+- Research Trade 不受 Paper 額度限制，仍完整追蹤 ENTRY / EXIT / MFE / MAE / PnL。
+
+### 實作時機
+本項 **2026-10-03 只記錄，不立即修改**。等下一次 Paper / Admin 改版時，連同 DB migration、後台 UI、盤後摘要與 regression tests 一次完成，避免分兩次改動帳務語意。
 
 ---
 
@@ -1479,6 +1548,12 @@ AI 改為「需要時才使用」：
 ## API / 資料源健康燈號規劃
 
 2026-09-30：第一版已實作六個來源的公開摘要、首頁小卡、Owner 詳細診斷及 Firebase 客戶端寫入拒絕。實際請求 / 報價證據控制狀態；未觀察到的 AI 呼叫顯示待命。部署與測試方式見 [行情與健康狀態](MARKET_DATA_HEALTH.md)。
+
+### 公開首頁不顯示 AI 燈號（2026-10-03）
+- 首頁健康燈只服務「使用者現在看到的行情 / 資料是否可用」。
+- AI Provider、盤後 AI Review、研究模型 runtime 等狀態不放公開首頁。
+- 目前盤後 AI 不直接影響正式交易決策，因此公開 AI ONLINE / OFFLINE 對使用者沒有實際操作價值。
+- AI / Model / Guardian 詳細健康狀態改放 Owner / Admin；未來只有在某個 AI 服務真的成為公開核心功能的直接依賴時，才重新評估是否需要公開狀態。
 
 ### 公開首頁定位
 首頁只顯示可公開、脫敏後的健康摘要，不直接暴露後台診斷資料。
