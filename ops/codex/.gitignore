@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+compose.yaml
+secrets/
+credentials/
+id_*
+known_hosts
+token
+*.key
+*.pem
+.codex/
+.ssh/
+home/
+workspace/
