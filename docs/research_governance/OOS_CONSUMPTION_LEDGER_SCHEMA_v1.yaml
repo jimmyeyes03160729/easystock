@@ -1,0 +1,172 @@
+# EasyStock Research Governance — OOS Consumption Ledger Schema v1
+# Schema Version: 1.0.0
+# Purpose: JSON Schema validation for out-of-sample data consumption and exposure tracking.
+
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+type: "object"
+required:
+  - "schema_version"
+  - "ledger_name"
+  - "created_at"
+  - "consumption_events"
+properties:
+  schema_version:
+    type: "string"
+    enum: ["OOS_CONSUMPTION_LEDGER_SCHEMA_v1"]
+  ledger_name:
+    type: "string"
+  created_at:
+    type: "string"
+    format: "date-time"
+  description:
+    type: "string"
+  consumption_events:
+    type: "array"
+    items:
+      $ref: "#/$defs/ConsumptionEvent"
+
+$defs:
+  ConsumptionEvent:
+    type: "object"
+    required:
+      - "consumption_id"
+      - "trial_id"
+      - "dataset_id"
+      - "dataset_family_id"
+      - "dataset_lineage_id"
+      - "slice"
+      - "role"
+      - "exposure"
+      - "exposure_level"
+      - "dimensions_seen"
+      - "consumed_at"
+      - "record_type"
+      - "source_artifact"
+      - "governance"
+    properties:
+      consumption_id:
+        type: "string"
+        pattern: "^CNS_[A-Za-z0-9_]+$"
+      trial_id:
+        type: "string"
+        pattern: "^TRIAL_[A-Za-z0-9_]+$"
+      dataset_id:
+        type: "string"
+      dataset_family_id:
+        type: "string"
+      dataset_lineage_id:
+        type: "string"
+      slice:
+        type: "object"
+        required:
+          - "start_date"
+          - "end_date"
+        properties:
+          start_date:
+            type: ["string", "null"]
+            format: "date"
+          end_date:
+            type: ["string", "null"]
+            format: "date"
+          slice_definition:
+            type: "string"
+          historical_exposure_range:
+            type: "string"
+          historical_information_incomplete:
+            type: "boolean"
+      role:
+        type: "string"
+        enum:
+          - "TRAIN"
+          - "VALIDATION"
+          - "OOS"
+          - "HOLDOUT"
+          - "DESCRIPTIVE"
+          - "EXPLORATORY"
+          - "CONFIRMATION"
+      exposure:
+        type: "object"
+        required:
+          - "performance_seen"
+          - "labels_seen"
+          - "aggregate_metrics_seen"
+          - "subgroup_results_seen"
+          - "parameter_selection_influenced"
+          - "human_seen"
+          - "ai_seen"
+        properties:
+          performance_seen:
+            type: "boolean"
+          labels_seen:
+            type: "boolean"
+          aggregate_metrics_seen:
+            type: "boolean"
+          subgroup_results_seen:
+            type: "boolean"
+          parameter_selection_influenced:
+            type: "boolean"
+          candidate_selection_influenced:
+            type: "boolean"
+          research_direction_influenced:
+            type: "boolean"
+          human_seen:
+            type: "boolean"
+          ai_seen:
+            type: "boolean"
+          admin_metadata_inspected:
+            type: "array"
+            items:
+              type: "string"
+          market_data_inspected:
+            type: "array"
+            items:
+              type: "string"
+      exposure_level:
+        type: "string"
+        enum:
+          - "LEVEL_0_UNTOUCHED"
+          - "LEVEL_1_FEATURE_STRUCTURE_SEEN"
+          - "LEVEL_2_AGGREGATE_METRICS_SEEN"
+          - "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+          - "LEVEL_4_PARAMETER_SELECTION_USED"
+          - "LEVEL_5_REPEATED_RESEARCH_EXPOSED"
+      dimensions_seen:
+        type: "array"
+        items:
+          type: "string"
+      consumed_at:
+        type: ["string", "null"]
+        format: "date-time"
+      record_type:
+        type: "string"
+        enum:
+          - "LEGACY_BACKFILL"
+          - "PREREGISTERED_CONSUMPTION"
+          - "CONFIRMATION_RESERVATION"
+          - "RESERVATION"
+      recorded_after_exposure:
+        type: "boolean"
+      source_artifact:
+        type: "string"
+      source_commit:
+        type: ["string", "null"]
+      governance:
+        type: "object"
+        required:
+          - "pristine_before"
+          - "pristine_after"
+          - "independent_confirmation_eligible_after"
+        properties:
+          pristine_before:
+            type: "boolean"
+          pristine_after:
+            type: "boolean"
+          independent_confirmation_eligible_after:
+            type: "boolean"
+          independent_confirmation_intended:
+            type: "boolean"
+          independent_confirmation_completed:
+            type: "boolean"
+          notes:
+            type: "string"

@@ -1,0 +1,103 @@
+# EasyStock Central Dataset Registry v1
+# Authority: CENTRAL_RESEARCH_GOVERNANCE
+# Purpose: Authoritative identity and lineage registry for all market data assets.
+# Note: Renaming datasets does not create new data. Lineage is tracked across all derivations.
+
+schema_version: "DATASET_REGISTRY_v1"
+created_at: "2026-10-03T23:25:00+08:00"
+authority: "CENTRAL_RESEARCH_GOVERNANCE"
+lineage_governance_rule: "LINEAGE_PRESERVED_ACROSS_DERIVATIONS_AND_ALIASES"
+notes: >
+  This registry is the authoritative source of truth for dataset identities,
+  families, lineages, and parent-child derivations. Trial ledger entries and
+  consumption events must match registered identities. Arbitrary renaming
+  cannot bypass historical exposure records.
+
+datasets:
+  - dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    source: "SHIOAJI_TICK_FEED"
+    frequency: "TICK_AND_1MIN"
+    market: "TWSE"
+    timezone: "Asia/Taipei"
+    start_date: "2023-09-04"
+    end_date: "2026-10-02"
+    universe_definition: "100_STOCK_LIQUIDITY_POOL"
+    point_in_time_universe: false
+    survivorship_bias: "POTENTIAL_SURVIVORSHIP_PRESENT_FROZEN_POOL"
+    mutable: false
+    parent_dataset_ids: []
+    derivation_description: "Primary canonical historical tick and 1-minute bar dataset for Taiwan top 100 liquidity pool, recorded via Shioaji tick ingestion pipeline."
+    canonical_status: "CANONICAL"
+
+  - dataset_id: "2026-09-10_FROZEN_100_STOCK_POOL"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    source: "SHIOAJI_TICK_FEED"
+    frequency: "TICK_AND_1MIN"
+    market: "TWSE"
+    timezone: "Asia/Taipei"
+    start_date: "2023-09-04"
+    end_date: "2026-10-02"
+    universe_definition: "100_STOCK_LIQUIDITY_POOL"
+    point_in_time_universe: false
+    survivorship_bias: "POTENTIAL_SURVIVORSHIP_PRESENT_FROZEN_POOL"
+    mutable: false
+    parent_dataset_ids:
+      - "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    derivation_description: "Phase 2B Batch 2 alias / slice representation of the canonical 100-stock liquidity pool dataset."
+    canonical_status: "ALIAS_REPRESENTATION"
+
+  - dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    source: "SHIOAJI_TICK_FEED"
+    frequency: "TICK_AND_1MIN"
+    market: "TWSE"
+    timezone: "Asia/Taipei"
+    start_date: "2023-09-27"
+    end_date: "2026-10-02"
+    universe_definition: "100_STOCK_LIQUIDITY_POOL"
+    point_in_time_universe: false
+    survivorship_bias: "POTENTIAL_SURVIVORSHIP_PRESENT_FROZEN_POOL"
+    mutable: false
+    parent_dataset_ids:
+      - "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    derivation_description: "Historical mechanism analysis partition spanning 2023-09-27 to 2026-10-02 used in Phase 2C study."
+    canonical_status: "CANONICAL_PARTITION"
+
+  - dataset_id: "TWSE_MARKET_CONTEXT_F01"
+    dataset_family_id: "TWSE_MARKET_CONTEXT"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    source: "DERIVED_COMPOSITE"
+    frequency: "1MIN_CALCULATED"
+    market: "TWSE_AND_TAIFEX"
+    timezone: "Asia/Taipei"
+    start_date: "2023-09-27"
+    end_date: "2026-10-02"
+    universe_definition: "TAIEX_TX_MTX_AND_100_POOL_BREADTH"
+    point_in_time_universe: true
+    survivorship_bias: "NONE_INDEX_LEVEL"
+    mutable: false
+    parent_dataset_ids:
+      - "PHASE2_HISTORICAL_2023_2026_10_02"
+    derivation_description: "Derived market context indicators for F01 (TX trend, market-wide advance/decline breadth, open 15m/30m momentum) computed from primary tick feeds."
+    canonical_status: "DERIVED_FEATURE_SET"
+
+  - dataset_id: "PHASE2C_FUTURE_CONFIRMATION_60D"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    source: "SHIOAJI_TICK_FEED_STREAMING"
+    frequency: "TICK_AND_1MIN"
+    market: "TWSE"
+    timezone: "Asia/Taipei"
+    start_date: "2026-10-05"
+    end_date: null
+    universe_definition: "100_STOCK_LIQUIDITY_POOL"
+    point_in_time_universe: true
+    survivorship_bias: "NONE_POINT_IN_TIME_FUTURE"
+    mutable: true
+    parent_dataset_ids: []
+    derivation_description: "Reserved pristine future confirmation partition starting 2026-10-05 for the first 60 eligible trading days, held strictly untouched."
+    canonical_status: "RESERVED_UNTOUCHED"

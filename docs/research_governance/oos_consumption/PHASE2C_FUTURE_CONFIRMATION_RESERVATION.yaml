@@ -1,0 +1,79 @@
+# EasyStock OOS Consumption Ledger — Future Confirmation Reservation
+# Reservation Contract: First 60 Eligible Trading Days Starting 2026-10-05
+# Invariant: RESERVED_UNTOUCHED — Zero Performance/Outcome Exposure
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "PHASE2C_FUTURE_CONFIRMATION_RESERVATION"
+created_at: "2026-10-03T23:27:00+08:00"
+description: >
+  Formal reservation of the unreleased out-of-sample confirmation partition
+  consisting of the first 60 eligible trading days starting 2026-10-05.
+  This data is held strictly pristine with zero outcome observation.
+
+consumption_events:
+  - consumption_id: "CNS_P2C_FUTURE_CONFIRMATION_60D_RESERVATION"
+    trial_id: "TRIAL_P2C_F01_MECHANISM_FOLLOWUP"
+    dataset_id: "PHASE2C_FUTURE_CONFIRMATION_60D"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2026-10-05"
+      end_date: null
+      slice_definition: "first_60_eligible_trading_days"
+    role: "CONFIRMATION"
+    exposure:
+      performance_seen: false
+      labels_seen: false
+      aggregate_metrics_seen: false
+      subgroup_results_seen: false
+      parameter_selection_influenced: false
+      research_direction_influenced: false
+      human_seen: false
+      ai_seen: false
+      admin_metadata_inspected:
+        - "file_existence"
+        - "ingestion_success"
+        - "schema_version"
+        - "checksum"
+        - "trading_calendar_membership"
+      market_data_inspected: []
+    exposure_level: "LEVEL_0_UNTOUCHED"
+    dimensions_seen: []
+    consumed_at: null
+    record_type: "RESERVATION"
+    recorded_after_exposure: false
+    source_artifact: "docs/daytrade_phase2/PHASE2C_F01_FUTURE_CONFIRMATION_CONTRACT.yaml"
+    source_commit: "8ceb6a94"
+    governance:
+      pristine_before: true
+      pristine_after: true
+      independent_confirmation_eligible_after: true
+      independent_confirmation_intended: true
+      independent_confirmation_completed: false
+      prohibited_queries:
+        - "ohlcv_values"
+        - "market_derived_activity_statistics"
+        - "feature_values_or_distributions"
+        - "labels"
+        - "signals"
+        - "pnl"
+        - "returns"
+        - "performance_metrics"
+        - "subgroup_metrics"
+        - "win_rate"
+        - "candidate_result"
+        - "F01_result"
+        - "daily_performance"
+        - "direction_result"
+        - "regime_result"
+        - "profit_factor"
+      permitted_queries:
+        - "file_existence"
+        - "ingestion_success"
+        - "schema_version"
+        - "checksum"
+        - "trading_calendar_membership"
+      notes: >
+        Pristine reservation maintained for independent confirmation.
+        Performance data must NOT be queried until the full 60 eligible trading days
+        contract window has completed and evaluation protocol is formally unsealed.

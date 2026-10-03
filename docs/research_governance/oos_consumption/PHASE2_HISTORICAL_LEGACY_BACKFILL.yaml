@@ -1,0 +1,530 @@
+# EasyStock OOS Consumption Ledger — Phase 2 Historical Legacy Backfill
+# Retrospective backfill compiled post-hoc upon Phase 2C seal.
+# Invariant: Record historical exposures faithfully without revisionism.
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "PHASE2_HISTORICAL_LEGACY_BACKFILL"
+created_at: "2026-10-03T23:35:00+08:00"
+description: >
+  Historical data consumption events across Phase 2A, Phase 2B Batch 1,
+  Phase 2B Batch 2, and Phase 2C spanning 2023-09-04 to 2026-10-02.
+
+consumption_events:
+  # ====================================================================
+  # Phase 2A: Foundational Primitives Development
+  # ====================================================================
+  - consumption_id: "CNS_P2A_FOUNDATION_EXPLORATION"
+    trial_id: "TRIAL_P2A_FOUNDATION"
+    dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: null
+      end_date: null
+      historical_exposure_range: "UNKNOWN"
+      historical_information_incomplete: true
+      slice_definition: "Phase 2A foundational mathematical, causal, and accounting primitives development (no dated backtest partition)"
+    role: "EXPLORATORY"
+    exposure:
+      performance_seen: false
+      labels_seen: false
+      aggregate_metrics_seen: false
+      subgroup_results_seen: false
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_1_FEATURE_STRUCTURE_SEEN"
+    dimensions_seen:
+      - "causal_clock_timing"
+      - "purge_embargo_split_logic"
+      - "slippage_accounting_primitives"
+    consumed_at: "2026-09-10T12:00:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/PHASE2A_IMPLEMENTATION_REPORT.md"
+    source_commit: "a33708d8"
+    governance:
+      pristine_before: true
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Retrospectively recorded. Exact date range is UNKNOWN as Phase 2A only developed code primitives without running a full historical backtest."
+
+  # ====================================================================
+  # Phase 2B Batch 1: Full Historical Evaluation
+  # ====================================================================
+  - consumption_id: "CNS_P2B_BATCH1_FULL_HISTORICAL_EVALUATION"
+    trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+    dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2023-09-04"
+      end_date: "2026-10-02"
+      slice_definition: "Phase 2B Batch 1 full historical signal and friction evaluation across 726 trading dates"
+    role: "DESCRIPTIVE"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "aggregate"
+      - "candidate"
+      - "year"
+      - "time-of-day"
+      - "completeness"
+      - "exit-policy"
+      - "slippage"
+      - "performance metrics"
+    consumed_at: "2026-09-20T10:00:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/PHASE2B_BATCH1_REPORT.md"
+    source_commit: "b351e6b2"
+    governance:
+      pristine_before: true
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Sealed report inspected aggregate, candidate, year, time-of-day, completeness, exit-policy, slippage, and performance metrics across the entire 2023-09-04 to 2026-10-02 historical sample."
+
+  # ====================================================================
+  # Phase 2B Batch 1: 5-Fold Walk-Forward Rolling Analysis
+  # ====================================================================
+  - consumption_id: "CNS_P2B_BATCH1_WFA_FOLD1_TRAIN"
+    trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+    dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2023-09-27"
+      end_date: "2025-01-03"
+      slice_definition: "Phase 2B Batch 1 WFA Fold 1 Train window"
+    role: "TRAIN"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: true
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_4_PARAMETER_SELECTION_USED"
+    dimensions_seen:
+      - "candidate_parameter_grids_18_combinations"
+      - "train_net_exp"
+    consumed_at: "2026-09-20T10:00:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/PHASE2B_BATCH1_REPORT.md"
+    source_commit: "b351e6b2"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "WFA Fold 1 in-sample parameter selection window."
+
+  - consumption_id: "CNS_P2B_BATCH1_WFA_FOLD1_OOS"
+    trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+    dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2025-01-08"
+      end_date: "2025-06-24"
+      slice_definition: "Phase 2B Batch 1 WFA Fold 1 OOS window"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "candidate_oos_net_exp"
+      - "oos_win_rate"
+      - "oos_pf"
+    consumed_at: "2026-09-20T10:00:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/PHASE2B_BATCH1_REPORT.md"
+    source_commit: "b351e6b2"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "WFA Fold 1 out-of-sample evaluation."
+
+  - consumption_id: "CNS_P2B_BATCH1_WFA_FOLD2_TRAIN"
+    trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+    dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2024-03-06"
+      end_date: "2025-06-20"
+      slice_definition: "Phase 2B Batch 1 WFA Fold 2 Train window"
+    role: "TRAIN"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: true
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_4_PARAMETER_SELECTION_USED"
+    dimensions_seen:
+      - "candidate_parameter_grids_18_combinations"
+      - "train_net_exp"
+    consumed_at: "2026-09-20T10:00:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/PHASE2B_BATCH1_REPORT.md"
+    source_commit: "b351e6b2"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "WFA Fold 2 in-sample parameter selection window."
+
+  - consumption_id: "CNS_P2B_BATCH1_WFA_FOLD2_OOS"
+    trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+    dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2025-06-25"
+      end_date: "2025-11-20"
+      slice_definition: "Phase 2B Batch 1 WFA Fold 2 OOS window"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "candidate_oos_net_exp"
+      - "oos_win_rate"
+      - "oos_pf"
+    consumed_at: "2026-09-20T10:00:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/PHASE2B_BATCH1_REPORT.md"
+    source_commit: "b351e6b2"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "WFA Fold 2 out-of-sample evaluation."
+
+  - consumption_id: "CNS_P2B_BATCH1_WFA_FOLD3_TRAIN"
+    trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+    dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2024-08-06"
+      end_date: "2025-11-18"
+      slice_definition: "Phase 2B Batch 1 WFA Fold 3 Train window"
+    role: "TRAIN"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: true
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_4_PARAMETER_SELECTION_USED"
+    dimensions_seen:
+      - "candidate_parameter_grids_18_combinations"
+      - "train_net_exp"
+    consumed_at: "2026-09-20T10:00:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/PHASE2B_BATCH1_REPORT.md"
+    source_commit: "b351e6b2"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "WFA Fold 3 in-sample parameter selection window."
+
+  - consumption_id: "CNS_P2B_BATCH1_WFA_FOLD3_OOS"
+    trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+    dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2025-11-21"
+      end_date: "2026-04-30"
+      slice_definition: "Phase 2B Batch 1 WFA Fold 3 OOS window"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "candidate_oos_net_exp"
+      - "oos_win_rate"
+      - "oos_pf"
+    consumed_at: "2026-09-20T10:00:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/PHASE2B_BATCH1_REPORT.md"
+    source_commit: "b351e6b2"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "WFA Fold 3 out-of-sample evaluation."
+
+  - consumption_id: "CNS_P2B_BATCH1_WFA_FOLD4_TRAIN"
+    trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+    dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2025-01-06"
+      end_date: "2026-04-28"
+      slice_definition: "Phase 2B Batch 1 WFA Fold 4 Train window"
+    role: "TRAIN"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: true
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_4_PARAMETER_SELECTION_USED"
+    dimensions_seen:
+      - "candidate_parameter_grids_18_combinations"
+      - "train_net_exp"
+    consumed_at: "2026-09-20T10:00:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/PHASE2B_BATCH1_REPORT.md"
+    source_commit: "b351e6b2"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "WFA Fold 4 in-sample parameter selection window."
+
+  - consumption_id: "CNS_P2B_BATCH1_WFA_FOLD4_OOS"
+    trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+    dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2026-05-04"
+      end_date: "2026-09-29"
+      slice_definition: "Phase 2B Batch 1 WFA Fold 4 OOS window"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "candidate_oos_net_exp"
+      - "oos_win_rate"
+      - "oos_pf"
+    consumed_at: "2026-09-20T10:00:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/PHASE2B_BATCH1_REPORT.md"
+    source_commit: "b351e6b2"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "WFA Fold 4 out-of-sample evaluation."
+
+  - consumption_id: "CNS_P2B_BATCH1_WFA_FOLD5_TRAIN"
+    trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+    dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2025-06-23"
+      end_date: "2026-09-23"
+      slice_definition: "Phase 2B Batch 1 WFA Fold 5 Train window"
+    role: "TRAIN"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: true
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_4_PARAMETER_SELECTION_USED"
+    dimensions_seen:
+      - "candidate_parameter_grids_18_combinations"
+      - "train_net_exp"
+    consumed_at: "2026-09-20T10:00:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/PHASE2B_BATCH1_REPORT.md"
+    source_commit: "b351e6b2"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "WFA Fold 5 in-sample parameter selection window."
+
+  - consumption_id: "CNS_P2B_BATCH1_WFA_FOLD5_OOS"
+    trial_id: "TRIAL_P2B_BATCH1_CANDIDATE_SEARCH"
+    dataset_id: "CURRENT_100_LIQUIDITY_FROZEN_POOL_HISTORICAL_SAMPLE_20261002"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2026-09-30"
+      end_date: "2026-10-02"
+      slice_definition: "Phase 2B Batch 1 WFA Fold 5 OOS window (terminal incomplete slice)"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "candidate_oos_net_exp"
+      - "oos_win_rate"
+      - "oos_pf"
+    consumed_at: "2026-09-20T10:00:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/PHASE2B_BATCH1_REPORT.md"
+    source_commit: "b351e6b2"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "WFA Fold 5 out-of-sample evaluation (terminal slice)."
+
+  # ====================================================================
+  # Phase 2B Batch 2: Full Historical Filter Evaluation
+  # ====================================================================
+  - consumption_id: "CNS_P2B_BATCH2_FILTER_EVALUATION"
+    trial_id: "TRIAL_P2B_BATCH2_FILTER_STUDY"
+    dataset_id: "2026-09-10_FROZEN_100_STOCK_POOL"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2023-09-04"
+      end_date: "2026-10-02"
+      slice_definition: "Phase 2B Batch 2 full historical filter screening slice across 726 trading dates"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      candidate_selection_influenced: true
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_4_PARAMETER_SELECTION_USED"
+    dimensions_seen:
+      - "F01_market_regime_net_delta"
+      - "F02_relative_strength_net_delta"
+      - "F03_sector_strength_insufficient"
+      - "F04_higher_timeframe_net_delta"
+      - "F05_liquidity_pool_net_delta"
+      - "pairwise_filter_interactions"
+    consumed_at: "2026-09-28T16:00:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/PHASE2B_BATCH2_FULL_RUN_REPORT.md"
+    source_commit: "ac5b660f"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Screened 5 filter categories; F01 market context selected for Phase 2C follow-up study (research_direction_influenced: true)."
+
+  # ====================================================================
+  # Phase 2C: F01 Market Context Mechanism Study
+  # ====================================================================
+  - consumption_id: "CNS_P2C_F01_MECHANISM_STUDY"
+    trial_id: "TRIAL_P2C_F01_MECHANISM_FOLLOWUP"
+    dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2023-09-27"
+      end_date: "2026-10-02"
+      slice_definition: "Phase 2C historical mechanism and failure regime study partition"
+    role: "DESCRIPTIVE"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_5_REPEATED_RESEARCH_EXPOSED"
+    dimensions_seen:
+      - "F01 overall result"
+      - "H01 trend-direction buckets"
+      - "H02 volatility buckets"
+      - "H03 opening 15m/30m buckets"
+      - "H04 time-of-day"
+      - "H05 breadth"
+      - "H06 LONG/SHORT/candidate breakdown"
+      - "H07 year/failure-regime descriptive results"
+    consumed_at: "2026-10-03T11:16:57+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/daytrade_phase2/phase2c_f01_corrected_report.md"
+    source_commit: "8ceb6a94"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: >
+        Phase 2C thoroughly inspected 8 historical dimensions across 2023-09-27 to 2026-10-02.
+        This entire historical slice has been repeatedly exposed across Phase 2B Batch 2 and
+        Phase 2C; all 8 dimensions are burned and ineligible for pristine confirmation.
