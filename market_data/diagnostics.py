@@ -57,6 +57,12 @@ def save_gate(gate, *, now, premarket_date, model_ready, radar_candidate_count, 
             'sources': sources,
         }
         atomic(data_dir() / 'market-gate.json', payload)
+        # Allowlisted point-in-time evidence for a complete-day audit; no raw
+        # provider payload, credentials, accounts or private endpoints.
+        history = data_dir() / ('market-gate-' + now.astimezone(TPE).date().isoformat() + '.jsonl')
+        with history.open('a', encoding='utf-8') as stream:
+            stream.write(json.dumps(payload, ensure_ascii=False) + '\n')
+        history.chmod(0o600)
     except (OSError, TypeError, ValueError, AttributeError):
         pass
 

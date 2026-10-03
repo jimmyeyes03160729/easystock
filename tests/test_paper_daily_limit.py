@@ -109,6 +109,14 @@ def test_buy_exact_limit_includes_fee_without_consuming_extra_limit(account):
     assert metrics(path)['net_pnl']==-40
 
 
+def test_executable_depth_caps_buy_without_spending_unfilled_notional(account):
+    _,path=account
+    result=ledger.buy('2303','fixture',100,path=path,timestamp=AT,max_shares=1000)
+    assert result['shares']==1000
+    assert metrics(path)['daily_buy_used']==100000
+    assert metrics(path)['daily_buy_remaining']==900000
+
+
 def test_sell_never_restores_limit_or_counts_fees_and_tax_as_usage(account):
     store,path=account;store.start_paper_trade(100000)
     fill=ledger.buy('2303','fixture',100,path=path,timestamp=AT)

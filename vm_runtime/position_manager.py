@@ -35,6 +35,7 @@ TAX_RATE = 0.0015                 # 現股當沖證交稅 0.15%
 class PaperWallet:
     def __init__(self):
         self.state = read_paper_trade_settings()
+        self.execution_evidence = None
 
     def refresh(self) -> dict:
         self.state = read_paper_trade_settings()
@@ -54,15 +55,33 @@ class PaperWallet:
 
     def open_fill(self, symbol, name, price, execution_id=None):
         from paper_account import buy
-        return buy(symbol, name, price, execution_id=execution_id)
+        from paper_execution import execution
+        evidence = self.execution_evidence(symbol) if self.execution_evidence else {}
+        decision = execution(evidence, 'BUY', datetime.now(TPE))
+        if decision['status'] != 'executable':
+            return decision
+        result = buy(symbol, name, decision['price'], execution_id=execution_id,
+                     max_shares=decision['max_shares'])
+        return dict(result, execution_evidence=decision)
 
     def try_buy(self, symbol, name, price):
         return self.open_fill(symbol, name, price).get('shares', 0)
 
     def close_and_settle(self, symbol, exit_price, exit_reason='平倉出場',
                          name=None, entry_price=None, shares=None, trade_id=None):
-        from paper_account import sell
-        return sell(symbol, exit_price, exit_reason, trade_id=trade_id)
+        from paper_account import sell, open_positions, settlement_receipt
+        from paper_execution import execution
+        receipt = settlement_receipt(trade_id) if trade_id else None
+        if receipt:
+            return dict(receipt, already_settled=True)
+        position = next((p for p in open_positions() if p['symbol']==str(symbol)), None)
+        if not position:
+            return {'status':'no_position'}
+        evidence = self.execution_evidence(symbol) if self.execution_evidence else {}
+        decision = execution(evidence, 'SELL', datetime.now(TPE), position['shares'])
+        if decision['status'] != 'executable':
+            return decision
+        return sell(symbol, decision['price'], exit_reason, trade_id=trade_id)
 
 
 from datetime import time
@@ -414,6 +433,8 @@ class PositionManager:
                     position.update(paper_execution='FILLED', paper_skip_reason=None,
                         paper_trade_id=fill['trade_id'], trade_id=fill['trade_id'],
                         shares=fill['shares'], execution_kind='paper_fill')
+                    position['paper_entry_price'] = fill.get('entry_price')
+                    position['paper_execution_evidence'] = fill.get('execution_evidence')
                     self.paper_traded_symbols.add(str(symbol))
                 else:
                     position.update(paper_execution='SKIPPED',
@@ -818,11 +839,12 @@ class PositionManager:
             trade['paper_settlement_pending'] = trade.get('paper_execution') == 'FILLED'
             # Hypothetical one-lot research costs, independent of wallet size.
             from decimal import Decimal, ROUND_HALF_UP
-            from paper_ledger import fee, BUY_RATE, SELL_RATE, DAY_TAX_RATE
+            from paper_ledger import fee, BUY_RATE, SELL_RATE
+            from paper_execution import tax
             entry_amount = Decimal(str(entry_price))*1000
             exit_amount = Decimal(str(exit_price))*1000
             costs = (fee(entry_amount, BUY_RATE) + fee(exit_amount, SELL_RATE)
-                     + (exit_amount*DAY_TAX_RATE).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+                     + tax(exit_amount))
             trade['research_net_pnl_pct'] = pnl_pct - float(costs/entry_amount)*100
             trade['research_cost_basis'] = 'one_lot_fee_28pct_discount_daytrade_tax'
             self._persist(trade, armed=False)

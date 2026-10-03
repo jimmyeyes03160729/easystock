@@ -1,5 +1,18 @@
 # EasyStock Roadmap
 
+## 2026-10-03 live validation preflight
+
+- [ ] Market Risk Gate full-session live evidence: READY_FOR_LIVE_VALIDATION.
+  Existing stale-premarket, dual-provider fallback, UNKNOWN block, true RED
+  block and multi-quote recovery rules remain unchanged. Private point-in-time
+  market-gate JSONL and a read-only validation command were added.
+- [ ] Research/Paper natural over-limit event: inspect durable events after a
+  complete trading session. Synthetic 3189 scenarios do not close live validation.
+- [ ] Paper daytrade execution alignment: code and regression implemented;
+  close only after Linux tests and deployment verification. Fresh bid/ask depth,
+  explicit eligibility, pending unfilled exits and canonical cost assumptions
+  are described in DAYTRADE_COMPLIANCE_REVIEW_2026-10-03.md.
+
 > 本文件用於記錄已確認的後續規劃。  
 > 更新原則：使用者在 EasyStock 相關討論中說「紀錄」時，更新此文件，保留既有內容並整理版本脈絡。
 

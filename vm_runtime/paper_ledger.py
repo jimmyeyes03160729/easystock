@@ -12,11 +12,11 @@ import time
 from contextlib import contextmanager
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
+from paper_execution import fee, tax, STANDARD_FEE_RATE, SIMULATED_DISCOUNT, DAY_TAX_RATE
 
 TPE = dt.timezone(dt.timedelta(hours=8))
-BUY_RATE = Decimal('0.001425') * Decimal('0.28')
+BUY_RATE = STANDARD_FEE_RATE * SIMULATED_DISCOUNT
 SELL_RATE = BUY_RATE
-DAY_TAX_RATE = Decimal('0.0015')  # Only simulated eligible same-day stock day trades.
 LOT = 1000
 SEMANTICS = 'daily-buy-limit-v1'
 
@@ -34,10 +34,6 @@ def d(x):
 
 def money(x):
     return d(x).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-
-
-def fee(amount, rate):
-    return max(Decimal('20'), (d(amount) * rate).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
 
 
 def now():
@@ -235,7 +231,7 @@ def skipped(con, stamp, symbol, name, price, reason, skip_reason=None):
     return {'status':'skipped', 'reason':reason, 'shares':0, 'skip_reason': skip_reason}
 
 
-def buy(symbol, name, price, path=None, timestamp=None, execution_id=None):
+def buy(symbol, name, price, path=None, timestamp=None, execution_id=None, max_shares=None):
     stamp = datetime_tpe(timestamp)
     symbol, name, price = str(symbol), str(name), d(price)
     if price <= 0 or price > Decimal('10000000'):
@@ -259,6 +255,10 @@ def buy(symbol, name, price, path=None, timestamp=None, execution_id=None):
         metrics = daily_metrics(con,pid,stamp.date().isoformat())
         remaining = money(metrics['daily_buy_remaining'])
         shares = int(remaining // (price * LOT)) * LOT
+        if max_shares is not None:
+            if type(max_shares) is not int or max_shares < LOT or max_shares % LOT:
+                raise ValueError('invalid_executable_depth')
+            shares = min(shares, max_shares)
         while shares > 0:
             gross = money(price * shares)
             buy_fee = fee(gross, BUY_RATE)
@@ -310,9 +310,9 @@ def sell(symbol, exit_price, reason='', path=None, timestamp=None, trade_id=None
             raise ValueError('paper_position_identity_mismatch')
         shares = int(r['shares'])
         gross = money(exit_price * shares)
-        sell_fee, tax = fee(gross, SELL_RATE), money(gross * DAY_TAX_RATE).quantize(Decimal('1'),rounding=ROUND_HALF_UP)
+        sell_fee, sell_tax = fee(gross, SELL_RATE), tax(gross)
         entry_amount, buy_fee = money(d(r['entry_price']) * shares), money(r['buy_fee'])
-        pnl = money(gross - entry_amount - buy_fee - sell_fee - tax)
+        pnl = money(gross - entry_amount - buy_fee - sell_fee - sell_tax)
         after = money(daily_metrics(con,pid,stamp.date().isoformat())['daily_buy_remaining'])
         con.execute('DELETE FROM paper_trade_positions WHERE symbol=? AND period_id=?',(symbol,pid))
         event(con, stamp, symbol, str(r['name']), exit_price, '賣出',
@@ -320,11 +320,11 @@ def sell(symbol, exit_price, reason='', path=None, timestamp=None, trade_id=None
         con.execute('''INSERT INTO paper_trade_fills(period_id,transaction_id,trade_date,event_time,side,symbol,name,price,shares,gross,fee,tax,realized_pnl,cash_after,reason,buy_limit_remaining_after,semantics_version)
           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
           (pid,f'{pid}:SELL:{actual_id}',stamp.date().isoformat(),stamp.isoformat(),'SELL',symbol,r['name'],float(exit_price),shares,
-           float(gross),float(sell_fee),float(tax),float(pnl),float(after),str(reason),float(after),SEMANTICS))
+           float(gross),float(sell_fee),float(sell_tax),float(pnl),float(after),str(reason),float(after),SEMANTICS))
         refresh_day(con,pid,stamp.date().isoformat())
         result = {'status':'sold','symbol':symbol,'shares':shares,'daily_buy_remaining':float(after),
                   'net_pnl':float(pnl),
-                  'costs':float(buy_fee+sell_fee+tax),'trade_id':actual_id}
+                  'costs':float(buy_fee+sell_fee+sell_tax),'trade_id':actual_id}
         con.execute('INSERT OR REPLACE INTO meta(key,value) VALUES(?,?)',
                     ('paper-settlement:'+actual_id,json.dumps(result)))
         con.execute('DELETE FROM meta WHERE key=?', ('paper-position:'+symbol,))

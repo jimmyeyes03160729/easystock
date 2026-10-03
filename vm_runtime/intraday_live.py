@@ -2629,6 +2629,7 @@ class IntradayLiveEngine:
         self._market_block_counts = {'market_risk_red': 0, 'market_data_unavailable': 0}
         self.market_valid_until = 0.0
         self.market_risk = {'valid': False, 'gate_reason': 'not_checked'}
+        paper_wallet.execution_evidence = self.paper_execution_evidence
         self.manager.before_open = lambda **kw: None if self.collect_only else paper_wallet.open_fill(**kw)
         self.manager.before_close = lambda **kw: paper_wallet.close_and_settle(**kw)
         self.manager.research_store = ResearchStore()
@@ -2701,6 +2702,34 @@ class IntradayLiveEngine:
                 market_level=self.market_level, checked_at=current.isoformat()))
         except Exception as exc:
             print('[RISK] status publish failed:', type(exc).__name__)
+
+    def paper_execution_evidence(self, symbol):
+        """Read-only SDK contract/snapshot; no order API and no last-price fill."""
+        try:
+            contract = self.contracts.get(str(symbol))
+            if contract is None:
+                return {}
+            flag = getattr(contract, 'day_trade', None)
+            flag = getattr(flag, 'value', flag)
+            eligibility = True if flag in ('Yes', 'OnlyBuy') else False if flag == 'No' else None
+            # Only ordinary stocks are covered by this simulator's tax model.
+            category = str(getattr(contract, 'category', ''))
+            if not category or category in ('00', 'ETF', 'ETN'):
+                eligibility = None
+            snapshots = self.api.snapshots([contract], timeout=3000)
+            if not snapshots:
+                return {'eligibility':eligibility}
+            quote = snapshots[0]
+            observed = as_datetime(getattr(quote, 'ts', None))
+            return {'eligibility':eligibility,
+                    'quote_at':observed.isoformat() if observed else None,
+                    'bid':getattr(quote, 'buy_price', None),
+                    'ask':getattr(quote, 'sell_price', None),
+                    # SDK snapshot buy/sell volumes are ordinary board lots.
+                    'bid_shares':float(getattr(quote, 'buy_volume', 0))*1000,
+                    'ask_shares':float(getattr(quote, 'sell_volume', 0))*1000}
+        except Exception:
+            return {}
 
     def init_firebase(self) -> None:
         self.market_level, self.premarket_brief = (
@@ -4645,21 +4674,9 @@ class IntradayLiveEngine:
             ).upper() != "OPEN":
                 continue
 
-            price = (
-                self.last_prices.get(
-                    symbol
-                )
-                or num(
-                    position.get(
-                        "current_price"
-                    )
-                )
-                or num(
-                    position.get(
-                        "entry_price"
-                    )
-                )
-            )
+            from paper_execution import execution
+            executable = execution(self.paper_execution_evidence(symbol), 'SELL', now_tpe(), 1000)
+            price = executable.get('price') if executable['status']=='executable' else None
 
             if price is None:
                 print(

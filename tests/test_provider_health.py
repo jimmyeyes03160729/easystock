@@ -109,6 +109,9 @@ def test_market_gate_diagnostics_are_private_and_sanitized(tmp_path,monkeypatch)
     assert data['selected_source']=='esun'
     assert data['entry_block_evaluations']['market_data_unavailable']==8
     assert 'test-secret' not in json.dumps(data)
+    history=(tmp_path/('market-gate-'+NOW.date().isoformat()+'.jsonl')).read_text()
+    assert 'test-secret' not in history
+    assert json.loads(history)['sources']['esun']['quote_at']==NOW.isoformat()
 
 def test_context_never_uses_receipt_as_quote_time(tmp_path,monkeypatch):
     monkeypatch.setenv('EASYSTOCK_MARKET_DATA_DIR',str(tmp_path))
