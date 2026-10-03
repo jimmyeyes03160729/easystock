@@ -48,7 +48,7 @@ class CashLedgerTests(unittest.TestCase):
         self.assertEqual(account.open_positions()[0]['trade_id'],buy['trade_id'])
         sell=account.sell('2330',101,trade_id=buy['trade_id'])
         self.assertEqual(sell['net_pnl'],768)
-        self.assertEqual(sell['equity'],100768)
+        self.assertEqual(self.query('SELECT end_balance FROM paper_trade_logs')[0][0],100768)
         self.assertEqual(sell['daily_buy_remaining'],0)
         self.assertEqual(self.query('SELECT net_pnl,costs,trades_count,settlement_status FROM paper_trade_logs'),[(768,232,1,'settled')])
         again=account.sell('2330',102,trade_id=buy['trade_id'])

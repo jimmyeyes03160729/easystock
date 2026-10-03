@@ -35,7 +35,7 @@ def verify(database, runtime):
                 con.row_factory=sqlite3.Row
                 metrics=paper_ledger.daily_metrics(con,paper_ledger.period(con),paper_ledger.now().date().isoformat())
                 used=metrics['daily_buy_used']
-                equity=metrics['equity']
+                cum=metrics['cumulative_net_pnl']
                 con.execute("UPDATE paper_trade_settings SET status='running',daily_buy_limit=? WHERE id=1",(used+100000,))
                 before_fills = con.execute('SELECT COUNT(*) FROM paper_trade_fills').fetchone()[0]
             price = 100
@@ -49,10 +49,10 @@ def verify(database, runtime):
             with sqlite3.connect(copy) as con:
                 con.row_factory=sqlite3.Row
                 after=paper_ledger.daily_metrics(con,paper_ledger.period(con),paper_ledger.now().date().isoformat())
-                assert abs(after['equity']-equity-sell['net_pnl']) < .011, 'equity reconciliation failed'
+                assert abs(after['cumulative_net_pnl']-cum-sell['net_pnl']) < .011, 'cumulative pnl reconciliation failed'
                 assert after['daily_buy_used']==used+100000 and after['daily_buy_remaining']==0, 'SELL replenished daily limit'
                 assert con.execute('SELECT COUNT(*) FROM paper_trade_fills').fetchone()[0] == before_fills+2
-            print('PASS: '+kind+' ledger; daily usage, equity, duplicate settlement; original DB unchanged')
+            print('PASS: '+kind+' ledger; daily usage, cumulative pnl, duplicate settlement; original DB unchanged')
         finally:
             account.db_path = original_path
 
