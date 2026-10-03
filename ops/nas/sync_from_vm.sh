@@ -98,9 +98,7 @@ try:
             src.close()
     print(target)
 except Exception:
-    # Only remove the generated, incomplete directory; never touch source databases.
-    import shutil
-    shutil.rmtree(target, ignore_errors=True)
+    # Preserve generated VM snapshots on failure for investigation.
     raise
 PY
 REMOTE_PY
@@ -128,9 +126,43 @@ for name in ('rebound-dataset.sqlite', 'research.sqlite', 'decisions.sqlite', 'a
     if result != [('ok',)]:
         raise SystemExit(f'{name}: integrity_check returned {result!r}')
     print(f'{name}: ok')
+# All four connections are closed and all checks passed before removing sidecars.
+for pattern in ('*.sqlite-wal', '*.sqlite-shm'):
+    for sidecar in folder.glob(pattern):
+        sidecar.unlink()
 PY
 
 touch "$TARGET_DIR/.complete"
+log 'Removing the generated VM snapshot for this run after NAS validation and .complete'
+ssh "${SSH_OPTS[@]}" "$REMOTE" "$REMOTE_COMMAND" <<'REMOTE_CLEANUP' || die 'VM snapshot cleanup failed; LAST_SUCCESS not updated'
+set -Eeuo pipefail
+python3 - <<'PY'
+import os, pathlib, re, shutil
+
+root = pathlib.Path(os.environ['REMOTE_SNAPSHOT_ROOT'])
+allowed_root = pathlib.Path('/home/ubuntu/easystock-sync-snapshots')
+stamp = os.environ['STAMP']
+if root != allowed_root or root.resolve() != allowed_root:
+    raise SystemExit(f'refusing cleanup outside dedicated VM snapshot root: {root}')
+if not re.fullmatch(r'\d{8}-\d{6}', stamp):
+    raise SystemExit('refusing cleanup with invalid snapshot timestamp')
+target = root / stamp
+if target.is_symlink() or target.resolve().parent != allowed_root or not target.is_dir():
+    raise SystemExit(f'refusing cleanup of unexpected snapshot directory: {target}')
+for key in ('REMOTE_REBOUND_DB', 'REMOTE_RESEARCH_DB', 'REMOTE_DECISIONS_DB', 'REMOTE_ADMIN_DB'):
+    source = pathlib.Path(os.environ[key]).resolve()
+    if source == target or target in source.parents:
+        raise SystemExit(f'refusing cleanup containing source database: {source}')
+expected = {'rebound-dataset.sqlite', 'research.sqlite', 'decisions.sqlite', 'admin-state.sqlite'}
+allowed = expected | {name + suffix for name in expected for suffix in ('-wal', '-shm')}
+entries = list(target.iterdir())
+if not expected.issubset({entry.name for entry in entries}):
+    raise SystemExit('refusing cleanup of incomplete/unexpected VM snapshot')
+if any(entry.name not in allowed or entry.is_symlink() or not entry.is_file() for entry in entries):
+    raise SystemExit('refusing cleanup of VM snapshot containing unexpected entries')
+shutil.rmtree(target)
+PY
+REMOTE_CLEANUP
 # Retention applies only to resolved direct children of the configured local snapshot root.
 SNAPSHOT_ROOT_REAL="$(realpath "$BACKUP_ROOT/sqlite")"
 while IFS= read -r -d '' old_dir; do

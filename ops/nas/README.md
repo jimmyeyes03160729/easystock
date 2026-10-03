@@ -19,7 +19,11 @@ NAS 使用 `/workspace/.ssh/easystock_nas_ed25519` 主動連線 `ubuntu@141.147.
 
 全部成功才以原子替換更新 `/data/backup/vm/LAST_SUCCESS`。同時只允許一個同步程序。rsync 不使用 `--delete`，不刪除 VM 原始資料，不操作交易服務。失敗會以非零狀態退出並保留 NAS 未完成 snapshot；learning-data 是累積同步目錄，失敗時可能已收到部分更新，不是整批原子 snapshot。
 
-NAS timestamp 目錄保留 14 天，成功驗證後才清理超過 14 天的目錄。VM 產生的 snapshot 暫不自動清理，部署者需另行管理容量；此腳本不刪 VM 資料。
+NAS 四個 SQLite 完成驗證並關閉連線後，會刪除本次 NAS snapshot 內的 `*.sqlite-wal`、`*.sqlite-shm`，再建立 `.complete`；完整 snapshot 只保留四個 `.sqlite` 與 `.complete`。
+
+只有 rsync 成功、NAS 四個 integrity_check 全部通過且 `.complete` 建立後，才清除本次 VM 產生的 `/home/ubuntu/easystock-sync-snapshots/<timestamp>`。清除前核對固定根目錄、timestamp、非 symlink、來源 DB 不在刪除目錄內及檔案清單；不掃描或清除其他 timestamp，不刪正式來源 DB。失敗時保留已產生的 VM snapshot 供排查（含建立 snapshot 階段失敗）；清理失敗會以非零狀態退出且不更新 LAST_SUCCESS。歷史失敗留下的 snapshot 需另行排查，不會被後續成功工作自動刪除。
+
+NAS timestamp 目錄保留 14 天，成功驗證後才清理超過 14 天的目錄。
 
 ## 日後部署到 NAS
 
