@@ -3,17 +3,23 @@
 FROM node:22-bookworm-slim
 ARG TARGETARCH
 ARG PNPM_VERSION=10.18.3
-ENV HOME=/home/agent PATH=/home/agent/.local/bin:/opt/venv/bin:$PATH \
-    TZ=Asia/Taipei PYTHONUNBUFFERED=1
+ENV TZ=Asia/Taipei PYTHONUNBUFFERED=1
 RUN test "$TARGETARCH" = arm64 \
     && apt-get update && apt-get install -y --no-install-recommends \
        bash ca-certificates curl git openssh-client python3 python3-venv \
        python3-dev build-essential pkg-config libffi-dev libssl-dev \
        procps tini ripgrep tzdata \
     && rm -rf /var/lib/apt/lists/* \
-    && npm install -g pnpm@${PNPM_VERSION} \
-    && usermod --login agent --home /home/agent --move-home --shell /bin/bash node \
     && groupmod --new-name agent node \
+    && usermod --login agent --home /home/agent --move-home --shell /bin/bash node \
+    && getent passwd agent && id agent \
+    && test "$(id -u agent)" = 1000 \
+    && test "$(id -g agent)" = 1000 \
+    && test -d /home/agent
+# Set HOME only after moving the existing UID/GID 1000 account successfully.
+# npm and other tools must not create the destination before usermod runs.
+ENV HOME=/home/agent PATH=/home/agent/.local/bin:/opt/venv/bin:$PATH
+RUN npm install -g pnpm@${PNPM_VERSION} \
     && python3 -m venv /opt/venv && chown -R agent:agent /opt/venv \
     && mkdir -p /workspace /opt/antigravity \
     && chown agent:agent /workspace
