@@ -1,0 +1,9 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+TZ=Asia/Taipei
+NAS_CONFIG=/config/nas.env
+
+# Debian cron uses /etc/localtime (set to Asia/Taipei in the image).
+# /etc/cron.d entries require the user field and a final newline.
+30 14 * * * root /bin/bash /opt/easystock/ops/nas/sync_from_vm.sh >> /data/backup/vm/sync.log 2>&1
+45 14 * * * root /bin/bash /opt/easystock/ops/nas/healthcheck.sh >> /data/backup/vm/healthcheck.log 2>&1

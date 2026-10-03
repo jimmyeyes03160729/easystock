@@ -41,24 +41,54 @@ bash -n sync_from_vm.sh healthcheck.sh
 
 在允許連線及部署後才手動執行 `./healthcheck.sh` 與 `./sync_from_vm.sh`。healthcheck 檢查 SSH、持久儲存掛載、90% 容量門檻、EasyStock 基本環境及 LAST_SUCCESS；退出碼 0 表示正常、1 表示警告、2 表示失敗。
 
-## Docker 範例
+## Z2 Pro ARM64 Docker Compose 部署
+
+Dockerfile 使用支援 ARM64 的 `debian:bookworm-slim`，安裝 Debian cron。獨立的 `easystock-scheduler` 在容器內以 `/usr/sbin/cron -f` 作為主程序，不依賴 ZOS 主機 cron；不修改既有 `easystock-lab` 的設定或用途。
+
+確認 `/data` 是 4.6T HDD 的實際掛載點後，在 Z2 Pro 執行：
 
 ```sh
-docker compose -f compose.example.yaml build
-docker compose -f compose.example.yaml run --rm easystock-nas-backup /opt/easystock/ops/nas/healthcheck.sh
-docker compose -f compose.example.yaml run --rm easystock-nas-backup /opt/easystock/ops/nas/sync_from_vm.sh
+cd /workspace/easystock/ops/nas
+# 若已經有實機驗證過的 nas.env，保留原檔。
+test -f nas.env || cp nas.env.example nas.env
+chmod 600 nas.env /workspace/.ssh/easystock_nas_ed25519
+mkdir -p /data/backup/vm
+bash -n sync_from_vm.sh healthcheck.sh
+docker compose -p easystock-nas -f compose.example.yaml config
+docker compose -p easystock-nas -f compose.example.yaml build easystock-scheduler
+docker compose -p easystock-nas -f compose.example.yaml up -d --no-deps easystock-scheduler
 ```
 
-私鑰及 known_hosts 以唯讀方式掛載，nas.env 以唯讀方式掛载。容器使用 Asia/Taipei。只有 `/data/backup/vm` 掛載到容器；healthcheck 接受此獨立 bind mount。此服務是一次性工作，不會自行啟動 cron。
+此專案名稱與 `easystock-lab` 分開管理。私鑰與 known_hosts 所在的 `/workspace/.ssh`、`nas.env` 都以唯讀方式掛載；備份與日誌寫入 `/data/backup/vm` 的持久 bind mount。容器以 root 執行 cron，以讀取權限 600 的 key 與設定檔。
 
-## 每日 14:30 Asia/Taipei（僅範例，未安裝）
+每天（含週末）Asia/Taipei 14:30 同步、14:45 執行備份 healthcheck。映像將 `/etc/localtime` 與 `/etc/timezone` 固定為 Asia/Taipei，Compose 與 cron 工作環境亦設定 `TZ=Asia/Taipei`。`/etc/cron.d/easystock-backup` 使用絕對路徑，並明確設定 `NAS_CONFIG=/config/nas.env`，不依賴 cron 繼承容器環境。
 
-NAS 系統及 cron daemon 的時區須設定為 Asia/Taipei；只設定工作環境 `TZ` 不保證所有 cron 實作以該時區觸發。每天（含週末）14:30 同步，14:45 檢查。部署時才將下列內容加到 NAS 排程：
+日誌包含標準輸出與錯誤輸出：
 
-```cron
-TZ=Asia/Taipei
-30 14 * * * /bin/bash /workspace/easystock/ops/nas/sync_from_vm.sh >> /data/backup/vm/sync.log 2>&1
-45 14 * * * /bin/bash /workspace/easystock/ops/nas/healthcheck.sh >> /data/backup/vm/healthcheck.log 2>&1
+- `/data/backup/vm/sync.log`
+- `/data/backup/vm/healthcheck.log`
+
+`restart: unless-stopped` 讓容器異常退出或 NAS/Docker 重啟後自動恢復排程（需確保 Docker 開機啟動，且容器未被手動停止）。cron 設定內建於映像，容器重啟不會遺失；錯過的排程不補跑。保留 `sync_from_vm.sh` 既有 `/data/backup/vm/.sync.lock` 與 `flock -n`，避免排程及手動同步同時執行。只啟動一個 scheduler，不要搭配另一份 ZOS cron 或另一個 Compose 專案重複排程；若曾安裝舊備份排程，部署前移除該兩筆備份工作。
+
+## 確認排程與維運
+
+```sh
+cd /workspace/easystock/ops/nas
+docker compose -p easystock-nas -f compose.example.yaml ps easystock-scheduler
+docker compose -p easystock-nas -f compose.example.yaml exec easystock-scheduler /usr/bin/pgrep -a -x cron
+docker compose -p easystock-nas -f compose.example.yaml exec easystock-scheduler /bin/date
+docker compose -p easystock-nas -f compose.example.yaml exec easystock-scheduler /bin/cat /etc/cron.d/easystock-backup
+tail -n 100 /data/backup/vm/sync.log /data/backup/vm/healthcheck.log
+cat /data/backup/vm/LAST_SUCCESS
 ```
 
-若使用 Docker，把命令改成含絕對 `--project-directory /workspace/easystock/ops/nas` 與 `-f /workspace/easystock/ops/nas/compose.example.yaml` 的 `docker compose run --rm`。定期輪替日誌。沒有 GitHub Actions 部署流程。
+Compose healthcheck 每 30 秒確認 cron process 存活；`healthy` 只代表排程程序存活，備份是否成功仍以日誌與 LAST_SUCCESS 判斷。Docker 不會因 `unhealthy` 自動重啟容器，cron 主程序退出才由 restart policy 恢復。14:45 的 healthcheck 不等待 sync 完成，若同步耗時較長，請依 sync.log 與後續 LAST_SUCCESS 判讀。
+
+需要手動檢查或同步時，可使用保留的一次性服務：
+
+```sh
+docker compose -p easystock-nas -f compose.example.yaml run --rm easystock-nas-backup /opt/easystock/ops/nas/healthcheck.sh
+docker compose -p easystock-nas -f compose.example.yaml run --rm easystock-nas-backup /opt/easystock/ops/nas/sync_from_vm.sh
+```
+
+定期輪替兩份日誌。更新程式後重新 build 並 `up -d --no-deps easystock-scheduler`。此部署不使用 GitHub Actions，也不操作 Oracle VM 正式交易服務；同步仍僅依原腳本產生、拉回及清理本次備份 snapshot。

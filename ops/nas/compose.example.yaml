@@ -10,3 +10,22 @@ services:
       - /workspace/.ssh:/workspace/.ssh:ro
       - ./nas.env:/config/nas.env:ro
     command: ["/opt/easystock/ops/nas/sync_from_vm.sh"]
+  easystock-scheduler:
+    build: .
+    image: easystock-nas-backup:local
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Taipei
+      NAS_CONFIG: /config/nas.env
+    volumes:
+      - /data/backup/vm:/data/backup/vm
+      - /workspace/.ssh:/workspace/.ssh:ro
+      - ./nas.env:/config/nas.env:ro
+    entrypoint: ["/usr/sbin/cron"]
+    command: ["-f"]
+    healthcheck:
+      test: ["CMD", "/usr/bin/pgrep", "-x", "cron"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
