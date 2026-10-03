@@ -30,7 +30,6 @@ def build_daily_summary(path, day):
         metrics = paper_ledger.daily_metrics(db,pid,day)
         if log and log['daily_buy_limit'] is not None and day != paper_ledger.now().date().isoformat():
             metrics['daily_buy_limit'] = log['daily_buy_limit']
-            metrics['equity'] = log['end_balance']
         rows = db.execute("SELECT realized_pnl,symbol,name FROM paper_trade_fills WHERE period_id=? AND trade_date=? AND side='SELL' ORDER BY id", (pid,day)).fetchall()
         details = [f'{row["name"] or row["symbol"]} {row["realized_pnl"]:+,.0f}' for row in rows]
     used,limit = metrics['daily_buy_used'],metrics['daily_buy_limit']
@@ -47,7 +46,7 @@ def build_daily_summary(path, day):
         f'今日淨損益：{metrics["net_pnl"]:+,.2f} 元',
         f'交易資金報酬率（淨損益／買進使用額度）：{rate}',
         f'今日額度使用率：{used/limit*100:.1f}%' if limit else '今日額度使用率：--',
-        f'模擬累積權益：{metrics["equity"]:,.2f} 元']
+        f'累積淨損益：{metrics["cumulative_net_pnl"]:+,.2f} 元']
     if details:
         lines += ['', '交易摘要：' + '；'.join(details[:8])]
     elif metrics['trades_count'] == 0:

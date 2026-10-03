@@ -8,7 +8,7 @@ const {createDOM,settle}=require('./dom.cjs');
   w.document.getElementById('workspace').hidden=false;
   const writes=[];
   const state={settings:{daily_buy_limit:1000000,daily_buy_used:650000,daily_buy_remaining:350000,
-    realized_pnl:1000,fees:80,tax:152,net_pnl:768,cumulative_net_pnl:83500,equity:1083500,
+    realized_pnl:1000,fees:80,tax:152,net_pnl:768,cumulative_net_pnl:83500,
     return_pct:0.118,status:'running',start_date:'2026-10-01'},positions:[],events:[],logs:[]};
   w.fetch=async(url,options={})=>{
     if (options.method==='POST') {
@@ -22,7 +22,9 @@ const {createDOM,settle}=require('./dom.cjs');
   assert.equal(w.document.getElementById('simRemaining').textContent,'350,000 元');
   assert.equal(w.document.getElementById('simUsed').textContent,'650,000 元');
   assert.equal(w.document.getElementById('simNetPnl').textContent,'768 元');
-  assert.equal(w.document.getElementById('simEquity').textContent,'1,083,500 元');
+  assert.equal(w.document.getElementById('simCumulativePnl').textContent,'83,500 元');
+  assert(!html.includes('模擬累積權益'));
+  assert(!html.includes('simEquity'));
   assert.equal(w.document.getElementById('simDailyLimitInput').value,'1000000');
   w.document.getElementById('simDailyLimitInput').value='2000000';
   w.document.getElementById('paperTradeForm').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
@@ -30,5 +32,5 @@ const {createDOM,settle}=require('./dom.cjs');
   assert.deepEqual(writes,[{daily_buy_limit:2000000}]);
   assert.equal(w.document.getElementById('simRemaining').textContent,'1,350,000 元');
   assert.equal(w.document.getElementById('simUsed').textContent,'650,000 元');
-  w.close();console.log('PASS paper limit UI: usage, fees, equity and daily-limit payload');
+  w.close();console.log('PASS paper limit UI: usage, net PnL, cumulative net PnL and daily-limit payload');
 })().catch(e=>{console.error(e);process.exitCode=1;});

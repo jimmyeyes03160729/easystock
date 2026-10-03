@@ -303,8 +303,8 @@ def read_pipeline_settings():
 
 def paper_trade_defaults():
     return {'daily_buy_limit':100000.0,'daily_buy_used':0.0,'daily_buy_remaining':100000.0,
-            'status':'stopped','start_date':'','performance_base':100000.0,
-            'cumulative_net_pnl':0.0,'equity':100000.0,'net_pnl':0.0,'fees':0.0,'tax':0.0}
+            'status':'stopped','start_date':'','cumulative_net_pnl':0.0,
+            'net_pnl':0.0,'fees':0.0,'tax':0.0}
 
 
 def read_paper_trade_settings():

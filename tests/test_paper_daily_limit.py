@@ -4,6 +4,7 @@ from contextlib import closing
 from datetime import datetime, timedelta, timezone
 import importlib.util
 from pathlib import Path
+import os
 import sqlite3
 
 import pytest
@@ -63,7 +64,10 @@ def test_old_migration_preserves_every_original_field_and_repeated_configuration
         row=db.execute('SELECT daily_buy_limit,performance_base,current_capital,legacy_pnl_adjustment FROM paper_trade_settings').fetchone()
         assert tuple(row)==(200000,200000,199652,0)
         assert metrics(path)['cumulative_net_pnl']==-348
-        assert metrics(path)['equity']==199652
+        # Legacy balances remain migration evidence only; product metrics expose
+        # cumulative net PnL, never a Paper equity account.
+        assert 'equity' not in metrics(path)
+        assert 'performance_base' not in metrics(path)
         db.execute('UPDATE paper_trade_settings SET daily_buy_limit=2000000');db.commit()
         again=migration.migrate_verified(db)
         assert again['existing_rows_unchanged']
@@ -78,7 +82,9 @@ def test_probe_is_read_only_and_apply_creates_backup(tmp_path):
     report=migration.run(path,True,tmp_path/'backups')
     assert report['applied'] and report['existing_rows_unchanged']
     backup=Path(report['backup'])
-    assert backup.is_file() and backup.stat().st_mode & 0o777 == 0o600
+    assert backup.is_file()
+    if os.name != 'nt':
+        assert backup.stat().st_mode & 0o777 == 0o600
     with sqlite3.connect(backup) as db:
         assert 'daily_buy_limit' not in [r[1] for r in db.execute('PRAGMA table_info(paper_trade_settings)')]
 
@@ -133,14 +139,14 @@ def test_same_day_more_buys_accumulate_and_owner_change_preserves_usage(account)
 
 
 @pytest.mark.parametrize('exit_price',[90,110])
-def test_next_taipei_day_resets_usage_not_limit_or_performance(account,exit_price):
+def test_next_taipei_day_resets_usage_not_limit_or_cumulative_pnl(account,exit_price):
     store,path=account;store.start_paper_trade(100000)
     fill=ledger.buy('2303','fixture',100,path=path,timestamp=AT)
     ledger.sell('2303',exit_price,path=path,timestamp=AT,trade_id=fill['trade_id'])
-    equity=metrics(path)['equity']
+    cumulative=metrics(path)['cumulative_net_pnl']
     following=metrics(path,'2026-10-02')
     assert following['daily_buy_used']==0 and following['daily_buy_remaining']==100000
-    assert following['daily_buy_limit']==100000 and following['equity']==equity
+    assert following['daily_buy_limit']==100000 and following['cumulative_net_pnl']==cumulative
     ledger.buy('2317','fixture',100,path=path,timestamp='2026-10-01T16:01:00+00:00')
     assert metrics(path,'2026-10-02')['daily_buy_used']==100000
 
@@ -205,9 +211,18 @@ def test_summary_has_usage_fees_tax_net_return_and_zero_denominator(account):
     ledger.sell('2303',101,path=path,timestamp=AT,trade_id=fill['trade_id'])
     text=build_daily_summary(path,'2026-10-01')
     for content in ('每日買進額度：100,000.00','今日買進使用額度：100,000.00','今日手續費：80.00',
-                    '今日證交稅：152.00','今日淨損益：+768.00','0.77%','今日額度使用率：100.0%'):
+                    '今日證交稅：152.00','今日淨損益：+768.00','累積淨損益：+768.00','0.77%','今日額度使用率：100.0%'):
         assert content in text
     assert '目前模擬帳戶資金' not in text
+    assert '模擬累積權益' not in text
+
+
+def test_public_paper_snapshot_excludes_legacy_equity_fields(account):
+    _, path = account
+    snapshot = ledger.snapshot(path)
+    assert 'equity' not in snapshot['settings']
+    assert 'performance_base' not in snapshot['settings']
+    assert all('equity_start' not in row and 'equity_end' not in row for row in snapshot['logs'])
 
 
 def test_core_and_admin_root_vm_sources_match():

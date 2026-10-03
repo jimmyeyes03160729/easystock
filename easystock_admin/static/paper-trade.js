@@ -22,7 +22,7 @@
     }
     const amounts = {simRemaining:s.daily_buy_remaining,simDailyLimit:s.daily_buy_limit,
       simUsed:s.daily_buy_used,simGrossPnl:s.realized_pnl,simFees:s.fees,simTax:s.tax,
-      simNetPnl:s.net_pnl,simCumulativePnl:s.cumulative_net_pnl,simEquity:s.equity};
+      simNetPnl:s.net_pnl,simCumulativePnl:s.cumulative_net_pnl};
     for (const [id,amount] of Object.entries(amounts)) {
       const node=document.getElementById(id);
       if (node) node.textContent = amount == null ? '--' : `${Number(amount).toLocaleString()} 元`;
@@ -92,7 +92,6 @@
             <td style="padding:6px 4px;">${log.daily_buy_limit == null ? '舊帳本未保存' : Number(log.daily_buy_limit).toLocaleString()}</td>
             <td style="padding:6px 4px;">${log.symbols || '--'}</td>
             <td style="padding:6px 4px;font-weight:bold;color:${color};">${log.net_pnl >= 0 ? '+' : ''}${Number(log.net_pnl).toLocaleString()}</td>
-            <td style="padding:6px 4px;font-weight:bold;">${Number(log.equity_end).toLocaleString()}</td>
           </tr>`;
         }).join('');
       }

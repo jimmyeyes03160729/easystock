@@ -77,6 +77,8 @@ def transaction(path=None):
 
 
 def init_schema(con):
+    # Legacy cash/equity columns below are migration evidence only.  They are
+    # NOT trading capital, NOT user-facing equity, and NOT a BUY gate.
     con.execute('''CREATE TABLE IF NOT EXISTS paper_trade_fills (
        id INTEGER PRIMARY KEY AUTOINCREMENT,
        period_id TEXT NOT NULL,
@@ -189,8 +191,16 @@ def daily_metrics(con, pid, day):
         'wins':sum(r['realized_pnl']>0 for r in closed),'losses':sum(r['realized_pnl']<=0 for r in closed),
         'return_pct':float(net/used*100) if used else None,
         'limit_utilization_pct':float(used/limit*100) if limit else None,
-        'performance_base':float(acct['performance_base']), 'cumulative_net_pnl':float(cumulative),
-        'equity':float(money(d(acct['performance_base'])+cumulative)), 'semantics_version':SEMANTICS}
+        # cumulative_net_pnl is the only long-term performance value exposed.
+        'cumulative_net_pnl':float(cumulative), 'semantics_version':SEMANTICS}
+
+
+def legacy_balance(acct, cumulative):
+    """Compatibility-only value for unchanged legacy database columns.
+
+    It is never returned by the Paper API and never participates in BUY gates.
+    """
+    return money(d(acct['performance_base']) + cumulative)
 
 
 def period(con):
@@ -313,7 +323,7 @@ def sell(symbol, exit_price, reason='', path=None, timestamp=None, trade_id=None
            float(gross),float(sell_fee),float(tax),float(pnl),float(after),str(reason),float(after),SEMANTICS))
         refresh_day(con,pid,stamp.date().isoformat())
         result = {'status':'sold','symbol':symbol,'shares':shares,'daily_buy_remaining':float(after),
-                  'equity':daily_metrics(con,pid,stamp.date().isoformat())['equity'],'net_pnl':float(pnl),
+                  'net_pnl':float(pnl),
                   'costs':float(buy_fee+sell_fee+tax),'trade_id':actual_id}
         con.execute('INSERT OR REPLACE INTO meta(key,value) VALUES(?,?)',
                     ('paper-settlement:'+actual_id,json.dumps(result)))
@@ -323,6 +333,9 @@ def sell(symbol, exit_price, reason='', path=None, timestamp=None, trade_id=None
 
 def refresh_day(con, pid, day):
     metrics = daily_metrics(con,pid,day)
+    # Keep legacy start/end balance database evidence internally; it is not
+    # product-facing Paper equity and has no effect on the daily BUY limit.
+    legacy_equity = legacy_balance(account(con), d(metrics['cumulative_net_pnl']))
     pending = bool(open_positions(con,pid))
     status = 'pending' if pending else 'settled'
     # Preserve cash-era historical summaries. Migration itself never refreshes logs.
@@ -337,7 +350,7 @@ def refresh_day(con, pid, day):
        created_at=excluded.created_at,period_id=excluded.period_id,settlement_status=excluded.settlement_status,
        daily_buy_limit=excluded.daily_buy_limit,daily_buy_used=excluded.daily_buy_used,buy_fees=excluded.buy_fees,
        sell_fees=excluded.sell_fees,tax=excluded.tax,gross_pnl=excluded.gross_pnl,semantics_version=excluded.semantics_version''',
-       (day,metrics['equity']-metrics['net_pnl'],metrics['equity'],metrics['net_pnl'],names,
+       (day,float(legacy_equity-d(metrics['net_pnl'])),float(legacy_equity),metrics['net_pnl'],names,
         metrics['fees']+metrics['tax'],metrics['trades_count'],time.time(),pid,status,
         metrics['daily_buy_limit'],metrics['daily_buy_used'],metrics['buy_fees'],metrics['sell_fees'],metrics['tax'],metrics['realized_pnl'],SEMANTICS))
     return dict(metrics,date=day,status=status)
@@ -368,8 +381,7 @@ def snapshot(path=None):
         metrics=daily_metrics(con,pid,today)
         events=[{'time':r['time_str'],'symbol':r['symbol'],'name':r['name'],'price':r['price'],
                  'action':r['action'],'reason':r['reason']} for r in con.execute('''SELECT time_str,symbol,name,price,action,reason FROM paper_trade_events WHERE date=? ORDER BY id DESC LIMIT 100''',(today,))]
-        logs=[{'date':r['date'],'equity_start':r['start_balance'],'equity_end':r['end_balance'],
-               'net_pnl':r['net_pnl'],'symbols':r['symbols'],'costs':r['costs'],'trades_count':r['trades_count'],
+        logs=[{'date':r['date'],'net_pnl':r['net_pnl'],'symbols':r['symbols'],'costs':r['costs'],'trades_count':r['trades_count'],
                'status':r['settlement_status'],'daily_buy_limit':r['daily_buy_limit'],
                'daily_buy_used':r['daily_buy_used'],'buy_fees':r['buy_fees'],'sell_fees':r['sell_fees'],
                'tax':r['tax'],'gross_pnl':r['gross_pnl'],'semantics_version':r['semantics_version']} for r in con.execute('''SELECT * FROM paper_trade_logs WHERE period_id=? OR period_id IS NULL ORDER BY date DESC LIMIT 30''',(pid,))]

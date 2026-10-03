@@ -8,6 +8,15 @@
 > 這一區固定放在 Roadmap 最前面，用來快速確認「還有哪些功能尚未執行」。  
 > 完成後改成 `[x]`；尚未開始或尚未完成維持 `[ ]`。細節保留在下方對應章節。
 
+- [x] Paper UI 移除模擬累積權益
+- [x] 盤後通知移除模擬累積權益
+- [x] 長期績效改為 `cumulative_net_pnl`
+- [x] legacy equity 僅保留 DB migration compatibility
+- [x] 首頁移除 Gemini / OpenAI AI 燈號
+- [x] Provider Health 公開只留 4 個核心來源
+- [x] 首頁 LOGO 壓縮 / 尺寸 / cache 優化
+- [x] 相關 UI / tests / docs references 清理
+
 - [ ] **【最高優先】Market Risk Gate 修正：資料異常不得等同市場 RED**
   - 2026-09-30 實盤確認：0 ENTRY 並非 AI 模型判錯，而是市場風控層先將候選全部 veto。
   - 盤前 brief 停留在 2026-09-25，9/30 判定 `premarket_missing_or_stale`；盤中即時大盤風控同時出現 `index_quote_missing_or_stale` / `valid=False`。
@@ -31,7 +40,7 @@
   - 若要回補 2026-10-01 景碩研究交易，只能使用當時已保存的 Tick / K 線 / ENTRY evidence 重播，不得使用收盤後資訊反推進場，避免 look-ahead leakage。
   - 每日盤後研究摘要需分開顯示：策略有效訊號 / Research Trades / Paper 成交 / Paper 因資金限制未成交，避免資金約束污染模型研究統計。
 
-- [ ] **下一版 Paper 模擬：改為每日當沖買進額度制，移除本金 / 累積權益語意**
+- [x] **Paper UI 移除模擬累積權益、改用累積淨損益**
   - 本次只記錄，不立即改程式；等下一次 Paper / 後台改版時一次完成。
   - EasyStock Paper 定位改為「每日當沖買進額度」，不是現金本金帳戶。
   - 例如設定 `daily_buy_limit=1,000,000`，代表當日所有 BUY gross 累計最多 100 萬；SELL 不回補當日額度，隔一交易日後自然重新從 0 使用。
@@ -42,7 +51,7 @@
   - 額度只計 BUY 成交本金，不計買進手續費、賣出手續費與證交稅；損益不影響隔日額度。
   - Research Trade 仍與 Paper execution 解耦；超過每日額度只標記 `paper_skip_reason=daily_buy_limit_exceeded`，Research 仍完整追蹤。
 
-- [ ] **首頁 LOGO 圖片效能優化**
+- [x] **首頁 LOGO 圖片效能優化**
   - 2026-09-30 發現首頁 LOGO 圖片檔案偏大，首次載入時讀圖時間明顯。
   - 下一輪修正需先確認目前 LOGO 實際檔案尺寸、像素尺寸、格式與瀏覽器解碼成本。
   - 優先在不改變品牌外觀的前提下縮小檔案：重新輸出較小 PNG / WebP / AVIF，或依瀏覽器支援採 `picture/srcset`。

@@ -8,9 +8,9 @@ for(const status of ['UNKNOWN','MARKET_CLOSED','ONLINE'])test('public health ren
     esun:{status},shioaji:{status},fugle:{status},firebase:{status},line:{status:'ONLINE'},telegram:{status:'ONLINE'},
     '<img onerror=alert(1)>':{status:'ONLINE'}}})});
   run('assets/provider-health.js');await settle();
-  assert.equal(w.document.querySelectorAll('.provider-health-row').length,6);
+  assert.equal(w.document.querySelectorAll('.provider-health-row').length,4);
   assert.equal(w.document.querySelector('[data-provider=esun]').dataset.status,status);
-  assert(!w.document.getElementById('providerHealthRows').textContent.match(/LINE|Telegram|onerror/i));
+  assert(!w.document.getElementById('providerHealthRows').textContent.match(/Gemini|OpenAI|LINE|Telegram|onerror/i));
   assert.equal(w.document.querySelectorAll('img').length,0);w.close();
 });
 test('expired or future summary cannot show a false ONLINE',async()=>{
