@@ -66,8 +66,11 @@ Code commit 096300a49803e79db2558380041836b81ab639d5 pushed to origin/main.
 Canonical updater exited 1 before changing the checkout because
 easystock-history-train.service was running (started 22:10:14 Taipei).
 The updater restored the previously enabled intraday timer. No job was killed.
-VM checkout remains 77793c391a7a3d39f7911771134ddf2b52c36a0e;
-this is NOT VM DEPLOYED. Deployment completion and release verification remain
+Final read-only check instead found checkout 096300a49803e79db2558380041836b81ab639d5:
+reflog records a separate pull --ff-only at 23:02:39 Taipei. The guarded updater
+log still confirms it stopped before update. release-info remains main-e0ce9e7dfc2f
+(source e0ce9e7dfc2f55af53f58ccb03fe29cfe9d284fb), inconsistent with HEAD.
+An advanced checkout is NOT VM DEPLOYED / verified release. Completion remains
 pending, and the compliance roadmap item is deliberately unchecked.
 
 A same-chat five-minute follow-up is configured to wait silently while guard
