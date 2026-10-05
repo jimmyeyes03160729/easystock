@@ -257,6 +257,13 @@ def price_exit_policy(policy):
         'trailing_activate_pct':finite(policy.get('trailing_activate_pct',.006)),'trailing_pullback_pct':finite(policy.get('trailing_pullback_pct',.004)),
         'breakeven_activate_pct':finite(policy.get('breakeven_activate_pct',.006)),'breakeven_floor_pct':finite(policy.get('breakeven_floor_pct',.0035))}
 
+def profile_hash(costs, policy):
+    """Identity of label/feature semantics; exclude clocks and display-only fields."""
+    return hashlib.sha256(json.dumps(
+        {'costs': costs, 'policy': price_exit_policy(policy), 'features': FEATURES,
+         'execution': 'next-minute-live-price-exit-v3'}, sort_keys=True
+    ).encode()).hexdigest()[:16]
+
 def simulate(sample, pack, costs):
     """Conservative minute-bar reconstruction of the live price exit policy."""
     at=dt(sample['observed_at']); day=at.date().isoformat()
@@ -311,7 +318,7 @@ def simulate(sample, pack, costs):
     qty=costs['shares']
     fees=max(costs['minimum_fee_twd'],entry*qty*costs['fee_rate'])+max(costs['minimum_fee_twd'],exit_price*qty*costs['fee_rate'])+exit_price*qty*costs['sell_tax_rate']
     net=((exit_price-entry)*qty-fees)/(entry*qty)*100
-    version=hashlib.sha256(json.dumps({'costs':costs,'policy':policy,'features':FEATURES,'execution':'next-minute-live-price-exit-v3'},sort_keys=True).encode()).hexdigest()[:16]
+    version=profile_hash(costs, policy)
     return {'symbol':sample['symbol'],'date':day,'at':at.isoformat(),'exit_at':cursor.isoformat(),'features':x,
             'net_return_pct':net,'radar_selected':sample['radar_selected'],'entry_price':entry,'exit_price':exit_price,
             'cost_twd':fees,'reason':reason,'profile':version,'kind':'simulation'},None
