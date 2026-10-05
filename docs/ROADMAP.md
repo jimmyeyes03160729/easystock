@@ -17,10 +17,44 @@
 > 本文件用於記錄已確認的後續規劃。  
 > 更新原則：使用者在 EasyStock 相關討論中說「紀錄」時，更新此文件，保留既有內容並整理版本脈絡。
 
+## 目前主要進行中三主線（2026-10-05）
+
+- [ ] **正式當沖系統：完整交易日 LIVE Validation**
+  - 程式核心與 Paper execution alignment 已完成並部署；現在不是重寫策略，而是收完整交易日證據。
+  - Market Risk：驗證 stale premarket 不等同 RED、Shioaji / 玉山 fallback、雙來源失效時 UNKNOWN + BLOCK、真 RED 正常 BLOCK、盤前 RED 可由連續盤中 fresh evidence 依 hysteresis 恢復。
+  - Research / Paper：等待自然發生的 `daily_buy_limit_exceeded` 案例，確認 Research 仍 TRACKED、Paper SKIPPED，並完整保留 ENTRY / EXIT / MFE / MAE / PnL。
+  - Synthetic fixture 只證明程式邏輯，不等同 LIVE VERIFIED；不得為了驗證刻意降低每日額度、放寬 ENTRY 或注入假行情。
+
+- [ ] **當沖學習 / 研究系統：持續執行**
+  - 2026-10-05 新增關鍵卡點：今天 0 當沖不應先怪 threshold 0.60；production 仍使用舊 profile 的 9/24 模型，而新 profile 雖已有 2,647 筆樣本，實際只涵蓋 4 個日期，Champion gate 正確地不允許 bootstrap 模型直接取代正式模型。
+  - 真正缺口是「新 current profile 沒有把大量歷史行情 replay 成同 profile 訓練資料」，因此正式模型被迫等待未來資料累積，形成約 101 天的資料等待卡點。
+  - 下一步優先做：`Current-profile historical replay + Walk-Forward retraining + safe promotion`；不要先為了 0 ENTRY 調低 threshold。
+  - Phase 2A / 2B / 2C 歷史研究與研究治理基礎已建立；目前正式狀態仍是研究階段，不代表 production-ready。
+  - 已有 Research Trial Ledger、Objective Governance、OOS Consumption Ledger、Central Dataset Registry、Pristine Holdout Policy。
+  - `PHASE2C_FUTURE_60D` 保留自 2026-10-05 起的前 60 個符合條件交易日作未曝光確認；在正式解封前不得讀取 performance / outcome。
+  - 目前研究狀態維持 `PRODUCTION_READY=false`、`INDEPENDENT_CONFIRMATION=false`；未曝光未來樣本用來做後續 one-shot confirmation，不可反覆微調後重測。
+  - 研究 / 學習流程與正式 ENTRY / EXIT 保持治理隔離；任何研究結論不得自動晉升正式模型或修改正式策略。
+
+- [ ] **AI NAS 串聯：Antigravity + Codex 自動開發鏈持續建置**
+  - NAS 已有獨立 ARM64 Antigravity 開發容器與獨立 Codex development node；兩者使用隔離的 Compose / network / home / workspace。
+  - 已具備 Git pull、修改、測試、commit / push main 的開發節點能力，並已有 NAS pull-backup / Docker backup scheduler。
+  - 安全邊界：NAS AI 容器不掛 Oracle VM SSH key / SSH agent、不直接部署正式 VM、不自動 push；正式 VM deployment 仍走既有受保護流程。
+  - 下一階段重點是把「任務入口 → AI 分工 → 測試 → Git main → 安全部署 / 回報」流程穩定串起來，並避免 Antigravity / Codex 同時跑大型 pytest / build 造成 NAS OOM。
+  - GitHub 目前能證明架構與開發節點已存在；NAS 容器此刻是否 running 仍需以 NAS runtime / Docker 狀態實際確認。
+
 ## 待新增 / 待執行主題總覽
 
 > 這一區固定放在 Roadmap 最前面，用來快速確認「還有哪些功能尚未執行」。  
 > 完成後改成 `[x]`；尚未開始或尚未完成維持 `[ ]`。細節保留在下方對應章節。
+
+- [ ] **正式當沖完整交易日 LIVE Validation**
+  - Market Risk 全日證據 + Research/Paper 自然超額案例；程式已 CODE VERIFIED / VM DEPLOYED，現在等待 live evidence。
+- [ ] **當沖學習 / 研究系統持續執行**
+  - Research Governance 已進入 Pristine Holdout；`PHASE2C_FUTURE_60D` 自 2026-10-05 起保留 60 個符合條件交易日，尚未 production-ready。
+  - **Current-profile 歷史重播 / Walk-Forward 重訓 / Safe Promotion 待完成**：新 profile 目前 2,647 筆樣本但只涵蓋 4 個日期，不能靠 bootstrap 直接跨過 Champion gate；應把大量歷史行情依 current profile 重新 replay，建立足夠時間跨度的訓練 / 驗證資料。
+- [ ] **AI NAS 串聯持續建置**
+  - Antigravity + Codex NAS 節點、備份與隔離架構已建立；下一步完成穩定的自動分工、測試、Git 與受保護部署鏈。
+
 
 - [x] Paper UI 移除模擬累積權益
 - [x] 盤後通知移除模擬累積權益
@@ -31,7 +65,7 @@
 - [x] 首頁 LOGO 壓縮 / 尺寸 / cache 優化
 - [x] 相關 UI / tests / docs references 清理
 
-- [ ] **【最高優先】Market Risk Gate 修正：資料異常不得等同市場 RED**
+- [ ] **【最高優先】Market Risk Gate：程式修正已完成，待完整交易日 LIVE VERIFIED**
   - 2026-09-30 實盤確認：0 ENTRY 並非 AI 模型判錯，而是市場風控層先將候選全部 veto。
   - 盤前 brief 停留在 2026-09-25，9/30 判定 `premarket_missing_or_stale`；盤中即時大盤風控同時出現 `index_quote_missing_or_stale` / `valid=False`。
   - 雷達本身正常，盤中持續有 2～9 檔候選；模型 `research-2026-09-24`、`mode=model`、`ready=True`、threshold 0.6 皆正常。
@@ -43,7 +77,7 @@
   - 不調整模型 threshold 0.6、不放寬雷達條件；今天資料完整保留作研究樣本，修正後自下一交易日重新驗證。
   - 同步追查 `easystock-premarket.timer/service` 為何 9/29、9/30 未更新盤前 brief。
 
-- [ ] **【高優先】Research Trade 與 Paper Wallet 解耦 + Trade Episode 去重**
+- [ ] **【高優先】Research / Paper：解耦與 Episode 去重已完成，待自然超額案例 LIVE VERIFIED**
   - 2026-10-01 實盤確認：3189 景碩已通過策略 / 模型 / Market Gate，但因模擬資金不足，Paper Wallet 回傳 `insufficient_cash` 後整筆 position 被丟棄，導致首頁「每日盤後研究摘要」也沒有景碩。
   - 正確原則：`Signal acceptance != Paper execution`。只要策略 / 模型 / Market Gate / 使用者條件 / fresh quote 都通過，就必須建立 Research / Shadow Trade；Paper Wallet 是否有足夠資金只能影響 `paper_execution`，不能決定研究樣本是否存在。
   - Research Trade 必須持續使用真實盤中行情追蹤 entry / exit / highest / lowest / MFE / MAE / stop / take-profit / trailing / force-exit / pnl，供 AI 訓練與盤後摘要使用。
@@ -136,13 +170,13 @@
   - 不保存或建立任何玉山交易憑證 / 下單能力；權限以行情唯讀最小化為原則。
   - 尚待完成：正式 provider 模組、資料標準化 / 落地、freshness、API Health 燈號、Dataset / Shadow 整合。
 
-- [ ] **當沖制度 / 費稅模擬對齊**
+- [x] **當沖制度 / 費稅模擬對齊：CODE VERIFIED / VM DEPLOYED**
   - [x] 2026-09-30 已完成當沖合規 / 制度檢視，文件：`docs/DAYTRADE_COMPLIANCE_REVIEW_2026-09-30.md`。
   - 總體結論：目前屬偏保守的「現股先買後賣」當沖模擬，帳務 / 風控邏輯未發現 bug。
   - 已符合：當沖證交稅 0.15%、手續費、整張交易、當日平倉、內外盤等核心模擬原則。
   - 尚待評估 / 修正偏差：強制平倉時間、允許進場時間、雙稅率處理、當沖資格過濾、漲跌停鎖死、證交稅進位規則。
-  - 本次僅完成 review / 紀錄，尚未修改正式交易程式。
-  - 正式調整前需補 regression tests，且不得因制度對齊破壞既有 paper ledger / risk gate / model evidence。
+  - 2026-10-03 已完成正式 execution alignment、regression tests 與 VM canonical deploy；Fresh bid/ask depth、當沖資格、pending unfilled exit、canonical fee/tax path 與 rounding 已落地。
+  - 完整規格與官方來源查核見 `docs/DAYTRADE_COMPLIANCE_REVIEW_2026-10-03.md`；此項程式 / 部署已完成，僅 Market Risk 與 Research/Paper 的完整交易日 live evidence 仍待收斂。
 
 - [ ] **觸底反彈 AI 學習**
   - [x] Phase 1：凍結正式 `range-rebound-0.3` Baseline；研究回放不修改正式 feed / Top 3。
@@ -207,6 +241,39 @@
   - Public repo 採乾淨 Git history，避免舊 commit 持續暴露核心程式。
 
 
+
+---
+
+## 當沖學習 / Research Governance（持續執行，2026-10-05）
+
+### 現況
+- **2026-10-05 模型更新卡點確認**：
+  - 今天 0 當沖不應先歸因於 `threshold=0.60`。
+  - production 目前仍使用舊 profile 的 9/24 正式模型。
+  - 新 current profile 已有 **2,647 筆樣本**，但實際只涵蓋 **4 個日期**；樣本筆數多不等於時間跨度足夠。
+  - Champion gate 正確阻擋 bootstrap / 短期樣本模型直接取代正式模型，這個 gate 不應因 0 ENTRY 被繞過。
+  - 真正問題是：系統尚未把既有大量歷史行情依 **current profile** 重新 replay 成同 profile 的訓練 / 驗證資料。
+  - 因此若只靠未來新交易日自然累積，正式模型會被迫等待約 **101 天** 才取得足夠日期覆蓋，形成不必要的模型更新卡點。
+- **下一步最高優先研究工程**：`Current-profile historical replay + Walk-Forward retraining + safe promotion`。
+  - Historical replay 必須使用 point-in-time 可得資料，不能把未來資訊倒灌成當時 feature。
+  - Replay 後資料要保持 current profile / feature schema 一致，不能把舊 profile 樣本直接混入當成同 profile。
+  - Walk-Forward retraining 必須維持 IS / OOS / embargo / holdout 治理，避免用同一批歷史資料反覆調參造成 overfit。
+  - Safe promotion 必須繼續經過 Champion gate；不得因 bootstrap 模型樣本數大就直接替代 production。
+  - 本項完成前，不應以「降低 threshold」當成解決 0 ENTRY 的優先手段。
+- Phase 2A / 2B / 2C 的歷史研究已建立，但 Phase 2C 不是 production-ready。
+- 已加入 Research Trial Ledger、Objective Function Governance、OOS Consumption Ledger、Dataset Registry 與 Pristine Holdout Policy。
+- `PHASE2C_FUTURE_60D` 為未曝光確認保留區：自 2026-10-05 起收集前 60 個符合條件交易日。
+- 在正式 one-shot unseal 前，禁止讀取該 holdout 的 performance / outcome，避免把未曝光樣本耗損成另一組 discovery data。
+- 目前治理狀態維持：
+  - `PRODUCTION_READY=false`
+  - `INDEPENDENT_CONFIRMATION=false`
+  - 未曝光未來資料保持 pristine / untouched。
+
+### 原則
+- Research 可以持續收集、標記、治理與離線分析。
+- 不得因研究結果漂亮就直接 Promote / Applied。
+- 正式策略 / runtime 與 Research Governance 保持隔離。
+- 未曝光確認只允許一次正式評估；若評估後再調參，必須建立新的未曝光樣本，不得重用同一 60 日 holdout 宣稱獨立確認。
 
 ---
 
@@ -1931,6 +1998,48 @@ AI Architecture Guardian 第一階段只做：
 - 將 AI 建議直接部署到正式交易環境
 
 若未來要加入自動修復，只能針對已明確 allowlist 的非交易性問題，並沿用現有 Guardian 的隔離、備份、測試與人工核准機制。
+
+---
+
+## AI NAS 自動開發串聯（持續建置）
+
+### 已完成基礎
+- 已建立獨立 ARM64 `easystock-antigravity` NAS 開發容器。
+- 已建立獨立 NAS Codex development node。
+- Antigravity / Codex 使用獨立容器、workspace 與資源邊界，不與正式 VM runtime 混用。
+- 已具備 NAS pull-backup、SQLite source health check 與 Docker backup scheduler。
+- NAS AI 節點可做 Git pull、程式修改、測試、commit / push main；是否 push 仍需明確任務，不在容器重啟時自動 pull/reset。
+- 容器不掛 Oracle VM SSH key / SSH agent，不直接取得正式 VM deployment 權限。
+
+### 目前進行中
+目標不是單純「NAS 上能跑兩個 CLI」，而是形成穩定的 AI 開發鏈：
+
+```text
+使用者 / 任務入口
+      ↓
+Antigravity：整理需求 / 分派
+      ↓
+Codex：實作 / 測試
+      ↓
+必要時交叉 review
+      ↓
+Git main
+      ↓
+受保護的 VM canonical deploy
+      ↓
+測試 / release identity / runtime 回報
+```
+
+### 尚待完成
+- 任務 session / handoff 的穩定協議。
+- Antigravity 與 Codex 的工作衝突 / lock / ownership 規則。
+- 失敗重試與中斷後續接。
+- 避免兩個 AI 同時跑大型 `pytest` / build 導致 NAS OOM。
+- 自動測試通過後的 Git 提交流程與人工邊界。
+- 正式 VM 部署仍維持受保護流程，不因 NAS AI 節點存在而自動取得正式部署權。
+
+### Runtime 判定
+GitHub 只能證明上述容器 / compose / scripts / docs 已建立；NAS 上容器當下是否 `running`、是否已登入 Antigravity / Codex、是否正在執行任務，必須以 NAS Docker runtime 實際狀態確認。
 
 ---
 
