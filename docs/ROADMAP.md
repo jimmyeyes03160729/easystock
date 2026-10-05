@@ -26,6 +26,9 @@
   - Synthetic fixture 只證明程式邏輯，不等同 LIVE VERIFIED；不得為了驗證刻意降低每日額度、放寬 ENTRY 或注入假行情。
 
 - [ ] **當沖學習 / 研究系統：持續執行**
+  - 2026-10-05 新增關鍵卡點：今天 0 當沖不應先怪 threshold 0.60；production 仍使用舊 profile 的 9/24 模型，而新 profile 雖已有 2,647 筆樣本，實際只涵蓋 4 個日期，Champion gate 正確地不允許 bootstrap 模型直接取代正式模型。
+  - 真正缺口是「新 current profile 沒有把大量歷史行情 replay 成同 profile 訓練資料」，因此正式模型被迫等待未來資料累積，形成約 101 天的資料等待卡點。
+  - 下一步優先做：`Current-profile historical replay + Walk-Forward retraining + safe promotion`；不要先為了 0 ENTRY 調低 threshold。
   - Phase 2A / 2B / 2C 歷史研究與研究治理基礎已建立；目前正式狀態仍是研究階段，不代表 production-ready。
   - 已有 Research Trial Ledger、Objective Governance、OOS Consumption Ledger、Central Dataset Registry、Pristine Holdout Policy。
   - `PHASE2C_FUTURE_60D` 保留自 2026-10-05 起的前 60 個符合條件交易日作未曝光確認；在正式解封前不得讀取 performance / outcome。
@@ -48,6 +51,7 @@
   - Market Risk 全日證據 + Research/Paper 自然超額案例；程式已 CODE VERIFIED / VM DEPLOYED，現在等待 live evidence。
 - [ ] **當沖學習 / 研究系統持續執行**
   - Research Governance 已進入 Pristine Holdout；`PHASE2C_FUTURE_60D` 自 2026-10-05 起保留 60 個符合條件交易日，尚未 production-ready。
+  - **Current-profile 歷史重播 / Walk-Forward 重訓 / Safe Promotion 待完成**：新 profile 目前 2,647 筆樣本但只涵蓋 4 個日期，不能靠 bootstrap 直接跨過 Champion gate；應把大量歷史行情依 current profile 重新 replay，建立足夠時間跨度的訓練 / 驗證資料。
 - [ ] **AI NAS 串聯持續建置**
   - Antigravity + Codex NAS 節點、備份與隔離架構已建立；下一步完成穩定的自動分工、測試、Git 與受保護部署鏈。
 
@@ -243,6 +247,19 @@
 ## 當沖學習 / Research Governance（持續執行，2026-10-05）
 
 ### 現況
+- **2026-10-05 模型更新卡點確認**：
+  - 今天 0 當沖不應先歸因於 `threshold=0.60`。
+  - production 目前仍使用舊 profile 的 9/24 正式模型。
+  - 新 current profile 已有 **2,647 筆樣本**，但實際只涵蓋 **4 個日期**；樣本筆數多不等於時間跨度足夠。
+  - Champion gate 正確阻擋 bootstrap / 短期樣本模型直接取代正式模型，這個 gate 不應因 0 ENTRY 被繞過。
+  - 真正問題是：系統尚未把既有大量歷史行情依 **current profile** 重新 replay 成同 profile 的訓練 / 驗證資料。
+  - 因此若只靠未來新交易日自然累積，正式模型會被迫等待約 **101 天** 才取得足夠日期覆蓋，形成不必要的模型更新卡點。
+- **下一步最高優先研究工程**：`Current-profile historical replay + Walk-Forward retraining + safe promotion`。
+  - Historical replay 必須使用 point-in-time 可得資料，不能把未來資訊倒灌成當時 feature。
+  - Replay 後資料要保持 current profile / feature schema 一致，不能把舊 profile 樣本直接混入當成同 profile。
+  - Walk-Forward retraining 必須維持 IS / OOS / embargo / holdout 治理，避免用同一批歷史資料反覆調參造成 overfit。
+  - Safe promotion 必須繼續經過 Champion gate；不得因 bootstrap 模型樣本數大就直接替代 production。
+  - 本項完成前，不應以「降低 threshold」當成解決 0 ENTRY 的優先手段。
 - Phase 2A / 2B / 2C 的歷史研究已建立，但 Phase 2C 不是 production-ready。
 - 已加入 Research Trial Ledger、Objective Function Governance、OOS Consumption Ledger、Dataset Registry 與 Pristine Holdout Policy。
 - `PHASE2C_FUTURE_60D` 為未曝光確認保留區：自 2026-10-05 起收集前 60 個符合條件交易日。
