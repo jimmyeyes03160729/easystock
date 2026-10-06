@@ -214,7 +214,9 @@ class ReportBuilderTests(unittest.TestCase):
     def test_missing_intraday_state_shows_unknown_not_failure(self):
         path, tmp = self._make_ledger()
         try:
-            text = build_daily_summary(path, '2026-10-01', intraday_state=None, model_state=None)
+            # Pass an empty intraday_state to force the degraded/unknown path
+            # regardless of whether the host has retained journal logs.
+            text = build_daily_summary(path, '2026-10-01', intraday_state={}, model_state={})
             self.assertIsNotNone(text)
             self.assertIn('Market Risk：UNKNOWN / UNKNOWN', text)
             self.assertIn('Shioaji：UNKNOWN', text)
