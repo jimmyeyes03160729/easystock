@@ -43,6 +43,7 @@ FILES = [
     "easystock_admin/static/paper-trade.js",
     "trade_notifications.py",
     "daytrade_summary_push.py",
+    "daytrade_summary_report.py",
     "line_bot.py",
     "line_stock_bot.py",
 ]

@@ -1,0 +1,10 @@
+[Unit]
+Description=EasyStock daily paper trading summary timer
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 13:50:00 Asia/Taipei
+Persistent=true
+Unit=easystock-daytrade-summary.service
+
+[Install]
+WantedBy=timers.target

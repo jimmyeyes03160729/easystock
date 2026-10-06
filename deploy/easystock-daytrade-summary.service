@@ -1,0 +1,17 @@
+[Unit]
+Description=EasyStock daily paper trading Telegram summary
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+EnvironmentFile=/home/ubuntu/easystock-telegram.env
+Environment=LEARNING_DATA_DIR=/home/ubuntu/easystock-learning-data
+Environment=AI_PAPER_MODEL_PATH=/home/ubuntu/easystock-learning-data/models/latest-approved.json
+Environment=MODEL_RUNTIME_STATUS_PATH=/home/ubuntu/easystock-learning-data/models/runtime-model-status.json
+ExecStart=/home/ubuntu/easystock/.venv/bin/python /home/ubuntu/easystock/daytrade_summary_push.py --send
+TimeoutStartSec=120
+UMask=0077
