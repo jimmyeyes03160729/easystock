@@ -19,6 +19,7 @@ from easystock_admin.store import Store,Denied,Conflict,validate,read_live_setti
 INITIAL={'min_price':20,'max_price':100,'max_gain_pct':5,'max_recommendations':30}
 ORIGIN='https://admin.example.com'
 CLIENT='123456-test.apps.googleusercontent.com'
+ORDER={'client_order_id':'0123456789abcdef-0001','symbol':'2330','action':'BUY','price':100,'quantity':1,'is_odd_lot':False,'ca_passwd':'pw'}
 
 class StoreTests(unittest.TestCase):
     def test_unconfigured_owner_is_denied(self):
@@ -291,13 +292,11 @@ class WebTests(unittest.TestCase):
             'LIVE_ORDERING_CONFIRMATION': 'wrong',
         }, clear=False):
             denied = self.client.post('/admin/api/order/place', base_url=ORIGIN,
-                json={'symbol':'2330','action':'BUY','price':100,'quantity':1},
-                headers={'Origin': ORIGIN, 'X-CSRF-Token': csrf})
-        self.assertEqual(denied.status_code, 400)
+                json=ORDER, headers={'Origin': ORIGIN, 'X-CSRF-Token': csrf})
+        self.assertEqual(denied.status_code, 403)
         self.assertIn('隔離', denied.json['message'])
         denied_no_csrf = self.client.post('/admin/api/order/place', base_url=ORIGIN,
-            json={'symbol':'2330','action':'BUY','price':100,'quantity':1},
-            headers={'Origin': ORIGIN})
+            json=ORDER, headers={'Origin': ORIGIN})
         self.assertEqual(denied_no_csrf.status_code, 403)
 
 class GoogleCryptoTests(unittest.TestCase):

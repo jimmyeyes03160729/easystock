@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 from flask import Blueprint, jsonify, request, send_from_directory
-from .store import Store, OWNER, Conflict, Denied
+from .store import Store, OWNER, Conflict, Denied, ProfileChange
 
 SESSION = '__Host-easystock_admin'
 CHALLENGE = '__Host-easystock_login'
@@ -78,6 +78,8 @@ def register_admin(app, store=None, verifier=None):
     def denied(exc): return jsonify(error=str(exc)), 403
     @bp.errorhandler(Conflict)
     def conflict(exc): return jsonify(error=str(exc)), 409
+    @bp.errorhandler(ProfileChange)
+    def profile_change(exc): return jsonify(error=str(exc), code='profile_change_confirmation_required'), 409
     @bp.errorhandler(ValueError)
     def invalid(exc): return jsonify(error=str(exc)), 400
     @bp.errorhandler(sqlite3.Error)
@@ -192,9 +194,10 @@ def register_admin(app, store=None, verifier=None):
     def put_pipeline_settings():
         authenticated(True)
         data = body()
-        if set(data) != {'values', 'version'}:
+        if set(data) - {'confirm_profile_change'} != {'values', 'version'}:
             raise ValueError('訓練與資料計畫欄位不正確。')
-        return jsonify(store.update_pipeline_settings(data['values'], data['version']))
+        return jsonify(store.update_pipeline_settings(data['values'], data['version'],
+                                                      data.get('confirm_profile_change', False)))
 
     @bp.get('/admin/paper-trade')
     def get_paper_trade():
@@ -261,25 +264,24 @@ def register_admin(app, store=None, verifier=None):
     # --------------------------------------------------------
     # 永豐證券下單 API (包含完整例外捕捉與 JSON 格式錯誤處理)
     # --------------------------------------------------------
-    from .order_service import order_service
+    from .order_service import order_service, validate_order, live_ordering_enabled
+    ORDER_FIELDS = {'client_order_id', 'symbol', 'action', 'price', 'quantity', 'is_odd_lot', 'ca_passwd'}
 
     @bp.post('/admin/api/order/verify')
     def post_order_verify():
+        # Re-logging in replaces the broker session, so this is a write action.
+        authenticated(True)
+        if body():
+            raise ValueError('永豐金鑰只使用伺服器設定，不接受由網頁傳入。')
         try:
-            authenticated()
-            data = request.get_json(silent=True) or {}
-            info = order_service.login(
-                api_key=data.get('api_key'),
-                secret_key=data.get('secret_key')
-            )
-            return jsonify({'ok': True, 'account': info})
+            return jsonify({'ok': True, 'account': order_service.login()})
         except Exception as e:
             return jsonify({'ok': False, 'message': str(e)}), 400
 
     @bp.post('/admin/api/order/quote')
     def post_order_quote():
+        authenticated()
         try:
-            authenticated()
             data = request.get_json(silent=True) or {}
             symbol = data.get('symbol', '').strip()
             if not symbol:
@@ -291,25 +293,29 @@ def register_admin(app, store=None, verifier=None):
 
     @bp.post('/admin/api/order/place')
     def post_order_place():
+        # This endpoint can call the broker.  It must use the same
+        # Origin/CSRF protection as every state-changing admin action.
+        authenticated(True)
+        data = body()
+        if set(data) != ORDER_FIELDS:
+            raise ValueError('委託欄位不正確。')
+        order = validate_order(data['symbol'], data['action'], data['price'],
+                               data['quantity'], data['is_odd_lot'])
+        ca_passwd = data['ca_passwd']
+        if not isinstance(ca_passwd, str) or not 0 < len(ca_passwd) <= 128:
+            raise ValueError('請輸入憑證密碼。')
+        if not live_ordering_enabled():
+            return jsonify({'ok': False, 'message': '真實下單入口目前已隔離，伺服器未啟用實單。'}), 403
+        # Reserve before sending: a repeated click or retry cannot place a second order,
+        # and an interrupted request stays visible as "submitting" for reconciliation.
+        store.reserve_order(data['client_order_id'], order)
         try:
-            # This endpoint can call the broker.  It must use the same
-            # Origin/CSRF protection as every state-changing admin action.
-            authenticated(True)
-            data = request.get_json(silent=True) or {}
-            res = order_service.place_order(
-                symbol=data.get('symbol'),
-                action=data.get('action', 'BUY'),
-                price=float(data.get('price', 0)),
-                quantity=int(data.get('quantity', 1)),
-                is_odd_lot=bool(data.get('is_odd_lot', True)),
-                ca_passwd=data.get('ca_passwd', ''),
-                ca_path=data.get('ca_path')
-            )
-            return jsonify({'ok': True, 'trade': res})
-        except Denied:
-            raise
+            res = order_service.place_order(ca_passwd=ca_passwd, **order)
         except Exception as e:
+            store.finish_order(data['client_order_id'], 'failed', {'message': str(e)[:300]})
             return jsonify({'ok': False, 'message': str(e)}), 400
+        store.finish_order(data['client_order_id'], 'submitted', res)
+        return jsonify({'ok': True, 'trade': res})
 
     app.register_blueprint(bp)
     return store

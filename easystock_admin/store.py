@@ -88,6 +88,11 @@ def validate_pipeline(value):
 
 class Conflict(Exception): pass
 class Denied(Exception): pass
+class ProfileChange(Conflict):
+    """Cost fields define the research label profile; changing them needs explicit consent."""
+
+# Training uses only labels of the latest cost/policy profile (research.train_candidate).
+PROFILE_KEYS = ('fee_rate', 'minimum_fee_twd', 'sell_tax_rate', 'slippage_bps', 'shares')
 
 class Store:
     def __init__(self, path=None, initial=None):
@@ -107,6 +112,7 @@ class Store:
             CREATE TABLE IF NOT EXISTS paper_trade_positions(symbol TEXT PRIMARY KEY,name TEXT NOT NULL,entry_price REAL NOT NULL,shares INTEGER NOT NULL,entry_time TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS paper_trade_events(id INTEGER PRIMARY KEY AUTOINCREMENT,date TEXT NOT NULL,time_str TEXT NOT NULL,symbol TEXT NOT NULL,name TEXT NOT NULL,price REAL NOT NULL,action TEXT NOT NULL,reason TEXT NOT NULL,created_at REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS pipeline_settings(id INTEGER PRIMARY KEY CHECK(id=1),body TEXT NOT NULL,version INTEGER NOT NULL,updated REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS order_requests(client_order_id TEXT PRIMARY KEY,created REAL NOT NULL,updated REAL NOT NULL,status TEXT NOT NULL,request TEXT NOT NULL,result TEXT);
             ''')
             from .notifications import initialize as initialize_notifications
             initialize_notifications(db)
@@ -160,16 +166,40 @@ class Store:
             row = db.execute('SELECT body,version,updated FROM pipeline_settings WHERE id=1').fetchone()
             return {'values': validate_pipeline(json.loads(row[0])), 'version': row[1], 'updated_at': row[2]}
 
-    def update_pipeline_settings(self, value, version):
+    def update_pipeline_settings(self, value, version, confirm_profile_change=False):
         value = validate_pipeline(value)
         if isinstance(version, bool) or not isinstance(version, int): raise ValueError('缺少設定版本。')
+        if not isinstance(confirm_profile_change, bool): raise ValueError('確認欄位不正確。')
         with self.tx() as db:
             row = db.execute('SELECT body,version FROM pipeline_settings WHERE id=1').fetchone()
             if row[1] != version: raise Conflict('訓練與資料計畫已被更新，請重新載入。')
             previous = validate_pipeline(json.loads(row[0]))
+            changed = [k for k in PROFILE_KEYS if previous[k] != value[k]]
+            if changed and not confirm_profile_change:
+                raise ProfileChange('手續費、稅率、滑價或股數變更會建立新的訓練標籤規則；訓練只使用最新規則的標籤，'
+                                    '既有標籤不再列入，模型需重新累積資料。確定要變更嗎？')
             db.execute('UPDATE pipeline_settings SET body=?,version=version+1,updated=? WHERE id=1', (json.dumps(value), time.time()))
-            self._audit(db, 'google', 'pipeline_settings', {'before': previous, 'after': value})
+            self._audit(db, 'google', 'pipeline_settings', {'before': previous, 'after': value, 'profile_changed': changed})
         return self.get_pipeline_settings()
+
+    def reserve_order(self, client_order_id, order):
+        """Record a live order before it is sent; a repeated identity is refused."""
+        if not isinstance(client_order_id, str) or not __import__('re').fullmatch(r'[A-Za-z0-9-]{16,64}', client_order_id):
+            raise ValueError('委託識別碼不正確，請重新整理頁面後再送單。')
+        with self.tx() as db:
+            self._limit(db, 'order-place', 3)
+            if db.execute('SELECT 1 FROM order_requests WHERE client_order_id=?', (client_order_id,)).fetchone():
+                raise Conflict('此委託已送出過，請勿重複送單。')
+            now = time.time()
+            db.execute('INSERT INTO order_requests VALUES(?,?,?,?,?,NULL)',
+                       (client_order_id, now, now, 'submitting', json.dumps(order)))
+            self._audit(db, 'google', 'order_submit', {'client_order_id': client_order_id, **order})
+
+    def finish_order(self, client_order_id, status, result):
+        with self.tx() as db:
+            db.execute('UPDATE order_requests SET status=?,result=?,updated=? WHERE client_order_id=?',
+                       (status, json.dumps(result, ensure_ascii=False), time.time(), client_order_id))
+            self._audit(db, 'google', 'order_result', {'client_order_id': client_order_id, 'status': status, 'result': result})
 
     def get_paper_trade(self):
         import paper_ledger
