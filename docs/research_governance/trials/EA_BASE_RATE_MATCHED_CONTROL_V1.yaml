@@ -1,0 +1,89 @@
+# EasyStock Research Trial Ledger — Legacy Backfill
+# Trial: intraday base-rate and matched-control audit v1 (2026-10-07)
+
+trial_id: "TRIAL_EA_BASE_RATE_MATCHED_CONTROL_V1"
+parent_trial_id: "TRIAL_EA_SOURCE_PRIMITIVE_BATCH_V1"
+created_at: "2026-10-07T23:00:00+08:00"
+study_name: "Intraday base-rate and matched-control audit"
+research_stage: "EXPLORATORY"
+ledger_record_type: "LEGACY_BACKFILL"
+recorded_after_experiment: true
+
+provenance:
+  source_classification: "HISTORICAL_REUSE"
+  source_refs:
+    - "daytrade_learning/event_audit/README.md"
+    - "VM:/tmp/easystock_base_rate_control_v1_20261007.tar.gz (sha256 c99aacdaaaf9145c8627b5405e4246d43f75e21681f8b80ab0f36ef67082bcd8)"
+
+hypothesis:
+  statement: "The negative 15m gross of the source primitives and H3/H4 is explained by background drift; relative to an unconditional base rate they carry no information."
+  preregistered: false
+  exploratory: true
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "relative_edge_bps_vs_control"
+  direction: "DESCRIPTIVE"
+  baseline: "UNCONDITIONAL_BASE_RATE"
+  frozen_before_search: false
+
+data:
+  dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2023-09-27"
+  end_date: "2026-10-02"
+  dataset_end: "2026-10-02"
+  universe: "42_STOCK_CORE"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "unconditional 15m base rate by symbol, month, time bucket and fold"
+    - "matched-control and standardized relative edge for P01-P08, H3, H4"
+  exposures:
+    - exposure_id: "EXP_EA_BASE_RATE_ALL_DAYS"
+      dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+      dataset_family_id: "TWSE_EQUITY_INTRADAY"
+      dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+      start_date: "2023-09-27"
+      end_date: "2026-10-02"
+      role: "DESCRIPTIVE"
+      seen: true
+      exposed_dimensions:
+        - "unconditional 15m base rate by symbol, month, time bucket and fold"
+      source_trial_id: "TRIAL_EA_BASE_RATE_MATCHED_CONTROL_V1"
+      first_seen_at: "2026-10-07T21:22:50+08:00"
+
+search:
+  parameters_searched:
+    - "three control designs: primary symbol/date/30min bucket, secondary symbol/date, standardized symbol x bucket base rate"
+  search_space:
+    designs: "primary (spec), secondary (pre-registered descriptive), standardized (added after the nearest-control bias was observed)"
+  trial_count: 3
+  post_hoc_changes: true
+
+governance:
+  plan_hash: "c99aacdaaaf9145c8627b5405e4246d43f75e21681f8b80ab0f36ef67082bcd8"
+  registry_hash: "e9c22bae2296d16f1dc04532de49e427dafc9c58c33c7fb8e8d26cba150aac2b"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "SEALED"
+  decision: "SOURCE_PRIMITIVES_HAVE_RELATIVE_BUT_NOT_ECONOMIC_EDGE (standardized design); primary design INSUFFICIENT_CONTROL_EVIDENCE"
+  sealed_commit: "a13f13b78839eb5f59e1bc814514045c5fbc71cf"
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    Unconditional 15m gross -1.01 bps (all days) / -1.37 bps (test windows). Nearest-in-time controls were
+    biased (+13..+73 bps) because controls before an event sit in the run-up that triggers it; the
+    standardized design was added post hoc (post_hoc_changes=true). Best standardized relative edge is
+    +1.41 bps (15m higher lows/highs, 4/5 folds) with negative absolute gross - not tradeable.

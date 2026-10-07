@@ -1,0 +1,195 @@
+# EasyStock OOS Consumption Ledger — Event Audit Legacy Backfill (2026-10-07)
+# H2/H3/H4, source-primitive batch and base-rate audits read the historical test windows.
+# Recorded after exposure; none of these slices may be treated as pristine again.
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "EVENT_AUDIT_LEGACY_BACKFILL"
+created_at: "2026-10-07T23:05:00+08:00"
+description: >
+  Consumption of PHASE2_HISTORICAL_2023_2026_10_02 by the 2026-10-07 event audits on the 42-stock core
+  (five chronological test windows 2024-12-25 .. 2026-08-27, plus all days for the base-rate audit).
+  The PHASE2C_FUTURE_CONFIRMATION_60D partition was not read.
+
+consumption_events:
+  - consumption_id: "CNS_EA_H2_TEST_WINDOWS"
+    trial_id: "TRIAL_EA_H2_TICK_COMPRESSION_BREAKOUT"
+    dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      slice_definition: "H2 audit five chronological test windows, 42-stock core"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "aggregate"
+      - "per-fold"
+      - "time-of-day"
+      - "symbol concentration"
+      - "horizon"
+    consumed_at: "2026-10-07T11:05:06+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "daytrade_learning/event_audit/README.md"
+    source_commit: "a13f13b7"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Test windows were already exposed by Phase 2B/2C; timestamp is the VM bundle file time."
+
+  - consumption_id: "CNS_EA_H3_TEST_WINDOWS"
+    trial_id: "TRIAL_EA_H3_COMPLETED_BAR_BREAKOUT"
+    dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      slice_definition: "H3 audit five chronological test windows, 42-stock core"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "aggregate"
+      - "per-fold"
+      - "horizon"
+      - "plus-veto"
+    consumed_at: "2026-10-07T13:35:14+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "daytrade_learning/event_audit/README.md"
+    source_commit: "a13f13b7"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Direction influenced by the H2 result."
+
+  - consumption_id: "CNS_EA_H4_TEST_WINDOWS"
+    trial_id: "TRIAL_EA_H4_SOURCE_NATIVE_ORB"
+    dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      slice_definition: "H4 audit five chronological test windows, 42-stock core"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "aggregate"
+      - "per-fold"
+      - "direction"
+      - "plus-veto"
+    consumed_at: "2026-10-07T14:46:44+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "daytrade_learning/event_audit/README.md"
+    source_commit: "a13f13b7"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Direction influenced by the H2/H3 results."
+
+  - consumption_id: "CNS_EA_SOURCE_PRIMITIVE_BATCH_TEST_WINDOWS"
+    trial_id: "TRIAL_EA_SOURCE_PRIMITIVE_BATCH_V1"
+    dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      slice_definition: "Source primitive batch (8 primitives) five chronological test windows"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "aggregate"
+      - "per-primitive"
+      - "per-fold"
+      - "horizon"
+      - "plus-veto"
+    consumed_at: "2026-10-07T17:38:57+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "daytrade_learning/event_audit/README.md"
+    source_commit: "a13f13b7"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Eight frozen primitives; no selection among them was used to build anything."
+
+  - consumption_id: "CNS_EA_BASE_RATE_ALL_DAYS"
+    trial_id: "TRIAL_EA_BASE_RATE_MATCHED_CONTROL_V1"
+    dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2023-09-27"
+      end_date: "2026-10-02"
+      slice_definition: "Unconditional 15m base rate on a 3s grid over all archived days (42-stock core) and matched-control comparison"
+    role: "DESCRIPTIVE"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_5_REPEATED_RESEARCH_EXPOSED"
+    dimensions_seen:
+      - "aggregate"
+      - "symbol"
+      - "month"
+      - "time-of-day"
+      - "per-fold"
+    consumed_at: "2026-10-07T21:22:50+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "daytrade_learning/event_audit/README.md"
+    source_commit: "a13f13b7"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Whole historical slice exposed repeatedly; the PHASE2C_FUTURE_CONFIRMATION_60D partition was not read."
