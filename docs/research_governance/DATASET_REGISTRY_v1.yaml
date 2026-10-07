@@ -101,3 +101,24 @@ datasets:
     parent_dataset_ids: []
     derivation_description: "Reserved pristine future confirmation partition starting 2026-10-05 for the first 60 eligible trading days, held strictly untouched."
     canonical_status: "RESERVED_UNTOUCHED"
+    excluded_dates:
+      - "2026-10-06"
+    exclusion_note: "Amendment 1 (2026-10-07): 2026-10-06 is excluded from the 60-day count after a content inspection (see docs/research_governance/incidents/2026-10-07_FUTURE_PARTITION_INSPECTION.md)."
+
+  - dataset_id: "LIVE_LEARNING_20261006_EXCLUDED_DAY"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    source: "SHIOAJI_TICK_FEED_STREAMING"
+    frequency: "TICK_AND_1MIN"
+    market: "TWSE"
+    timezone: "Asia/Taipei"
+    start_date: "2026-10-06"
+    end_date: "2026-10-06"
+    universe_definition: "100_STOCK_LIQUIDITY_POOL"
+    point_in_time_universe: true
+    survivorship_bias: "NONE_POINT_IN_TIME_FUTURE"
+    mutable: false
+    parent_dataset_ids:
+      - "PHASE2C_FUTURE_CONFIRMATION_60D"
+    derivation_description: "Single live trading day carved out of the Phase 2C future confirmation partition after its content was inspected; no longer part of the pristine 60-day set and may not be used as confirmation evidence."
+    canonical_status: "EXCLUDED_FROM_RESERVED_PARTITION"
