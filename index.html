@@ -77,6 +77,8 @@
     .extension-cta small { display:block; color:#CBD5E1; font-size:10px; font-weight:500; line-height:1.4; }
     .mobile-bottom-nav { display:none; }
     @media(max-width:768px) {
+      header.fixed .brand-link { width:auto; min-width:0; flex:0 1 auto; }
+      header.fixed .brand-logo { width:clamp(128px,42vw,188px); max-width:100%; height:auto; }
       body { padding-bottom:calc(68px + env(safe-area-inset-bottom,0px)); }
       html { scroll-padding-bottom:calc(68px + env(safe-area-inset-bottom,0px)); }
       .mobile-bottom-nav { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); position:fixed; bottom:0; left:0; right:0; z-index:30; padding:5px 4px calc(5px + env(safe-area-inset-bottom,0px)); background:var(--panel); border-top:1px solid var(--border); box-shadow:0 -4px 18px #0001; }
@@ -151,12 +153,6 @@
 
       /* Keep the fixed header compact instead of allowing the brand and controls to compete. */
       header.fixed > div { height:64px; min-height:64px; padding-left:12px; padding-right:12px; gap:8px; }
-      header.fixed a[aria-label] { min-width:0; gap:8px; }
-      header.fixed a[aria-label] img { width:36px; height:36px; border-radius:9px; flex:none; }
-      header.fixed a[aria-label] > div { min-width:0; }
-      header.fixed a[aria-label] strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; line-height:1.25; }
-      header.fixed a[aria-label] small,
-      header.fixed a[aria-label] strong + span { display:none; }
       #themeToggleBtn { padding-left:9px; padding-right:9px; flex:none; }
       #themeToggleLabel { display:none; }
 
@@ -415,8 +411,8 @@
        ===================================================== -->
   <header class="fixed top-0 left-0 right-0 z-50 bg-[#0B0F17]/90 backdrop-blur-xl border-b border-[#232F42] shadow-[0_1px_8px_rgba(0,0,0,0.3)]">
     <div class="h-20 max-w-[1440px] mx-auto px-3 md:px-6 xl:px-8 flex items-center gap-3 xl:gap-4">
-      <a class="flex items-center flex-none w-[190px] xl:w-[205px] text-decoration-none group" href="#dashboard" aria-label="當沖吧！牛馬仔首頁">
-        <img src="icon/BANNER-376.png?v=20261003" alt="EasyStock 當沖吧！牛馬仔" width="188" height="62" fetchpriority="high" decoding="async" class="w-[188px] h-[62px] object-contain object-left" />
+      <a class="brand-link flex items-center flex-none w-[190px] xl:w-[205px] text-decoration-none group" href="#dashboard" aria-label="當沖吧！牛馬仔首頁">
+        <img src="icon/BANNER-376.png?v=20261003" alt="EasyStock 當沖吧！牛馬仔" width="188" height="62" fetchpriority="high" decoding="async" class="brand-logo w-[188px] h-[62px] object-contain object-left" />
       </a>
 
       <div class="hidden lg:flex items-center gap-2 xl:gap-3 shrink-0">
@@ -5073,6 +5069,6 @@
   <a href="#chrome-tools" aria-label="小工具"><span class="material-symbols-outlined" aria-hidden="true">extension</span><span>小工具</span></a>
   <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" aria-label="社畜後台" target="_blank" rel="noopener"><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span><span>社畜後台</span></a>
 </nav>
-<script src="assets/mobile-nav.js?v=fdc135c91717"></script>
+<script src="assets/mobile-nav.js?v=7b86dbeb93c4"></script>
 </body>
 </html>
