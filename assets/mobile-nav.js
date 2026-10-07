@@ -8,6 +8,7 @@
     else link.removeAttribute('aria-current');
   });
   const scrollPadding=()=>parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+  const scrollMargin=node=>parseFloat(getComputedStyle(node).scrollMarginTop) || 0;
   let navigationTarget=null,settleTimer=null,queued=false;
   const finishNavigation=()=>{
     clearTimeout(settleTimer);
@@ -29,7 +30,9 @@
     if(navigationTarget) return;
     const headerBottom=document.querySelector('header.fixed')?.getBoundingClientRect().bottom || 0;
     const activeLine=Math.max(scrollPadding(),headerBottom)+20;
-    const passed=candidates.map(x=>({...x,top:x.node.getBoundingClientRect().top})).filter(x=>x.top<=activeLine);
+    // Native anchors stop at scroll-padding + each target's scroll-margin.
+    // Use the same alignment for the spy, including margins added by dashboard-layout.
+    const passed=candidates.map(x=>({...x,top:x.node.getBoundingClientRect().top-scrollMargin(x.node)})).filter(x=>x.top<=activeLine);
     passed.sort((a,b)=>b.top-a.top);
     if(passed.length) select(passed[0].href);
     else if(candidates.length) select(candidates[0].href);
@@ -54,9 +57,8 @@
   window.addEventListener('scrollend',()=>{
     if(!navigationTarget) return;
     const node=candidates.find(x=>x.href===navigationTarget).node;
-    const margin=parseFloat(getComputedStyle(node).scrollMarginTop) || 0;
     const maxScroll=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
-    const destination=Math.min(maxScroll,Math.max(0,window.scrollY+node.getBoundingClientRect().top-scrollPadding()-margin));
+    const destination=Math.min(maxScroll,Math.max(0,window.scrollY+node.getBoundingClientRect().top-scrollPadding()-scrollMargin(node)));
     // A cancelled previous scroll can emit scrollend after a new click. Ignore it en route.
     if(Math.abs(window.scrollY-destination)<=2) finishNavigation();
   });

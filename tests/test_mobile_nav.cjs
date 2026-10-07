@@ -22,7 +22,7 @@ test('M1-M7: real anchors, five labels, desktop/mobile safe-area, active and gua
 });
 
 // Control animation frames and time so intermediate scroll positions cannot be skipped.
-function navigationFixture(t){
+function navigationFixture(t,{productionLayout=false}={}){
   const {w,run}=createDOM(fs.readFileSync('index.html','utf8'));
   t.after(()=>w.close());
   const nav=w.document.querySelector('.mobile-bottom-nav');
@@ -60,6 +60,7 @@ function navigationFixture(t){
     assert.equal(links.find(link=>link.getAttribute('href')===href).getAttribute('aria-current'),'location');
   };
   const scrollend=()=>w.dispatchEvent(new w.Event('scrollend'));
+  if(productionLayout)run('assets/dashboard-layout.js');
   run('assets/mobile-nav.js');advance(200);
   return {w,click,scroll,active,advance,scrollend,flush};
 }
@@ -150,6 +151,28 @@ test('manual spy follows the actual scroll padding and fixed header active line'
   f.w.document.documentElement.style.scrollPaddingTop='40px';
   f.scroll({'#intraday-strategies':-600,'#bottom-rebound':85});f.active('#intraday-strategies');
   f.scroll({'#bottom-rebound':84});f.active('#bottom-rebound');
+});
+
+test('production rebound scroll-margin remains selected when a queued spy runs after scrollend',t=>{
+  const f=navigationFixture(t,{productionLayout:true});
+  assert.equal(f.w.getComputedStyle(f.w.document.querySelector('#bottom-rebound')).scrollMarginTop,'90px');
+  f.click('#bottom-rebound');
+  // Native anchor alignment adds html scroll-padding (100) and section scroll-margin (90).
+  f.scroll({'#intraday-strategies':-600,'#bottom-rebound':190,'#learningSection':800});
+  f.w.dispatchEvent(new f.w.Event('scroll')); // Spy still pending at scrollend.
+  f.scrollend();f.flush();f.active('#bottom-rebound');
+  f.scroll({'#bottom-rebound':189});f.active('#bottom-rebound');
+  assert.equal(f.w.location.hash,'#bottom-rebound');
+});
+
+test('production rebound scroll-margin is included in fallback settle and manual spy boundaries',t=>{
+  const f=navigationFixture(t,{productionLayout:true});
+  f.click('#bottom-rebound');
+  f.scroll({'#intraday-strategies':-600,'#bottom-rebound':190,'#learningSection':800});
+  f.advance(200);f.scroll({});f.active('#bottom-rebound');
+  f.scroll({'#bottom-rebound':211});f.active('#intraday-strategies');
+  f.scroll({'#bottom-rebound':210});f.active('#bottom-rebound');
+  f.scroll({'#bottom-rebound':-600,'#learningSection':100});f.active('#learningSection');
 });
 
 test('CASE 9-10: banner uses scoped responsive CSS, its original ratio and desktop dimensions',t=>{
