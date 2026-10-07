@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 import json
 
 from rebound_learning.collector import collect, collect_v2
@@ -63,7 +63,8 @@ def test_ex_rights_parser_and_factor():
 
 def test_today_is_never_recorded_closed_before_publication():
     db = market_connect(':memory:')
-    today = date.today().isoformat()
+    # _store_session compares against the Taiwan calendar date, not the runner's local (UTC on CI) date
+    today = datetime.now(timezone(timedelta(hours=8))).date().isoformat()
     _store_session(db, today, 'TWSE', [], {})
     assert db.execute('SELECT COUNT(*) FROM sessions').fetchone()[0] == 0
     _store_session(db, '2023-09-02', 'TWSE', [], {})
