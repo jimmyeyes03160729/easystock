@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createClient } = require('./client');
 const configured = require('./indices.json').indices;
+const { MarketContext } = require('./context');
 const BACKOFF = [1000, 2000, 5000, 10000, 30000, 60000];
 const tpe = ms => new Date(ms + 8 * 3600000).toISOString().replace('Z', '+08:00');
 function timestamp(raw) {
@@ -50,6 +51,7 @@ class Provider {
       subscribed:false,parser_ok:true,reconnect_count:0,consecutive_failures:0,reconnect_state:'idle'};
     this.wanted=Object.entries(configured).filter(([,value])=>value.enabled);
     this.acks=new Set();this.lastArchive=0;this.lastPoll=0;this.inFlight=false;
+    this.marketContext=new MarketContext();this.breadthSnapshots={};this.lastBreadthPoll=-Infinity;
   }
   error(code) {
     this.diagnostic.error_code=code;this.diagnostic.last_error_at=tpe(this.clock());
@@ -62,6 +64,7 @@ class Provider {
       const [key,mapping]=entry, quote=normalize(payload,mapping,this.clock(),this.quotes[key]);
       if (this.quotes[key] && quote.quote_at < this.quotes[key].quote_at) return;
       this.quotes[key]=quote;this.diagnostic.parser_ok=true;
+      this.marketContext.observe(key,quote);
       this.diagnostic.last_data_at=quote.received_at;this.diagnostic.quote_at=this.quotes.taiex?.quote_at || quote.quote_at;
       this.diagnostic.last_ok_at=quote.received_at;this.diagnostic.consecutive_failures=0;
       this.diagnostic.error_code=null;
@@ -88,13 +91,21 @@ class Provider {
       age_seconds:Math.max(0,Math.round((now-Date.parse(quote.quote_at))/1000)),
       fresh:now-Date.parse(quote.quote_at)<=90000 && quote.quote_at.slice(0,10)===tpe(now).slice(0,10)}]));
     atomic(path.join(this.directory,'esun.json'),this.diagnostic);
-    atomic(path.join(this.directory,'context.json'),{schema_version:1,generated_at:tpe(now),source:'esun',indices:quotes,
+    // Reuse the Python publisher's trading-calendar decision. Missing/stale decision fails closed.
+    let health={};try{health=JSON.parse(fs.readFileSync(path.join(this.directory,'public-health.json'),'utf8'));}catch(_){}
+    const checked=Date.parse(health.generated_at), hour=tpe(now).slice(11,16);
+    const open=health.market_state==='OPEN' && now>=checked && now-checked<=120000 &&
+      tpe(checked).slice(0,10)===tpe(now).slice(0,10) && hour>='09:00' && hour<='13:30' &&
+      this.diagnostic.connected && this.diagnostic.authenticated && this.diagnostic.parser_ok;
+    const context={schema_version:1,generated_at:tpe(now),source:'esun',indices:quotes,
+      ...this.marketContext.build(quotes,this.breadthSnapshots,now,!!open),
       features:{market_return_1m:null,market_return_5m:null,market_return_15m:null,
-        sector_return_1m:null,sector_return_5m:null,sector_return_15m:null,sector_vs_market_strength:null,market_regime:null}});
+        sector_return_1m:null,sector_return_5m:null,sector_return_15m:null,sector_vs_market_strength:null,market_regime:null}};
+    atomic(path.join(this.directory,'context.json'),context);
     // Dataset snapshots: only fresh exchange data; keep receipt time separate, no invented returns.
     if(now-this.lastArchive>=60000 && Object.values(quotes).some(q=>q.fresh)) {
       const dir=path.join(this.directory,'dataset');fs.mkdirSync(dir,{recursive:true,mode:0o700});
-      fs.appendFileSync(path.join(dir,tpe(now).slice(0,10)+'.jsonl'),JSON.stringify({received_at:tpe(now),indices:quotes})+'\n',{mode:0o600});
+      fs.appendFileSync(path.join(dir,tpe(now).slice(0,10)+'.jsonl'),JSON.stringify({received_at:tpe(now),...context})+'\n',{mode:0o600});
       this.lastArchive=now;
     }
   }
@@ -104,6 +115,13 @@ class Provider {
       for(const [,mapping] of this.wanted) {
         try {this.accept(await deadline(client.restClient.stock.intraday.quote({symbol:mapping.symbol}),6000));}
         catch(_){this.error('quote_request_failed');}
+      }
+      if(this.clock()-this.lastBreadthPoll>=60000) {
+        for(const market of ['TSE','OTC']) {
+          try {this.breadthSnapshots[market]=await deadline(client.restClient.stock.snapshot.quotes({market}),6000);}
+          catch(_) {delete this.breadthSnapshots[market];}
+        }
+        this.lastBreadthPoll=this.clock();
       }
     } finally {this.inFlight=false;this.lastPoll=this.clock();this.flush();}
   }

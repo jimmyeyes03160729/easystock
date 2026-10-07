@@ -8,6 +8,7 @@
 <script defer src="/admin/assets/admin.js"></script>
 <script defer src="/admin/assets/paper-trade.js"></script>
   <script defer src="/admin/assets/order.js"></script>
+<script defer src="/admin/assets/live-console.js"></script>
 </head>
 <body>
 <header><a class="brand" href="https://jimmyeyes03160729.github.io/easystock/">E<span>EasyStock</span></a><button id="openOrderModal" type="button" style="background:#2563eb;color:#fff;font-weight:600;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;margin-left:auto;margin-right:12px;">🚀 永豐下單</button><button id="theme" type="button">切換明暗</button></header>
@@ -26,6 +27,9 @@
   <h3>API／資料來源診斷</h3>
   <p id="providerHealthSummary" class="hint" role="status">等待資料來源檢查。</p>
   <div id="providerHealthDetails" class="health-signals"></div>
+  <h3>玉山市場情境（只讀診斷）</h3>
+  <p class="hint">價格輪動代理，不是真實資金流；不參與正式進出場。全市場快照範圍可能包含 ETF，覆蓋率不足不視為完整市場。</p>
+  <div id="marketContext" class="health-signals" role="status">待 Owner 登入後讀取。</div>
   <p class="hint health-note">綠燈：可用或完成；黃燈：等待條件、時段或額度；紅燈：需要處理；灰燈：尚未開始或未啟用。</p>
   <section class="panel health-panel" id="runtimeModelPanel" aria-labelledby="runtimeModelTitle">
      <div class="health-heading"><div><p class="eyebrow">盤中模型狀態</p><h2 id="runtimeModelTitle">盤中模型一致性</h2><p class="hint">確認盤中實際載入的模型，是否就是目前核准、供下一次啟動使用的模型。注意：模型晉升後，現有 process 不會自動換模型。</p></div></div>
@@ -156,6 +160,22 @@
 </details>
 </section>
 
+<section class="panel admin-tab-panel" id="liveConsolePanel" hidden aria-labelledby="liveConsoleTitle">
+<h2 id="liveConsoleTitle">永豐實盤當沖</h2>
+<p class="hint">Owner 專用。Research／Paper／Live 隔離。LIVE AUTO 只有受控狀態骨架，尚未連接自動執行引擎；部署預設 OFF。KILL SWITCH 只阻擋新 AUTO 委託，不平倉。</p>
+<div class="actions"><button id="liveVerify" type="button">券商重新驗證（只讀）</button><button id="liveRefresh" type="button">同步券商</button></div>
+<p id="liveStatus" role="status" aria-live="polite">尚未同步。</p>
+<div class="actions"><label>交易模式 <select id="liveMode"><option>OFF</option><option>SHADOW</option><option>PAPER</option><option value="LIVE AUTO" disabled>LIVE AUTO</option></select></label><button id="liveModeSave" type="button">確認變更模式</button><button id="liveKill" type="button">啟用 KILL SWITCH</button></div>
+<h3>Broker / 今日損益</h3><div id="liveBroker" class="health-signals"></div>
+<h3>券商持倉（股）</h3><p class="hint">第一版可賣額度只支援昨日現股多單扣除未成交 SELL；同日當沖、信用、未知可賣額度禁止送出。未知進場時間／策略不猜測。</p><div id="livePositions" class="live-table-wrap"></div>
+<h3>今日委託（股，識別碼指紋）</h3><div id="liveOrders" class="live-table-wrap"></div>
+<h3>今日成交（股，識別碼指紋）</h3><div id="liveDeals" class="live-table-wrap"></div>
+<dialog id="liveSellModal" aria-labelledby="liveSellTitle"><form id="liveSellForm"><h3 id="liveSellTitle">手動賣出驗證</h3><p id="liveSellSummary"></p>
+<label>數量 <input id="liveSellQty" type="number" min="1" step="1" required></label><label><input id="liveSellOdd" type="checkbox" checked>零股（取消為張，每張 1000 股）</label>
+<label>限價 <input id="liveSellPrice" type="number" min="0.01" step="any" required></label><button id="liveSellVerify" type="button">第一步：重新驗證券商與可賣數量</button>
+<p id="liveSellEvidence" role="status"></p><label>第二步：輸入 SELL <input id="liveSellConfirm" autocomplete="off"></label><label>再次輸入遮罩帳戶 <input id="liveSellAccount" autocomplete="off"></label>
+<label>憑證密碼 <input id="liveSellPassword" type="password" autocomplete="off"></label><div class="actions"><button id="liveSellSubmit" type="submit" disabled>再次確認並送出 SELL</button><button id="liveSellClose" type="button">取消</button></div><p id="liveSellResult" role="status"></p></form></dialog>
+</section>
 <section class="panel admin-tab-panel" id="conversationPanel"><h2>個人通知</h2>
 <form id="notificationForm">
   <div class="grid">

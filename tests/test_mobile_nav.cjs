@@ -1,0 +1,22 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+const {createDOM}=require('./dom.cjs');
+test('M1-M7: real anchors, five labels, desktop/mobile safe-area, active and guarded admin route',()=>{
+  const html=fs.readFileSync('index.html','utf8'),{w,run}=createDOM(html);
+  const nav=w.document.querySelector('.mobile-bottom-nav'),links=[...nav.querySelectorAll('a')];
+  assert.equal(links.length,5);
+  assert.deepEqual(links.map(a=>a.getAttribute('aria-label')),['盤中摸魚','底部反彈','牛馬 AI','小工具','社畜後台']);
+  assert.match(html,/\.mobile-bottom-nav\s*\{ display:none;/);
+  assert.match(html,/@media\(max-width:768px\)/);
+  assert.match(html,/body\s*\{ padding-bottom:calc\(68px \+ env\(safe-area-inset-bottom/);
+  assert.match(html,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
+  assert.match(html,/:focus-visible/);
+  for(const a of links.slice(0,4))assert(w.document.querySelector(a.getAttribute('href')));
+  assert(w.document.querySelector('#chrome-tools .extension-cta[href^="https://chromewebstore.google.com/"]'));
+  assert.equal(links[4].pathname,'/admin');assert(!links[4].search);
+  assert.equal(w.document.querySelectorAll('.section-nav.hidden.lg\\:flex').length,1);
+  const ids=[...w.document.querySelectorAll('[id]')].map(n=>n.id);assert.equal(new Set(ids).size,ids.length);
+  run('assets/mobile-nav.js');links[1].dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true}));
+  assert.equal(links[1].getAttribute('aria-current'),'location');assert(!links[0].hasAttribute('aria-current'));
+  w.location.hash='#learningSection';w.dispatchEvent(new w.Event('hashchange'));assert.equal(links[2].getAttribute('aria-current'),'location');
+  w.close();
+});

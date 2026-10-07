@@ -75,6 +75,16 @@
     .extension-cta .extension-icon img { width:32px; height:32px; object-fit:contain; image-rendering:auto; }
     .extension-cta > span:last-child { position:relative; z-index:1; }
     .extension-cta small { display:block; color:#CBD5E1; font-size:10px; font-weight:500; line-height:1.4; }
+    .mobile-bottom-nav { display:none; }
+    @media(max-width:768px) {
+      body { padding-bottom:calc(68px + env(safe-area-inset-bottom,0px)); }
+      html { scroll-padding-bottom:calc(68px + env(safe-area-inset-bottom,0px)); }
+      .mobile-bottom-nav { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); position:fixed; bottom:0; left:0; right:0; z-index:30; padding:5px 4px calc(5px + env(safe-area-inset-bottom,0px)); background:var(--panel); border-top:1px solid var(--border); box-shadow:0 -4px 18px #0001; }
+      .mobile-bottom-nav a { min-height:54px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; color:var(--sub); text-decoration:none; font-size:11px; border-radius:8px; }
+      .mobile-bottom-nav .material-symbols-outlined { font-size:21px; }
+      .mobile-bottom-nav a[aria-current="location"] { color:var(--accent); background:var(--surface); font-weight:800; }
+      nav[aria-label="首頁行動區域"] { display:none; }
+    }
     .section-nav { display:flex; gap:24px; border-bottom:1px solid var(--border); margin-bottom:24px; overflow-x:auto; }
     .section-nav a { color:var(--sub); white-space:nowrap; padding:12px 0; font-size:13px; text-decoration:none; font-weight:600; }
     .section-nav a:first-child { color:var(--main); border-bottom:2px solid var(--accent); font-weight:700; }
@@ -461,7 +471,7 @@
       <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-[#F1F5F9] my-2">上班很累，看盤要清楚。</h1>
       <p class="text-[#94A3B8] text-sm max-w-2xl leading-relaxed">有訊號偷摸魚，沒訊號專心裝忙。今日當沖機會、防守底線與下班進修進度，一眼看完。</p>
     </div>
-    <div class="intro-status flex flex-col items-end gap-2">
+    <div id="chrome-tools" class="intro-status flex flex-col items-end gap-2">
       <div class="flex items-center gap-2 flex-wrap justify-end">
         <button type="button" onclick="fetchMarketData()" class="btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#F59E0B] hover:brightness-110 text-[#0B0F17] font-bold text-xs transition-all shadow-md">
           <span class="material-symbols-outlined text-[16px]">sync</span>
@@ -5056,5 +5066,13 @@
 <script src="assets/dashboard-layout.js?v=ab06770c6379"></script>
 <script src="assets/intraday-chart.js?v=17c577fb8eaa"></script>
 <script src="assets/provider-health.js?v=e8f08c578597"></script>
+<nav class="mobile-bottom-nav" aria-label="手機主導覽">
+  <a href="#intraday-strategies" aria-label="盤中摸魚" aria-current="location"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span><span>盤中摸魚</span></a>
+  <a href="#bottom-rebound" aria-label="底部反彈"><span class="material-symbols-outlined" aria-hidden="true">trending_up</span><span>底部反彈</span></a>
+  <a href="#learningSection" aria-label="牛馬 AI"><span class="material-symbols-outlined" aria-hidden="true">psychology</span><span>牛馬 AI</span></a>
+  <a href="#chrome-tools" aria-label="小工具"><span class="material-symbols-outlined" aria-hidden="true">extension</span><span>小工具</span></a>
+  <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" aria-label="社畜後台" target="_blank" rel="noopener"><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span><span>社畜後台</span></a>
+</nav>
+<script src="assets/mobile-nav.js?v=fdc135c91717"></script>
 </body>
 </html>

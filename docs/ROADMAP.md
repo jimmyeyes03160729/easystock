@@ -98,12 +98,13 @@
   - 視需要補 `width` / `height`、preload / fetchpriority 或 cache-busting 調整，但避免過度 preload 阻塞其他首屏資源。
   - 驗收以首頁首屏載入時間、LOGO transfer size、decode/render 正常為準。
 
-- [ ] **手機版底部導覽列改版**
+- [x] **手機版底部導覽列改版（CODE VERIFIED）**
   - 手機版底部改成固定式 5 個主入口。
   - 主入口：盤中摸魚、底部反彈、牛馬 AI、Chrome 小工具、社畜後台。
   - 上方原有主題頁籤仍可保留完整名稱；手機底部採精簡名稱。
   - 桌機版不強制套用同一底部導覽樣式。
   - iPhone 需支援 `safe-area-inset-bottom`，避免 Home Indicator 擠壓。
+  - 2026-10-07：5 個真實入口 label mapping、768px breakpoint、正文底部留白、active / focus、DOM 回歸已完成；桌機導覽不變。
 
 - [x] **Chrome Extension 1.02：1.01 實盤 BUG 一次性修正**
   - 版本規則確認：1.0X 系列只做 BUG 修正、穩定性與相容性改善；大型新功能不塞入 1.0X。
@@ -158,7 +159,13 @@
   - 與既有 Shioaji / Fugle / Firebase 資料分層，保留 source / quote_at / received_at / freshness，禁止來源混淆。
   - 新增資料先進 Dataset / Shadow 驗證，不可因接上玉山 API 就直接改變正式 ENTRY / EXIT。
   - 不保存或建立任何玉山交易憑證 / 下單能力；權限以行情唯讀最小化為原則。
-  - 尚待完成：正式 provider 模組、資料標準化 / 落地、freshness、API Health 燈號、Dataset / Shadow 整合。
+  - [x] 既有只讀 provider / 7 indices / Provider Health（沿用，不重接）。
+  - [x] deterministic sector strength（1m/5m/15m 僅有當時歷史才計算；day / relative / rank）。
+  - [x] TSE / OTC `stock.snapshot.quotes` breadth adapter（CODE VERIFIED；快照範圍含 ETF，不宣稱已覆蓋全部普通股）。
+  - [x] price-only `sector_rotation_proxy`；closed / stale / missing fail closed。
+  - [x] Owner Admin diagnostics / canonical context.json / point-in-time dataset snapshots。
+  - [ ] 完整交易日的 breadth coverage / windows / rotation 自然行情驗證。
+  - [ ] production model integration / 正式 AI Applied（未接 ENTRY / EXIT）。
 
 - [x] **當沖制度 / 費稅模擬對齊：CODE VERIFIED / VM DEPLOYED**
   - [x] 2026-09-30 已完成當沖合規 / 制度檢視，文件：`docs/DAYTRADE_COMPLIANCE_REVIEW_2026-09-30.md`。
@@ -184,6 +191,13 @@
   - [ ] Phase 2：Shadow 驗證，再決定是否 Applied；不自動晉升。
 
 - [ ] **永豐實盤當沖後台（Owner-only）**
+  - [x] 第一版 Owner backend / UI、既有 Google session + CSRF / Origin、401 / 403。
+  - [x] 券商只讀同步 / 遮罩帳戶 / 股數單位 / positions-orders-deals-PnL / fail-closed reconciliation（CODE VERIFIED）。
+  - [x] guarded manual SELL UI：既有 order/place、重驗證、短效 session-bound ticket、兩次確認、送前刷新、tick / notional / idempotency。
+  - [x] KILL SWITCH control / Owner audit / 獨立 live_trade_*（不平倉，不寫 Paper / Research）。
+  - [ ] 同日當沖 / 信用部位的 authoritative available-to-sell 與 eligibility；目前只支持昨日現股多單，未知即禁止。
+  - [ ] 自動帳本事件匯入 / 人工對帳修復流程；不一致只 PAUSED，不猜測修正。
+  - [ ] LIVE AUTO production enable / 自動執行引擎（本輪 OFF，guard/state skeleton only）。
   - 第一階段先建立獨立「永豐實盤當沖」分頁 / Tab，僅在 Google 登入且通過既有 Owner/Admin 驗證後顯示。
   - 未登入時首頁 / 後台導覽都不顯示入口；即使直接輸入 route 或呼叫 API，也必須由後端強制回 401 / 403，不能只靠前端隱藏。
   - 第一版只做安全入口與 UI / backend skeleton：券商狀態、實盤模式 OFF、AUTO OFF、今日持倉 / 委託 / 成交 / 損益、帳戶設定與 KILL SWITCH placeholder。

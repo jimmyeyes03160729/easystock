@@ -1,0 +1,20 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+const {createDOM,settle}=require('./dom.cjs');
+test('Owner workspace only, no auto orders on render, guarded modal, safe text and failed reads',async()=>{
+ const html=fs.readFileSync('easystock_admin/static/index.html','utf8'),{w,run}=createDOM(html),calls=[];
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};w.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new w.Event('close'));};
+ let failed=false;
+ const data={mode:'OFF',auto_state:'AUTO PAUSED',reconciliation:'RECONCILIATION REQUIRED',activation_allowed:false,ordering_guard:false,broker_fresh:true,broker:{connected:true,authenticated:true,complete:true,account:{account_id:'***1234'},positions:[{symbol:'2330',name:'<img src=x onerror=alert(1)>',quantity:1000,available_to_sell:1000}],orders:[],deals:[],pnl:{realized_today:null}}};
+ w.api=async(path,options)=>{calls.push({path,options});if(failed)throw Error('登入失效');return path.includes('market-context')?{breadth:{status:'UNKNOWN'},sectors:{rows:[]}}:data;};
+ w.showAdminTab=()=>{};run('easystock_admin/static/live-console.js');
+ assert(w.document.getElementById('workspace').hidden);assert.equal(calls.length,0);
+ w.document.dispatchEvent(new w.Event('easystock:owner-ready'));await settle();
+ assert.equal(w.document.querySelector('[value="LIVE AUTO"]').disabled,true);
+ assert(w.document.querySelector('#livePositions button').disabled);assert.equal(w.document.querySelectorAll('#livePositions img').length,0);
+ assert(!calls.some(c=>c.path.includes('order/place')));
+ data.ordering_guard=true;await w.loadLiveConsole();w.document.querySelector('#livePositions button').click();
+ assert(w.document.getElementById('liveSellModal').open);assert(w.document.getElementById('liveSellSubmit').disabled);
+ w.document.getElementById('liveSellPassword').value='fake';w.document.getElementById('liveSellClose').click();assert.equal(w.document.getElementById('liveSellPassword').value,'');
+ failed=true;await w.loadLiveConsole();assert.equal(w.document.getElementById('livePositions').children.length,0);assert(w.document.getElementById('liveSellSubmit').disabled);
+ w.close();
+});

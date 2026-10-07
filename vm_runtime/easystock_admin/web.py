@@ -12,6 +12,7 @@ SESSION = '__Host-easystock_admin'
 CHALLENGE = '__Host-easystock_login'
 STATIC = Path(__file__).parent / 'static'
 _LINE_QUOTA_CACHE = {'at': 0.0, 'value': None}
+class Unauthorized(Exception): pass
 
 
 def verify_google(credential, client_id):
@@ -59,6 +60,15 @@ def register_admin(app, store=None, verifier=None):
                 raise Denied('操作驗證已失效，請重新登入。')
         return token, csrf
 
+    def owner_authenticated(write=False):
+        token = request.cookies.get(SESSION, '')
+        try:
+            store.session(token)
+        except Denied:
+            raise Unauthorized('請先使用 Google 登入。') from None
+        store.owner_session(token)
+        return authenticated(write)
+
     @bp.after_request
     def headers(response):
         response.headers['Cache-Control'] = 'no-store'
@@ -76,6 +86,8 @@ def register_admin(app, store=None, verifier=None):
 
     @bp.errorhandler(Denied)
     def denied(exc): return jsonify(error=str(exc)), 403
+    @bp.errorhandler(Unauthorized)
+    def unauthorized(exc): return jsonify(error=str(exc)), 401
     @bp.errorhandler(Conflict)
     def conflict(exc): return jsonify(error=str(exc)), 409
     @bp.errorhandler(ProfileChange)
@@ -91,7 +103,7 @@ def register_admin(app, store=None, verifier=None):
 
     @bp.get('/admin/assets/<name>')
     def assets(name):
-        if name not in ('admin.js', 'admin.css', 'paper-trade.js', 'order.js'):
+        if name not in ('admin.js', 'admin.css', 'paper-trade.js', 'order.js', 'live-console.js'):
             return '', 404
         return send_from_directory(STATIC, name)
 
@@ -265,22 +277,58 @@ def register_admin(app, store=None, verifier=None):
     # 永豐證券下單 API (包含完整例外捕捉與 JSON 格式錯誤處理)
     # --------------------------------------------------------
     from .order_service import order_service, validate_order, live_ordering_enabled
+    from .live_console import LiveConsole
+    live = LiveConsole(store, order_service, OWNER)
     ORDER_FIELDS = {'client_order_id', 'symbol', 'action', 'price', 'quantity', 'is_odd_lot', 'ca_passwd'}
+    SELL_FIELDS = {'sell_verification_id', 'confirm_sell', 'confirm_account'}
+
+    @bp.get('/admin/api/market-context')
+    def get_market_context():
+        owner_authenticated()
+        from market_data.context import diagnostics
+        return jsonify(diagnostics())
+
+    @bp.get('/admin/api/live-console')
+    def get_live_console():
+        owner_authenticated()
+        return jsonify(live.refresh())
+
+    @bp.put('/admin/api/live-console')
+    def put_live_console():
+        owner_authenticated(True)
+        return jsonify(live.change(body()))
+
+    @bp.post('/admin/api/live-console/sell-verify')
+    def post_sell_verify():
+        token, _ = owner_authenticated(True)
+        data = body()
+        with order_service.console_lock:
+            try:
+                return jsonify(live.verify_sell(data, token))
+            except (Denied, ValueError):
+                live.audit('live_sell_verify', {'result': 'rejected'})
+                raise
+            except Exception:
+                live.audit('live_sell_verify', {'result': 'broker_unavailable'})
+                return jsonify(error='券商驗證暫時無法使用。'), 503
 
     @bp.post('/admin/api/order/verify')
     def post_order_verify():
         # Re-logging in replaces the broker session, so this is a write action.
-        authenticated(True)
+        owner_authenticated(True)
         if body():
             raise ValueError('永豐金鑰只使用伺服器設定，不接受由網頁傳入。')
         try:
-            return jsonify({'ok': True, 'account': order_service.login()})
-        except Exception as e:
-            return jsonify({'ok': False, 'message': str(e)}), 400
+            account = order_service.login()
+            live.audit('live_broker_verify', {'result': 'verified'})
+            return jsonify({'ok': True, 'account': account})
+        except Exception:
+            live.audit('live_broker_verify', {'result': 'unavailable'})
+            return jsonify({'ok': False, 'message': '券商連線驗證失敗。'}), 400
 
     @bp.post('/admin/api/order/quote')
     def post_order_quote():
-        authenticated()
+        owner_authenticated()
         try:
             data = request.get_json(silent=True) or {}
             symbol = data.get('symbol', '').strip()
@@ -288,16 +336,17 @@ def register_admin(app, store=None, verifier=None):
                 return jsonify({'ok': False, 'message': '請輸入股票代號'}), 400
             quote = order_service.get_quote(symbol)
             return jsonify({'ok': True, 'quote': quote})
-        except Exception as e:
-            return jsonify({'ok': False, 'message': str(e)}), 400
+        except Exception:
+            return jsonify({'ok': False, 'message': '券商報價暫時無法取得。'}), 400
 
     @bp.post('/admin/api/order/place')
     def post_order_place():
         # This endpoint can call the broker.  It must use the same
         # Origin/CSRF protection as every state-changing admin action.
-        authenticated(True)
+        token, _ = owner_authenticated(True)
         data = body()
-        if set(data) != ORDER_FIELDS:
+        sell = data.get('action') == 'SELL'
+        if set(data) != ORDER_FIELDS | (SELL_FIELDS if sell else set()):
             raise ValueError('委託欄位不正確。')
         order = validate_order(data['symbol'], data['action'], data['price'],
                                data['quantity'], data['is_odd_lot'])
@@ -308,13 +357,18 @@ def register_admin(app, store=None, verifier=None):
             return jsonify({'ok': False, 'message': '真實下單入口目前已隔離，伺服器未啟用實單。'}), 403
         # Reserve before sending: a repeated click or retry cannot place a second order,
         # and an interrupted request stays visible as "submitting" for reconciliation.
-        store.reserve_order(data['client_order_id'], order)
-        try:
-            res = order_service.place_order(ca_passwd=ca_passwd, **order)
-        except Exception as e:
-            store.finish_order(data['client_order_id'], 'failed', {'message': str(e)[:300]})
-            return jsonify({'ok': False, 'message': str(e)}), 400
-        store.finish_order(data['client_order_id'], 'submitted', res)
+        with order_service.console_lock:
+            guard = live.reservation_guard(data, order, token) if sell else live.reserve_live(data['client_order_id'],order)
+            store.reserve_order(data['client_order_id'], order, guard=guard)
+            try:
+                kwargs = {'before_submit': lambda: live.before_submit(order)} if sell else {}
+                res = order_service.place_order(ca_passwd=ca_passwd, **order, **kwargs)
+            except Exception:
+                store.finish_order(data['client_order_id'], 'failed', {'message': 'broker_submission_unknown'})
+                live.result(data['client_order_id'], order, {}, 'unknown')
+                return jsonify({'ok': False, 'message': '委託結果尚未確認，請對帳，勿重送。'}), 400
+            store.finish_order(data['client_order_id'], 'submitted', res)
+            live.result(data['client_order_id'], order, res, 'submitted')
         return jsonify({'ok': True, 'trade': res})
 
     app.register_blueprint(bp)
