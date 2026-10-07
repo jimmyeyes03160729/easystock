@@ -215,9 +215,10 @@
   - [x] Phase 1.5：重跑 Backfill / Labels / Audit（v2）：46,503 筆、可訓練 25,515 筆（v1 為 237），critical 0。正式規則候選 5,543 筆（SUCCESS 7.3%、FAIL 27.2%、TIMEOUT 65.6%）；新增 BOTTOM_ZONE 擴大池 16,828 筆。
   - [ ] Phase 1.5：TIMEOUT 約佔 65%，Phase 2 前需評估三分類（SUCCESS / FAIL / TIMEOUT）、兩階段或連續報酬標籤，避免只做 SUCCESS vs FAIL 丟掉大部分樣本。
   - [ ] Phase 2 前決定價格基準：v2 用除權息還原價判斷規則，正式 rebound_feed 目前用未還原 K 線；與 v1 重疊的 152 筆正式候選只有 94 筆在 v2 仍是正式候選（差異來自歷史長度與除權息還原，非資料錯誤）。訓練與上線必須使用同一價格基準。
-  - [ ] Phase 2：Baseline / Logistic Regression / HistGradientBoosting 正式比較；目前只允許 pipeline sanity check，不得 Candidate / Shadow。
-  - [ ] Phase 2：Walk-forward + 10 交易日 embargo + holdout；以相同 Top 3 訊號數比較 Target Hit Rate、5D / 10D return、MFE / MAE、PF、Drawdown、Brier。
-  - [ ] Phase 2：Shadow 驗證，再決定是否 Applied；不自動晉升。
+  - [x] Phase 2（2026-10-08，預先登記 `REBOUND_P2_RANKER_V1`，執行一次）：Ridge / HistGradientBoosting × 正式候選 / 擴大池 4 個固定版本，5 段 walk-forward + 15 交易日 embargo，每日 Top 3 對照現行排序。**結果 REJECTED**：4 個版本都沒有贏過現行排序（整體差距 −0.17～−0.00 個百分點）。
+  - [ ] 關鍵發現：現行規則 Top 3 本身以「D1 開盤進場、規則停損／目標、10 日出場」交易，扣 0.6% 成本後平均每筆 −0.55%（PF 0.81，1,623 筆），5 段中 4 段為負。排序無法救回這個交易定義；下一步需先重新檢討交易定義（進出場），任何新研究在同一段歷史上都屬重複使用資料，須另行預先登記。
+  - [ ] 未來確認保留期 `REBOUND_V2_FUTURE_60D`（2026-10-07 起前 60 個交易日）未使用，維持封存，留給下一個預先登記的研究。
+  - [ ] Shadow 驗證：目前沒有通過的版本，不進入 Shadow；不自動晉升。
 
 - [ ] **永豐實盤當沖後台（Owner-only）**
   - [x] 第一版 Owner backend / UI、既有 Google session + CSRF / Origin、401 / 403。

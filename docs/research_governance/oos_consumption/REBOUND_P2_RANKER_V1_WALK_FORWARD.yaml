@@ -1,0 +1,45 @@
+# EasyStock OOS Consumption Ledger — rebound Phase 2 ranker walk-forward (preregistered, run once)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "REBOUND_P2_RANKER_V1_WALK_FORWARD"
+created_at: "2026-10-08T07:30:00+08:00"
+description: >
+  The single preregistered run of REBOUND_P2_RANKER_V1: four variants x five walk-forward folds on rebound
+  Dataset v2 signals before 2026-10-07. The reserved future partition was not loaded.
+
+consumption_events:
+  - consumption_id: "CNS_REBOUND_P2_RANKER_V1_FOLDS"
+    trial_id: "TRIAL_REBOUND_P2_RANKER_V1"
+    dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+    dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+    dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+    slice:
+      start_date: "2024-01-01"
+      end_date: "2026-10-06"
+      slice_definition: "Five preregistered test folds (2024H1 .. 2026), PENDING candidates, top 3 per day"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "variant x fold net return, profit factor and trades for model and rule-order rankers"
+      - "descriptive top 1/2/5 and abstaining top 3 per fold"
+    consumed_at: "2026-10-08T07:06:15+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/research_governance/trials/REBOUND_P2_RANKER_V1.yaml"
+    source_commit: "93649dd"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: >
+        Result: REJECTED. Any later rebound study on these dates reuses discovery data and must say so;
+        confirmation remains reserved to REBOUND_V2_FUTURE_60D.
