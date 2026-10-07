@@ -1,0 +1,81 @@
+# EasyStock preregistration — HV60_V1 (high-volatility tier, 60-minute LONG entries)
+# Frozen in git BEFORE any directional outcome of these hypotheses is read.
+# Motivation (magnitude only, no direction): cost-feasibility scan 2026-10-08
+#   (bundle sha256 8bd6ab706e9d58db5e3e1ceba4b61055a9237966032ff797bcf0cfc369195a76):
+#   taker round-trip cost ~52 bps vs mean |move| 34 bps (15m) / 63 bps (60m) for the pool;
+#   37 of 100 pool symbols have taker cost <= 0.5x their mean |60m move|.
+
+preregistration_id: "HV60_V1"
+created_at: "2026-10-08T02:00:00+08:00"
+status: "FROZEN_AWAITING_DATA"
+research_only: true
+production_effect: "NONE"
+direction: "LONG"
+
+data:
+  archive: "easystock-history-expanded-data + easystock-history-data, days <= 2026-10-02"
+  universe_pool: "frozen 100-stock pool (expanded archive selection)"
+  timestamp_convention: "datetime(1970,1,1) + timedelta(microseconds=ns//1000); naive Taiwan wall-clock"
+  forbidden: ["PHASE2C_FUTURE_CONFIRMATION_60D", "any day > 2026-10-02"]
+
+readiness_gate:
+  rule: "run only when >= 80% of pool stock-days between 2024-12-25 and 2026-08-27 are archived"
+  measured_from: "archive file existence only (no prices, no outcomes)"
+  rationale: "on 2026-10-08 most high-volatility symbols start at 2026-05-27 (fold 5 only)"
+
+tier:
+  name: "HV_TIER"
+  rule: "trailing_range_20 >= 0.030"
+  trailing_range_20: "mean over the previous 20 archive trading days of (daily_high - daily_low) / daily_close, using only days before the decision date"
+  daily_ohlc: "from complete 1m bars of each archive day (first open, max high, min low, last close)"
+  note: "0.030 chosen after the magnitude-only scan (disclosed); it is fixed and is not searched"
+
+evaluation:
+  decision_points: "each completed 5m bar (bars aligned to 09:00, complete buckets only) with 09:30 <= t < 11:55"
+  entry: "latest trade tick with ts <= t, age <= 30s; never the next tick"
+  basic_limits: "live min_price / max_price / max_gain_pct vs TWSE reference"
+  episodes: "false->true per symbol-day on the full state (signal and fresh tick and limits); a transition < 60 min after the previous accepted episode is excluded"
+  vwap: "strategy_engine.calculate_vwap(completed 5m bars up to t)"
+  session_open: "open of the first 1m bar of the day"
+
+hypotheses:
+  HV1_OPEN_DRIVE_CONTINUATION:
+    condition: "HV_TIER and (price / session_open - 1) >= 0.5 * trailing_range_20 and price >= vwap"
+  HV2_DOWNSIDE_OVERSHOOT_REVERSAL:
+    condition: "HV_TIER and (price / close_of_completed_5m_bar_ending_15min_before_t - 1) <= -0.35 * trailing_range_20 and close_location_value(last completed 5m bar) > 0"
+  HV3_VWAP_RECLAIM:
+    condition: "HV_TIER and the previous 6 completed 5m bars each closed below the vwap known at its own completion and the last completed 5m bar closes above vwap"
+
+horizons:
+  primary: "60m"
+  secondary_descriptive: ["15m", "30m", "12:55"]
+  force_exit: "12:55 (entries end at 11:55 so the 60m exit never passes it)"
+
+costs:
+  shares: 1000
+  model: "daytrade_learning.event_audit.costs (paper_execution fee/tax, ROUND_HALF_UP)"
+  quote_stress: "entry ask / exit bid"
+
+folds:
+  windows: "daytrade_learning.event_audit.timebase.FOLD_WINDOWS (same five windows as H2-H4)"
+
+pass_criteria:
+  implementation: "daytrade_learning.event_audit.classify with the 60m metrics"
+  A: "aggregate 60m gross > 0"
+  B: "gross > 0 in >= 4/5 folds"
+  C: "aggregate net > 0"
+  D: "net > 0 in >= 4/5 folds"
+  E: "aggregate quote-stress net > 0"
+  F: "quote > 0 in >= 3/5 folds"
+  G: ">= 30 episodes in every fold"
+  H: "aggregate gross >= 30 bps"
+  family_rule: "at least one STRONG_ENTRY_CANDIDATE -> candidate for forward paper shadow only; never production, never combined with another hypothesis"
+
+secondary_descriptive:
+  - "standardized relative edge vs symbol x 30-minute bucket unconditional base rate"
+  - "plus existing evaluate_daytrade vetoes == [] (descriptive only)"
+
+prohibited:
+  - "changing thresholds, tier, horizon, costs or universe after seeing results"
+  - "selecting the better hypothesis and re-testing it on the same data"
+  - "reading the reserved future-confirmation partition"
