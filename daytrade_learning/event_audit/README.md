@@ -23,6 +23,7 @@ no independent confirmation; none is a trading candidate).
 | H3 completed-5m compression breakout | -5.559 bps | `79d5583819de4511ddec1dddcad1b1ca684aacd480b4cbe8a0a978e81161dba7` |
 | H4 source-native ORB | -5.044 bps | `376d87d361c5b8fbd92e34b2c38874f583218f5c5af3208f1d868a56fa233be6` |
 | 8 source entry primitives (registry `e9c22bae...aac2b`) | -0.28 to -5.93 bps | `ac90d8ace244252043cf132380e16ddca9af91d72d6d6924f7d9227155322bde` |
+| Knowledge V1 book rules C01/C02/C04 (registry `227c6ed9...9707`) | C01 -7.19, C02 +1.48, C04 +3.06 bps (weak/unstable) | `a6e7c5227e081182907d204c25a58442006dfc77aa90f572bb4ce07353bcef93` |
 | base-rate / matched control | unconditional -1.01 bps (all days), -1.37 bps (test windows) | `c99aacdaaaf9145c8627b5405e4246d43f75e21681f8b80ab0f36ef67082bcd8` |
 
 ## Known pitfall: nearest-in-time matched controls are biased
