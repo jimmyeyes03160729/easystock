@@ -1248,6 +1248,9 @@ def call_manager_strategy_result(
                 "dt",
                 "now",
                 "strategy_time",
+                # PositionManager.on_strategy_result(symbol, result, current_time):
+                # unmatched, the positional fallback bound price to current_time.
+                "current_time",
             }:
                 kwargs[name] = dt
 
@@ -2741,7 +2744,7 @@ class IntradayLiveEngine:
                     bid_shares=float(getattr(quote, 'buy_volume', 0))*1000,
                     ask_shares=float(getattr(quote, 'sell_volume', 0))*1000)
         except Exception as exc:
-            print(f'[PAPER_EVIDENCE] {symbol} snapshot_failed {type(exc).__name__} {detail}')
+            print(f'[PAPER_EVIDENCE] {symbol} snapshot_failed {type(exc).__name__}: {str(exc)[:200]} {detail}')
             return dict(evidence, quote_error='snapshot_failed:' + type(exc).__name__)
 
     def init_firebase(self) -> None:
