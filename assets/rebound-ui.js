@@ -14,10 +14,15 @@ if(!el('stockCardInteractionStyle')){
  @media(prefers-reduced-motion:reduce){#stockDetailModal:not(.hidden),#stockDetailModal:not(.hidden) .modal-wide,#tradeDialog[open]{animation:none}.rebound-card{transition:none}}
  `;document.head.append(style);
 }
-const CACHE_KEY='niuma-rebound-0.3';
-let generation=0,lastKey='',cache=new Map();
-try {const saved=JSON.parse(sessionStorage.getItem(CACHE_KEY)||'[]');if(Array.isArray(saved)&&saved.length<=2000)cache=new Map(saved);}catch(_){}
-function saveCache(){try{sessionStorage.setItem(CACHE_KEY,JSON.stringify([...cache]));}catch(_){}}
+// 底部反彈只用盤後日線；同一 release 的結果固定，存在本機直到下一次盤後發布。
+const CACHE_KEY='niuma-rebound-0.3',FEED_KEY='niuma-rebound-feed-1';
+const store=(()=>{try{return window.localStorage;}catch(_){return null;}})();
+let generation=0,lastKey='',cache=new Map(),feedMemo=null,feedMissing='';
+try {const saved=JSON.parse(store?.getItem(CACHE_KEY)||'[]');if(Array.isArray(saved)&&saved.length<=2000)cache=new Map(saved);}catch(_){}
+function saveCache(release){
+ if(release)for(const key of [...cache.keys()])if(!key.startsWith(release+':'))cache.delete(key);
+ try{store?.setItem(CACHE_KEY,JSON.stringify([...cache]));}catch(_){}
+}
 function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;}
 function card(r,index,watch){
  const s=r.stock,t=r.technical,f=r.financial,e=node('article',undefined,'rebound-card');
@@ -52,14 +57,35 @@ async function fetchBars(stock){
  try {const r=await fetch(stockKlineUrl(stock),{cache:'no-store',signal:ctrl.signal});if(!r.ok)throw new Error('kline');return await r.json();}
  finally{clearTimeout(timeout);}
 }
+const validFeed=(feed,meta)=>!!feed&&feed.schema_version===1&&feed.release_id===meta.release_id&&feed.as_of===meta.updated_at&&feed.strategy_version==='range-rebound-0.3';
+async function loadPublishedFeed(meta){
+ const id=String(meta.release_id);
+ if(feedMemo&&validFeed(feedMemo,meta))return feedMemo;
+ if(feedMissing===id)return null;
+ try{const saved=JSON.parse(store?.getItem(FEED_KEY)||'null');if(validFeed(saved,meta))return feedMemo=saved;}catch(_){}
+ // release 內的 feed 不會再變，可用一般快取；根目錄 feed 仍需 no-store。
+ const urls=[];
+ if(/^[0-9A-Za-z_-]+$/.test(id))urls.push([`${FIREBASE_ROOT}/releases/${id}/rebound_feed.json`,'default']);
+ urls.push([`${FIREBASE_ROOT}/rebound_feed.json`,'no-store']);
+ for(const [url,mode] of urls){
+  const ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),6000);
+  try{
+   const response=await fetch(url,{cache:mode,signal:ctrl.signal});
+   if(!response.ok)continue;
+   const feed=await response.json();
+   if(!validFeed(feed,meta))continue;
+   try{store?.setItem(FEED_KEY,JSON.stringify(feed));}catch(_){}
+   return feedMemo=feed;
+  }catch(_){}finally{clearTimeout(timeout);}
+ }
+ feedMissing=id;
+ return null;
+}
 async function renderPublishedFeed(pool,meta){
  if(typeof FIREBASE_ROOT==='undefined'||!meta?.release_id)return false;
- const ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),6000);
- try{
-  const response=await fetch(`${FIREBASE_ROOT}/rebound_feed.json`,{cache:'no-store',signal:ctrl.signal});
-  if(!response.ok)return false;
-  const feed=await response.json();
-  if(!feed||feed.schema_version!==1||feed.release_id!==meta.release_id||feed.as_of!==meta.updated_at||feed.strategy_version!=='range-rebound-0.3')return false;
+ const feed=await loadPublishedFeed(meta);
+ if(!feed)return false;
+ {
   const bySymbol=new Map((pool||[]).map(stock=>[String(stock.symbol),stock]));
   const mapRows=list=>(Array.isArray(list)?list:[]).map(signal=>{
    const stock=bySymbol.get(String(signal.symbol));if(!stock||!signal.technical||!signal.financial)return null;
@@ -79,7 +105,7 @@ async function renderPublishedFeed(pool,meta){
   progress.textContent=`資料 ${feed.as_of} · 正式發布 ${selected.length} 檔 · 策略 ${feed.strategy_version}`;
   el('reboundDiagnostics').textContent='此區目前使用後端發布的單一正式 Rebound feed，與 Chrome Extension 共用 signal / release / strategy version。';
   return true;
- }finally{clearTimeout(timeout);}
+ }
 }
 async function refresh(pool,meta){
  if(!meta?.updated_at||!Array.isArray(pool)||!pool.length){
@@ -131,7 +157,7 @@ async function refresh(pool,meta){
  el('reboundDiagnostics').textContent=`基本面未達門檻或產業不適用 ${tally.failed} 檔；基本面資料待補 ${tally.incomplete} 檔；日 K／日期不足 ${tally.short} 檔；成交金額不足 ${tally.illiquid} 檔；型態尚未成立 ${tally.technical} 檔；K 線讀取失敗 ${tally.missing} 檔。`;
  if(tally.missing)status.textContent+=' 部分行情未讀取，本次排序不完整。';
  el('reboundDiagnostics').textContent+=' 主要原因：'+[...reasons].sort((a,b)=>b[1]-a[1]).slice(0,4).map(([reason,n])=>`${reason} ${n} 檔`).join('；')+'。';
- if(cache.size>2000)cache.clear();saveCache();
+ if(cache.size>2000)cache.clear();saveCache(meta.release_id||asof);
 }
 window.RangeReboundUI={refresh:(pool,meta)=>refresh(pool,meta).catch(()=>{el('reboundStatus').textContent='底部反彈檢查暫時失敗，請重新整理。';lastKey='';}),
  detail(stock){
@@ -148,6 +174,6 @@ window.RangeReboundUI={refresh:(pool,meta)=>refresh(pool,meta).catch(()=>{el('re
   for(const [title,price] of [['支撐下緣',r.technical.support[0]],['支撐上緣',r.technical.support[1]],['壓力',r.technical.target],['失效',r.technical.invalid]])series.createPriceLine({price,color,lineWidth:1,lineStyle:2,axisLabelVisible:true,title});
  }
 };
-el('reboundRetry').addEventListener('click',()=>{lastKey='';cache.clear();saveCache();window.RangeReboundUI.refresh(priceFilteredStocks(),META);});
+el('reboundRetry').addEventListener('click',()=>{lastKey='';cache.clear();saveCache();feedMemo=null;feedMissing='';try{store?.removeItem(FEED_KEY);}catch(_){}window.RangeReboundUI.refresh(priceFilteredStocks(),META);});
 if(typeof priceFilteredStocks==='function')window.RangeReboundUI.refresh(priceFilteredStocks(),META);
 })();

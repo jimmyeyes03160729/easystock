@@ -30,9 +30,22 @@ def public_paths(url, active):
     return paths
 
 
-def preserved_public_paths(url, paths):
-    """A health-only merge must not require opening formerly private feed nodes."""
-    required = {'provider_health', 'premarket_status'}
+HEALTH_NODES = ('provider_health', 'premarket_status')
+
+
+def merge_rebound_feed(rules):
+    """Add only the public rebound_feed read grants; keep every other live rule."""
+    candidate = copy.deepcopy(rules)
+    market = candidate['rules'].setdefault('market_data', {})
+    market['rebound_feed'] = {'.read': True, '.write': False}
+    release = market.setdefault('releases', {}).setdefault('$release', {})
+    release['rebound_feed'] = {'.read': True, '.write': False}
+    return candidate
+
+
+def preserved_public_paths(url, paths, required=HEALTH_NODES):
+    """A narrow merge must not require opening formerly private feed nodes."""
+    required = set(required)
     result = []
     for node in paths:
         status = requests.get(url+'/market_data/'+node+'.json', params={'shallow':'true'}, timeout=20).status_code
@@ -52,6 +65,7 @@ def main():
     parser.add_argument('--apply', action='store_true')
     parser.add_argument('--expected-sha256')
     parser.add_argument('--merge-health', action='store_true', help='Preserve current rules and add only health read grants')
+    parser.add_argument('--merge-rebound-feed', action='store_true', help='Preserve current rules and add only rebound_feed read grants')
     args = parser.parse_args()
     candidate = json.loads(Path(args.candidate).read_text())
     root = candidate['rules']
@@ -78,6 +92,8 @@ def main():
         market = candidate['rules'].setdefault('market_data', {})
         for node in ('provider_health', 'premarket_status'):
             market[node] = {'.read': True, '.write': False}
+    if args.merge_rebound_feed:
+        candidate = merge_rebound_feed(before)
     print(json.dumps({'current_rules_sha256': digest(before), 'candidate_sha256': digest(candidate)}))
     if not args.apply:
         return
@@ -86,9 +102,13 @@ def main():
     active_response = requests.get(url+'/market_data/active_release.json', timeout=20)
     if not active_response.ok:
         raise RuntimeError('Public release pointer denied')
-    public = public_paths(url, active_response.json())
+    active = active_response.json()
+    public = public_paths(url, active)
     if args.merge_health:
         public = preserved_public_paths(url, public)
+    elif args.merge_rebound_feed:
+        required = ['rebound_feed'] + (['releases/'+active+'/rebound_feed'] if isinstance(active, str) else [])
+        public = preserved_public_paths(url, public, required)
     backup_dir = Path(args.backup_dir).resolve()
     backup_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     backup = backup_dir / ('firebase-rules-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '.json')

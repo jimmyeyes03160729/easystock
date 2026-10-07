@@ -71,6 +71,20 @@ def test_health_only_rule_merge_preserves_private_feeds():
         assert preserved_public_paths('https://example.test', ['summary', 'rebound_feed', 'provider_health', 'premarket_status']) == ['summary', 'provider_health', 'premarket_status']
 
 
+def test_rebound_feed_merge_adds_only_two_read_grants():
+    from tools.firebase_rules import merge_rebound_feed
+    live = {'rules': {'.read': False, '.write': False, 'market_data': {
+        'meta': {'.read': True}, 'line_groups': {'.read': False},
+        'releases': {'$release': {'meta': {'.read': True}, 'rebound': {'.read': True}}}}}}
+    candidate = merge_rebound_feed(live)
+    assert 'rebound_feed' not in live['rules']['market_data']
+    market = candidate['rules']['market_data']
+    assert market['rebound_feed'] == {'.read': True, '.write': False}
+    assert market['releases']['$release'] == {'meta': {'.read': True}, 'rebound': {'.read': True}, 'rebound_feed': {'.read': True, '.write': False}}
+    del market['rebound_feed'], market['releases']['$release']['rebound_feed']
+    assert candidate == live
+
+
 def test_esun_event_timestamp_and_quote_error_are_safe_diagnostics():
     assert sanitize({'last_event_at':NOW.isoformat(), 'error_code':'quote_request_failed'}) == {'last_event_at':NOW.isoformat(), 'error_code':'quote_request_failed'}
 
