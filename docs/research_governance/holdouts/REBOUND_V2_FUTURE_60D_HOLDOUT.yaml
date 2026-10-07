@@ -1,0 +1,65 @@
+# EasyStock Holdout Instance — rebound future 60-session pristine partition
+
+schema_version: "PRISTINE_HOLDOUT_POLICY_v1"
+holdout_id: "REBOUND_V2_FUTURE_60D"
+dataset_id: "REBOUND_V2_FUTURE_CONFIRMATION_60D"
+dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+created_at: "2026-10-08T07:00:00+08:00"
+source_artifact: "docs/research_governance/preregistrations/REBOUND_P2_RANKER_V1.yaml"
+source_commit: "PENDING_MERGE"
+
+lifecycle:
+  status: "RESERVED_UNTOUCHED"
+  history:
+    - state: "RESERVED_UNTOUCHED"
+      timestamp: "2026-10-08T07:00:00+08:00"
+      reason: "Reserved with preregistration REBOUND_P2_RANKER_V1; no data for 2026-10-07 or later has been fetched or read."
+
+partition_definition:
+  start_rule: "FIRST_ELIGIBLE_TRADING_DAY_AFTER_2026_10_06"
+  expected_start_date: "2026-10-07"
+  selection_rule: "FIRST_60_ELIGIBLE_TRADING_DAYS"
+  holdout_end_date: null
+  excluded_dates: []
+  target_eligible_days: 60
+  eligible_days_collected: 0
+  collected_eligible_trading_days: []
+
+eligibility_preregistration:
+  criteria:
+    - "official_or_canonical_trading_calendar_day == true"
+    - "required_dataset_partition_exists == true"
+    - "ingestion_success == true"
+    - "schema_valid == true"
+    - "checksum_valid == true"
+    - "date_not_in_documented_exclusion_list == true"
+  prohibited_selection_criteria:
+    - "trading_volume"
+    - "signal_count"
+    - "candidate_count"
+    - "market_activity_level"
+    - "market_return"
+    - "market_volatility"
+    - "candidate_performance"
+  outcome_dependent_skipping_prohibited: true
+
+access_governance:
+  human_outcome_access: false
+  ai_outcome_access: false
+  automated_research_outcome_access: false
+  performance_seen: false
+  inspected_metadata: []
+  market_data_inspected: []
+
+unseal_readiness:
+  ready_to_unseal: false
+  unseal_authorized: false
+  authorization_record: null
+
+confirmation_contract:
+  confirmation_mode: "ONE_SHOT"
+  decision_rules_status: "PREREGISTERED"
+  independent_confirmation_completed: false
+  confirmation_outcome: null
+  production_ready: false

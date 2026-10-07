@@ -1,0 +1,85 @@
+# EasyStock preregistration — REBOUND_P2_RANKER_V1 (rebound Phase 2: AI re-ranking of rule candidates)
+# Frozen in git BEFORE any model prediction, model metric or model-vs-baseline comparison exists.
+#
+# Disclosed prior exposure (see oos_consumption/REBOUND_V2_PHASE1_BUILD_EXPOSURE.yaml): while reporting the
+# Phase 1.5 dataset build, the assistant saw whole-period (2023-01-03..2026-10-06) aggregates per candidate kind:
+# label shares and mean 10D/MFE/MAE returns. That motivated (a) a continuous net-return target instead of a
+# SUCCESS/FAIL classifier and (b) keeping the widened pool as a training variant. No feature-level, per-fold,
+# per-year outcome or model result was seen. The historical walk-forward below therefore reuses discovery data and
+# is NOT independent confirmation; only REBOUND_V2_FUTURE_60D can confirm.
+
+preregistration_id: "REBOUND_P2_RANKER_V1"
+created_at: "2026-10-08T07:00:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE"
+direction: "LONG"
+implementation: "rebound_learning/research.py (frozen with this file in the same commit)"
+
+data:
+  dataset: "dataset-v2.sqlite (feature_schema_version 2) + market-daily.sqlite on the VM"
+  dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+  signals: "2023-01-03 <= signal_date < 2026-10-07"
+  horizon_rule: "a row is loaded only if its 10 following sessions all fall before 2026-10-07 and each has a bar"
+  forbidden: ["REBOUND_V2_FUTURE_CONFIRMATION_60D", "any signal or market bar on/after 2026-10-07"]
+  price_basis: >
+    Dividend/ex-rights adjusted using only events up to each day (Dataset v2). The production rebound_feed currently
+    evaluates unadjusted K-lines; any shadow or production use of a model from this study requires the feed to use
+    the same adjusted basis first.
+
+trade_definition:
+  universe_per_day: "candidate_kind == PENDING (range-rebound-0.3 rule eligible; financial PIT unavailable)"
+  entry: "D1 open; no fill (slot consumed, no trade) when D1 open is not strictly inside (invalid, target)"
+  exits: "from D2 an opening gap at/through invalid or target exits at that open; within a bar invalid has priority over target; otherwise D10 close"
+  cost_pct_round_trip: 0.6
+  net_return: "gross_pct - 0.6"
+
+rankers:
+  baseline: "production order: breakout before early, then rule score descending, then symbol"
+  model: "predicted net return descending, then symbol"
+  top_k: 3
+
+variants:
+  target: "net bracket return % of the training row (rows without a fill are not trained on)"
+  RIDGE_RULE_ONLY: "Ridge(alpha=1.0), median imputation + missing indicators, standardised on train; trained on PENDING"
+  RIDGE_WIDE_POOL: "same, trained on PENDING + NEAR_MISS + BOTTOM_ZONE with two kind indicators"
+  HGB_RULE_ONLY: "HistGradientBoostingRegressor(max_iter=200, learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=100, l2_regularization=1.0, random_state=0); PENDING"
+  HGB_WIDE_POOL: "same HGB, widened pool with kind indicators"
+  features: "all 37 Dataset v2 features (26 technical + 11 point-in-time market context), fixed sorted order"
+  hyperparameter_search: "none"
+
+walk_forward:
+  folds:
+    - ["2024-01-01", "2024-06-30"]
+    - ["2024-07-01", "2024-12-31"]
+    - ["2025-01-01", "2025-06-30"]
+    - ["2025-07-01", "2025-12-31"]
+    - ["2026-01-01", "2026-10-06"]
+  training: "expanding window from 2023-01-03; only rows with signal_date <= the session 15 sessions before the fold start"
+  test_rows: "PENDING rows in the fold"
+
+pass_criteria:
+  A: "pooled mean net return per executed trade: model minus baseline > 0"
+  B: "fold delta > 0 in >= 4 of 5 folds"
+  C: "pooled model mean net return per trade > 0"
+  D: "pooled model net profit factor >= 1.05"
+  E: "model mean net return > 0 in >= 3 of 5 folds"
+  F: ">= 100 executed model trades in every fold"
+  G: "date-block bootstrap (2,000 resamples, seed 0) 10th percentile of the pooled delta > 0"
+  selection: "among variants passing A-G, the largest pooled delta; ties go to the earlier (simpler) variant in the list above"
+  outcome: "a selected variant becomes SHADOW_CANDIDATE only; none passing -> REJECTED for this family"
+
+descriptive_only:
+  - "top 1 / 2 / 5 per day"
+  - "top 3 that abstains when the predicted net return <= 0"
+
+confirmation:
+  holdout_id: "REBOUND_V2_FUTURE_60D"
+  rule: "selected variant retrained once on all loadable rows before 2026-10-07, frozen, then evaluated ONE_SHOT on signals in the first 60 eligible sessions from 2026-10-07 after their 10-session horizons mature"
+  confirmation_criteria: "A and C on the holdout"
+  if_no_variant_passes: "the holdout stays reserved for a later preregistered trial"
+
+prohibited:
+  - "changing features, target, costs, folds, K, criteria or hyperparameters after any result of this study is seen"
+  - "re-running a modified variant on the same folds and reporting it under this preregistration"
+  - "reading any outcome-bearing data on or after 2026-10-07 before the holdout is formally unsealed"
