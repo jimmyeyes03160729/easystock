@@ -24,6 +24,12 @@ partition_definition:
   expected_start_date: "2026-10-05"
   selection_rule: "FIRST_60_ELIGIBLE_TRADING_DAYS"
   holdout_end_date: null
+  excluded_dates:
+    - date: "2026-10-06"
+      reason: "CONTENT_INSPECTION_INCIDENT"
+      outcome_dependent: false
+      amendment: "AMENDMENT_1_20261007"
+      dataset_id: "LIVE_LEARNING_20261006_EXCLUDED_DAY"
   target_eligible_days: 60
   eligible_days_collected: 0
   collected_eligible_trading_days: []
@@ -35,6 +41,7 @@ eligibility_preregistration:
     - "ingestion_success == true"
     - "schema_valid == true"
     - "checksum_valid == true"
+    - "date_not_in_documented_exclusion_list == true"
   prohibited_selection_criteria:
     - "trading_volume"
     - "stock_pool_symbol_count"
