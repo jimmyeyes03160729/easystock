@@ -128,6 +128,25 @@ class AdminOrderWebTests(unittest.TestCase):
         audit = json.loads(self.rows("SELECT body FROM audit WHERE action='pipeline_settings' ORDER BY id")[0][0])
         self.assertEqual(audit['profile_changed'], ['fee_rate'])
 
+    def test_manual_order_and_holdings_require_google_owner_session(self):
+        routes = [('api/order/verify', {}), ('api/order/quote', {'symbol': '2330'}),
+                  ('api/order/place', order()), ('api/live-console/sell-verify', {})]
+        with patch.object(order_service, 'login') as login, \
+                patch.object(order_service, 'get_quote') as quote, \
+                patch.object(order_service, 'place_order') as place, \
+                patch.object(order_service, 'broker_snapshot') as holdings:
+            with self.store.tx() as db:
+                db.execute("UPDATE session_owners SET email='other@example.test'")
+            for path, payload in routes:
+                self.assertEqual(self.post(path, payload, self.csrf).status_code, 403)
+            self.assertEqual(self.client.get('/admin/api/live-console', base_url=ORIGIN).status_code, 403)
+            self.client.delete_cookie('__Host-easystock_admin', domain='admin.example.com')
+            for path, payload in routes:
+                self.assertEqual(self.post(path, payload, self.csrf).status_code, 401)
+            self.assertEqual(self.client.get('/admin/api/live-console', base_url=ORIGIN).status_code, 401)
+            for call in (login, quote, place, holdings):
+                call.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1248,6 +1248,9 @@ def call_manager_strategy_result(
                 "dt",
                 "now",
                 "strategy_time",
+                # PositionManager.on_strategy_result(symbol, result, current_time):
+                # unmatched, the positional fallback bound price to current_time.
+                "current_time",
             }:
                 kwargs[name] = dt
 
@@ -2705,32 +2708,44 @@ class IntradayLiveEngine:
             print('[RISK] status publish failed:', type(exc).__name__)
 
     def paper_execution_evidence(self, symbol):
-        """Read-only SDK contract/snapshot; no order API and no last-price fill."""
+        """Read-only SDK contract/snapshot; no order API and no last-price fill.
+
+        Contract eligibility and quote availability are reported separately, so a
+        failed snapshot is never mistaken for unknown day-trade eligibility."""
+        contract = self.contracts.get(str(symbol))
+        if contract is None:
+            print(f'[PAPER_EVIDENCE] {symbol} contract_missing')
+            return {'eligibility': None, 'eligibility_detail': 'contract_missing'}
         try:
-            contract = self.contracts.get(str(symbol))
-            if contract is None:
-                return {}
             flag = getattr(contract, 'day_trade', None)
             flag = getattr(flag, 'value', flag)
-            eligibility = True if flag in ('Yes', 'OnlyBuy') else False if flag == 'No' else None
-            # Only ordinary stocks are covered by this simulator's tax model.
-            category = str(getattr(contract, 'category', ''))
-            if not category or category in ('00', 'ETF', 'ETN'):
-                eligibility = None
+            category = str(getattr(contract, 'category', '') or '')
+        except Exception as exc:
+            flag, category = 'unreadable:' + type(exc).__name__, ''
+        eligibility = True if flag in ('Yes', 'OnlyBuy') else False if flag == 'No' else None
+        # Only ordinary stocks are covered by this simulator's tax model.
+        if not category or category in ('00', 'ETF', 'ETN'):
+            eligibility = None
+        detail = f'day_trade={flag!s} category={category or "-"}'
+        evidence = {'eligibility': eligibility, 'eligibility_detail': detail}
+        if eligibility is not True:
+            print(f'[PAPER_EVIDENCE] {symbol} eligibility={eligibility} {detail}')
+        try:
             snapshots = self.api.snapshots([contract], timeout=3000)
             if not snapshots:
-                return {'eligibility':eligibility}
+                return dict(evidence, quote_error='snapshot_empty')
             quote = snapshots[0]
             observed = as_datetime(getattr(quote, 'ts', None))
-            return {'eligibility':eligibility,
-                    'quote_at':observed.isoformat() if observed else None,
-                    'bid':getattr(quote, 'buy_price', None),
-                    'ask':getattr(quote, 'sell_price', None),
+            return dict(evidence,
+                    quote_at=observed.isoformat() if observed else None,
+                    bid=getattr(quote, 'buy_price', None),
+                    ask=getattr(quote, 'sell_price', None),
                     # SDK snapshot buy/sell volumes are ordinary board lots.
-                    'bid_shares':float(getattr(quote, 'buy_volume', 0))*1000,
-                    'ask_shares':float(getattr(quote, 'sell_volume', 0))*1000}
-        except Exception:
-            return {}
+                    bid_shares=float(getattr(quote, 'buy_volume', 0))*1000,
+                    ask_shares=float(getattr(quote, 'sell_volume', 0))*1000)
+        except Exception as exc:
+            print(f'[PAPER_EVIDENCE] {symbol} snapshot_failed {type(exc).__name__}: {str(exc)[:200]} {detail}')
+            return dict(evidence, quote_error='snapshot_failed:' + type(exc).__name__)
 
     def init_firebase(self) -> None:
         self.market_level, self.premarket_brief = (

@@ -1,0 +1,42 @@
+name: Architecture Guardian weekly bounded review bundle
+on:
+  schedule:
+    - cron: '10 23 * * 0'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bundle:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GUARDIAN_AI_PROVIDER: ''
+      GUARDIAN_AI_API_KEY: ''
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select isolated report state
+        run: printf 'GUARDIAN_REPORT_DIR=%s/guardian\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/guardian
+          key: guardian-reports-${{ runner.os }}-weekly-${{ github.run_id }}
+          restore-keys: guardian-reports-${{ runner.os }}-
+      - run: |
+          python -m guardian.cli validate-policy
+          python -m guardian.cli scan
+          python -m guardian.cli bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: guardian-weekly-bounded-review
+          path: |
+            ${{ runner.temp }}/guardian/review-bundle.json
+            ${{ runner.temp }}/guardian/review-prompt.txt
+            ${{ runner.temp }}/guardian/guardian-report.json
+          retention-days: 30

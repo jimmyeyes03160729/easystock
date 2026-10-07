@@ -67,13 +67,23 @@ def label_candidate(snapshot: dict, future: list[dict], *, horizon: int = 10,
     return result
 
 
-def update_labels(db: sqlite3.Connection, *, commit: bool = True) -> int:
+def update_labels(db: sqlite3.Connection, *, commit: bool = True,
+                  load_future=None, skip_matured: bool = False) -> int:
+    """load_future(symbol, signal_date) may supply bars already on the D0 basis."""
     count=0
-    for item in db.execute('SELECT id,snapshot,label FROM candidates ORDER BY signal_date,symbol').fetchall():
+    query='SELECT id FROM candidates'
+    if skip_matured:
+        # A matured, decided label cannot change without source data changing.
+        query+=" WHERE label IS NULL OR json_extract(label,'$.label') IS NULL"
+    for (key,) in db.execute(query+' ORDER BY signal_date,symbol').fetchall():
+        item=db.execute('SELECT id,snapshot,label FROM candidates WHERE id=?',(key,)).fetchone()
         snapshot=json.loads(item['snapshot'])
-        future=[json.loads(row['bar']) for row in db.execute('''SELECT bar FROM daily_bars
-            WHERE symbol=? AND day>? ORDER BY day LIMIT 20''',
-            (snapshot['symbol'],snapshot['signal_date']))]
+        if load_future:
+            future=load_future(snapshot['symbol'],snapshot['signal_date'])
+        else:
+            future=[json.loads(row['bar']) for row in db.execute('''SELECT bar FROM daily_bars
+                WHERE symbol=? AND day>? ORDER BY day LIMIT 20''',
+                (snapshot['symbol'],snapshot['signal_date']))]
         calendar=[row['day'] for row in db.execute('SELECT day FROM trading_days WHERE day>? ORDER BY day LIMIT 20',
                       (snapshot['signal_date'],))]
         new=label_candidate(snapshot,future,trading_days=calendar)

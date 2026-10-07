@@ -17,7 +17,13 @@
 > 本文件用於記錄已確認的後續規劃。  
 > 更新原則：使用者在 EasyStock 相關討論中說「紀錄」時，更新此文件，保留既有內容並整理版本脈絡。
 
-## 目前主要進行中三主線（2026-10-05）
+## 目前主要進行中主線（2026-10-07）
+
+- [ ] **AI Architecture Guardian v1 上線驗證**
+  - SCAN / ANALYZE / REPORT / NOTIFY 的只讀架構、政策、鏡像 manifest、報告歷史、diff review、Owner 私人健檢頁與 CI 已實作；此總項只在正式部署驗證完成後勾選。
+  - 不下單、不自動修正、不部署修正、不改策略/風控/模型/guard；blocking 僅提示。
+  - [ ] OPTIONAL AI provider integration（未設定時 NOT_CONFIGURED；v1 提供 bundle / prompt / interface，不強接付費 API）。
+  - 詳見 `ARCHITECTURE_GUARDIAN.md`。
 
 - [ ] **正式當沖系統：完整交易日 LIVE Validation**
   - 程式核心與 Paper execution alignment 已完成並部署；現在不是重寫策略，而是收完整交易日證據。
@@ -35,14 +41,27 @@
   - 目前研究狀態維持 `PRODUCTION_READY=false`、`INDEPENDENT_CONFIRMATION=false`；未曝光未來樣本用來做後續 one-shot confirmation，不可反覆微調後重測。
   - 研究 / 學習流程與正式 ENTRY / EXIT 保持治理隔離；任何研究結論不得自動晉升正式模型或修改正式策略。
 
-- [ ] **AI NAS 串聯：Antigravity + Codex 自動開發鏈持續建置**
-  - NAS 已有獨立 ARM64 Antigravity 開發容器與獨立 Codex development node；兩者使用隔離的 Compose / network / home / workspace。
-  - 已具備 Git pull、修改、測試、commit / push main 的開發節點能力，並已有 NAS pull-backup / Docker backup scheduler。
-  - 安全邊界：NAS AI 容器不掛 Oracle VM SSH key / SSH agent、不直接部署正式 VM、不自動 push；正式 VM deployment 仍走既有受保護流程。
-  - 下一階段重點是把「任務入口 → AI 分工 → 測試 → Git main → 安全部署 / 回報」流程穩定串起來，並避免 Antigravity / Codex 同時跑大型 pytest / build 造成 NAS OOM。
-  - GitHub 目前能證明架構與開發節點已存在；NAS 容器此刻是否 running 仍需以 NAS runtime / Docker 狀態實際確認。
+## Guardian v1 已實作與設定驗證（不等同 hosted scan 或 LIVE VERIFIED）
+
+- [x] Guardian deterministic scanner / machine-readable policy（無 AI API 也可掃描）。
+- [x] Guardian report schema、fingerprint、first/last seen、resolved history、Medium/Low baseline。
+- [x] Trading safety rules（雙 guard、Paper/Live、KILL、idempotency、broker truth）。
+- [x] Research governance rules（holdout、future leakage、profile、promotion、production boundary）。
+- [x] Secret / sensitive-file / public-exposure rules與脫敏證據。
+- [x] Root/vm_runtime mirror manifest 與結構責任／dependency checks。
+- [x] Owner Admin Guardian panel、既有 Owner auth、唯讀 API、stale/UNKNOWN 顯示。
+- [x] Daily CI scan 設定（只測試／掃描／artifact，未授權部署／寫程式）。
+- [x] CodeQL Python + JavaScript/TypeScript workflow 設定；GitHub default setup 已確認未配置。
+- [x] Dependabot 真實 npm / Actions / pip manifests 設定。
+- [x] 官方 Trivy 固定安全 SHA / 工具版本的 filesystem / Docker config scan 設定。
+- [x] Weekly 有界 review bundle / prompt / provider-neutral interface。
+- [ ] AI weekly provider execution（NOT_CONFIGURED；未呼叫付費 API）。
+- [ ] Hosted daily / weekly / CodeQL / Trivy 首次完整執行驗收（本地 YAML/actionlint 驗證不是雲端安全掃描成功）。
+- [ ] VM scanner / Admin runtime 部署與 smoke verification（等待 guard 工作自然結束）。
 
 ## 待新增 / 待執行主題總覽
+
+- [ ] AI Architecture Guardian v1：回歸與設定驗證已通過；VM 只讀 runtime 部署待訓練自然結束，既有 failed units 需如實驗證；OPTIONAL AI provider integration 未設定。詳見 `ARCHITECTURE_GUARDIAN_VALIDATION_2026-10-07.md`。
 
 > 這一區固定放在 Roadmap 最前面，用來快速確認「還有哪些功能尚未執行」。  
 > 完成後改成 `[x]`；尚未開始或尚未完成維持 `[ ]`。細節保留在下方對應章節。
@@ -52,9 +71,6 @@
 - [ ] **當沖學習 / 研究系統持續執行**
   - Research Governance 已進入 Pristine Holdout；`PHASE2C_FUTURE_60D` 自 2026-10-05 起保留 60 個符合條件交易日，尚未 production-ready。
   - **Current-profile 歷史重播 / Walk-Forward 重訓 / Safe Promotion 待完成**：新 profile 目前 2,647 筆樣本但只涵蓋 4 個日期，不能靠 bootstrap 直接跨過 Champion gate；應把大量歷史行情依 current profile 重新 replay，建立足夠時間跨度的訓練 / 驗證資料。
-- [ ] **AI NAS 串聯持續建置**
-  - Antigravity + Codex NAS 節點、備份與隔離架構已建立；下一步完成穩定的自動分工、測試、Git 與受保護部署鏈。
-
 
 - [x] Paper UI 移除模擬累積權益
 - [x] 盤後通知移除模擬累積權益
@@ -108,12 +124,14 @@
   - 視需要補 `width` / `height`、preload / fetchpriority 或 cache-busting 調整，但避免過度 preload 阻塞其他首屏資源。
   - 驗收以首頁首屏載入時間、LOGO transfer size、decode/render 正常為準。
 
-- [ ] **手機版底部導覽列改版**
+- [x] **手機版底部導覽列改版（CODE VERIFIED）**
   - 手機版底部改成固定式 5 個主入口。
   - 主入口：盤中摸魚、底部反彈、牛馬 AI、Chrome 小工具、社畜後台。
   - 上方原有主題頁籤仍可保留完整名稱；手機底部採精簡名稱。
   - 桌機版不強制套用同一底部導覽樣式。
   - iPhone 需支援 `safe-area-inset-bottom`，避免 Home Indicator 擠壓。
+  - 2026-10-07：5 個真實入口 label mapping、768px breakpoint、正文底部留白、active / focus、DOM 回歸已完成；桌機導覽不變。
+  - VM 已經正式 updater 部署；測試與脫敏 runtime evidence：`docs/MOBILE_CONTEXT_OWNER_CONSOLE_2026-10-07.md`。
 
 - [x] **Chrome Extension 1.02：1.01 實盤 BUG 一次性修正**
   - 版本規則確認：1.0X 系列只做 BUG 修正、穩定性與相容性改善；大型新功能不塞入 1.0X。
@@ -168,7 +186,14 @@
   - 與既有 Shioaji / Fugle / Firebase 資料分層，保留 source / quote_at / received_at / freshness，禁止來源混淆。
   - 新增資料先進 Dataset / Shadow 驗證，不可因接上玉山 API 就直接改變正式 ENTRY / EXIT。
   - 不保存或建立任何玉山交易憑證 / 下單能力；權限以行情唯讀最小化為原則。
-  - 尚待完成：正式 provider 模組、資料標準化 / 落地、freshness、API Health 燈號、Dataset / Shadow 整合。
+  - [x] 既有只讀 provider / 7 indices / Provider Health（沿用，不重接）。
+  - [x] deterministic sector strength（1m/5m/15m 僅有當時歷史才計算；day / relative / rank）。
+  - [x] TSE / OTC `stock.snapshot.quotes` breadth adapter（CODE VERIFIED；快照範圍含 ETF，不宣稱已覆蓋全部普通股）。
+  - [x] price-only `sector_rotation_proxy`；closed / stale / missing fail closed。
+  - [x] Owner Admin diagnostics / canonical context.json / point-in-time dataset snapshots。
+  - [ ] 完整交易日的 breadth coverage / windows / rotation 自然行情驗證。
+  - 2026-10-07 VM readonly smoke：7 indices / 5 sectors，TSE、OTC 官方 snapshot API 實際可用；盤後新 features 為 UNKNOWN，尚非完整交易日驗證。
+  - [ ] production model integration / 正式 AI Applied（未接 ENTRY / EXIT）。
 
 - [x] **當沖制度 / 費稅模擬對齊：CODE VERIFIED / VM DEPLOYED**
   - [x] 2026-09-30 已完成當沖合規 / 制度檢視，文件：`docs/DAYTRADE_COMPLIANCE_REVIEW_2026-09-30.md`。
@@ -195,6 +220,14 @@
   - [ ] Phase 2：Shadow 驗證，再決定是否 Applied；不自動晉升。
 
 - [ ] **永豐實盤當沖後台（Owner-only）**
+  - [x] 第一版 Owner backend / UI、既有 Google session + CSRF / Origin、401 / 403。
+  - [x] 券商只讀同步 / 遮罩帳戶 / 股數單位 / positions-orders-deals-PnL / fail-closed reconciliation（CODE VERIFIED）。
+  - [x] guarded manual SELL UI：既有 order/place、重驗證、短效 session-bound ticket、兩次確認、送前刷新、tick / notional / idempotency。
+  - [x] KILL SWITCH control / Owner audit / 獨立 live_trade_*（不平倉，不寫 Paper / Research）。
+  - [ ] 同日當沖 / 信用部位的 authoritative available-to-sell 與 eligibility；目前只支持昨日現股多單，未知即禁止。
+  - [ ] 自動帳本事件匯入 / 人工對帳修復流程；不一致只 PAUSED，不猜測修正。
+  - [ ] 真實券商帳務完整同步 / 對帳驗證：2026-10-07 登入可用，但帳務查詢 TokenError / 連線錯誤，保留 UNKNOWN，不假稱零持倉。
+  - [ ] LIVE AUTO production enable / 自動執行引擎（本輪 OFF，guard/state skeleton only）。
   - 第一階段先建立獨立「永豐實盤當沖」分頁 / Tab，僅在 Google 登入且通過既有 Owner/Admin 驗證後顯示。
   - 未登入時首頁 / 後台導覽都不顯示入口；即使直接輸入 route 或呼叫 API，也必須由後端強制回 401 / 403，不能只靠前端隱藏。
   - 第一版只做安全入口與 UI / backend skeleton：券商狀態、實盤模式 OFF、AUTO OFF、今日持倉 / 委託 / 成交 / 損益、帳戶設定與 KILL SWITCH placeholder。
@@ -2002,7 +2035,16 @@ AI Architecture Guardian 第一階段只做：
 
 ---
 
-## AI NAS 自動開發串聯（持續建置）
+## AI NAS 自動開發串聯（已取消／暫停，2026-10-07）
+
+### 2026-10-07 決策：取消 NAS 連動
+- 不再把 Antigravity / Codex 的 NAS 自動串聯列為目前 EasyStock 開發主線。
+- 既有 NAS 容器、Compose、備份與開發節點文件保留作歷史紀錄，不再繼續擴充自動分工 / 自動接手 / 自動部署鏈。
+- 不再規劃「任務入口 → Antigravity → Codex → 自動測試 → 自動 push / deploy」作為現階段工作流。
+- 正式開發回到目前既有工具與人工可控流程；VM 正式部署仍維持受保護的 canonical deploy。
+- 若未來重新啟用 NAS AI 協作，需重新評估權限、資源、lock / ownership、失敗重試與部署安全，再另開新項目。
+
+
 
 ### 已完成基礎
 - 已建立獨立 ARM64 `easystock-antigravity` NAS 開發容器。
@@ -2012,8 +2054,8 @@ AI Architecture Guardian 第一階段只做：
 - NAS AI 節點可做 Git pull、程式修改、測試、commit / push main；是否 push 仍需明確任務，不在容器重啟時自動 pull/reset。
 - 容器不掛 Oracle VM SSH key / SSH agent，不直接取得正式 VM deployment 權限。
 
-### 目前進行中
-目標不是單純「NAS 上能跑兩個 CLI」，而是形成穩定的 AI 開發鏈：
+### 原規劃（現已暫停）
+原目標不是單純「NAS 上能跑兩個 CLI」，而是形成穩定的 AI 開發鏈：
 
 ```text
 使用者 / 任務入口
@@ -2031,7 +2073,7 @@ Git main
 測試 / release identity / runtime 回報
 ```
 
-### 尚待完成
+### 原尚待項目（不再列入目前待辦）
 - 任務 session / handoff 的穩定協議。
 - Antigravity 與 Codex 的工作衝突 / lock / ownership 規則。
 - 失敗重試與中斷後續接。

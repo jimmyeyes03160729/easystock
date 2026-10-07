@@ -81,14 +81,18 @@ def execution(evidence, side, now, shares=None):
     evidence = evidence or {}
     if side not in ('BUY', 'SELL'):
         raise ValueError('invalid_side')
+    # Carried into the skip so the stored record shows the contract's actual flags.
+    detail = {k: evidence[k] for k in ('eligibility_detail', 'quote_error') if evidence.get(k)}
     if side == 'BUY':
         eligibility = evidence.get('eligibility')
         if eligibility is not True:
-            return {'status':'skipped', 'skip_reason':'daytrade_ineligible' if eligibility is False else 'daytrade_eligibility_unknown'}
+            return {'status':'skipped', 'skip_reason':'daytrade_ineligible' if eligibility is False else 'daytrade_eligibility_unknown', **detail}
         if not time(9,30) <= now.time().replace(tzinfo=None) < time(12,30):
             return {'status':'skipped','skip_reason':'entry_cutoff'}
     elif not time(9) <= now.time().replace(tzinfo=None) < time(13,30):
         return {'status':'pending','skip_reason':'outside_market_session'}
+    if evidence.get('quote_error'):
+        return {'status':'skipped' if side=='BUY' else 'pending', 'skip_reason':'quote_unavailable', **detail}
     try:
         from datetime import datetime
         observed = datetime.fromisoformat(str(evidence['quote_at']))

@@ -8,16 +8,18 @@
 <script defer src="/admin/assets/admin.js"></script>
 <script defer src="/admin/assets/paper-trade.js"></script>
   <script defer src="/admin/assets/order.js"></script>
+<script defer src="/admin/assets/live-console.js"></script>
+<script defer src="/admin/assets/guardian.js"></script>
 </head>
 <body>
-<header><a class="brand" href="https://jimmyeyes03160729.github.io/easystock/">E<span>EasyStock</span></a><button id="openOrderModal" type="button" style="background:#2563eb;color:#fff;font-weight:600;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;margin-left:auto;margin-right:12px;">🚀 永豐下單</button><button id="theme" type="button">切換明暗</button></header>
+<header><a class="brand" href="https://jimmyeyes03160729.github.io/easystock/">E<span>EasyStock</span></a><button id="theme" type="button">切換明暗</button></header>
 <main>
 <section id="login" class="login panel">
 <p class="eyebrow">管理員登入</p><h1>當沖設定</h1><p class="muted">使用已授權的 Google 帳號登入。</p>
 <div id="googleButton"></div><p id="loginStatus" role="status">正在確認登入狀態…</p><button id="retryLogin" type="button" hidden>重新載入登入</button>
 </section>
 <section id="workspace" hidden>
-<div class="title"><div><p class="eyebrow">當沖管理</p><h1>把推薦範圍設好。</h1><p class="muted">新推薦與 LINE／Telegram 進場通知前，會套用最新限制。</p></div><div class="title-actions"><nav class="admin-section-nav" aria-label="後台功能分類"><button type="button" data-admin-tab="healthPanel">健康中心</button><button type="button" data-admin-tab="modelLogPanel">模型日誌</button><button type="button" data-admin-tab="settingsPanel">選股設定</button><button type="button" data-admin-tab="paperTradePanel">模擬帳本</button><button type="button" data-admin-tab="conversationPanel">通知設定</button></nav><button id="logout" type="button">登出</button></div></div>
+<div class="title"><div><p class="eyebrow">當沖管理</p><h1>把推薦範圍設好。</h1><p class="muted">新推薦與 LINE／Telegram 進場通知前，會套用最新限制。</p></div><div class="title-actions"><nav class="admin-section-nav" aria-label="後台功能分類"><button type="button" data-admin-tab="healthPanel">健康中心</button><button type="button" data-admin-tab="modelLogPanel">模型日誌</button><button type="button" data-admin-tab="settingsPanel">選股設定</button><button type="button" data-admin-tab="paperTradePanel">模擬帳本</button><button type="button" data-admin-tab="conversationPanel">通知設定</button><button type="button" data-admin-tab="manualOrderPanel">永豐手動 API 下單</button></nav><button id="logout" type="button">登出</button></div></div>
 <div class="identity"><span id="identity"></span><span id="version"></span></div>
 <section class="panel health-panel admin-tab-panel" id="healthPanel" aria-labelledby="healthTitle">
   <div class="health-heading"><div><p class="eyebrow">系統健康中心</p><h2 id="healthTitle">當沖設定及健檢</h2><p class="hint">檢查訓練、資料與當沖服務狀態；設定調整在選股設定頁，維護操作有安全限制。</p></div><button id="reloadHealth" type="button">重新檢查</button></div>
@@ -26,6 +28,9 @@
   <h3>API／資料來源診斷</h3>
   <p id="providerHealthSummary" class="hint" role="status">等待資料來源檢查。</p>
   <div id="providerHealthDetails" class="health-signals"></div>
+  <h3>玉山市場情境（只讀診斷）</h3>
+  <p class="hint">價格輪動代理，不是真實資金流；不參與正式進出場。全市場快照範圍可能包含 ETF，覆蓋率不足不視為完整市場。</p>
+  <div id="marketContext" class="health-signals" role="status">待 Owner 登入後讀取。</div>
   <p class="hint health-note">綠燈：可用或完成；黃燈：等待條件、時段或額度；紅燈：需要處理；灰燈：尚未開始或未啟用。</p>
   <section class="panel health-panel" id="runtimeModelPanel" aria-labelledby="runtimeModelTitle">
      <div class="health-heading"><div><p class="eyebrow">盤中模型狀態</p><h2 id="runtimeModelTitle">盤中模型一致性</h2><p class="hint">確認盤中實際載入的模型，是否就是目前核准、供下一次啟動使用的模型。注意：模型晉升後，現有 process 不會自動換模型。</p></div></div>
@@ -156,6 +161,29 @@
 </details>
 </section>
 
+<section class="panel admin-tab-panel" id="guardianPanel" hidden aria-labelledby="guardianTitle">
+<div class="panel-title"><h2 id="guardianTitle">AI 系統健檢</h2><button type="button" id="guardianRefresh">重新讀取報告</button></div>
+<p class="muted">僅觀察與報告，不自動修復、部署、晉升模型、開啟實單或變更 KILL SWITCH。SAFE 不是實盤交易許可。</p>
+<p id="guardianStatus">UNKNOWN · 尚未讀取私人報告</p><p id="guardianCounts"></p><p id="guardianCommit"></p><p id="guardianReview"></p>
+<h3>最近 findings</h3><div id="guardianFindings" class="health-signals"></div>
+<h3>Resolved findings</h3><div id="guardianResolved" class="health-signals"></div>
+</section>
+<section class="panel admin-tab-panel" id="liveConsolePanel" hidden aria-labelledby="liveConsoleTitle">
+<h2 id="liveConsoleTitle">永豐實盤當沖</h2>
+<p class="hint">Owner 專用。Research／Paper／Live 隔離。LIVE AUTO 只有受控狀態骨架，尚未連接自動執行引擎；部署預設 OFF。KILL SWITCH 只阻擋新 AUTO 委託，不平倉。</p>
+<div class="actions"><button id="liveVerify" type="button">券商重新驗證（只讀）</button><button id="liveRefresh" type="button">同步券商</button></div>
+<p id="liveStatus" role="status" aria-live="polite">尚未同步。</p>
+<div class="actions"><label>交易模式 <select id="liveMode"><option>OFF</option><option>SHADOW</option><option>PAPER</option><option value="LIVE AUTO" disabled>LIVE AUTO</option></select></label><button id="liveModeSave" type="button">確認變更模式</button><button id="liveKill" type="button">啟用 KILL SWITCH</button></div>
+<h3>Broker / 今日損益</h3><div id="liveBroker" class="health-signals"></div>
+<h3>券商持倉（股）</h3><p class="hint">第一版可賣額度只支援昨日現股多單扣除未成交 SELL；同日當沖、信用、未知可賣額度禁止送出。未知進場時間／策略不猜測。</p><div id="livePositions" class="live-table-wrap"></div>
+<h3>今日委託（股，識別碼指紋）</h3><div id="liveOrders" class="live-table-wrap"></div>
+<h3>今日成交（股，識別碼指紋）</h3><div id="liveDeals" class="live-table-wrap"></div>
+<dialog id="liveSellModal" aria-labelledby="liveSellTitle"><form id="liveSellForm"><h3 id="liveSellTitle">手動賣出驗證</h3><p id="liveSellSummary"></p>
+<label>數量 <input id="liveSellQty" type="number" min="1" step="1" required></label><label><input id="liveSellOdd" type="checkbox" checked>零股（取消為張，每張 1000 股）</label>
+<label>限價 <input id="liveSellPrice" type="number" min="0.01" step="any" required></label><button id="liveSellVerify" type="button">第一步：重新驗證券商與可賣數量</button>
+<p id="liveSellEvidence" role="status"></p><label>第二步：輸入 SELL <input id="liveSellConfirm" autocomplete="off"></label><label>再次輸入遮罩帳戶 <input id="liveSellAccount" autocomplete="off"></label>
+<label>憑證密碼 <input id="liveSellPassword" type="password" autocomplete="off"></label><div class="actions"><button id="liveSellSubmit" type="submit" disabled>再次確認並送出 SELL</button><button id="liveSellClose" type="button">取消</button></div><p id="liveSellResult" role="status"></p></form></dialog>
+</section>
 <section class="panel admin-tab-panel" id="conversationPanel"><h2>個人通知</h2>
 <form id="notificationForm">
   <div class="grid">
@@ -172,16 +200,9 @@
   <button type="submit" id="saveNotifications">儲存通知設定</button>
 </form><p id="conversationStatus" role="status" aria-live="polite"></p>
 <details><summary>最近通知傳送狀態</summary><p class="hint">「送出成功」表示平台已接受，不代表每位成員已讀。逾時或程序中斷不自動重送，避免重複進出場通知。</p><div id="deliveryStatus"></div></details></section>
-</section>
-</main><footer>EasyStock · 當沖管理</footer>
-<!-- 永豐下單 Modal -->
-<div id="orderModal" class="order-modal-backdrop" hidden>
-  <div class="order-modal-box">
-    <div class="order-modal-head">
-      <h2>🚀 永豐證券委託</h2>
-      <button id="closeOrderModal" type="button" class="order-close-btn">&times;</button>
-    </div>
-
+<section id="manualOrderPanel" class="panel admin-tab-panel manual-order-panel" hidden aria-labelledby="manualOrderTitle">
+<h2 id="manualOrderTitle">永豐手動 API 下單</h2>
+<p class="hint">登入後手動買進或賣出。委託送出與成交結果分開顯示，送出後可同步券商確認最新狀態。</p>
     <!-- 步驟 1: API 驗證 -->
     <div class="order-section">
       <div class="order-section-title">步驟 1：帳號連線驗證</div>
@@ -192,6 +213,13 @@
       <div id="orderVerifyBadge" class="order-badge" style="margin-top:6px;">尚未驗證</div>
     </div>
 
+    <div class="order-section">
+      <div class="health-heading"><h3>目前持股</h3><button id="btnOrderRefresh" type="button">同步持股與委託</button></div>
+      <p id="orderPortfolioStatus" role="status" aria-live="polite">登入後可同步券商持股。</p>
+      <div id="orderPositions" class="live-table-wrap"></div>
+      <p class="hint">股數以券商資料為準。可賣股數已扣除未成交賣單；目前賣出支援已確認可賣的昨日現股持倉。</p>
+      <details><summary>今日委託與成交結果</summary><h4>委託</h4><div id="orderOrders" class="live-table-wrap"></div><h4>成交</h4><div id="orderDeals" class="live-table-wrap"></div></details>
+    </div>
     <!-- 步驟 2: 報價與五檔 -->
     <div class="order-section">
       <div class="order-section-title">步驟 2：股票報價查詢</div>
@@ -200,7 +228,7 @@
         <button id="btnOrderQuery" type="button" class="primary">查詢報價</button>
       </div>
 
-      <div id="orderQuotePanel" style="margin-top:10px;background:#18181b;padding:12px;border-radius:8px;" hidden>
+      <div id="orderQuotePanel" class="order-quote-panel" hidden>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <span id="orderStockTitle" style="font-size:16px;font-weight:bold;">--</span>
           <span id="orderStockPrice" style="font-size:18px;font-weight:bold;">--</span>
@@ -221,6 +249,10 @@
     <!-- 步驟 3: 委託條件 (簡約 股 / 張) -->
     <div class="order-section">
       <div class="order-section-title">步驟 3：委託條件</div>
+      <div class="order-unit-toggle" role="group" aria-label="買賣方向">
+        <button type="button" id="btnOrderBuy" class="unit-btn active" aria-pressed="true">買進</button>
+        <button type="button" id="btnOrderSell" class="unit-btn" aria-pressed="false">賣出</button>
+      </div>
       <div class="order-unit-toggle">
         <button type="button" id="btnUnitShare" class="unit-btn active">股 (零股)</button>
         <button type="button" id="btnUnitSheet" class="unit-btn">張 (整張)</button>
@@ -230,7 +262,7 @@
           <div class="field-header">
             <label>委託限價 (元)</label>
           </div>
-          <input id="orderPrice" type="number" step="0.01" placeholder="價格" style="width:100%;">
+          <input id="orderPrice" type="number" min="0.01" step="0.01" placeholder="價格" style="width:100%;">
         </div>
         <div class="field-group">
           <div class="field-header">
@@ -241,21 +273,27 @@
               <button type="button" data-qty="100">100</button>
             </div>
           </div>
-          <input id="orderQty" type="number" value="1" min="1" style="width:100%;">
+          <input id="orderQty" type="number" value="1" min="1" max="999" step="1" style="width:100%;">
         </div>
       </div>
       <div id="orderTotalEst" class="order-total-est">預估交割金額：約 0 元</div>
+      <div id="orderSellVerification" hidden>
+        <button id="btnOrderSellVerify" type="button">驗證可賣股數與帳戶</button>
+        <p id="orderSellEvidence" role="status" aria-live="polite">賣出前請先驗證。</p>
+        <div class="order-row"><label for="orderSellConfirm">確認方向：輸入 SELL<input id="orderSellConfirm" autocomplete="off"></label><label for="orderSellAccount">確認帳戶：輸入驗證顯示的遮罩帳戶<input id="orderSellAccount" autocomplete="off"></label></div>
+      </div>
     </div>
 
     <!-- 步驟 4: 憑證簽章送單 -->
     <div class="order-section">
       <div class="order-section-title">步驟 4：憑證簽章送單</div>
       <div style="display:flex;gap:8px;">
-        <input id="orderCaPasswd" type="password" placeholder="請輸入永豐電子憑證密碼" style="flex:1;">
+        <input id="orderCaPasswd" type="password" autocomplete="off" placeholder="請輸入永豐電子憑證密碼" style="flex:1;">
         <button id="btnOrderSubmit" type="button" class="btn-submit-order">⚡ 確認送出委託</button>
       </div>
-      <div id="orderResult" style="font-size:12px;margin-top:8px;"></div>
+      <div id="orderResult" role="status" aria-live="polite"></div>
     </div>
-  </div>
-</div>
+</section>
+</section>
+</main><footer>EasyStock · 當沖管理</footer>
 </body></html>

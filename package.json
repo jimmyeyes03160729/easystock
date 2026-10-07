@@ -2,7 +2,7 @@
   "name": "easystock-dashboard-tests",
   "private": true,
   "scripts": {
-    "test": "node tests/test_frontend.cjs && node test-state.cjs && node test-ui.cjs && node tests/test_dashboard.cjs && node tests/test_rules.cjs && node --test tests/test_rebound.cjs tests/test_provider_health_ui.cjs vm_runtime/esun_marketdata/provider.test.js && node tests/test_rebound_ui.cjs && node tests/test_asset_versions.cjs"
+    "test": "node tests/test_frontend.cjs && node test-state.cjs && node test-ui.cjs && node tests/test_dashboard.cjs && node tests/test_rules.cjs && node --test tests/test_rebound.cjs tests/test_provider_health_ui.cjs tests/test_mobile_nav.cjs tests/test_live_console_ui.cjs tests/test_manual_order_ui.cjs tests/test_guardian_ui.cjs vm_runtime/esun_marketdata/provider.test.js && node tests/test_rebound_ui.cjs && node tests/test_intraday_chart.cjs && node tests/test_admin_ui.cjs && node tests/test_asset_versions.cjs"
   },
   "devDependencies": {
     "jsdom": "^26.1.0"

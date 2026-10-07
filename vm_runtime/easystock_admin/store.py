@@ -104,6 +104,7 @@ class Store:
             CREATE TABLE IF NOT EXISTS settings(id INTEGER PRIMARY KEY CHECK(id=1),body TEXT NOT NULL,version INTEGER NOT NULL,updated REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,csrf TEXT NOT NULL,expires REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS session_owners(token TEXT PRIMARY KEY,email TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS challenges(token TEXT PRIMARY KEY,nonce TEXT NOT NULL,expires REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS rate_limits(key TEXT PRIMARY KEY,start REAL NOT NULL,n INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,at REAL NOT NULL,actor TEXT NOT NULL,action TEXT NOT NULL,body TEXT NOT NULL);
@@ -116,6 +117,8 @@ class Store:
             ''')
             from .notifications import initialize as initialize_notifications
             initialize_notifications(db)
+            from .live_console import initialize as initialize_live_console
+            initialize_live_console(db)
             db.execute('BEGIN IMMEDIATE')
             if not db.execute('SELECT 1 FROM settings WHERE id=1').fetchone():
                 db.execute('INSERT OR IGNORE INTO settings VALUES(1,?,1,?)', (json.dumps(validate(initial) if initial is not None else defaults()), time.time()))
@@ -158,7 +161,7 @@ class Store:
             if before['version'] != version:
                 raise Conflict('設定已被更新，請重新載入後再修改。')
             db.execute('UPDATE settings SET body=?,version=version+1,updated=? WHERE id=1', (json.dumps(value), time.time()))
-            self._audit(db, 'google', 'settings', {'before': before['values'], 'after': value})
+            self._audit(db, OWNER, 'settings', {'before': before['values'], 'after': value, 'result': 'saved'})
             return self._state(db)
 
     def get_pipeline_settings(self):
@@ -179,10 +182,10 @@ class Store:
                 raise ProfileChange('手續費、稅率、滑價或股數變更會建立新的訓練標籤規則；訓練只使用最新規則的標籤，'
                                     '既有標籤不再列入，模型需重新累積資料。確定要變更嗎？')
             db.execute('UPDATE pipeline_settings SET body=?,version=version+1,updated=? WHERE id=1', (json.dumps(value), time.time()))
-            self._audit(db, 'google', 'pipeline_settings', {'before': previous, 'after': value, 'profile_changed': changed})
+            self._audit(db, OWNER, 'pipeline_settings', {'before': previous, 'after': value, 'profile_changed': changed, 'result': 'saved'})
         return self.get_pipeline_settings()
 
-    def reserve_order(self, client_order_id, order):
+    def reserve_order(self, client_order_id, order, guard=None):
         """Record a live order before it is sent; a repeated identity is refused."""
         if not isinstance(client_order_id, str) or not __import__('re').fullmatch(r'[A-Za-z0-9-]{16,64}', client_order_id):
             raise ValueError('委託識別碼不正確，請重新整理頁面後再送單。')
@@ -190,16 +193,18 @@ class Store:
             self._limit(db, 'order-place', 3)
             if db.execute('SELECT 1 FROM order_requests WHERE client_order_id=?', (client_order_id,)).fetchone():
                 raise Conflict('此委託已送出過，請勿重複送單。')
+            if guard is not None:
+                guard(db)
             now = time.time()
             db.execute('INSERT INTO order_requests VALUES(?,?,?,?,?,NULL)',
                        (client_order_id, now, now, 'submitting', json.dumps(order)))
-            self._audit(db, 'google', 'order_submit', {'client_order_id': client_order_id, **order})
+            self._audit(db, OWNER, 'order_submit', {'client_order_id': client_order_id, **order, 'result': 'reserved'})
 
     def finish_order(self, client_order_id, status, result):
         with self.tx() as db:
             db.execute('UPDATE order_requests SET status=?,result=?,updated=? WHERE client_order_id=?',
                        (status, json.dumps(result, ensure_ascii=False), time.time(), client_order_id))
-            self._audit(db, 'google', 'order_result', {'client_order_id': client_order_id, 'status': status, 'result': result})
+            self._audit(db, OWNER, 'order_result', {'client_order_id': client_order_id, 'status': status, 'result': result})
 
     def get_paper_trade(self):
         import paper_ledger
@@ -290,6 +295,7 @@ class Store:
                 raise Denied('管理員身分不符。')
             db.execute("INSERT OR IGNORE INTO meta VALUES('google_sub',?)", (sub,))
             db.execute('INSERT INTO sessions VALUES(?,?,?)', (digest(token), csrf, time.time() + 8 * 3600))
+            db.execute('INSERT INTO session_owners VALUES(?,?)', (digest(token), OWNER))
             self._audit(db, 'google', 'login', {})
         return token, csrf
 
@@ -303,6 +309,15 @@ class Store:
     def logout(self, token):
         with self.tx() as db:
             db.execute('DELETE FROM sessions WHERE token=?', (digest(token),))
+            db.execute('DELETE FROM session_owners WHERE token=?', (digest(token),))
+
+    def owner_session(self, token):
+        csrf = self.session(token)
+        with self.tx() as db:
+            row = db.execute('SELECT email FROM session_owners WHERE token=?', (digest(token),)).fetchone()
+        if not row or not OWNER or row[0] != OWNER:
+            raise Denied('此帳號沒有 Owner 權限，舊 session 請重新登入。')
+        return csrf
 
 def read_live_settings():
     path = db_path()

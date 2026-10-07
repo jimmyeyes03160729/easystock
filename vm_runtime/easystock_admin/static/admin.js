@@ -16,7 +16,12 @@ function showAdminTab(id){
   if(!panels.some(panel=>panel.id===id))id='healthPanel';
   for(const panel of panels)panel.hidden=panel.id!==id;
   for(const button of document.querySelectorAll('[data-admin-tab]'))button.setAttribute('aria-selected',String(button.dataset.adminTab===id));
+  const selected=document.querySelector(`[data-admin-tab="${id}"]`),nav=selected?.closest('.admin-section-nav');
+  if(nav)nav.scrollLeft+=selected.getBoundingClientRect().left-nav.getBoundingClientRect().left-(nav.clientWidth-selected.getBoundingClientRect().width)/2;
   if(id==='modelLogPanel')loadModelLog();
+  if(id==='liveConsolePanel' && typeof window.loadLiveConsole==='function')window.loadLiveConsole();
+  if(id==='manualOrderPanel' && typeof window.loadManualOrders==='function')window.loadManualOrders();
+  if(id==='guardianPanel' && typeof window.loadGuardian==='function')window.loadGuardian();
 }
 const healthLabels={ok:'正常',warning:'注意',error:'異常',idle:'等待'};
 function healthBadge(row){if(row.key==='paper_trade')return row.state==='ok'?'已啟用・等待交易時段':'已暫停';if(row.key==='market_session'&&row.state==='idle')return '今日休市';if(['market_credentials','firebase'].includes(row.key)&&row.state==='ok')return '已設定';if(row.key==='admin_store'&&row.state==='ok')return '可讀取';if(['training_worker','daily_learning_worker','download_worker'].includes(row.key)&&row.state==='idle')return '排程中';if(row.key==='candidate_model'&&row.state==='idle')return '尚無模型';if(row.key==='history_collection'&&row.state==='idle')return '等待時段';return healthLabels[row.state]||'未知';}
@@ -140,8 +145,8 @@ function applyPipeline(data){pipelineVersion=data.version;const v=data.values;el
 async function loadPipeline(){try{applyPipeline(await api('pipeline-settings'));}catch(error){message('pipelineStatus',error.message,true);}}
 async function maintenance(action,confirmation,label){if(!confirm(`確認要${label}嗎？\n此操作會受到時段、工作衝突與冷卻限制。`))return;const id=action==='restart-intraday'?'restartIntraday':'syncVm';const button=el(id);button.disabled=true;message('maintenanceStatus','正在送出受控維護要求…');try{const result=await api('maintenance/'+action,{method:'POST',body:{confirmation}});message('maintenanceStatus',result.detail||'操作已送出。',!result.available);}catch(error){message('maintenanceStatus',error.message,true);}finally{await loadMaintenance();}}
 async function session(){const s=await api('session');csrf=s.csrf;el('identity').textContent=s.email;return s;}
-function startLiveRefresh(){if(liveRefreshTimer)clearInterval(liveRefreshTimer);liveRefreshTimer=setInterval(()=>{if(!document.hidden){loadHealth();loadMaintenance();}},30000);}
-async function enter(){await session();applySettings(await api('settings'));await loadNotifications();el('login').hidden=true;el('workspace').hidden=false;await loadHealth();await loadMaintenance();await loadPipeline();startLiveRefresh();}
+function startLiveRefresh(){if(liveRefreshTimer)clearInterval(liveRefreshTimer);liveRefreshTimer=setInterval(()=>{if(!document.hidden){loadHealth();loadMaintenance();if(typeof window.loadMarketContext==='function')window.loadMarketContext();if(!el('liveConsolePanel')?.hidden && typeof window.loadLiveConsole==='function')window.loadLiveConsole();if(!el('manualOrderPanel')?.hidden && typeof window.loadManualOrders==='function')window.loadManualOrders();}},30000);}
+async function enter(){await session();applySettings(await api('settings'));await loadNotifications();el('login').hidden=true;el('workspace').hidden=false;await loadHealth();await loadMaintenance();await loadPipeline();startLiveRefresh();document.dispatchEvent(new Event('easystock:owner-ready'));}
 async function loginSetup(){
   try{
     const config=await api('config');

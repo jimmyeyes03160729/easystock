@@ -117,12 +117,35 @@ def sample_valid_trial():
 # ==============================================================================
 
 def test_all_backfill_trials_pass_validation(trials_dir):
-    """The 4 legacy backfill trials in docs/research_governance/trials must pass validation."""
+    """Every trial in docs/research_governance/trials must pass validation (4 Phase 2 + event-audit trials)."""
     passed, results = validate_all_trials(trials_dir)
     for filename, errors in results.items():
         assert len(errors) == 0, f"Validation failed for {filename}: {errors}"
     assert passed is True
-    assert len(results) == 4, f"Expected 4 legacy trial files, found {len(results)}"
+    legacy = {"P2A_LEGACY_BACKFILL.yaml", "P2B_BATCH1_LEGACY_BACKFILL.yaml",
+              "P2B_BATCH2_LEGACY_BACKFILL.yaml", "P2C_F01_LEGACY_BACKFILL.yaml"}
+    assert legacy <= set(results), f"Missing legacy trial files: {legacy - set(results)}"
+
+
+def test_event_audit_trials_form_a_rejected_chain(trials_dir):
+    """H2 -> H3 -> H4 -> primitive batch -> base-rate audit -> book rules, none production-ready or confirmed."""
+    trials = {}
+    for f in trials_dir.glob("EA_*.yaml"):
+        with open(f, "r", encoding="utf-8") as fp:
+            d = yaml.safe_load(fp)
+            trials[d["trial_id"]] = d
+    chain = ["TRIAL_EA_H2_TICK_COMPRESSION_BREAKOUT", "TRIAL_EA_H3_COMPLETED_BAR_BREAKOUT",
+             "TRIAL_EA_H4_SOURCE_NATIVE_ORB", "TRIAL_EA_SOURCE_PRIMITIVE_BATCH_V1",
+             "TRIAL_EA_BASE_RATE_MATCHED_CONTROL_V1", "TRIAL_EA_BOOK_RULES_V1"]
+    assert set(chain) == set(trials)
+    assert trials[chain[0]]["parent_trial_id"] is None
+    for parent, child in zip(chain, chain[1:]):
+        assert trials[child]["parent_trial_id"] == parent
+    for t in trials.values():
+        assert t["result"]["PRODUCTION_READY"] is False
+        assert t["result"]["INDEPENDENT_CONFIRMATION"] is False
+        assert t["data"]["independent_confirmation"] is False
+        assert t["governance"]["production_effect"] == "NONE"
 
 
 def test_legacy_backfill_lineage_integrity(trials_dir):

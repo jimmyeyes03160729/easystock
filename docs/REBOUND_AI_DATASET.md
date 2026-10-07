@@ -103,6 +103,56 @@ not usable as a historical feature. Phase 2 must first review audit coverage,
 class balance and out-of-sample splits before comparing rule baseline,
 Logistic Regression and HistGradientBoosting in shadow only.
 
+## Dataset v2: official whole-market daily (Phase 1.5)
+
+v1 above stays frozen. v2 lives in separate private files under the same
+directory: `market-daily.sqlite` (source archive) and `dataset-v2.sqlite`
+(`dataset_schema_version=2`, `feature_schema_version=2`).
+
+**Source.** One TWSE `MI_INDEX` and one TPEx `dailyQuotes` request per session
+return every listed/OTC four-digit stock (ETFs, warrants and no-trade rows are
+excluded; no flat bar is fabricated). Stocks that later delisted stay in the
+archive, so the universe has no survivorship selection. TAIEX
+(`發行量加權股價指數`) and TPEx composite (`櫃買指數`) closes are stored per
+session. Past weekdays without data are recorded `closed`; the current day is
+never recorded closed before publication.
+
+**Corporate actions.** Prices are stored raw. `adj_factor` on day *t* is the
+exchange-published reference price divided by the previous close: TWSE
+`TWT49U` for TWSE ex-rights/dividends, the previous session's `次日參考價` for
+TPEx. A reader standing on D0 multiplies only by factors of sessions ≤ D0;
+label bars after D0 are rescaled by factors as each event occurs. TWSE "X"
+sessions without a published TWT49U event are marked `unknown` and counted per
+candidate (`adj_unknown_events_252d`); the rule's 12% gap guard still applies.
+
+**Candidates.** Same frozen `range-rebound-0.3` rule. Without historical filing
+timestamps every eligible row is `PENDING` (never `PASSED`). Kinds:
+`PENDING`, `NEAR_MISS` (unchanged v1 definition), `BOTTOM_ZONE` and
+`REJECTED_CONTROL`. `BOTTOM_ZONE` keeps every structural gate (repeated
+support, resistance, retest within 8 sessions, unbroken support, breakout or
+two-day stabilisation) and allows up to three numeric misses within: distance
+above support ≤5 points beyond 10%, range position ≤15 points beyond 35%, net
+RR ≥1.0. It widens the training pool; evaluation must still compare models on
+rule candidates only.
+
+**Features.** The 26 v1 features plus 11 point-in-time context features:
+TAIEX/TPEx 1/5/20-session returns, TAIEX bias to its 60-session mean,
+whole-market breadth (share of stocks closing up among up+down), stock minus
+own-exchange index 5/20-session return, and `is_otc`. Sector context is not
+included: only today's sector mapping exists, which is not point-in-time.
+
+```bash
+python3 -m rebound_learning.market_daily --from 2022-01-03   # resumable
+python3 -m rebound_learning.market_daily --status
+python3 -m rebound_learning.official backfill --from 2023-01-03
+python3 -m rebound_learning.official labels
+python3 -m rebound_learning.official audit
+```
+
+The nightly `rebound_learning.daily` job refreshes v2 after v1 commits:
+recent sessions, the last five replays, label maturity and the
+`rebound-dataset-v2-audit.{json,md}` report.
+
 ### v2 build result (2026-10-08)
 
 Archive: 1,153 sessions (2022-01-03 to 2026-10-06), 2,030 symbols,

@@ -133,6 +133,8 @@ PY
 bash deploy/install_market_data.sh
 bash deploy/install_history_schedule.sh
 bash deploy/install_rebound_research.sh
+.venv/bin/python -m guardian.cli validate-policy
+bash deploy/install_architecture_guardian.sh
 printf '主線更新完成：'
 git rev-parse --short HEAD
 printf '備份位置：%s\n' "$backup"

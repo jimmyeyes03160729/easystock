@@ -2,6 +2,10 @@ import math
 import os
 import re
 import time
+import threading
+from functools import wraps
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from decimal import Decimal
 from pathlib import Path
 
@@ -56,7 +60,7 @@ def validate_order(symbol, action, price, quantity, is_odd_lot):
 
 def mask(value, keep=4):
     text = str(value or "")
-    return "*" * max(0, len(text) - keep) + text[-keep:] if text else ""
+    return ("*" * len(text) if len(text) <= keep else "*" * (len(text)-keep) + text[-keep:]) if text else ""
 
 
 def live_ordering_enabled() -> bool:
@@ -72,13 +76,23 @@ def live_ordering_enabled() -> bool:
     )
 
 
+def synchronized(method):
+    @wraps(method)
+    def call(self, *args, **kwargs):
+        with self.console_lock:
+            return method(self, *args, **kwargs)
+    return call
+
+
 class OrderService:
     def __init__(self):
         self.api = None
         self.is_logged_in = False
         self.account_info = {}
         self._last_login_time = 0
+        self.console_lock = threading.RLock()
 
+    @synchronized
     def login(self, force_new: bool = True):
         """Log in with the server's own credentials; browsers never supply keys."""
         if sj is None:
@@ -174,6 +188,12 @@ class OrderService:
                             pass
         return None
 
+    @synchronized
+    def broker_snapshot(self):
+        from .broker_read import snapshot
+        return snapshot(self, sj)
+
+    @synchronized
     def get_quote(self, symbol: str):
         self.ensure_ready()
 
@@ -227,6 +247,13 @@ class OrderService:
 
         bids = parse_levels(getattr(s, "buy_price", None), getattr(s, "buy_volume", None))
         asks = parse_levels(getattr(s, "sell_price", None), getattr(s, "sell_volume", None))
+        quote_at = None
+        try:
+            stamp = float(getattr(s, 'ts'))
+            stamp /= 1e9 if stamp >= 1e17 else 1e6 if stamp >= 1e14 else 1e3 if stamp >= 1e11 else 1
+            quote_at = datetime.fromtimestamp(stamp, ZoneInfo('Asia/Taipei')).isoformat()
+        except (TypeError, ValueError, AttributeError, OverflowError, OSError):
+            pass
 
         return {
             "symbol": symbol,
@@ -238,9 +265,11 @@ class OrderService:
             "low": float(getattr(s, "low", close) or close),
             "bids": bids,
             "asks": asks,
+            "quote_at": quote_at,
         }
 
-    def place_order(self, symbol: str, action: str, price: float, quantity: int, is_odd_lot: bool, ca_passwd: str):
+    @synchronized
+    def place_order(self, symbol: str, action: str, price: float, quantity: int, is_odd_lot: bool, ca_passwd: str, before_submit=None):
         if not live_ordering_enabled():
             raise PermissionError(
                 "真實下單入口目前已隔離；需由伺服器明確啟用 LIVE_ORDERING_ENABLED "
@@ -267,7 +296,8 @@ class OrderService:
         trade = None
         last_exc = None
 
-        for attempt in range(2):
+        # A broker submission exception is ambiguous: never retry a potentially accepted order.
+        for attempt in range(1):
             try:
                 contract = self._find_contract(symbol)
                 if not contract:
@@ -291,19 +321,14 @@ class OrderService:
                     account=self.api.stock_account
                 )
 
+                if before_submit is not None:
+                    before_submit()
+                if not live_ordering_enabled():
+                    raise PermissionError('live_ordering_disabled')
                 trade = self.api.place_order(contract, order)
                 break
             except Exception as e:
                 last_exc = e
-                err_msg = str(e)
-                if ("SessionNotEstablished" in err_msg or "NotReady" in err_msg) and attempt == 0:
-                    time.sleep(2.0)
-                    try:
-                        self.reconnect()
-                        self.api.activate_ca(ca_path=ca_path, ca_passwd=ca_passwd, person_id=person_id)
-                    except Exception:
-                        pass
-                    continue
                 break
 
         if trade is None:
