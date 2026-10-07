@@ -120,7 +120,18 @@ def test_sdk_adapter_reads_directional_evidence_without_order_calls():
     evidence=namespace['paper_execution_evidence'](runtime,'3189')
     assert execution(evidence,'BUY',AT)['max_shares']==3000
     assert execution(evidence,'SELL',AT,2000)['price']==100
-    contract.day_trade=None
-    assert namespace['paper_execution_evidence'](runtime,'3189')['eligibility'] is None
+    # A failed snapshot keeps the contract's eligibility and is reported as a quote problem.
     api.snapshots.side_effect=RuntimeError('offline')
-    assert namespace['paper_execution_evidence'](runtime,'3189')=={}
+    failed=namespace['paper_execution_evidence'](runtime,'3189')
+    assert failed['eligibility'] is True and failed['quote_error']=='snapshot_failed:RuntimeError'
+    assert execution(failed,'BUY',AT)=={'status':'skipped','skip_reason':'quote_unavailable',
+        'eligibility_detail':'day_trade=Yes category=24','quote_error':'snapshot_failed:RuntimeError'}
+    assert execution(failed,'SELL',AT,2000)['status']=='pending'
+    # Unknown eligibility now names the contract's actual flag values.
+    contract.day_trade=None
+    unknown=namespace['paper_execution_evidence'](runtime,'3189')
+    assert unknown['eligibility'] is None
+    assert execution(unknown,'BUY',AT)['eligibility_detail']=='day_trade=None category=24'
+    contract.day_trade=SimpleNamespace(value='Yes');contract.category=''
+    assert execution(namespace['paper_execution_evidence'](runtime,'3189'),'BUY',AT)['eligibility_detail']=='day_trade=Yes category=-'
+    assert namespace['paper_execution_evidence'](runtime,'0000')=={'eligibility':None,'eligibility_detail':'contract_missing'}
