@@ -135,12 +135,16 @@ def label(market, db) -> int:
 
 
 def audit(market, db, *, write: bool = True) -> dict:
-    report = build_audit(db)
+    """Audit the historical partition only; reserved confirmation rows stay blinded."""
+    reserved = SETTINGS['reserved_confirmation_start']
+    report = build_audit(db, before=reserved)
+    report['blinded_from'] = reserved
     report['dataset_schema_version'] = 2
     report['feature_schema_version'] = FEATURE_SCHEMA_VERSION
     report['symbols_scanned'] = market.execute('SELECT COUNT(DISTINCT symbol) FROM bars').fetchone()[0]
     report['coverage']['adj_unknown_candidate_ratio'] = None
-    unknown = db.execute("SELECT COUNT(*) FROM candidates WHERE json_extract(snapshot,'$.adj_unknown_events_252d')>0").fetchone()[0]
+    unknown = db.execute("SELECT COUNT(*) FROM candidates WHERE json_extract(snapshot,'$.adj_unknown_events_252d')>0 AND signal_date<?",
+                         (reserved,)).fetchone()[0]
     if report['total_rows']:
         report['coverage']['adj_unknown_candidate_ratio'] = round(unknown / report['total_rows'], 4)
     # v2 bars live in market-daily.sqlite, not daily_bars; v1-only warnings do not apply.
@@ -164,10 +168,12 @@ def daily(market, db) -> dict:
     recent = sessions(market)[-5:]
     if not recent:
         raise RuntimeError('no_official_sessions')
-    collected = run(market, db, recent[0], recent[-1], progress=False)
-    labelled = label(market, db)
+    run(market, db, recent[0], recent[-1], progress=False)
+    label(market, db)
     report = audit(market, db)
-    return {'collected': collected, 'labels_updated': labelled,
+    # Candidate counts, kinds and labels on reserved sessions are outcome-bearing:
+    # report admin metadata only (pristine holdout REBOUND_V2_FUTURE_60D).
+    return {'sessions_replayed': recent, 'blinded_from': report['blinded_from'],
             'audit_critical': report['data_quality']['critical_count']}
 
 

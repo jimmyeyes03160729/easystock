@@ -1,0 +1,68 @@
+# EasyStock OOS Consumption Ledger — rebound future confirmation reservation (first 60 eligible sessions from 2026-10-07)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "REBOUND_V2_FUTURE_CONFIRMATION_RESERVATION"
+created_at: "2026-10-08T07:00:00+08:00"
+description: >
+  Reservation of rebound signals in the first 60 eligible sessions from 2026-10-07 (and the bars of their
+  horizons) for one-shot confirmation of a model selected by TRIAL_REBOUND_P2_RANKER_V1. The nightly pipeline
+  ingests and labels these sessions but prints only admin metadata; audits exclude them.
+
+consumption_events:
+  - consumption_id: "CNS_REBOUND_V2_FUTURE_60D_RESERVATION"
+    trial_id: "TRIAL_REBOUND_P2_RANKER_V1"
+    dataset_id: "REBOUND_V2_FUTURE_CONFIRMATION_60D"
+    dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+    dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+    slice:
+      start_date: "2026-10-07"
+      end_date: null
+      slice_definition: "first_60_eligible_trading_days"
+    role: "CONFIRMATION"
+    exposure:
+      performance_seen: false
+      labels_seen: false
+      aggregate_metrics_seen: false
+      subgroup_results_seen: false
+      parameter_selection_influenced: false
+      research_direction_influenced: false
+      human_seen: false
+      ai_seen: false
+      admin_metadata_inspected:
+        - "file_existence"
+        - "ingestion_success"
+        - "schema_version"
+        - "checksum"
+        - "trading_calendar_membership"
+      market_data_inspected: []
+    exposure_level: "LEVEL_0_UNTOUCHED"
+    dimensions_seen: []
+    consumed_at: null
+    record_type: "RESERVATION"
+    recorded_after_exposure: false
+    source_artifact: "docs/research_governance/preregistrations/REBOUND_P2_RANKER_V1.yaml"
+    source_commit: "PENDING_MERGE"
+    governance:
+      pristine_before: true
+      pristine_after: true
+      independent_confirmation_eligible_after: true
+      independent_confirmation_intended: true
+      independent_confirmation_completed: false
+      prohibited_queries:
+        - "ohlcv_values"
+        - "market_derived_activity_statistics"
+        - "feature_values_or_distributions"
+        - "labels"
+        - "signals"
+        - "candidate_counts"
+        - "pnl"
+        - "returns"
+        - "performance_metrics"
+        - "subgroup_metrics"
+      permitted_queries:
+        - "file_existence"
+        - "ingestion_success"
+        - "schema_version"
+        - "checksum"
+        - "trading_calendar_membership"
+      notes: "Unsealed only by the preregistered one-shot confirmation of a selected variant."

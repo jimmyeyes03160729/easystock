@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from .audit import build_audit,write_audit
 from .backfill import DEFAULT_SOURCE,load_archives,run,selected_days
+from .collector import SETTINGS
 from .labels import update_labels
 from .schema import connect
 from .market_daily import connect as market_connect
@@ -16,11 +17,14 @@ def main():
     histories=load_archives(DEFAULT_SOURCE,days)
     plan=json.loads((DEFAULT_SOURCE/'plan.json').read_text(encoding='utf-8'))
     with connect() as db:
-        collected=run(db,histories,days,trading_days=plan['dates'],expected_symbols=len(plan['symbols']))
-        labelled=update_labels(db)
-        audit=build_audit(db)
+        run(db,histories,days,trading_days=plan['dates'],expected_symbols=len(plan['symbols']))
+        update_labels(db)
+        # v1 replays the Shioaji archive, the lineage of the reserved intraday
+        # confirmation partition (PHASE2C_FUTURE_60D from 2026-10-05): its
+        # audit and output exclude those sessions; only admin metadata is printed.
+        audit=build_audit(db,before=SETTINGS['v1_blinded_from'])
     write_audit(audit)
-    print(json.dumps({'collected':collected,'labels_updated':labelled,
+    print(json.dumps({'sessions_replayed':days,'blinded_from':SETTINGS['v1_blinded_from'],
                       'audit_critical':audit['data_quality']['critical_count']}))
     # v2 (official whole-market daily) runs after v1 is committed, so a v2
     # source outage never blocks the frozen v1 dataset.

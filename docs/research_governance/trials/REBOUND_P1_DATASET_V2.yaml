@@ -1,0 +1,88 @@
+# EasyStock Research Trial Ledger — rebound Dataset v2 build (recorded after the fact)
+
+trial_id: "TRIAL_REBOUND_P1_DATASET_V2"
+parent_trial_id: null
+created_at: "2026-10-08T07:00:00+08:00"
+study_name: "Rebound Phase 1.5 Dataset v2 build (official whole-market daily replay of range-rebound-0.3)"
+research_stage: "EXPLORATORY"
+ledger_record_type: "LEGACY_BACKFILL"
+recorded_after_experiment: true
+
+provenance:
+  source_classification: "HISTORICAL_REUSE"
+  source_refs:
+    - "docs/REBOUND_AI_DATASET.md (v2 build result)"
+    - "VM:/home/ubuntu/easystock-learning-data/rebound/rebound-dataset-v2-audit.json"
+
+hypothesis:
+  statement: "Descriptive dataset build: candidate counts, label shares and mean outcomes per candidate kind."
+  preregistered: false
+  exploratory: true
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "dataset_audit_critical_count"
+  direction: "DESCRIPTIVE"
+  baseline: "NONE"
+  frozen_before_search: false
+
+data:
+  dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+  dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+  dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+  start_date: "2023-01-03"
+  end_date: "2026-10-06"
+  dataset_end: "2026-10-06"
+  universe: "ALL_LISTED_AND_OTC_COMMON_STOCKS"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "per candidate kind: label shares, mean 10D return, mean MFE/MAE (whole period)"
+    - "trainable row counts per year"
+    - "v1/v2 rule-candidate overlap count and three case studies (2024 dates)"
+  exposures:
+    - exposure_id: "EXP_REBOUND_V2_BUILD_AGGREGATES"
+      dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+      dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+      dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+      start_date: "2023-01-03"
+      end_date: "2026-10-06"
+      role: "DESCRIPTIVE"
+      seen: true
+      exposed_dimensions:
+        - "candidate kind x label share and mean returns"
+      source_trial_id: "TRIAL_REBOUND_P1_DATASET_V2"
+      first_seen_at: "2026-10-08T03:10:00+08:00"
+
+search:
+  parameters_searched:
+    - "none (bottom-zone tolerances were fixed in code before the build)"
+  search_space:
+    bottom_zone: "distance +5 points, range position +15 points, net RR >= 1.0, up to three misses"
+  trial_count: 1
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "GIT_COMMIT:dd8532f"
+  registry_hash: "NOT_APPLICABLE"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "SEALED"
+  decision: "DATASET_V2_BUILT_AUDIT_CRITICAL_0"
+  sealed_commit: "dd8532f"
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    46,503 rows, 25,515 trainable. Rule candidates (PENDING) 5,543: SUCCESS 7.3%, FAIL 27.2%, TIMEOUT 65.6%,
+    mean 10D +0.33% before cost. Whole-period totals included 2026-10-05/06 sessions (see incident
+    2026-10-08_REBOUND_BUILD_RESERVED_DAYS_AGGREGATE.md); no per-day value for those dates was viewed.
