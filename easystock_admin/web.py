@@ -103,7 +103,7 @@ def register_admin(app, store=None, verifier=None):
 
     @bp.get('/admin/assets/<name>')
     def assets(name):
-        if name not in ('admin.js', 'admin.css', 'paper-trade.js', 'order.js', 'live-console.js'):
+        if name not in ('admin.js', 'admin.css', 'paper-trade.js', 'order.js', 'live-console.js', 'guardian.js'):
             return '', 404
         return send_from_directory(STATIC, name)
 
@@ -287,6 +287,12 @@ def register_admin(app, store=None, verifier=None):
         owner_authenticated()
         from market_data.context import diagnostics
         return jsonify(diagnostics())
+
+    @bp.get('/admin/api/guardian')
+    def get_guardian():
+        owner_authenticated()
+        from .guardian_view import snapshot
+        return jsonify(snapshot())
 
     @bp.get('/admin/api/live-console')
     def get_live_console():

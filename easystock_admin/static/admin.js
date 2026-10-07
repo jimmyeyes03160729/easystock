@@ -21,6 +21,7 @@ function showAdminTab(id){
   if(id==='modelLogPanel')loadModelLog();
   if(id==='liveConsolePanel' && typeof window.loadLiveConsole==='function')window.loadLiveConsole();
   if(id==='manualOrderPanel' && typeof window.loadManualOrders==='function')window.loadManualOrders();
+  if(id==='guardianPanel' && typeof window.loadGuardian==='function')window.loadGuardian();
 }
 const healthLabels={ok:'正常',warning:'注意',error:'異常',idle:'等待'};
 function healthBadge(row){if(row.key==='paper_trade')return row.state==='ok'?'已啟用・等待交易時段':'已暫停';if(row.key==='market_session'&&row.state==='idle')return '今日休市';if(['market_credentials','firebase'].includes(row.key)&&row.state==='ok')return '已設定';if(row.key==='admin_store'&&row.state==='ok')return '可讀取';if(['training_worker','daily_learning_worker','download_worker'].includes(row.key)&&row.state==='idle')return '排程中';if(row.key==='candidate_model'&&row.state==='idle')return '尚無模型';if(row.key==='history_collection'&&row.state==='idle')return '等待時段';return healthLabels[row.state]||'未知';}

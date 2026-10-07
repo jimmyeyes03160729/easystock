@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily read-only Architecture Guardian
+
+[Timer]
+OnCalendar=*-*-* 06:20:00 Asia/Taipei
+Persistent=true
+Unit=easystock-architecture-guardian.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,135 @@
+name: Architecture Guardian daily (observation only)
+on:
+  schedule:
+    - cron: '35 22 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: architecture-guardian-daily
+  cancel-in-progress: false
+jobs:
+  report:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SJ_API_KEY: ''
+      SJ_SECRET_KEY: ''
+      LIVE_ORDERING_ENABLED: 'false'
+      LIVE_ORDERING_CONFIRMATION: ''
+      GUARDIAN_AI_PROVIDER: ''
+      GUARDIAN_AI_API_KEY: ''
+      GEMINI_API_KEY: ''
+      GOOGLE_API_KEY: ''
+      OPENAI_API_KEY: ''
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select isolated report state
+        run: printf 'GUARDIAN_REPORT_DIR=%s/guardian\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/guardian
+          key: guardian-reports-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: guardian-reports-${{ runner.os }}-
+      - run: python -m pip install -r requirements.txt -r daytrade_learning/requirements.txt Flask pytest python-dotenv
+      - id: root
+        continue-on-error: true
+        run: python -m pytest tests -q
+      - id: research
+        continue-on-error: true
+        run: python -m pytest daytrade_learning -q
+      - id: rebound
+        continue-on-error: true
+        run: python -m pytest tests/test_rebound_learning*.py -q
+      - id: admin
+        continue-on-error: true
+        run: python -m pytest easystock_admin history -q
+      - id: runtime
+        continue-on-error: true
+        run: python -m pytest vm_runtime -q
+      - id: pnpm
+        continue-on-error: true
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm test
+      - id: compile
+        continue-on-error: true
+        run: python -m compileall -q guardian easystock_admin vm_runtime/easystock_admin
+      - name: Preserve sanitized test outcomes (no raw logs)
+        if: always()
+        env:
+          CHECKS: '{"root":"${{ steps.root.outcome }}","research":"${{ steps.research.outcome }}","rebound":"${{ steps.rebound.outcome }}","admin":"${{ steps.admin.outcome }}","runtime":"${{ steps.runtime.outcome }}","pnpm":"${{ steps.pnpm.outcome }}","compile":"${{ steps.compile.outcome }}"}'
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from guardian.report import write_artifact
+          write_artifact(Path.cwd(),os.environ['GUARDIAN_REPORT_DIR'],'test-status.json',{'checks':json.loads(os.environ['CHECKS'])})
+          PY
+      - name: Validate policy and deterministic scan (findings are not trading permission)
+        if: always()
+        run: |
+          python -m guardian.cli validate-policy
+          python -m guardian.cli scan
+      - name: Official Trivy filesystem and Docker configuration scan
+        id: trivy
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # safe v0.35.0 immutable release
+        with:
+          version: v0.69.3 # unaffected version; do not float compromised tags
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig
+          format: json
+          output: ${{ runner.temp }}/trivy-raw.json
+          exit-code: '0'
+          cache: 'false'
+      - name: Publish only sanitized dependency/security metadata
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from guardian.ai_review import security_summary
+          from guardian.report import write_artifact
+          source=Path(os.environ['RUNNER_TEMP'])/'trivy-raw.json'
+          value=security_summary(json.loads(source.read_text())) if source.is_file() and source.stat().st_size<16000000 else {'schema_version':1,'status':'UNKNOWN','findings':[]}
+          write_artifact(Path.cwd(),os.environ['GUARDIAN_REPORT_DIR'],'security-summary.json',value)
+          PY
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ${{ runner.temp }}/guardian
+          key: guardian-reports-${{ runner.os }}-${{ github.run_id }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: guardian-daily-report
+          path: ${{ runner.temp }}/guardian/*.json
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: guardian-daily-readable-report
+          path: ${{ runner.temp }}/guardian/guardian-report.md
+          retention-days: 30
+      - name: Fail failed regression, without auto-fix or deployment
+        if: always()
+        env:
+          CHECKS: '${{ steps.root.outcome }} ${{ steps.research.outcome }} ${{ steps.rebound.outcome }} ${{ steps.admin.outcome }} ${{ steps.runtime.outcome }} ${{ steps.pnpm.outcome }} ${{ steps.compile.outcome }} ${{ steps.trivy.outcome }}'
+        run: python -c "import os; raise SystemExit(1 if any(s != 'success' for s in os.environ['CHECKS'].split()) else 0)"

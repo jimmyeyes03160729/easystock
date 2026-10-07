@@ -1,0 +1,382 @@
+{
+  "schema_version": 1,
+  "capabilities": [
+    "SCAN",
+    "ANALYZE",
+    "REPORT",
+    "NOTIFY"
+  ],
+  "rules": {
+    "TRADING-001": {
+      "severity": "CRITICAL",
+      "category": "TRADING_SAFETY",
+      "title": "Research depends on live execution",
+      "impact": "Research must not submit real orders.",
+      "recommendation": "Remove the execution dependency through reviewed architecture boundaries.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "TRADING-002": {
+      "severity": "CRITICAL",
+      "category": "TRADING_SAFETY",
+      "title": "Paper / Live ledger boundary violation",
+      "impact": "A simulated or real fill could contaminate the other ledger.",
+      "recommendation": "Keep execution and ledger writes in their canonical isolated layer.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "TRADING-003": {
+      "severity": "CRITICAL",
+      "category": "TRADING_SAFETY",
+      "title": "LIVE dual-guard protection missing or bypassed",
+      "impact": "A broker submission or activation could bypass explicit consent.",
+      "recommendation": "Review both existing guards; Guardian does not change their state.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "TRADING-004": {
+      "severity": "CRITICAL",
+      "category": "TRADING_SAFETY",
+      "title": "KILL control may flatten or permit new AUTO authorization",
+      "impact": "KILL must block new automatic orders without liquidating holdings.",
+      "recommendation": "Keep KILL and any future explicit flatten action separate.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "TRADING-005": {
+      "severity": "HIGH",
+      "category": "TRADING_SAFETY",
+      "title": "New order path lacks evidenced idempotency",
+      "impact": "A retry could duplicate a broker submission.",
+      "recommendation": "Use the existing client_order_id reservation boundary.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "TRADING-006": {
+      "severity": "CRITICAL",
+      "category": "TRADING_SAFETY",
+      "title": "Local state may overwrite broker position truth",
+      "impact": "Local expectations cannot replace broker account truth.",
+      "recommendation": "Pause for explicit reconciliation; never infer account repair.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "TRADING-007": {
+      "severity": "CRITICAL",
+      "category": "TRADING_SAFETY",
+      "title": "Silent LIVE enable default",
+      "impact": "Deployment or defaults may enable real orders unintentionally.",
+      "recommendation": "Require explicit operator consent; do not enable production guards.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "RESEARCH-001": {
+      "severity": "CRITICAL",
+      "category": "RESEARCH_GOVERNANCE",
+      "title": "Protected holdout outcomes reach optimization",
+      "impact": "Pristine holdout outcomes must remain unseen before authorized one-shot unseal.",
+      "recommendation": "Review the access path against the existing holdout policy.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "RESEARCH-002": {
+      "severity": "HIGH",
+      "category": "RESEARCH_GOVERNANCE",
+      "title": "Possible future information in features",
+      "impact": "Lookahead information can invalidate point-in-time research.",
+      "recommendation": "Separate future labels from features and verify temporal joins.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "RESEARCH-003": {
+      "severity": "HIGH",
+      "category": "RESEARCH_GOVERNANCE",
+      "title": "Mixed profile training lacks visible profile filtering",
+      "impact": "Incompatible profile semantics may be combined.",
+      "recommendation": "Review current-profile equality filtering before training.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "RESEARCH-004": {
+      "severity": "HIGH",
+      "category": "RESEARCH_GOVERNANCE",
+      "title": "Approved model write outside evidenced Champion gate",
+      "impact": "Approval may bypass formal promotion controls; existing Paper bootstrap also needs explicit review.",
+      "recommendation": "Review the existing promotion policy; do not promote or alter it automatically.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "RESEARCH-005": {
+      "severity": "CRITICAL",
+      "category": "RESEARCH_GOVERNANCE",
+      "title": "Research writes production decisions",
+      "impact": "Research cannot alter production strategy, risk or model configuration.",
+      "recommendation": "Keep research conclusions as evidence only.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "ARCH-001": {
+      "severity": "MEDIUM",
+      "category": "ARCHITECTURE_INTEGRITY",
+      "title": "Structurally duplicated canonical responsibility",
+      "impact": "Parallel implementations may drift in shared fee, risk or ledger semantics.",
+      "recommendation": "Review the paired implementations before choosing one canonical source.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": false
+    },
+    "ARCH-002": {
+      "severity": "HIGH",
+      "category": "ARCHITECTURE_INTEGRITY",
+      "title": "Required runtime mirror drift or unclassified runtime file",
+      "impact": "The deployed mirror may use a different safety implementation.",
+      "recommendation": "Inspect the manifest and synchronize only reviewed required mirrors.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "ARCH-003": {
+      "severity": "MEDIUM",
+      "category": "ARCHITECTURE_INTEGRITY",
+      "title": "Circular dependency",
+      "impact": "Cross-layer import cycles can obscure ownership and initialization.",
+      "recommendation": "Review the evidenced import cycle and preserve layer boundaries.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": false
+    },
+    "SECURITY-001": {
+      "severity": "CRITICAL",
+      "category": "SECURITY",
+      "title": "Potential credential material in tracked source",
+      "impact": "Committed credentials may be exposed.",
+      "recommendation": "Review privately and rotate if real; report contains no credential values.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "SECURITY-002": {
+      "severity": "CRITICAL",
+      "category": "SECURITY",
+      "title": "Sensitive file tracked",
+      "impact": "Private keys, certificates, data or backups must not be committed.",
+      "recommendation": "Remove through deliberate review while preserving needed private data.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "SECURITY-003": {
+      "severity": "CRITICAL",
+      "category": "SECURITY",
+      "title": "Private data exposed through public code or payload",
+      "impact": "Public output may reveal identity, credentials or private infrastructure.",
+      "recommendation": "Remove sensitive public projection through reviewed changes.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "DEPLOY-001": {
+      "severity": "HIGH",
+      "category": "DEPLOYMENT_INTEGRITY",
+      "title": "Canonical deployment protection missing",
+      "impact": "Main-only deployment must preserve running jobs and local changes.",
+      "recommendation": "Review the existing canonical updater; Guardian never executes it.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "DEPLOY-002": {
+      "severity": "HIGH",
+      "category": "DEPLOYMENT_INTEGRITY",
+      "title": "Destructive command without evidenced safe scope",
+      "impact": "Unbounded cleanup could destroy production data or credentials.",
+      "recommendation": "Require resolved bounded scope and explicit guards before execution.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "DEPLOY-003": {
+      "severity": "HIGH",
+      "category": "DEPLOYMENT_INTEGRITY",
+      "title": "Deployment may overwrite protected data",
+      "impact": "Private production data must survive source updates.",
+      "recommendation": "Review protected destinations and backup/explicit-apply safeguards.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "DIFF-001": {
+      "severity": "HIGH",
+      "category": "ARCHITECTURE_INTEGRITY",
+      "title": "Safety or decision boundary changed",
+      "impact": "Changes to guards, risk, strategy or model controls need review, not automatic acceptance.",
+      "recommendation": "Review the changed critical files with existing regression evidence.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "SECURITY-004": {
+      "severity": "HIGH",
+      "category": "SECURITY",
+      "title": "Private infrastructure reference in public source",
+      "impact": "Public source may reveal an operational endpoint; an intended Owner entrance still needs review.",
+      "recommendation": "Review publication intent privately; Guardian does not remove or change endpoints.",
+      "evidence": "Infrastructure reference detected; endpoint intentionally omitted.",
+      "blocks_live_auto": true
+    },
+    "SCAN-001": {
+      "severity": "HIGH",
+      "category": "DEPLOYMENT_INTEGRITY",
+      "title": "Scanner could not complete",
+      "impact": "Incomplete inspection is not proof of safety.",
+      "recommendation": "Inspect scanner configuration or bounded input limits; state remains UNKNOWN.",
+      "evidence": "Static structural evidence; source values intentionally omitted.",
+      "blocks_live_auto": true
+    }
+  },
+  "critical_paths": [
+    "strategy_engine.py",
+    "strategy_rules.py",
+    "intraday_live.py",
+    "market_risk.py",
+    "position_manager.py",
+    "paper_*.py",
+    "daytrade_learning/*",
+    "rebound_learning/*",
+    "easystock_admin/*",
+    "vm_runtime/*",
+    "deploy/*",
+    "guardian/*",
+    ".github/workflows/*"
+  ],
+  "layers": {
+    "UI": ["index.html", "assets/*"],
+    "Admin": ["easystock_admin/*"],
+    "Market Data": ["market_data/*", "history/*"],
+    "Strategy": ["strategy_engine.py", "strategy_rules.py", "market_risk.py"],
+    "Research": ["daytrade_learning/*", "rebound_learning/*", "research*"],
+    "Paper": ["paper_*.py", "position_manager.py"],
+    "Live Broker": ["easystock_admin/order_service.py", "easystock_admin/broker_read.py"]
+  },
+  "forbidden_dependencies": {
+    "research": [
+      "easystock_admin.order_service",
+      "easystock_admin.live_console"
+    ],
+    "public": [
+      "easystock_admin",
+      "guardian",
+      "shioaji"
+    ]
+  },
+  "research_paths": [
+    "daytrade_learning/*",
+    "rebound_learning/*",
+    "research*"
+  ],
+  "paper_paths": [
+    "paper_*.py",
+    "paper/*"
+  ],
+  "live_paths": [
+    "easystock_admin/order_service.py",
+    "easystock_admin/live_console.py",
+    "easystock_admin/broker_read.py"
+  ],
+  "public_paths": [
+    "index.html",
+    "assets/*",
+    "public_feed.py"
+  ],
+  "test_paths": [
+    "tests/*",
+    "*/test_*.py",
+    "*/tests/*",
+    "test-*.cjs"
+  ],
+  "mirror_manifest": "runtime_mirror_manifest.json",
+  "live_guards": {
+    "enabled": "LIVE_ORDERING_ENABLED",
+    "confirmation": "LIVE_ORDERING_CONFIRMATION",
+    "value": "I_UNDERSTAND_LIVE_ORDERING",
+    "low_level_executor": "easystock_admin/order_service.py"
+  },
+  "holdout_protections": {
+    "datasets": [
+      "PHASE2C_FUTURE_60D"
+    ],
+    "metadata_paths": [
+      "daytrade_learning/research_governance/*"
+    ],
+    "optimization_calls": [
+      "fit",
+      "train",
+      "train_candidate",
+      "optimize",
+      "select_features",
+      "select_model",
+      "tune_threshold",
+      "max",
+      "min"
+    ]
+  },
+  "promotion_paths": [
+    "daytrade_learning/champion.py"
+  ],
+  "canonical_responsibilities": [
+    "fee",
+    "tax",
+    "eligibility",
+    "market_risk",
+    "paper_ledger",
+    "provider_health"
+    ,"broker_execution", "place_order", "submit_order", "eligible", "research_episode", "episode", "provider_health", "esun_context", "context"
+  ],
+  "canonical_deploy": "deploy/update_vm_main.sh",
+  "protected_output_prefixes": [
+    "/home/ubuntu/easystock-admin",
+    "/home/ubuntu/easystock-learning-data",
+    "/home/ubuntu/easystock-market-data",
+    "/home/ubuntu/easystock-history-data",
+    "/etc/easystock",
+    "/var/lib/easystock-guardian"
+  ],
+  "sensitive_patterns": {
+    "extensions": [
+      ".p12",
+      ".pfx",
+      ".pem",
+      ".key",
+      ".sqlite",
+      ".sqlite3",
+      ".db",
+      ".tar.gz",
+      ".tgz",
+      ".zip",
+      ".bundle"
+    ],
+    "names": [
+      "firebase-service-account.json",
+      "credentials.json"
+    ],
+    "placeholder": "(?i)^(?:|change[-_ ]?me|your[_ -].*|example.*|placeholder.*|test[-_].*|fake[-_].*|[xX*]+)$",
+    "tokens": [
+      "-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----",
+      "(?:sk-(?:proj-)?[A-Za-z0-9_-]{24,})",
+      "(?:gh[pousr]_[A-Za-z0-9]{30,})",
+      "(?:github_pat_[A-Za-z0-9_]{30,})",
+      "(?:eyJ[A-Za-z0-9_-]{12,}\\.[A-Za-z0-9_-]{12,}\\.[A-Za-z0-9_-]{12,})",
+      "(?:[0-9]{7,12}:[A-Za-z0-9_-]{30,})"
+    ],
+    "key_names": "(?i)(api[_-]?key|secret|password|private_key|access_token|bot_token|ca_passwd|national_id|person_id)"
+  },
+  "public_exposure_rules": {
+    "sensitive_fields": [
+      "national_id",
+      "person_id",
+      "api_key",
+      "secret",
+      "password",
+      "private_key",
+      "access_token",
+      "ca_path",
+      "certificate_path",
+      "broker_account", "account_id", "stack_trace", "stacktrace"
+    ],
+    "private_infrastructure": "(?:https?://[^\\s\\\"'<>]*\\.(?:ngrok-free\\.(?:app|dev)|ngrok\\.io)|https?://(?:[0-9]{1,3}\\.){3}[0-9]{1,3}(?::[0-9]+)?)"
+  },
+  "baseline_allowed": [
+    "MEDIUM",
+    "LOW"
+  ]
+}

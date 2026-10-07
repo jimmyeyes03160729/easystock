@@ -9,6 +9,7 @@
 <script defer src="/admin/assets/paper-trade.js"></script>
   <script defer src="/admin/assets/order.js"></script>
 <script defer src="/admin/assets/live-console.js"></script>
+<script defer src="/admin/assets/guardian.js"></script>
 </head>
 <body>
 <header><a class="brand" href="https://jimmyeyes03160729.github.io/easystock/">E<span>EasyStock</span></a><button id="theme" type="button">切換明暗</button></header>
@@ -160,6 +161,13 @@
 </details>
 </section>
 
+<section class="panel admin-tab-panel" id="guardianPanel" hidden aria-labelledby="guardianTitle">
+<div class="panel-title"><h2 id="guardianTitle">AI 系統健檢</h2><button type="button" id="guardianRefresh">重新讀取報告</button></div>
+<p class="muted">僅觀察與報告，不自動修復、部署、晉升模型、開啟實單或變更 KILL SWITCH。SAFE 不是實盤交易許可。</p>
+<p id="guardianStatus">UNKNOWN · 尚未讀取私人報告</p><p id="guardianCounts"></p><p id="guardianCommit"></p><p id="guardianReview"></p>
+<h3>最近 findings</h3><div id="guardianFindings" class="health-signals"></div>
+<h3>Resolved findings</h3><div id="guardianResolved" class="health-signals"></div>
+</section>
 <section class="panel admin-tab-panel" id="liveConsolePanel" hidden aria-labelledby="liveConsoleTitle">
 <h2 id="liveConsoleTitle">永豐實盤當沖</h2>
 <p class="hint">Owner 專用。Research／Paper／Live 隔離。LIVE AUTO 只有受控狀態骨架，尚未連接自動執行引擎；部署預設 OFF。KILL SWITCH 只阻擋新 AUTO 委託，不平倉。</p>

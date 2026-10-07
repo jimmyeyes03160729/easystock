@@ -19,6 +19,12 @@
 
 ## 目前主要進行中主線（2026-10-07）
 
+- [ ] **AI Architecture Guardian v1 上線驗證**
+  - SCAN / ANALYZE / REPORT / NOTIFY 的只讀架構、政策、鏡像 manifest、報告歷史、diff review、Owner 私人健檢頁與 CI 已實作；此總項只在正式部署驗證完成後勾選。
+  - 不下單、不自動修正、不部署修正、不改策略/風控/模型/guard；blocking 僅提示。
+  - [ ] OPTIONAL AI provider integration（未設定時 NOT_CONFIGURED；v1 提供 bundle / prompt / interface，不強接付費 API）。
+  - 詳見 `ARCHITECTURE_GUARDIAN.md`。
+
 - [ ] **正式當沖系統：完整交易日 LIVE Validation**
   - 程式核心與 Paper execution alignment 已完成並部署；現在不是重寫策略，而是收完整交易日證據。
   - Market Risk：驗證 stale premarket 不等同 RED、Shioaji / 玉山 fallback、雙來源失效時 UNKNOWN + BLOCK、真 RED 正常 BLOCK、盤前 RED 可由連續盤中 fresh evidence 依 hysteresis 恢復。
@@ -35,7 +41,27 @@
   - 目前研究狀態維持 `PRODUCTION_READY=false`、`INDEPENDENT_CONFIRMATION=false`；未曝光未來樣本用來做後續 one-shot confirmation，不可反覆微調後重測。
   - 研究 / 學習流程與正式 ENTRY / EXIT 保持治理隔離；任何研究結論不得自動晉升正式模型或修改正式策略。
 
+## Guardian v1 已實作與設定驗證（不等同 hosted scan 或 LIVE VERIFIED）
+
+- [x] Guardian deterministic scanner / machine-readable policy（無 AI API 也可掃描）。
+- [x] Guardian report schema、fingerprint、first/last seen、resolved history、Medium/Low baseline。
+- [x] Trading safety rules（雙 guard、Paper/Live、KILL、idempotency、broker truth）。
+- [x] Research governance rules（holdout、future leakage、profile、promotion、production boundary）。
+- [x] Secret / sensitive-file / public-exposure rules與脫敏證據。
+- [x] Root/vm_runtime mirror manifest 與結構責任／dependency checks。
+- [x] Owner Admin Guardian panel、既有 Owner auth、唯讀 API、stale/UNKNOWN 顯示。
+- [x] Daily CI scan 設定（只測試／掃描／artifact，未授權部署／寫程式）。
+- [x] CodeQL Python + JavaScript/TypeScript workflow 設定；GitHub default setup 已確認未配置。
+- [x] Dependabot 真實 npm / Actions / pip manifests 設定。
+- [x] 官方 Trivy 固定安全 SHA / 工具版本的 filesystem / Docker config scan 設定。
+- [x] Weekly 有界 review bundle / prompt / provider-neutral interface。
+- [ ] AI weekly provider execution（NOT_CONFIGURED；未呼叫付費 API）。
+- [ ] Hosted daily / weekly / CodeQL / Trivy 首次完整執行驗收（本地 YAML/actionlint 驗證不是雲端安全掃描成功）。
+- [ ] VM scanner / Admin runtime 部署與 smoke verification（等待 guard 工作自然結束）。
+
 ## 待新增 / 待執行主題總覽
+
+- [ ] AI Architecture Guardian v1：完整回歸與 VM 只讀 runtime 驗證待完成；OPTIONAL AI provider integration 未設定。
 
 > 這一區固定放在 Roadmap 最前面，用來快速確認「還有哪些功能尚未執行」。  
 > 完成後改成 `[x]`；尚未開始或尚未完成維持 `[ ]`。細節保留在下方對應章節。

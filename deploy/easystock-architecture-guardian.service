@@ -1,0 +1,18 @@
+[Unit]
+Description=EasyStock read-only Architecture Guardian report
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+Environment=GUARDIAN_REPORT_DIR=/home/ubuntu/easystock-architecture-guardian
+ExecStart=/home/ubuntu/easystock/.venv/bin/python -m guardian.cli scan --notify
+TimeoutStartSec=120
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/easystock-architecture-guardian
+PrivateTmp=true
+MemoryMax=384M
