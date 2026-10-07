@@ -1,0 +1,94 @@
+# EasyStock Research Trial Ledger — Legacy Backfill
+# Trial: Knowledge V1 book-rule entry batch (C01, C02, C04), 2026-10-07/08
+# NOTE: registry frozen before outcomes; this ledger entry is recorded after the run.
+
+trial_id: "TRIAL_EA_BOOK_RULES_V1"
+parent_trial_id: "TRIAL_EA_BASE_RATE_MATCHED_CONTROL_V1"
+created_at: "2026-10-08T01:00:00+08:00"
+study_name: "Knowledge V1 book-rule entry batch (3 evaluators)"
+research_stage: "EXPLORATORY"
+ledger_record_type: "LEGACY_BACKFILL"
+recorded_after_experiment: true
+
+provenance:
+  source_classification: "CANONICAL_INTERNAL_PRIMITIVE"
+  source_refs:
+    - "daytrade_learning/knowledge_v1/rules.py"
+    - "daytrade_learning/event_audit/README.md"
+    - "VM:/tmp/easystock_book_rules_v1_20261007.tar.gz (sha256 a6e7c5227e081182907d204c25a58442006dfc77aa90f572bb4ce07353bcef93)"
+
+hypothesis:
+  statement: "Each frozen Knowledge V1 evaluator (C01 VWAP pullback support, C02 daily trend + open breakout, C04 breakout with relative volume), called with seed thresholds and frozen input mappings, has a 15m absolute gross edge on LONG entries."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "gross_return_bps_15m"
+  direction: "PASS_FAIL"
+  baseline: "ZERO_GROSS_RETURN"
+  frozen_before_search: true
+
+data:
+  dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2023-09-27"
+  end_date: "2026-10-02"
+  dataset_end: "2026-10-02"
+  universe: "42_STOCK_CORE"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "3 book rules: aggregate, per-fold, horizon, MFE/MAE, plus-veto and standardized relative 15m metrics"
+  exposures:
+    - exposure_id: "EXP_EA_BOOK_RULES_TEST_WINDOWS"
+      dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+      dataset_family_id: "TWSE_EQUITY_INTRADAY"
+      dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "3 book rules: aggregate, per-fold, horizon, MFE/MAE, plus-veto and standardized relative 15m metrics"
+      source_trial_id: "TRIAL_EA_BOOK_RULES_V1"
+      first_seen_at: "2026-10-08T00:32:53+08:00"
+
+search:
+  parameters_searched:
+    - "3 frozen evaluators K01-K03 with unchanged AI_QUANTIZED seed thresholds (no grid search)"
+  search_space:
+    K01: "-0.002 <= (price-vwap)/vwap <= 0.003 and (clv>0 or lower_shadow>=0.25)"
+    K02: "MA5>MA10>MA20, gap_open>0, (prior_20d_high-price)/price<=0.001"
+    K03: "price>=prior_20d_high, volume_ratio>=1.5, buy_share>=0.6"
+  trial_count: 3
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "a6e7c5227e081182907d204c25a58442006dfc77aa90f572bb4ce07353bcef93"
+  registry_hash: "227c6ed9a589b31e76720d77ff35e064c327617544f3eb4bd44dbd0778c39707"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "REJECTED"
+  decision: "NO_BOOK_RULE_ENTRY_EDGE"
+  sealed_commit: "d176f7a89a1c7abd6ba52ec8f2bc79a316e4cb03"
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  EXPLORATORY_BOOK_RULE_FAMILY: true
+  notes: >
+    C01 gross -7.19 bps (0/5 folds); C02 +1.48 bps (4/5) and C04 +3.06 bps (3/5) are WEAK_OR_UNSTABLE: positive only
+    in early windows, net -23..-25 bps, quote -46..-50 bps. Thresholds are AI_QUANTIZED seeds (not book text) and the
+    evaluator inputs (VWAP source, 20-day prior high/MAs from archive days, 60s buy/sell volume, 1m volume ratio) are
+    frozen mapping choices, so the result says nothing about the books themselves. No candidate may be combined or
+    tuned from this family. registry_hash is BOOK_RULE_REGISTRY_SHA256; sealed_commit is the repo HEAD the registry froze against.

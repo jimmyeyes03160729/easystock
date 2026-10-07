@@ -1,0 +1,49 @@
+# EasyStock OOS Consumption Ledger — Event Audit Legacy Backfill, part 2 (book-rule batch)
+# Recorded after exposure; none of these slices may be treated as pristine again.
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "EVENT_AUDIT_LEGACY_BACKFILL_2"
+created_at: "2026-10-08T01:00:00+08:00"
+description: >
+  Consumption of PHASE2_HISTORICAL_2023_2026_10_02 by the Knowledge V1 book-rule batch on the 42-stock core
+  (five chronological test windows 2024-12-25 .. 2026-08-27). Daily context for C02/C04 used archive days
+  before each decision date only. The PHASE2C_FUTURE_CONFIRMATION_60D partition was not read.
+
+consumption_events:
+  - consumption_id: "CNS_EA_BOOK_RULES_TEST_WINDOWS"
+    trial_id: "TRIAL_EA_BOOK_RULES_V1"
+    dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      slice_definition: "Book-rule batch (3 evaluators) five chronological test windows, 42-stock core"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "aggregate"
+      - "per-rule"
+      - "per-fold"
+      - "horizon"
+      - "plus-veto"
+      - "standardized relative edge"
+    consumed_at: "2026-10-08T00:32:53+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "daytrade_learning/event_audit/README.md"
+    source_commit: "d176f7a8"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Three frozen evaluators; direction informed by the earlier source-native audits. consumed_at is the VM bundle file time."

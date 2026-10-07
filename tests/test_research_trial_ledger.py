@@ -128,7 +128,7 @@ def test_all_backfill_trials_pass_validation(trials_dir):
 
 
 def test_event_audit_trials_form_a_rejected_chain(trials_dir):
-    """H2 -> H3 -> H4 -> primitive batch -> base-rate audit, none production-ready or confirmed."""
+    """H2 -> H3 -> H4 -> primitive batch -> base-rate audit -> book rules, none production-ready or confirmed."""
     trials = {}
     for f in trials_dir.glob("EA_*.yaml"):
         with open(f, "r", encoding="utf-8") as fp:
@@ -136,7 +136,7 @@ def test_event_audit_trials_form_a_rejected_chain(trials_dir):
             trials[d["trial_id"]] = d
     chain = ["TRIAL_EA_H2_TICK_COMPRESSION_BREAKOUT", "TRIAL_EA_H3_COMPLETED_BAR_BREAKOUT",
              "TRIAL_EA_H4_SOURCE_NATIVE_ORB", "TRIAL_EA_SOURCE_PRIMITIVE_BATCH_V1",
-             "TRIAL_EA_BASE_RATE_MATCHED_CONTROL_V1"]
+             "TRIAL_EA_BASE_RATE_MATCHED_CONTROL_V1", "TRIAL_EA_BOOK_RULES_V1"]
     assert set(chain) == set(trials)
     assert trials[chain[0]]["parent_trial_id"] is None
     for parent, child in zip(chain, chain[1:]):
