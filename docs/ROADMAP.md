@@ -61,7 +61,7 @@
 
 ## 待新增 / 待執行主題總覽
 
-- [ ] AI Architecture Guardian v1：完整回歸與 VM 只讀 runtime 驗證待完成；OPTIONAL AI provider integration 未設定。
+- [ ] AI Architecture Guardian v1：回歸與設定驗證已通過；VM 只讀 runtime 部署待訓練自然結束，既有 failed units 需如實驗證；OPTIONAL AI provider integration 未設定。詳見 `ARCHITECTURE_GUARDIAN_VALIDATION_2026-10-07.md`。
 
 > 這一區固定放在 Roadmap 最前面，用來快速確認「還有哪些功能尚未執行」。  
 > 完成後改成 `[x]`；尚未開始或尚未完成維持 `[ ]`。細節保留在下方對應章節。
