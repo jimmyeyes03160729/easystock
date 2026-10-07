@@ -123,6 +123,7 @@ class PositionManager:
         breakeven_activate_pct=.006,
         breakeven_floor_pct=.0035,
         technical_exit_enabled=True,
+        cost_aware_breakeven=False,
         before_open=None,
         before_close=None,
         research_mode=False,
@@ -142,6 +143,7 @@ class PositionManager:
         self.breakeven_activate_pct = breakeven_activate_pct
         self.breakeven_floor_pct = breakeven_floor_pct
         self.technical_exit_enabled = technical_exit_enabled
+        self.cost_aware_breakeven = bool(cost_aware_breakeven)
         self.before_open, self.before_close = before_open, before_close
         self.research_mode = research_mode
         self.research_store = research_store
@@ -461,6 +463,20 @@ class PositionManager:
     # Tick 即時監控
     # =====================================================
 
+    def breakeven_prices(self, position):
+        """(floor, activation) prices for the breakeven exit of a position."""
+        entry = float(position["entry_price"])
+        if not self.cost_aware_breakeven:
+            return (entry * (1 + self.breakeven_floor_pct),
+                    entry * (1 + self.breakeven_activate_pct))
+        from paper_execution import cost_aware_breakeven
+        # A Paper fill at the ask costs more than the signal price.
+        basis = max(entry, float(position.get("paper_entry_price") or 0))
+        floor, activate = cost_aware_breakeven(
+            basis, self.breakeven_floor_pct, self.breakeven_activate_pct)
+        return (max(floor, entry * (1 + self.breakeven_floor_pct)),
+                max(activate, entry * (1 + self.breakeven_activate_pct)))
+
     @synchronized
     def on_tick(
         self,
@@ -541,10 +557,12 @@ class PositionManager:
                 reason="固定停損",
             )
 
-        # 動態保本機制：若最高價曾漲達 +0.6% 以上，拉升至保本位(成本+0.35%稅費)，杜絕獲利反轉虧損
+        # 動態保本：最高價達啟動價後，跌回保本價即出場。預設為固定百分比
+        # （+0.6% 啟動、+0.35% 出場），未涵蓋手續費、稅與買賣價差；
+        # cost_aware_breakeven 時改以實際成本與跳動單位計算。
         highest = position.get("highest_price", price)
-        entry_price = position.get("entry_price", price)
-        if highest >= entry_price * (1+self.breakeven_activate_pct) and price <= entry_price * (1+self.breakeven_floor_pct):
+        floor, activate = self.breakeven_prices(position)
+        if highest >= activate and price <= floor:
             return self.close_position(
                 symbol=symbol,
                 exit_price=price,
@@ -840,13 +858,18 @@ class PositionManager:
             # Hypothetical one-lot research costs, independent of wallet size.
             from decimal import Decimal, ROUND_HALF_UP
             from paper_ledger import fee, BUY_RATE, SELL_RATE
-            from paper_execution import tax
+            from paper_execution import tax, tick_size
             entry_amount = Decimal(str(entry_price))*1000
             exit_amount = Decimal(str(exit_price))*1000
             costs = (fee(entry_amount, BUY_RATE) + fee(exit_amount, SELL_RATE)
                      + tax(exit_amount))
             trade['research_net_pnl_pct'] = pnl_pct - float(costs/entry_amount)*100
             trade['research_cost_basis'] = 'one_lot_fee_28pct_discount_daytrade_tax'
+            # Signal and exit prices are last trades; an actual fill buys at the
+            # ask and sells at the bid. Estimate that as one tick per round trip.
+            spread = float(tick_size(entry_price)/Decimal(str(entry_price)))*100
+            trade['research_spread_cost_pct'] = spread
+            trade['research_net_after_spread_pct'] = trade['research_net_pnl_pct'] - spread
             self._persist(trade, armed=False)
             self.rearm_states[(exit_time.date().isoformat(), symbol)] = (False, exit_time)
             if trade['paper_settlement_pending']:

@@ -92,6 +92,18 @@ def parse_date(value: Any) -> date:
     raise ValueError(f"無法解析日期格式: {value}")
 
 
+class CalendarUnavailable(RuntimeError):
+    """指定年份沒有可信的官方行事曆；呼叫端必須視為無法確認，而非開盤。"""
+
+
+def _same_year(closed_map: Any, year: int) -> dict[str, str]:
+    """只保留屬於指定年份的日期；TWSE 曾對未知年份回傳當年度資料。"""
+    if not isinstance(closed_map, dict):
+        return {}
+    prefix = f"{year:04d}-"
+    return {str(d): str(n) for d, n in closed_map.items() if str(d).startswith(prefix)}
+
+
 def _load_cache_calendar(year: int) -> dict[str, str] | None:
     """從本地快取讀取已下載之行事曆"""
     cache_path = CALENDAR_CACHE_DIR / f"calendar-{year}.json"
@@ -99,10 +111,14 @@ def _load_cache_calendar(year: int) -> dict[str, str] | None:
         return None
     try:
         content = json.loads(cache_path.read_text(encoding="utf-8"))
+        closed_map = None
         if isinstance(content, dict) and "closed_map" in content:
-            return content["closed_map"]
-        if isinstance(content, dict) and "closed" in content:
-            return {d: "排定休市" for d in content["closed"]}
+            closed_map = content["closed_map"]
+        elif isinstance(content, dict) and "closed" in content:
+            closed_map = {d: "排定休市" for d in content["closed"]}
+        # 舊版可能把其他年份資料存成本年度快取；不同年份的快取一律視為不存在。
+        closed_map = _same_year(closed_map, year)
+        return closed_map if len(closed_map) >= 5 else None
     except Exception:
         pass
     return None
@@ -127,13 +143,13 @@ def _save_cache_calendar(year: int, closed_map: dict[str, str]) -> None:
 def fetch_twse_calendar(year: int, timeout: float = 8.0) -> dict[str, str]:
     """
     從 TWSE 官方 API 取得指定年份開休市清單。
-    若網路不通或失敗，依序回退至本地快取與內建表。
+    若網路不通或失敗，依序回退至本地快取與內建表；
+    三者皆無該年份資料時拋出 CalendarUnavailable，不默認為開盤。
     """
     cached = _load_cache_calendar(year)
 
-    # 民國年計算（TWSE 查詢參數）
-    roc_year = year - 1911
-    url = f"{TWSE_HOLIDAY_URL}?response=json&queryYear={roc_year}"
+    # TWSE 以 date 參數選擇年度；queryYear 會被忽略並回傳當年度資料。
+    url = f"{TWSE_HOLIDAY_URL}?response=json&date={year:04d}0101"
 
     try:
         resp = requests.get(
@@ -158,6 +174,7 @@ def fetch_twse_calendar(year: int, timeout: float = 8.0) -> dict[str, str]:
                     # 「市場無交易，僅辦理結算交割作業」或一般國定假日皆屬休市
                     closed_map[day_str] = name or desc or "排定休市"
 
+                closed_map = _same_year(closed_map, year)
                 if len(closed_map) >= 5:
                     _save_cache_calendar(year, closed_map)
                     return closed_map
@@ -170,7 +187,7 @@ def fetch_twse_calendar(year: int, timeout: float = 8.0) -> dict[str, str]:
     if year == 2026:
         return dict(BUILTIN_2026_CLOSED)
 
-    return {}
+    raise CalendarUnavailable(f"TWSE {year} 年行事曆尚未取得；請於官方公布後執行 market_calendar.py --sync {year}")
 
 
 def check_dgpa_typhoon_closure(target_date: date, timeout: float = 6.0) -> tuple[bool, str]:
@@ -323,11 +340,15 @@ def main():
 
     args = parser.parse_args()
 
-    if args.sync:
-        year = args.sync
-        calendar = fetch_twse_calendar(year)
-        print(f"✅ 已同步 {year} 年 TWSE 行事曆，共 {len(calendar)} 個排定休市日")
-        return
+    try:
+        if args.sync:
+            year = args.sync
+            calendar = fetch_twse_calendar(year)
+            print(f"✅ 已同步 {year} 年 TWSE 行事曆，共 {len(calendar)} 個排定休市日")
+            return
+    except CalendarUnavailable as exc:
+        print(f"❌ {exc}", file=sys.stderr)
+        sys.exit(2)
 
     target = None
     if args.check_today:
@@ -339,7 +360,12 @@ def main():
     else:
         target = now_tpe().date()
 
-    is_open, reason, details = is_market_open(target)
+    try:
+        is_open, reason, details = is_market_open(target)
+    except CalendarUnavailable as exc:
+        # 無法確認時以非零結束；systemd ExecCondition 會略過而不是當作開盤。
+        print(f"⚠️ [無法確認] {exc}", file=sys.stderr)
+        sys.exit(2)
 
     if args.json:
         output = {"is_open": is_open, "reason": reason, **details}

@@ -2,23 +2,39 @@
 # -*- coding: utf-8 -*-
 """Unit tests for Taiwan Market Calendar and Holiday / Typhoon Detection."""
 
+import json
 import sys
+import tempfile
 from datetime import date
 from pathlib import Path
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 # 將專案根目錄加入 sys.path，以支援直接執行 python tests/test_market_calendar.py
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+import market_calendar
 from market_calendar import (
+    CalendarUnavailable,
     is_market_open,
     parse_date,
     check_dgpa_typhoon_closure,
     fetch_twse_calendar,
 )
+
+
+def twse_response(rows):
+    resp = MagicMock(status_code=200)
+    resp.json.return_value = {"stat": "OK", "data": rows}
+    return resp
+
+
+ROWS_2026 = [[d, n, ""] for d, n in market_calendar.BUILTIN_2026_CLOSED.items()]
+ROWS_2027 = [["2027-01-01", "中華民國開國紀念日", ""], ["2027-02-05", "農曆除夕及春節", ""],
+             ["2027-02-08", "農曆除夕及春節", ""], ["2027-03-01", "和平紀念日補假", ""],
+             ["2027-05-01", "勞動節", ""], ["2027-10-11", "國慶日補假", ""]]
 
 
 class TestMarketCalendar(unittest.TestCase):
@@ -102,6 +118,45 @@ class TestMarketCalendar(unittest.TestCase):
         self.assertIn("2026-01-01", cal)
         # 「開始交易日」2026-01-02 不應被計為休市
         self.assertNotIn("2026-01-02", cal)
+
+
+class TestUnpublishedYear(unittest.TestCase):
+    """未公布年份不可默認開盤，也不可把其他年度資料當成本年度。"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.cache = patch.object(market_calendar, "CALENDAR_CACHE_DIR", Path(self.tmp.name))
+        self.cache.start()
+
+    def tearDown(self):
+        self.cache.stop()
+        self.tmp.cleanup()
+
+    def test_other_year_response_is_rejected_and_fails_closed(self):
+        # TWSE 對未公布年份曾回傳當年度資料
+        with patch("market_calendar.requests.get", return_value=twse_response(ROWS_2026)) as get:
+            with self.assertRaises(CalendarUnavailable):
+                fetch_twse_calendar(2027)
+            with self.assertRaises(CalendarUnavailable):
+                is_market_open("2027-01-04")
+        self.assertIn("date=20270101", get.call_args[0][0])
+        self.assertFalse((Path(self.tmp.name) / "calendar-2027.json").exists())
+
+    def test_poisoned_cache_from_other_year_is_ignored(self):
+        payload = {"year": 2027, "closed_map": market_calendar.BUILTIN_2026_CLOSED}
+        (Path(self.tmp.name) / "calendar-2027.json").write_text(json.dumps(payload), encoding="utf-8")
+        with patch("market_calendar.requests.get", side_effect=OSError("offline")):
+            with self.assertRaises(CalendarUnavailable):
+                fetch_twse_calendar(2027)
+
+    def test_published_year_is_used_and_cached(self):
+        with patch("market_calendar.requests.get", return_value=twse_response(ROWS_2027 + ROWS_2026)):
+            cal = fetch_twse_calendar(2027)
+        self.assertEqual(set(cal), {r[0] for r in ROWS_2027})
+        with patch("market_calendar.requests.get", side_effect=OSError("offline")):
+            is_open, reason, details = is_market_open("2027-01-01")
+        self.assertFalse(is_open)
+        self.assertTrue(details["is_scheduled_holiday"])
 
 
 if __name__ == "__main__":

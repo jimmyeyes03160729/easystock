@@ -85,7 +85,7 @@ from market_data.context import esun_index_snapshot
 from market_data.health import observe as observe_provider
 from daytrade_learning.model_runtime import DaytradeModel, live_features, write_runtime_model_status, refresh_runtime_model_status
 from easystock_admin.store import read_live_settings
-from strategy_engine import evaluate_daytrade, clamp
+from strategy_engine import evaluate_daytrade, clamp, MAX_ROUNDTRIP_COST_PCT
 
 
 # =========================================================
@@ -1068,6 +1068,7 @@ def build_position_manager() -> PositionManager:
         breakeven_activate_pct=float(os.environ.get('LIVE_BREAKEVEN_ACTIVATE_PCT', '.006')),
         breakeven_floor_pct=float(os.environ.get('LIVE_BREAKEVEN_FLOOR_PCT', '.0035')),
         technical_exit_enabled=os.environ.get('LIVE_TECHNICAL_EXIT_ENABLED', '1') == '1',
+        cost_aware_breakeven=os.environ.get('LIVE_COST_AWARE_BREAKEVEN', '0') == '1',
     )
 
 
@@ -2757,6 +2758,8 @@ class IntradayLiveEngine:
                 "model_artifact_sha256": self.daytrade_model.artifact_sha256,
                 "learning_enabled": self.learning.enabled,
                 "exit_mode": self.manager.exit_mode,
+                "cost_aware_breakeven": self.manager.cost_aware_breakeven,
+                "max_roundtrip_cost_pct": MAX_ROUNDTRIP_COST_PCT,
                 "candidate_mode":
                     "shioaji_instant_volume_surge",
                 "universe_scanners":
@@ -3625,6 +3628,8 @@ class IntradayLiveEngine:
                      "breakeven_activate_pct": self.manager.breakeven_activate_pct,
                      "breakeven_floor_pct": self.manager.breakeven_floor_pct,
                      "technical_exit_enabled": self.manager.technical_exit_enabled,
+                     "cost_aware_breakeven": self.manager.cost_aware_breakeven,
+                     "max_roundtrip_cost_pct": MAX_ROUNDTRIP_COST_PCT,
                      "entry_filters": read_live_settings()},
                 )
             except Exception as exc:

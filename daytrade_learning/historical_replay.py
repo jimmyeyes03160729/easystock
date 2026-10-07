@@ -28,7 +28,8 @@ DEFAULT_OUTPUT = Path('/home/ubuntu/easystock-learning-data/replay-current-profi
 OFFICIAL_URL = 'https://www.twse.com.tw/exchangeReport/TWT84U?date={date}&response=json'
 REPLAY_VERSION = 'current-profile-replay-v1'
 POLICY_KEYS = ('stop_loss_pct', 'take_profit_pct', 'exit_mode', 'trailing_activate_pct',
-               'trailing_pullback_pct', 'breakeven_activate_pct', 'breakeven_floor_pct')
+               'trailing_pullback_pct', 'breakeven_activate_pct', 'breakeven_floor_pct',
+               'cost_aware_breakeven', 'max_roundtrip_cost_pct')
 
 
 def guard_day(day, through):
@@ -346,6 +347,11 @@ def main(argv=None):
     parser.add_argument('--symbols')
     parser.add_argument('--resume', action='store_true')
     parser.add_argument('--train', action='store_true')
+    # Candidate rules on top of the recorded policy; they form a different profile.
+    parser.add_argument('--cost-aware-breakeven', action='store_true')
+    parser.add_argument('--max-roundtrip-cost-pct', type=float)
+    parser.add_argument('--print-profile', action='store_true',
+                        help='print the profile hash for these costs/policy options and exit')
     args = parser.parse_args(argv)
     start, through = (datetime.strptime(x, '%Y-%m-%d').date().isoformat()
                       for x in (args.start, args.through))
@@ -363,8 +369,15 @@ def main(argv=None):
                           'labels_written': False}, ensure_ascii=False))
         return
     policy = canonical_policy(args.live_data / ('journal-' + args.policy_day + '.jsonl'), args.policy_day)
+    if args.cost_aware_breakeven:
+        policy = dict(policy, cost_aware_breakeven=True)
+    if args.max_roundtrip_cost_pct is not None:
+        policy = dict(policy, max_roundtrip_cost_pct=args.max_roundtrip_cost_pct)
     costs = costs_from_runtime()
     actual_profile = profile_hash(costs, policy)
+    if args.print_profile:
+        print(actual_profile)
+        return
     if actual_profile != args.expected_profile:
         raise SystemExit('profile_mismatch: canonical costs/policy do not match requested profile')
     references = References(args.output / 'references', through)

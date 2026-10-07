@@ -253,9 +253,13 @@ def collect(api, data, day, observations, max_symbols=500):
 def price_exit_policy(policy):
     policy=policy or {};mode=str(policy.get('exit_mode','hybrid'))
     if mode not in ('fixed','trailing','hybrid'):raise ValueError('invalid_exit_mode')
-    return {'stop_loss_pct':finite(policy['stop_loss_pct']),'take_profit_pct':finite(policy['take_profit_pct']),'exit_mode':mode,
+    result={'stop_loss_pct':finite(policy['stop_loss_pct']),'take_profit_pct':finite(policy['take_profit_pct']),'exit_mode':mode,
         'trailing_activate_pct':finite(policy.get('trailing_activate_pct',.006)),'trailing_pullback_pct':finite(policy.get('trailing_pullback_pct',.004)),
         'breakeven_activate_pct':finite(policy.get('breakeven_activate_pct',.006)),'breakeven_floor_pct':finite(policy.get('breakeven_floor_pct',.0035))}
+    # Opt-in rules join the profile only when enabled, so existing profiles keep their hash.
+    if policy.get('cost_aware_breakeven'):result['cost_aware_breakeven']=True
+    if finite(policy.get('max_roundtrip_cost_pct') or 0)>0:result['max_roundtrip_cost_pct']=finite(policy['max_roundtrip_cost_pct'])
+    return result
 
 def profile_hash(costs, policy):
     """Identity of label/feature semantics; exclude clocks and display-only fields."""
@@ -296,8 +300,16 @@ def simulate(sample, pack, costs):
     # Recheck limits at simulated fill too.
     if not limits['min_price']<=entry<=limits['max_price'] or (entry/previous-1)*100>limits['max_gain_pct']+1e-9:return None,'fill_filter'
     policy=price_exit_policy(sample.get('policy'))
+    if policy.get('max_roundtrip_cost_pct'):
+        from paper_execution import roundtrip_cost_pct
+        if roundtrip_cost_pct(price)>policy['max_roundtrip_cost_pct']:return None,'cost_filter'
     stop=entry*(1-policy['stop_loss_pct']); take=entry*(1+policy['take_profit_pct'])
     if not 0<stop<entry<take:return None,'invalid_exit_policy'
+    breakeven=entry*(1+policy['breakeven_floor_pct']); breakeven_on=entry*(1+policy['breakeven_activate_pct'])
+    if policy.get('cost_aware_breakeven'):
+        # Same trigger prices as the live PositionManager; labels still net the research costs.
+        from paper_execution import cost_aware_breakeven
+        breakeven,breakeven_on=cost_aware_breakeven(entry,policy['breakeven_floor_pct'],policy['breakeven_activate_pct'])
     cursor=start; reason=None; exit_price=None; highest=entry; trailing_stop=None
     while cursor<=end:
         b=bars.get(cursor)
@@ -306,8 +318,7 @@ def simulate(sample, pack, costs):
         if cursor==end:exit_price=b['open'];reason='12:55強制出場';break
         if b['open']<=stop:exit_price=b['open'];reason='gap_stop';break
         if b['low']<=stop:exit_price=stop;reason='stop_or_ambiguous_bar';break
-        breakeven=entry*(1+policy['breakeven_floor_pct'])
-        if highest>=entry*(1+policy['breakeven_activate_pct']) and b['low']<=breakeven:exit_price=breakeven;reason='動態保本出場';break
+        if highest>=breakeven_on and b['low']<=breakeven:exit_price=breakeven;reason='動態保本出場';break
         if policy['exit_mode'] in ('fixed','hybrid') and b['high']>=take:exit_price=take;reason='固定停利';break
         if policy['exit_mode'] in ('trailing','hybrid') and trailing_stop is not None and b['low']<=trailing_stop:exit_price=trailing_stop;reason='移動停利';break
         highest=max(highest,b['high'])
@@ -373,6 +384,8 @@ def build(data, day, costs, persist_report=True):
             'accepted_count':len(accepted) if accepted else len(actual),
             'closed_count':len(actual),'gross':metrics([finite(r['pnl_pct']) for r in actual if r.get('pnl_pct') is not None]),
             'net':metrics([finite(r['research_net_pnl_pct']) for r in actual if r.get('research_net_pnl_pct') is not None]),
+            # Older records lack the estimate; this metric covers only records that carry it.
+            'net_after_spread':metrics([finite(r['research_net_after_spread_pct']) for r in actual if r.get('research_net_after_spread_pct') is not None]),
             'paper_filled':sum(r.get('paper_execution')=='FILLED' for r in accepted),
             'paper_skipped_insufficient_cash':sum(r.get('paper_skip_reason')=='insufficient_cash' for r in accepted),
             'paper_skipped_daily_buy_limit':sum(r.get('paper_skip_reason')=='daily_buy_limit_exceeded' for r in accepted)},
