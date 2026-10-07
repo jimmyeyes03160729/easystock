@@ -183,12 +183,13 @@
   - [x] Phase 1：版本化 Dataset / Feature schema v1，共 26 個特徵；收集 PASSED / PENDING / NEAR_MISS / REJECTED_CONTROL。
   - [x] Phase 1：Historical Backfill 2023-09-04～2026-10-01，共 742 個交易日、100 檔、897 筆 Dataset；D1 open、10 交易日 label、1/3/5/10/20D outcome、MFE / MAE 已完成。
   - [x] Phase 1：私有 SQLite `/home/ubuntu/easystock-learning-data/rebound/dataset.sqlite`、每日 22:30 收集 / label timer、Dataset Audit / leakage guard 已完成；future leakage 0、duplicate 0、critical 0。
-  - [ ] **Phase 1.5：資料補強**：K 線 coverage 由目前 58.23% 補到至少 90%，優先補齊歷史行情缺口。
-  - [ ] Phase 1.5：建立可 point-in-time 重建的歷史 Market Context（TAIEX / OTC / 類股日資料、stock vs market / sector、market regime）；不得把今天的玉山即時資料倒灌過去。
+  - [x] **Phase 1.5：資料補強**（2026-10-08，Dataset v2）：改用證交所 / 櫃買官方全市場日 K，2022-01-03～2026-10-06 共 1,153 個交易日、2,030 檔（含之後下市股票）、2,107,485 根日 K；除權息依官方參考價還原，只使用 D0 以前已發生的事件。
+  - [x] Phase 1.5：Market Context v2：加權 / 櫃買 1/5/20 日報酬、加權 MA60 乖離、全市場上漲家數比例、個股相對所屬指數 5/20 日強弱；全部由當日以前官方收盤重建。類股 context 未納入（只有今天的產業分類，非 point-in-time）。
   - [ ] Phase 1.5：補歷史財務 point-in-time / publication date；無法證明當時已公開的財務資料維持 null，不可 future leakage。
   - [ ] Phase 1.5：維持兩個研究 profile：`rebound-tech-v1`（技術 + 量價 + Market Context）與 `rebound-full-v1`（再加 Financial PIT），避免財務 PIT 不足阻塞全部研究。
-  - [ ] Phase 1.5：重跑 Backfill / Labels / Audit，成熟可訓練樣本目前 237 筆，先累積到至少 500～1,000 筆再做正式模型比較。
-  - [ ] Phase 1.5：TIMEOUT 目前 154 / 237，Phase 2 前需評估三分類（SUCCESS / FAIL / TIMEOUT）或兩階段模型，避免只做 SUCCESS vs FAIL 丟掉大部分樣本。
+  - [x] Phase 1.5：重跑 Backfill / Labels / Audit（v2）：46,503 筆、可訓練 25,515 筆（v1 為 237），critical 0。正式規則候選 5,543 筆（SUCCESS 7.3%、FAIL 27.2%、TIMEOUT 65.6%）；新增 BOTTOM_ZONE 擴大池 16,828 筆。
+  - [ ] Phase 1.5：TIMEOUT 約佔 65%，Phase 2 前需評估三分類（SUCCESS / FAIL / TIMEOUT）、兩階段或連續報酬標籤，避免只做 SUCCESS vs FAIL 丟掉大部分樣本。
+  - [ ] Phase 2 前決定價格基準：v2 用除權息還原價判斷規則，正式 rebound_feed 目前用未還原 K 線；與 v1 重疊的 152 筆正式候選只有 94 筆在 v2 仍是正式候選（差異來自歷史長度與除權息還原，非資料錯誤）。訓練與上線必須使用同一價格基準。
   - [ ] Phase 2：Baseline / Logistic Regression / HistGradientBoosting 正式比較；目前只允許 pipeline sanity check，不得 Candidate / Shadow。
   - [ ] Phase 2：Walk-forward + 10 交易日 embargo + holdout；以相同 Top 3 訊號數比較 Target Hit Rate、5D / 10D return、MFE / MAE、PF、Drawdown、Brier。
   - [ ] Phase 2：Shadow 驗證，再決定是否 Applied；不自動晉升。

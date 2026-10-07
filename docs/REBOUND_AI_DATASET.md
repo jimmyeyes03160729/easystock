@@ -102,3 +102,25 @@ filing publication timestamps. E.SUN live sector data started later and is
 not usable as a historical feature. Phase 2 must first review audit coverage,
 class balance and out-of-sample splits before comparing rule baseline,
 Logistic Regression and HistGradientBoosting in shadow only.
+
+### v2 build result (2026-10-08)
+
+Archive: 1,153 sessions (2022-01-03 to 2026-10-06), 2,030 symbols,
+2,107,485 bars, 4,554 TWSE ex-rights events. Replay 2023-01-03 onward
+evaluated 1,068,346 liquid stock-days (about 12 hours at nice 19, 31 MB peak).
+
+| Kind | Trainable | SUCCESS | FAIL | TIMEOUT | Mean 10D return |
+|---|---:|---:|---:|---:|---:|
+| PENDING (rule eligible) | 5,543 | 7.3% | 27.2% | 65.6% | +0.33% |
+| NEAR_MISS | 3,144 | 11.9% | 21.3% | 66.9% | +0.05% |
+| BOTTOM_ZONE | 16,828 | 15.9% | 17.7% | 66.5% | +0.13% |
+
+Total rows 46,503 (20,447 untrainable controls), trainable 25,515, audit
+critical 0. Returns are D1-open based and before costs. 2.3% of candidates
+have at least one unknown TWSE "X" adjustment in their 252-session window.
+
+Price-basis caveat: of 152 v1 rule candidates on overlapping dates, 94 are
+also rule candidates in v2. Bar-by-bar checks found identical closes; the
+differences come from v1's shorter archive history and from v2's dividend
+adjustment. The production feed currently evaluates unadjusted K-lines, so
+Phase 2 must train and deploy on one price basis.
