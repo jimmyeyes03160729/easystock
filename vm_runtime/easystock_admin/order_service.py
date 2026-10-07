@@ -1,5 +1,8 @@
+import math
 import os
+import re
 import time
+from decimal import Decimal
 from pathlib import Path
 
 try:
@@ -22,6 +25,38 @@ CA_DEFAULT_PATH = os.environ.get("CA_PATH", "/home/ubuntu/easystock/cert/Sinopac
 LIVE_ORDERING_ENABLED = "LIVE_ORDERING_ENABLED"
 LIVE_ORDERING_CONFIRMATION = "LIVE_ORDERING_CONFIRMATION"
 LIVE_ORDERING_CONFIRMATION_VALUE = "I_UNDERSTAND_LIVE_ORDERING"
+# 單筆委託上限：整張 499 張（交易所單筆上限）、零股 999 股，另有金額上限。
+MAX_COMMON_LOTS = 499
+MAX_ODD_SHARES = 999
+MAX_NOTIONAL_TWD = float(os.environ.get("LIVE_ORDER_MAX_NOTIONAL_TWD", "1000000"))
+
+
+def validate_order(symbol, action, price, quantity, is_odd_lot):
+    """Normalize one limit order or raise ValueError; nothing is defaulted."""
+    if not isinstance(symbol, str) or not re.fullmatch(r"[0-9]{4,6}[A-Z]?", symbol.strip()):
+        raise ValueError("股票代號格式不正確。")
+    if action not in ("BUY", "SELL"):
+        raise ValueError("買賣方向必須是 BUY 或 SELL。")
+    if not isinstance(is_odd_lot, bool):
+        raise ValueError("請指定整張或零股。")
+    if isinstance(price, bool) or not isinstance(price, (int, float)) or not math.isfinite(price) or price <= 0:
+        raise ValueError("委託價格必須是正數。")
+    from paper_execution import tick_size
+    if Decimal(str(price)) % tick_size(price):
+        raise ValueError(f"委託價格不符合升降單位 {tick_size(price)} 元。")
+    limit = MAX_ODD_SHARES if is_odd_lot else MAX_COMMON_LOTS
+    if isinstance(quantity, bool) or not isinstance(quantity, int) or not 1 <= quantity <= limit:
+        raise ValueError(f"委託數量須為 1 至 {limit} 的整數{'股' if is_odd_lot else '張'}。")
+    notional = float(price) * quantity * (1 if is_odd_lot else 1000)
+    if notional > MAX_NOTIONAL_TWD:
+        raise ValueError(f"委託金額 {notional:,.0f} 元超過單筆上限 {MAX_NOTIONAL_TWD:,.0f} 元。")
+    return {"symbol": symbol.strip(), "action": action, "price": float(price),
+            "quantity": quantity, "is_odd_lot": is_odd_lot}
+
+
+def mask(value, keep=4):
+    text = str(value or "")
+    return "*" * max(0, len(text) - keep) + text[-keep:] if text else ""
 
 
 def live_ordering_enabled() -> bool:
@@ -44,14 +79,15 @@ class OrderService:
         self.account_info = {}
         self._last_login_time = 0
 
-    def login(self, api_key: str = None, secret_key: str = None, force_new: bool = True):
+    def login(self, force_new: bool = True):
+        """Log in with the server's own credentials; browsers never supply keys."""
         if sj is None:
             raise RuntimeError("伺服器環境未安裝 shioaji 套件，無法連線永豐金證券 API")
 
-        api_key = api_key or os.environ.get("SJ_API_KEY", "")
-        secret_key = secret_key or os.environ.get("SJ_SECRET_KEY", "")
+        api_key = os.environ.get("SJ_API_KEY", "")
+        secret_key = os.environ.get("SJ_SECRET_KEY", "")
         if not api_key or not secret_key:
-            raise ValueError("缺少 API Key 或 Secret Key，請於環境變數或介面中填寫")
+            raise ValueError("伺服器未設定永豐 API Key 或 Secret Key")
 
         # 斷線後必須銷毀舊實例重新實例化 Shioaji，否則底層 SolClient C++ Session 無法復原
         if force_new or self.api is None:
@@ -79,11 +115,17 @@ class OrderService:
                 "account_id": getattr(acc, "account_id", ""),
                 "broker_id": getattr(acc, "broker_id", ""),
             }
-            return self.account_info
+            return self.public_account()
         except Exception as e:
             self.is_logged_in = False
             self.api = None
             raise RuntimeError(f"永豐 API 登入失敗: {e}")
+
+    def public_account(self):
+        """Account summary safe to show in the browser; the ID number never leaves the server."""
+        info = self.account_info
+        return {"person_name": info.get("person_name", ""), "broker_id": info.get("broker_id", ""),
+                "account_id": mask(info.get("account_id"))}
 
     def reconnect(self):
         """徹底銷毀舊連線並重新連線建立全新 Session"""
@@ -198,15 +240,18 @@ class OrderService:
             "asks": asks,
         }
 
-    def place_order(self, symbol: str, action: str, price: float, quantity: int, is_odd_lot: bool, ca_passwd: str, ca_path: str = None):
+    def place_order(self, symbol: str, action: str, price: float, quantity: int, is_odd_lot: bool, ca_passwd: str):
         if not live_ordering_enabled():
             raise PermissionError(
                 "真實下單入口目前已隔離；需由伺服器明確啟用 LIVE_ORDERING_ENABLED "
                 "及 LIVE_ORDERING_CONFIRMATION 才能送出委託。"
             )
+        order = validate_order(symbol, action, price, quantity, is_odd_lot)
+        symbol, price, quantity = order["symbol"], order["price"], order["quantity"]
         self.ensure_ready()
 
-        ca_path = ca_path or CA_DEFAULT_PATH
+        # The certificate location is server configuration, never request input.
+        ca_path = CA_DEFAULT_PATH
         if not Path(ca_path).exists():
             raise FileNotFoundError(f"找不到憑證檔案: {ca_path}，請確認憑證已上傳至指定目錄")
 
@@ -231,7 +276,7 @@ class OrderService:
                 if not contract:
                     raise ValueError(f"查無標的代號: {symbol}")
 
-                act = sj.constant.Action.Buy if action.upper() == "BUY" else sj.constant.Action.Sell
+                act = sj.constant.Action.Buy if action == "BUY" else sj.constant.Action.Sell
                 lot_type = getattr(sj.constant.StockOrderLot, "IntradayOdd", "IntradayOdd") if is_odd_lot else getattr(sj.constant.StockOrderLot, "Common", "Common")
                 stock_order_type = getattr(sj.constant, "StockOrderType", None) or getattr(sj.constant, "StockOrderLot", None)
                 rod_type = getattr(stock_order_type, "ROD", "ROD")
@@ -276,7 +321,7 @@ class OrderService:
             "price": price,
             "quantity": quantity,
             "lot_type": "盤中零股" if is_odd_lot else "整張",
-            "action": "買進" if action.upper() == "BUY" else "賣出"
+            "action": "買進" if action == "BUY" else "賣出"
         }
 
 

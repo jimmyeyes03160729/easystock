@@ -3,8 +3,6 @@
   const closeBtn = document.getElementById("closeOrderModal");
   const modal = document.getElementById("orderModal");
 
-  const apiKeyInput = document.getElementById("orderApiKey");
-  const secretKeyInput = document.getElementById("orderSecretKey");
   const verifyBtn = document.getElementById("btnOrderVerify");
   const verifyBadge = document.getElementById("orderVerifyBadge");
 
@@ -30,8 +28,26 @@
 
   let currentUnit = "share"; // "share" (股) 或 "sheet" (張)
 
-  openBtn?.addEventListener("click", () => { modal.hidden = false; });
-  closeBtn?.addEventListener("click", () => { modal.hidden = true; });
+  // admin.js 登入後保存的 CSRF token；寫入型操作都必須帶上。
+  function headers() {
+    return { "Content-Type": "application/json", "X-CSRF-Token": typeof csrf === "string" ? csrf : "" };
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+    openBtn?.focus();
+  }
+  openBtn?.addEventListener("click", () => {
+    modal.hidden = false;
+    closeBtn?.focus();
+  });
+  closeBtn?.addEventListener("click", closeModal);
+  modal?.addEventListener("click", event => {
+    if (event.target === modal) closeModal();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && modal && !modal.hidden) closeModal();
+  });
 
   // 1. 單位切換：股 vs 張
   function setUnit(unit) {
@@ -104,11 +120,8 @@
     try {
       const res = await fetch("/admin/api/order/verify", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          api_key: apiKeyInput.value.trim() || undefined,
-          secret_key: secretKeyInput.value.trim() || undefined
-        })
+        headers: headers(),
+        body: JSON.stringify({})
       });
       const data = await parseResponse(res, "連線驗證失敗");
       const acc = data.account;
@@ -131,7 +144,7 @@
     try {
       const res = await fetch("/admin/api/order/quote", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: headers(),
         body: JSON.stringify({ symbol: sym })
       });
       const data = await parseResponse(res, "報價查詢失敗");
@@ -144,19 +157,15 @@
       priceInput.value = q.close;
       calcTotal();
 
-      bidTable.innerHTML = (q.bids || []).map(b => `
-        <tr style="cursor:pointer;" onclick="document.getElementById('orderPrice').value='${b.price}'; document.getElementById('orderPrice').dispatchEvent(new Event('input'));">
-          <td style="color:#ef4444;font-weight:bold;">${Number(b.price).toFixed(2)}</td>
-          <td style="text-align:right;color:#888;">${b.volume}</td>
+      // 以 data-price 加事件委派帶入價格；CSP 不允許行內 onclick。
+      const levels = (rows, color, empty) => rows.map(level => `
+        <tr style="cursor:pointer;" data-price="${Number(level.price)}">
+          <td style="color:${color};font-weight:bold;">${Number(level.price).toFixed(2)}</td>
+          <td style="text-align:right;color:#888;">${Number(level.volume)}</td>
         </tr>
-      `).join("") || "<tr><td colspan='2'>無買盤</td></tr>";
-
-      askTable.innerHTML = (q.asks || []).map(a => `
-        <tr style="cursor:pointer;" onclick="document.getElementById('orderPrice').value='${a.price}'; document.getElementById('orderPrice').dispatchEvent(new Event('input'));">
-          <td style="color:#22c55e;font-weight:bold;">${Number(a.price).toFixed(2)}</td>
-          <td style="text-align:right;color:#888;">${a.volume}</td>
-        </tr>
-      `).join("") || "<tr><td colspan='2'>無賣盤</td></tr>";
+      `).join("") || `<tr><td colspan='2'>${empty}</td></tr>`;
+      bidTable.innerHTML = levels(q.bids || [], "#ef4444", "無買盤");
+      askTable.innerHTML = levels(q.asks || [], "#22c55e", "無賣盤");
 
       quotePanel.hidden = false;
     } catch (err) {
@@ -166,6 +175,15 @@
       queryBtn.textContent = "查詢報價";
     }
   });
+
+  for (const table of [bidTable, askTable]) {
+    table?.addEventListener("click", event => {
+      const row = event.target.closest("tr[data-price]");
+      if (!row) return;
+      priceInput.value = row.dataset.price;
+      calcTotal();
+    });
+  }
 
   // 4. 送單確認
   submitBtn?.addEventListener("click", async () => {
@@ -192,6 +210,9 @@
 
     if (!ok) return;
 
+    // 每次確認送單產生一個識別碼；伺服器拒絕重複的識別碼，避免重複委託。
+    const clientOrderId = crypto.randomUUID();
+
     submitBtn.disabled = true;
     submitBtn.textContent = "送單中…";
     orderResult.textContent = "正在簽章送單…";
@@ -199,8 +220,9 @@
     try {
       const res = await fetch("/admin/api/order/place", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: headers(),
         body: JSON.stringify({
+          client_order_id: clientOrderId,
           symbol: sym,
           action: "BUY",
           price: p,
@@ -211,10 +233,12 @@
       });
       const data = await parseResponse(res, "下單委託失敗");
       const t = data.trade;
-      orderResult.innerHTML = `<span style="color:#4ade80;">✅ 委託成功！書號：${t.order_id} ｜ 狀態：${t.status}</span>`;
+      orderResult.style.color = "#4ade80";
+      orderResult.textContent = `✅ 委託成功！書號：${t.order_id} ｜ 狀態：${t.status}`;
       alert(`🎉 委託成功送出！\n委託書號：${t.order_id}`);
     } catch (err) {
-      orderResult.innerHTML = `<span style="color:#ef4444;">❌ 下單失敗: ${err.message}</span>`;
+      orderResult.style.color = "#ef4444";
+      orderResult.textContent = `❌ 下單失敗: ${err.message}`;
       alert(`下單失敗：${err.message}`);
     } finally {
       submitBtn.disabled = false;
