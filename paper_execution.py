@@ -4,7 +4,7 @@ Book sizes are shares. No last-price fallback and no partial SELL simulation.
 Fee discount/minimum and rounding are explicit simulator assumptions.
 """
 from datetime import time
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 import math
 
 STANDARD_FEE_RATE = Decimal('0.001425')
@@ -21,6 +21,59 @@ def fee(amount, rate=STANDARD_FEE_RATE * SIMULATED_DISCOUNT):
 def tax(amount, *, eligible=True, same_day=True):
     rate = DAY_TAX_RATE if eligible and same_day else ORDINARY_STOCK_TAX_RATE
     return (Decimal(str(amount)) * rate).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+
+
+# Ordinary-stock tick schedule (TWSE/TPEx): (upper bound exclusive, tick).
+TICKS = ((10, '0.01'), (50, '0.05'), (100, '0.1'), (500, '0.5'), (1000, '1'))
+
+
+def tick_size(price):
+    p = Decimal(str(price))
+    return next((Decimal(t) for bound, t in TICKS if p < bound), Decimal('5'))
+
+
+def roundtrip_cost_pct(price, shares=1000):
+    """One-lot buy fee, sell fee and day tax at an unchanged price, plus one
+    tick of spread, as a percentage of notional. A screening estimate only."""
+    p = Decimal(str(price))
+    amount = p * shares
+    costs = fee(amount) * 2 + tax(amount)
+    return float((costs / amount + tick_size(p) / p) * 100)
+
+
+def breakeven_exit_price(entry_price, shares=1000, *, fee_rate=None,
+                         minimum_fee=MINIMUM_FEE, tax_rate=DAY_TAX_RATE):
+    """Lowest tick-aligned exit whose net proceeds cover the entry and costs.
+    Rates default to the Paper schedule; research passes its own assumptions."""
+    rate = STANDARD_FEE_RATE * SIMULATED_DISCOUNT if fee_rate is None else Decimal(str(fee_rate))
+    minimum, tax_rate = Decimal(str(minimum_fee)), Decimal(str(tax_rate))
+    cost = lambda amount, r: max(minimum, (amount * r).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+    entry = Decimal(str(entry_price))
+    if not entry.is_finite() or entry <= 0:
+        raise ValueError('invalid_entry_price')
+    paid = entry * shares + cost(entry * shares, rate)
+    tick = tick_size(entry)
+    price = (entry / tick).to_integral_value(rounding=ROUND_CEILING) * tick
+    for _ in range(1000):
+        amount = price * shares
+        proceeds = amount - cost(amount, rate) - (amount * tax_rate).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+        if proceeds >= paid:
+            return float(price)
+        price += tick_size(price)
+    raise ValueError('no_breakeven_price')
+
+
+def cost_aware_breakeven(entry_price, floor_pct, activate_pct, **rates):
+    """(floor, activation) prices for a breakeven exit that actually breaks even.
+
+    The floor covers fees and tax, plus one tick because a sell fills at the bid;
+    activation must sit at least one tick above it. Neither is below the
+    configured percentage levels."""
+    entry = float(entry_price)
+    floor = breakeven_exit_price(entry, **rates)
+    floor = max(entry * (1 + floor_pct), floor + float(tick_size(floor)))
+    activate = max(entry * (1 + activate_pct), floor + float(tick_size(floor)))
+    return round(floor, 2), round(activate, 2)
 
 
 def execution(evidence, side, now, shares=None):

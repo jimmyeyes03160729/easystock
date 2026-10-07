@@ -1,6 +1,12 @@
 import math
+import os
 import statistics
 from typing import Any
+
+
+# 來回成本否決門檻（%）：一張的買賣手續費、當沖稅加一檔價差，
+# 見 paper_execution.roundtrip_cost_pct。0 表示停用。
+MAX_ROUNDTRIP_COST_PCT = max(0.0, float(os.environ.get('LIVE_MAX_ROUNDTRIP_COST_PCT') or 0))
 
 
 # =========================================================
@@ -876,6 +882,17 @@ def evaluate_daytrade(
         vetoes.append(
             "市場紅燈"
         )
+
+
+    if MAX_ROUNDTRIP_COST_PCT > 0 and close > 0:
+
+        from paper_execution import roundtrip_cost_pct
+
+        if roundtrip_cost_pct(close) > MAX_ROUNDTRIP_COST_PCT:
+
+            vetoes.append(
+                "交易成本過高"
+            )
 
 
     # =====================================================

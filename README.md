@@ -68,6 +68,15 @@ SQLite 為模擬帳務來源。已啟用交易期間的現金帳本由 `paper_le
 
 預設停損 −0.8%、固定停利 +1.2%、移動停利 +0.6% 啟動／自高點回落 0.4%。保本設定獨立為 `LIVE_BREAKEVEN_ACTIVATE_PCT=.006`、`LIVE_BREAKEVEN_FLOOR_PCT=.0035`；保本價不是跳價時的保證成交價。固定停利亦按觀察到的模擬價格成交，不是精確封頂。
 
+預設的 +0.35% 保本價**不含**交易成本：一張的手續費（28 折、最低 20 元）加當沖稅約 0.23% 起，低價股更高，再加上以買價賣出的一檔價差，觸發保本出場通常仍小虧。以下兩項成本規則**預設關閉**，開啟會改變研究標籤的規則指紋，應先以歷史回放驗證（`--cost-aware-breakeven`、`--max-roundtrip-cost-pct`、`--print-profile`，見 [docs/HISTORICAL_REPLAY.md](docs/HISTORICAL_REPLAY.md)）：
+
+| 設定 | 作用 |
+|---|---|
+| `LIVE_COST_AWARE_BREAKEVEN=1` | 保本價改為「回收進價與一張成本的最低跳價 + 一檔」，啟動價至少再高一檔；不低於上述百分比設定 |
+| `LIVE_MAX_ROUNDTRIP_COST_PCT=0.6` | 一張來回成本（手續費、當沖稅、一檔價差）占價格超過此百分比時否決進場（`交易成本過高`）；10 元附近、100–135 元等跳價相對大的股票會被排除 |
+
+研究紀錄另存 `research_net_after_spread_pct`：在 `research_net_pnl_pct` 外再扣一檔價差的估計，因為研究以成交價計價，實際模擬成交則以賣價買進、買價賣出。
+
 ## 部署與驗證
 
 - [本次修正、VM 核對與部署步驟](docs/DAYTRADE_RUNTIME_AUDIT.md)

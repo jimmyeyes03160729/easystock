@@ -9,6 +9,7 @@ _spec = importlib.util.spec_from_file_location('easystock_root_market_calendar',
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 
+CalendarUnavailable = _module.CalendarUnavailable
 now_tpe = _module.now_tpe
 parse_date = _module.parse_date
 fetch_twse_calendar = _module.fetch_twse_calendar
