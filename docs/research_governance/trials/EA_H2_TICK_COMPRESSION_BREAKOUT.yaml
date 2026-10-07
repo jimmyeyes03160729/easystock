@@ -1,0 +1,89 @@
+# EasyStock Research Trial Ledger — Legacy Backfill
+# Trial: H2 tick compression-breakout economic audit (2026-10-07)
+# NOTE: retrospective record; the study ran before this ledger entry existed.
+
+trial_id: "TRIAL_EA_H2_TICK_COMPRESSION_BREAKOUT"
+parent_trial_id: null
+created_at: "2026-10-07T23:00:00+08:00"
+study_name: "H2 tick compression breakout 15m economic audit"
+research_stage: "EXPLORATORY"
+ledger_record_type: "LEGACY_BACKFILL"
+recorded_after_experiment: true
+
+provenance:
+  source_classification: "CANONICAL_INTERNAL_PRIMITIVE"
+  source_refs:
+    - "daytrade_learning/event_audit/README.md"
+    - "VM:/tmp/easystock_h2_economic_audit_v1_1_20261007.tar.gz (sha256 b45c6dae2e96838217c22ccba102bc9ea684461f572e051563ca52022dac4c21)"
+
+hypothesis:
+  statement: "Tick-level directional compression breakout (all H2 predicates) continues for 15 minutes after the episode starts."
+  preregistered: false
+  exploratory: true
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "gross_return_bps_15m"
+  direction: "PASS_FAIL"
+  baseline: "ZERO_GROSS_RETURN"
+  frozen_before_search: true
+  criteria: "A-H fixed economic criteria (see daytrade_learning/event_audit/classify.py)"
+
+data:
+  dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2023-09-27"
+  end_date: "2026-10-02"
+  dataset_end: "2026-10-02"
+  universe: "42_STOCK_CORE"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "H2 aggregate and per-fold 15m gross/net/quote"
+    - "H2 horizon, time-of-day, symbol concentration and quintile diagnostics"
+  exposures:
+    - exposure_id: "EXP_EA_H2_TEST_WINDOWS"
+      dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+      dataset_family_id: "TWSE_EQUITY_INTRADAY"
+      dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "H2 aggregate and per-fold 15m gross/net/quote"
+      source_trial_id: "TRIAL_EA_H2_TICK_COMPRESSION_BREAKOUT"
+      first_seen_at: "2026-10-07T11:05:06+08:00"
+
+search:
+  parameters_searched:
+    - "none (frozen H2 predicate set, no threshold search)"
+  search_space:
+    H2: "single frozen definition"
+  trial_count: 1
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "b45c6dae2e96838217c22ccba102bc9ea684461f572e051563ca52022dac4c21"
+  registry_hash: "NOT_APPLICABLE"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "REJECTED"
+  decision: "H2_NO_ENTRY_EDGE"
+  sealed_commit: "a13f13b78839eb5f59e1bc814514045c5fbc71cf"
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    15m gross -6.416 bps over 16,047 episodes in the five test windows; 0/5 folds gross-positive.
+    Bundle timestamp is the VM file time. The Phase 2C future confirmation partition was not read.

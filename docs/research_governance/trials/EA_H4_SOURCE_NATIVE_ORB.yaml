@@ -1,0 +1,86 @@
+# EasyStock Research Trial Ledger — Legacy Backfill
+# Trial: H4 source-native opening range breakout audit (2026-10-07)
+
+trial_id: "TRIAL_EA_H4_SOURCE_NATIVE_ORB"
+parent_trial_id: "TRIAL_EA_H3_COMPLETED_BAR_BREAKOUT"
+created_at: "2026-10-07T23:00:00+08:00"
+study_name: "H4 source-native ORB 15m economic audit"
+research_stage: "EXPLORATORY"
+ledger_record_type: "LEGACY_BACKFILL"
+recorded_after_experiment: true
+
+provenance:
+  source_classification: "CANONICAL_INTERNAL_PRIMITIVE"
+  source_refs:
+    - "daytrade_learning/event_audit/README.md"
+    - "VM:/tmp/easystock_h4_orb_v1_20261007.tar.gz (sha256 376d87d361c5b8fbd92e34b2c38874f583218f5c5af3208f1d868a56fa233be6)"
+
+hypothesis:
+  statement: "strategy_engine opening_range_breakout (rows5[:6] high, len>=7, close>opening_high*1.001) continues for 15 minutes."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "gross_return_bps_15m"
+  direction: "PASS_FAIL"
+  baseline: "ZERO_GROSS_RETURN"
+  frozen_before_search: true
+
+data:
+  dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2023-09-27"
+  end_date: "2026-10-02"
+  dataset_end: "2026-10-02"
+  universe: "42_STOCK_CORE"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "H4 aggregate and per-fold 15m gross/net/quote, MFE/MAE, direction and plus-veto diagnostics"
+  exposures:
+    - exposure_id: "EXP_EA_H4_TEST_WINDOWS"
+      dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+      dataset_family_id: "TWSE_EQUITY_INTRADAY"
+      dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "H4 aggregate and per-fold 15m gross/net/quote, MFE/MAE, direction and plus-veto diagnostics"
+      source_trial_id: "TRIAL_EA_H4_SOURCE_NATIVE_ORB"
+      first_seen_at: "2026-10-07T14:46:44+08:00"
+
+search:
+  parameters_searched:
+    - "none (source-derived ORB spec frozen before outcomes)"
+  search_space:
+    H4: "single source-native definition"
+  trial_count: 1
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "376d87d361c5b8fbd92e34b2c38874f583218f5c5af3208f1d868a56fa233be6"
+  registry_hash: "f0f994d06922846806e02c83719ea64eda81a82fbcebddb199ab59de7e34cefb"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "REJECTED"
+  decision: "H4_NO_ENTRY_EDGE"
+  sealed_commit: "a13f13b78839eb5f59e1bc814514045c5fbc71cf"
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    registry_hash holds ORB_SOURCE_SPEC_SHA256. 15m gross -5.044 bps over 9,150 episodes (0/5 folds
+    gross-positive); with existing vetoes -5.104 bps. Source defines LONG only.

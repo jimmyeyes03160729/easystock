@@ -1,0 +1,95 @@
+# EasyStock Research Trial Ledger — Legacy Backfill
+# Trial: source-native entry primitive batch audit v1 (2026-10-07)
+
+trial_id: "TRIAL_EA_SOURCE_PRIMITIVE_BATCH_V1"
+parent_trial_id: "TRIAL_EA_H4_SOURCE_NATIVE_ORB"
+created_at: "2026-10-07T23:00:00+08:00"
+study_name: "Source-native entry primitive batch (8 primitives)"
+research_stage: "EXPLORATORY"
+ledger_record_type: "LEGACY_BACKFILL"
+recorded_after_experiment: true
+
+provenance:
+  source_classification: "CANONICAL_INTERNAL_PRIMITIVE"
+  source_refs:
+    - "daytrade_learning/event_audit/README.md"
+    - "VM:/tmp/easystock_source_primitive_batch_v1_20261007.tar.gz (sha256 ac90d8ace244252043cf132380e16ddca9af91d72d6d6924f7d9227155322bde)"
+
+hypothesis:
+  statement: "Each of the 8 frozen strategy_engine reason/trend-reason booleans, tested independently, has a 15m absolute gross edge on LONG entries."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "gross_return_bps_15m"
+  direction: "PASS_FAIL"
+  baseline: "ZERO_GROSS_RETURN"
+  frozen_before_search: true
+
+data:
+  dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2023-09-27"
+  end_date: "2026-10-02"
+  dataset_end: "2026-10-02"
+  universe: "42_STOCK_CORE"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "8 primitives: aggregate, per-fold, horizon, MFE/MAE and plus-veto 15m metrics"
+  exposures:
+    - exposure_id: "EXP_EA_PRIMITIVE_BATCH_TEST_WINDOWS"
+      dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+      dataset_family_id: "TWSE_EQUITY_INTRADAY"
+      dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "8 primitives: aggregate, per-fold, horizon, MFE/MAE and plus-veto 15m metrics"
+      source_trial_id: "TRIAL_EA_SOURCE_PRIMITIVE_BATCH_V1"
+      first_seen_at: "2026-10-07T17:38:57+08:00"
+
+search:
+  parameters_searched:
+    - "8 frozen primitives P01-P08 (registry frozen before outcomes)"
+  search_space:
+    P01: "five_trend >= 0.65"
+    P02: "fifteen_trend >= 0.60"
+    P03: "close >= vwap"
+    P04: "volume_ratio >= 1.30"
+    P05: "5m last_close > sma3 > sma6"
+    P06: "5m higher lows and highs"
+    P07: "15m last_close > sma3 > sma6"
+    P08: "15m higher lows and highs"
+  trial_count: 8
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "ac90d8ace244252043cf132380e16ddca9af91d72d6d6924f7d9227155322bde"
+  registry_hash: "e9c22bae2296d16f1dc04532de49e427dafc9c58c33c7fb8e8d26cba150aac2b"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "REJECTED"
+  decision: "NO_SOURCE_NATIVE_ENTRY_EDGE"
+  sealed_commit: "a13f13b78839eb5f59e1bc814514045c5fbc71cf"
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  EXPLORATORY_SOURCE_FAMILY: true
+  notes: >
+    All 8 primitives have 15m gross <= 0 (best -0.278 bps, worst -5.929 bps); every one is
+    NO_ENTRY_EDGE. Family of 8 tests on reused historical data; no candidate may be combined with
+    another primitive or with a veto. registry_hash is ENTRY_PRIMITIVE_REGISTRY_SHA256.
