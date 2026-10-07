@@ -105,6 +105,7 @@
   - 桌機版不強制套用同一底部導覽樣式。
   - iPhone 需支援 `safe-area-inset-bottom`，避免 Home Indicator 擠壓。
   - 2026-10-07：5 個真實入口 label mapping、768px breakpoint、正文底部留白、active / focus、DOM 回歸已完成；桌機導覽不變。
+  - VM 已經正式 updater 部署；測試與脫敏 runtime evidence：`docs/MOBILE_CONTEXT_OWNER_CONSOLE_2026-10-07.md`。
 
 - [x] **Chrome Extension 1.02：1.01 實盤 BUG 一次性修正**
   - 版本規則確認：1.0X 系列只做 BUG 修正、穩定性與相容性改善；大型新功能不塞入 1.0X。
@@ -165,6 +166,7 @@
   - [x] price-only `sector_rotation_proxy`；closed / stale / missing fail closed。
   - [x] Owner Admin diagnostics / canonical context.json / point-in-time dataset snapshots。
   - [ ] 完整交易日的 breadth coverage / windows / rotation 自然行情驗證。
+  - 2026-10-07 VM readonly smoke：7 indices / 5 sectors，TSE、OTC 官方 snapshot API 實際可用；盤後新 features 為 UNKNOWN，尚非完整交易日驗證。
   - [ ] production model integration / 正式 AI Applied（未接 ENTRY / EXIT）。
 
 - [x] **當沖制度 / 費稅模擬對齊：CODE VERIFIED / VM DEPLOYED**
@@ -197,6 +199,7 @@
   - [x] KILL SWITCH control / Owner audit / 獨立 live_trade_*（不平倉，不寫 Paper / Research）。
   - [ ] 同日當沖 / 信用部位的 authoritative available-to-sell 與 eligibility；目前只支持昨日現股多單，未知即禁止。
   - [ ] 自動帳本事件匯入 / 人工對帳修復流程；不一致只 PAUSED，不猜測修正。
+  - [ ] 真實券商帳務完整同步 / 對帳驗證：2026-10-07 登入可用，但帳務查詢 TokenError / 連線錯誤，保留 UNKNOWN，不假稱零持倉。
   - [ ] LIVE AUTO production enable / 自動執行引擎（本輪 OFF，guard/state skeleton only）。
   - 第一階段先建立獨立「永豐實盤當沖」分頁 / Tab，僅在 Google 登入且通過既有 Owner/Admin 驗證後顯示。
   - 未登入時首頁 / 後台導覽都不顯示入口；即使直接輸入 route 或呼叫 API，也必須由後端強制回 401 / 403，不能只靠前端隱藏。
