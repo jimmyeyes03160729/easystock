@@ -6,6 +6,8 @@ from .audit import build_audit,write_audit
 from .backfill import DEFAULT_SOURCE,load_archives,run,selected_days
 from .labels import update_labels
 from .schema import connect
+from .market_daily import connect as market_connect
+from .official import daily as official_daily, dataset_path
 
 
 def main():
@@ -20,7 +22,12 @@ def main():
     write_audit(audit)
     print(json.dumps({'collected':collected,'labels_updated':labelled,
                       'audit_critical':audit['data_quality']['critical_count']}))
-    if audit['data_quality']['critical_count']:raise SystemExit(2)
+    # v2 (official whole-market daily) runs after v1 is committed, so a v2
+    # source outage never blocks the frozen v1 dataset.
+    with market_connect() as market, connect(dataset_path()) as db2:
+        v2=official_daily(market,db2)
+    print(json.dumps({'v2':v2},ensure_ascii=False))
+    if audit['data_quality']['critical_count'] or v2['audit_critical']:raise SystemExit(2)
 
 
 if __name__=='__main__':main()

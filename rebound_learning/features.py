@@ -79,9 +79,12 @@ def extract(bars: list[dict], signal_date: str, technical: dict,
 
 
 def near_miss_diagnostics(bars: list[dict], signal_date: str, *,
-                          tolerance: dict) -> dict | None:
-    """Strictly one nearby numeric rejection; other failed gates never qualify.
+                          tolerance: dict, max_failures: int = 1) -> dict | None:
+    """Nearby numeric rejections only; other failed gates never qualify.
 
+    v1 near miss is exactly one miss (max_failures=1). The v2 bottom zone
+    allows up to three wider misses but keeps every structural gate: support,
+    resistance, recent retest, unbroken support and confirmation.
     This never modifies or replaces production evaluate_technical().
     """
     if len(bars) < 90 or bars[-1]['time'] != signal_date:
@@ -125,9 +128,10 @@ def near_miss_diagnostics(bars: list[dict], signal_date: str, *,
         if pos>MAX_RANGE_POSITION: failures.append(('range_position',pos-MAX_RANGE_POSITION,tolerance['range_position']))
         if risk<=0 or reward<=cost: continue
         if net_rr<MIN_NET_RR: failures.append(('net_rr',MIN_NET_RR-net_rr,tolerance['net_rr']))
-        if len(failures)!=1 or failures[0][1]>failures[0][2] or target<=p or invalid>=p: continue
+        if not 1<=len(failures)<=max_failures or any(f[1]>f[2] for f in failures) or target<=p or invalid>=p: continue
         name,distance_to_threshold,_=failures[0]
-        return {'eligible':False,'failed_rule':name,'failed_stage':'technical_numeric',
+        extra={'failed_rules':[f[0] for f in failures]} if max_failures>1 else {}
+        return {**extra,'eligible':False,'failed_rule':name,'failed_stage':'technical_numeric',
                 'distance_to_threshold':round(distance_to_threshold,6),
                 'eligible_checks':3,'rejected_checks':1,
                 'support':[floor,ceiling], 'resistance':[target,resistance['price']*(1+tol)],
@@ -137,3 +141,44 @@ def near_miss_diagnostics(bars: list[dict], signal_date: str, *,
                 'support_age_days':len(recent)-1-support['last'],'atr_pct':atr/p*100,
                 'confirmation':'breakout' if confirmed else 'early'}
     return None
+
+
+CONTEXT_FEATURES = (
+    'taiex_return_1d_pct', 'taiex_return_5d_pct', 'taiex_return_20d_pct',
+    'tpex_return_1d_pct', 'tpex_return_5d_pct', 'tpex_return_20d_pct',
+    'taiex_bias_ma60_pct', 'breadth_up_ratio',
+    'stock_vs_market_5d_pct', 'stock_vs_market_20d_pct', 'is_otc',
+)
+
+
+def market_context(days: list[str], index_closes: dict[str, dict[str, float]],
+                   breadth: dict[str, float]) -> dict[str, dict]:
+    """Session-level context from index closes on or before each day only."""
+    out = {}
+    series = {name: [] for name in ('TAIEX', 'TPEX')}
+    for day in days:
+        row = {}
+        for name, key in (('TAIEX', 'taiex'), ('TPEX', 'tpex')):
+            value = index_closes.get(name, {}).get(day)
+            hist = series[name]
+            hist.append(value)
+            for n in (1, 5, 20):
+                old = hist[-n-1] if len(hist) > n else None
+                row[f'{key}_return_{n}d_pct'] = _pct(value, old) if value and old else None
+        taiex = series['TAIEX'][-60:]
+        row['taiex_bias_ma60_pct'] = (_pct(taiex[-1], mean(taiex))
+                                      if len(taiex) == 60 and all(taiex) else None)
+        row['breadth_up_ratio'] = breadth.get(day)
+        out[day] = row
+    return out
+
+
+def stock_context(features: dict, context: dict, exchange: str) -> dict:
+    key = 'tpex' if exchange == 'TPEX' else 'taiex'
+    def versus(n):
+        mine, market = features.get(f'return_{n}d_pct'), context.get(f'{key}_return_{n}d_pct')
+        return round(mine - market, 6) if mine is not None and market is not None else None
+    row = {name: context.get(name) for name in CONTEXT_FEATURES[:8]}
+    row.update(stock_vs_market_5d_pct=versus(5), stock_vs_market_20d_pct=versus(20),
+               is_otc=1 if exchange == 'TPEX' else 0)
+    return row
