@@ -11,14 +11,14 @@
 <script defer src="/admin/assets/live-console.js"></script>
 </head>
 <body>
-<header><a class="brand" href="https://jimmyeyes03160729.github.io/easystock/">E<span>EasyStock</span></a><button id="openOrderModal" type="button" style="background:#2563eb;color:#fff;font-weight:600;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;margin-left:auto;margin-right:12px;">🚀 永豐下單</button><button id="theme" type="button">切換明暗</button></header>
+<header><a class="brand" href="https://jimmyeyes03160729.github.io/easystock/">E<span>EasyStock</span></a><button id="theme" type="button">切換明暗</button></header>
 <main>
 <section id="login" class="login panel">
 <p class="eyebrow">管理員登入</p><h1>當沖設定</h1><p class="muted">使用已授權的 Google 帳號登入。</p>
 <div id="googleButton"></div><p id="loginStatus" role="status">正在確認登入狀態…</p><button id="retryLogin" type="button" hidden>重新載入登入</button>
 </section>
 <section id="workspace" hidden>
-<div class="title"><div><p class="eyebrow">當沖管理</p><h1>把推薦範圍設好。</h1><p class="muted">新推薦與 LINE／Telegram 進場通知前，會套用最新限制。</p></div><div class="title-actions"><nav class="admin-section-nav" aria-label="後台功能分類"><button type="button" data-admin-tab="healthPanel">健康中心</button><button type="button" data-admin-tab="modelLogPanel">模型日誌</button><button type="button" data-admin-tab="settingsPanel">選股設定</button><button type="button" data-admin-tab="paperTradePanel">模擬帳本</button><button type="button" data-admin-tab="conversationPanel">通知設定</button></nav><button id="logout" type="button">登出</button></div></div>
+<div class="title"><div><p class="eyebrow">當沖管理</p><h1>把推薦範圍設好。</h1><p class="muted">新推薦與 LINE／Telegram 進場通知前，會套用最新限制。</p></div><div class="title-actions"><nav class="admin-section-nav" aria-label="後台功能分類"><button type="button" data-admin-tab="healthPanel">健康中心</button><button type="button" data-admin-tab="modelLogPanel">模型日誌</button><button type="button" data-admin-tab="settingsPanel">選股設定</button><button type="button" data-admin-tab="paperTradePanel">模擬帳本</button><button type="button" data-admin-tab="conversationPanel">通知設定</button><button type="button" data-admin-tab="manualOrderPanel">永豐手動 API 下單</button></nav><button id="logout" type="button">登出</button></div></div>
 <div class="identity"><span id="identity"></span><span id="version"></span></div>
 <section class="panel health-panel admin-tab-panel" id="healthPanel" aria-labelledby="healthTitle">
   <div class="health-heading"><div><p class="eyebrow">系統健康中心</p><h2 id="healthTitle">當沖設定及健檢</h2><p class="hint">檢查訓練、資料與當沖服務狀態；設定調整在選股設定頁，維護操作有安全限制。</p></div><button id="reloadHealth" type="button">重新檢查</button></div>
@@ -192,16 +192,9 @@
   <button type="submit" id="saveNotifications">儲存通知設定</button>
 </form><p id="conversationStatus" role="status" aria-live="polite"></p>
 <details><summary>最近通知傳送狀態</summary><p class="hint">「送出成功」表示平台已接受，不代表每位成員已讀。逾時或程序中斷不自動重送，避免重複進出場通知。</p><div id="deliveryStatus"></div></details></section>
-</section>
-</main><footer>EasyStock · 當沖管理</footer>
-<!-- 永豐下單 Modal -->
-<div id="orderModal" class="order-modal-backdrop" hidden>
-  <div class="order-modal-box">
-    <div class="order-modal-head">
-      <h2>🚀 永豐證券委託</h2>
-      <button id="closeOrderModal" type="button" class="order-close-btn">&times;</button>
-    </div>
-
+<section id="manualOrderPanel" class="panel admin-tab-panel manual-order-panel" hidden aria-labelledby="manualOrderTitle">
+<h2 id="manualOrderTitle">永豐手動 API 下單</h2>
+<p class="hint">登入後手動買進或賣出。委託送出與成交結果分開顯示，送出後可同步券商確認最新狀態。</p>
     <!-- 步驟 1: API 驗證 -->
     <div class="order-section">
       <div class="order-section-title">步驟 1：帳號連線驗證</div>
@@ -212,6 +205,13 @@
       <div id="orderVerifyBadge" class="order-badge" style="margin-top:6px;">尚未驗證</div>
     </div>
 
+    <div class="order-section">
+      <div class="health-heading"><h3>目前持股</h3><button id="btnOrderRefresh" type="button">同步持股與委託</button></div>
+      <p id="orderPortfolioStatus" role="status" aria-live="polite">登入後可同步券商持股。</p>
+      <div id="orderPositions" class="live-table-wrap"></div>
+      <p class="hint">股數以券商資料為準。可賣股數已扣除未成交賣單；目前賣出支援已確認可賣的昨日現股持倉。</p>
+      <details><summary>今日委託與成交結果</summary><h4>委託</h4><div id="orderOrders" class="live-table-wrap"></div><h4>成交</h4><div id="orderDeals" class="live-table-wrap"></div></details>
+    </div>
     <!-- 步驟 2: 報價與五檔 -->
     <div class="order-section">
       <div class="order-section-title">步驟 2：股票報價查詢</div>
@@ -220,7 +220,7 @@
         <button id="btnOrderQuery" type="button" class="primary">查詢報價</button>
       </div>
 
-      <div id="orderQuotePanel" style="margin-top:10px;background:#18181b;padding:12px;border-radius:8px;" hidden>
+      <div id="orderQuotePanel" class="order-quote-panel" hidden>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <span id="orderStockTitle" style="font-size:16px;font-weight:bold;">--</span>
           <span id="orderStockPrice" style="font-size:18px;font-weight:bold;">--</span>
@@ -241,6 +241,10 @@
     <!-- 步驟 3: 委託條件 (簡約 股 / 張) -->
     <div class="order-section">
       <div class="order-section-title">步驟 3：委託條件</div>
+      <div class="order-unit-toggle" role="group" aria-label="買賣方向">
+        <button type="button" id="btnOrderBuy" class="unit-btn active" aria-pressed="true">買進</button>
+        <button type="button" id="btnOrderSell" class="unit-btn" aria-pressed="false">賣出</button>
+      </div>
       <div class="order-unit-toggle">
         <button type="button" id="btnUnitShare" class="unit-btn active">股 (零股)</button>
         <button type="button" id="btnUnitSheet" class="unit-btn">張 (整張)</button>
@@ -250,7 +254,7 @@
           <div class="field-header">
             <label>委託限價 (元)</label>
           </div>
-          <input id="orderPrice" type="number" step="0.01" placeholder="價格" style="width:100%;">
+          <input id="orderPrice" type="number" min="0.01" step="0.01" placeholder="價格" style="width:100%;">
         </div>
         <div class="field-group">
           <div class="field-header">
@@ -261,21 +265,27 @@
               <button type="button" data-qty="100">100</button>
             </div>
           </div>
-          <input id="orderQty" type="number" value="1" min="1" style="width:100%;">
+          <input id="orderQty" type="number" value="1" min="1" max="999" step="1" style="width:100%;">
         </div>
       </div>
       <div id="orderTotalEst" class="order-total-est">預估交割金額：約 0 元</div>
+      <div id="orderSellVerification" hidden>
+        <button id="btnOrderSellVerify" type="button">驗證可賣股數與帳戶</button>
+        <p id="orderSellEvidence" role="status" aria-live="polite">賣出前請先驗證。</p>
+        <div class="order-row"><label for="orderSellConfirm">確認方向：輸入 SELL<input id="orderSellConfirm" autocomplete="off"></label><label for="orderSellAccount">確認帳戶：輸入驗證顯示的遮罩帳戶<input id="orderSellAccount" autocomplete="off"></label></div>
+      </div>
     </div>
 
     <!-- 步驟 4: 憑證簽章送單 -->
     <div class="order-section">
       <div class="order-section-title">步驟 4：憑證簽章送單</div>
       <div style="display:flex;gap:8px;">
-        <input id="orderCaPasswd" type="password" placeholder="請輸入永豐電子憑證密碼" style="flex:1;">
+        <input id="orderCaPasswd" type="password" autocomplete="off" placeholder="請輸入永豐電子憑證密碼" style="flex:1;">
         <button id="btnOrderSubmit" type="button" class="btn-submit-order">⚡ 確認送出委託</button>
       </div>
-      <div id="orderResult" style="font-size:12px;margin-top:8px;"></div>
+      <div id="orderResult" role="status" aria-live="polite"></div>
     </div>
-  </div>
-</div>
+</section>
+</section>
+</main><footer>EasyStock · 當沖管理</footer>
 </body></html>
