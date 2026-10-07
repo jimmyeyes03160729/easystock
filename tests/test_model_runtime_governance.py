@@ -54,11 +54,19 @@ class RuntimeGovernanceTests(unittest.TestCase):
         self.models.mkdir(parents=True)
         self.approved_path = self.models / 'latest-approved.json'
         self.status_path = self.models / 'runtime-model-status.json'
+        # Other modules may load a host .env into os.environ at import time
+        # (e.g. easystock_admin.order_service on the VM). Isolate every
+        # variable model_runtime reads so tests never see host paths.
+        self.env = patch.dict(os.environ)
+        self.env.start()
+        for key in ('MODEL_RUNTIME_STATUS_PATH', 'LEARNING_DATA_DIR', 'EASYSTOCK_LEARNING_DATA',
+                    'LIVE_MODEL_MAX_AGE_TRADING_DAYS', 'LIVE_HEARTBEAT_SECONDS'):
+            os.environ.pop(key, None)
         os.environ['AI_PAPER_MODEL_PATH'] = str(self.approved_path)
 
     def tearDown(self):
         self.tmp.cleanup()
-        os.environ.pop('AI_PAPER_MODEL_PATH', None)
+        self.env.stop()
 
     def _write_approved(self, **overrides):
         self.approved_path.write_text(json.dumps(artifact(**overrides)), encoding='utf-8')
