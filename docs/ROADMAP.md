@@ -17,7 +17,7 @@
 > 本文件用於記錄已確認的後續規劃。  
 > 更新原則：使用者在 EasyStock 相關討論中說「紀錄」時，更新此文件，保留既有內容並整理版本脈絡。
 
-## 目前主要進行中三主線（2026-10-05）
+## 目前主要進行中主線（2026-10-07）
 
 - [ ] **正式當沖系統：完整交易日 LIVE Validation**
   - 程式核心與 Paper execution alignment 已完成並部署；現在不是重寫策略，而是收完整交易日證據。
@@ -35,13 +35,6 @@
   - 目前研究狀態維持 `PRODUCTION_READY=false`、`INDEPENDENT_CONFIRMATION=false`；未曝光未來樣本用來做後續 one-shot confirmation，不可反覆微調後重測。
   - 研究 / 學習流程與正式 ENTRY / EXIT 保持治理隔離；任何研究結論不得自動晉升正式模型或修改正式策略。
 
-- [ ] **AI NAS 串聯：Antigravity + Codex 自動開發鏈持續建置**
-  - NAS 已有獨立 ARM64 Antigravity 開發容器與獨立 Codex development node；兩者使用隔離的 Compose / network / home / workspace。
-  - 已具備 Git pull、修改、測試、commit / push main 的開發節點能力，並已有 NAS pull-backup / Docker backup scheduler。
-  - 安全邊界：NAS AI 容器不掛 Oracle VM SSH key / SSH agent、不直接部署正式 VM、不自動 push；正式 VM deployment 仍走既有受保護流程。
-  - 下一階段重點是把「任務入口 → AI 分工 → 測試 → Git main → 安全部署 / 回報」流程穩定串起來，並避免 Antigravity / Codex 同時跑大型 pytest / build 造成 NAS OOM。
-  - GitHub 目前能證明架構與開發節點已存在；NAS 容器此刻是否 running 仍需以 NAS runtime / Docker 狀態實際確認。
-
 ## 待新增 / 待執行主題總覽
 
 > 這一區固定放在 Roadmap 最前面，用來快速確認「還有哪些功能尚未執行」。  
@@ -52,9 +45,6 @@
 - [ ] **當沖學習 / 研究系統持續執行**
   - Research Governance 已進入 Pristine Holdout；`PHASE2C_FUTURE_60D` 自 2026-10-05 起保留 60 個符合條件交易日，尚未 production-ready。
   - **Current-profile 歷史重播 / Walk-Forward 重訓 / Safe Promotion 待完成**：新 profile 目前 2,647 筆樣本但只涵蓋 4 個日期，不能靠 bootstrap 直接跨過 Champion gate；應把大量歷史行情依 current profile 重新 replay，建立足夠時間跨度的訓練 / 驗證資料。
-- [ ] **AI NAS 串聯持續建置**
-  - Antigravity + Codex NAS 節點、備份與隔離架構已建立；下一步完成穩定的自動分工、測試、Git 與受保護部署鏈。
-
 
 - [x] Paper UI 移除模擬累積權益
 - [x] 盤後通知移除模擬累積權益
@@ -2001,7 +1991,16 @@ AI Architecture Guardian 第一階段只做：
 
 ---
 
-## AI NAS 自動開發串聯（持續建置）
+## AI NAS 自動開發串聯（已取消／暫停，2026-10-07）
+
+### 2026-10-07 決策：取消 NAS 連動
+- 不再把 Antigravity / Codex 的 NAS 自動串聯列為目前 EasyStock 開發主線。
+- 既有 NAS 容器、Compose、備份與開發節點文件保留作歷史紀錄，不再繼續擴充自動分工 / 自動接手 / 自動部署鏈。
+- 不再規劃「任務入口 → Antigravity → Codex → 自動測試 → 自動 push / deploy」作為現階段工作流。
+- 正式開發回到目前既有工具與人工可控流程；VM 正式部署仍維持受保護的 canonical deploy。
+- 若未來重新啟用 NAS AI 協作，需重新評估權限、資源、lock / ownership、失敗重試與部署安全，再另開新項目。
+
+
 
 ### 已完成基礎
 - 已建立獨立 ARM64 `easystock-antigravity` NAS 開發容器。
@@ -2011,8 +2010,8 @@ AI Architecture Guardian 第一階段只做：
 - NAS AI 節點可做 Git pull、程式修改、測試、commit / push main；是否 push 仍需明確任務，不在容器重啟時自動 pull/reset。
 - 容器不掛 Oracle VM SSH key / SSH agent，不直接取得正式 VM deployment 權限。
 
-### 目前進行中
-目標不是單純「NAS 上能跑兩個 CLI」，而是形成穩定的 AI 開發鏈：
+### 原規劃（現已暫停）
+原目標不是單純「NAS 上能跑兩個 CLI」，而是形成穩定的 AI 開發鏈：
 
 ```text
 使用者 / 任務入口
@@ -2030,7 +2029,7 @@ Git main
 測試 / release identity / runtime 回報
 ```
 
-### 尚待完成
+### 原尚待項目（不再列入目前待辦）
 - 任務 session / handoff 的穩定協議。
 - Antigravity 與 Codex 的工作衝突 / lock / ownership 規則。
 - 失敗重試與中斷後續接。
