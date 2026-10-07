@@ -1,0 +1,73 @@
+# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any directional outcome is read)
+
+trial_id: "TRIAL_EA_HV60_V1"
+parent_trial_id: "TRIAL_EA_COST_FEASIBILITY_V1"
+created_at: "2026-10-08T02:00:00+08:00"
+study_name: "HV60_V1 high-volatility tier 60-minute LONG entries (3 hypotheses)"
+research_stage: "EXPLORATORY"
+ledger_record_type: "PREREGISTERED_TRIAL"
+recorded_after_experiment: false
+
+provenance:
+  source_classification: "EXPLORATORY_HEURISTIC"
+  source_refs:
+    - "docs/research_governance/preregistrations/HV60_V1.yaml"
+
+hypothesis:
+  statement: "In the high-volatility tier, open-drive continuation, downside-overshoot reversal or VWAP reclaim has a 60m absolute gross and net edge on LONG entries."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "gross_return_bps_60m"
+  direction: "PASS_FAIL"
+  baseline: "ZERO_GROSS_RETURN"
+  frozen_before_search: true
+
+data:
+  dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2023-09-27"
+  end_date: "2026-10-02"
+  dataset_end: "2026-10-02"
+  universe: "100_STOCK_LIQUIDITY_POOL_HV_TIER"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: false
+  future_holdout_seen: false
+  exposed_dimensions: []
+  exposures: []
+
+search:
+  parameters_searched:
+    - "none: three fixed hypotheses with fixed thresholds (0.030 tier, 0.5 and 0.35 x trailing range, 6 bars)"
+  search_space:
+    HV1: "open drive >= 0.5 x trailing range and price >= vwap"
+    HV2: "15m drop <= -0.35 x trailing range and CLV > 0"
+    HV3: "6 bars below vwap then close above"
+  trial_count: 3
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/HV60_V1.yaml"
+  registry_hash: "NOT_YET_RUN"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "IN_PROGRESS"
+  decision: "FROZEN_AWAITING_DATA"
+  sealed_commit: ""
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    Runs only after the readiness gate in the preregistration passes (>= 80% of pool stock-days in the five test
+    windows archived). Until then no directional statistic for these hypotheses may be computed.

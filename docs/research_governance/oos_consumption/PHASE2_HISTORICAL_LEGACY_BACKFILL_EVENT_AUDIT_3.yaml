@@ -1,0 +1,44 @@
+# EasyStock OOS Consumption Ledger — Event Audit Legacy Backfill, part 3 (cost-feasibility scan)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "EVENT_AUDIT_LEGACY_BACKFILL_3"
+created_at: "2026-10-08T02:00:00+08:00"
+description: >
+  Magnitude-only scan of absolute 15m / 60m / to-12:55 moves, quoted spreads and cost floors for every archived
+  pool symbol in the five test windows. No directional statistic was computed. The future partition was not read.
+
+consumption_events:
+  - consumption_id: "CNS_EA_COST_FEASIBILITY_TEST_WINDOWS"
+    trial_id: "TRIAL_EA_COST_FEASIBILITY_V1"
+    dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      slice_definition: "Cost-feasibility magnitude scan, 100-stock pool, five test windows"
+    role: "DESCRIPTIVE"
+    exposure:
+      performance_seen: false
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "per-symbol absolute move magnitude"
+      - "quoted spread"
+      - "commission and tax floor"
+    consumed_at: "2026-10-08T01:42:34+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/research_governance/preregistrations/HV60_V1.yaml"
+    source_commit: "298d243"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Magnitudes only (no sign); it selected the high-volatility tier used by preregistration HV60_V1."
