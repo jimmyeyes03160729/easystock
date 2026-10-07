@@ -1,4 +1,4 @@
-# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any model output exists)
+# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any model output existed; run once, REJECTED)
 
 trial_id: "TRIAL_REBOUND_P2_RANKER_V1"
 parent_trial_id: "TRIAL_REBOUND_P1_DATASET_V2"
@@ -37,12 +37,26 @@ data:
   independent_confirmation: false
 
 exposure_state:
-  train_seen: false
+  train_seen: true
   validation_seen: false
-  oos_seen: false
+  oos_seen: true
   future_holdout_seen: false
-  exposed_dimensions: []
-  exposures: []
+  exposed_dimensions:
+    - "per variant and fold: model vs rule-order top-3 net return, profit factor, trade counts"
+    - "descriptive top 1/2/5 and abstaining top 3 per fold"
+  exposures:
+    - exposure_id: "EXP_REBOUND_P2_RANKER_V1_WALK_FORWARD"
+      dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+      dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+      dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+      start_date: "2024-01-01"
+      end_date: "2026-10-06"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "fold x variant net results of model and baseline rankers"
+      source_trial_id: "TRIAL_REBOUND_P2_RANKER_V1"
+      first_seen_at: "2026-10-08T07:06:15+08:00"
 
 search:
   parameters_searched:
@@ -55,17 +69,22 @@ search:
 
 governance:
   plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/REBOUND_P2_RANKER_V1.yaml"
-  registry_hash: "NOT_YET_RUN"
+  registry_hash: "RESULT_FILE_SHA256:9b6bfbc9433dd2d49ca971facf6d5609baec1c4caa556cc3ad13259250e5b499"
   no_oos_tuning: true
   production_effect: "NONE"
 
 result:
-  status: "IN_PROGRESS"
-  decision: "FROZEN_NOT_RUN"
-  sealed_commit: ""
+  status: "REJECTED"
+  decision: "NO_VARIANT_PASSES_A_TO_G"
+  sealed_commit: "93649dd"
   PRODUCTION_READY: false
   DISCOVERY_DATA_REUSED: true
   INDEPENDENT_CONFIRMATION: false
   FUTURE_CONFIRMATION_UNTOUCHED: true
   notes: >
-    Runs once after this record and the preregistration are merged. Confirmation only through REBOUND_V2_FUTURE_60D.
+    Run once on 2026-10-08 07:04-07:06 (Asia/Taipei) from merge commit 93649dd (research.py sha256
+    40aff1d7..., preregistration sha256 22671134...). 25,604 rows loaded. Pooled delta vs rule order:
+    RIDGE_RULE_ONLY -0.165, RIDGE_WIDE_POOL -0.099, HGB_RULE_ONLY -0.065, HGB_WIDE_POOL -0.002 percentage points
+    per trade; every variant fails A, B, C, D, E and G (F passes). The baseline itself averages -0.55% net per
+    trade (PF 0.81, 1,623 trades) and is negative in 4 of 5 folds (2024H1 +0.95%). Conclusion: re-ranking cannot
+    rescue this trade definition. REBOUND_V2_FUTURE_60D was not used and stays RESERVED_UNTOUCHED.
