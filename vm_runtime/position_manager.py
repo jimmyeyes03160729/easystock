@@ -442,6 +442,8 @@ class PositionManager:
                     position.update(paper_execution='SKIPPED',
                         paper_skip_reason=(fill.get('skip_reason') or fill.get('status', 'execution_unconfirmed')) if isinstance(fill, dict)
                         else 'execution_unconfirmed', execution_kind='research_only')
+                    if isinstance(fill, dict) and (fill.get('eligibility_detail') or fill.get('quote_error')):
+                        position['paper_skip_detail'] = {k: fill[k] for k in ('eligibility_detail', 'quote_error') if fill.get(k)}
                 self._persist(position)
 
         self.positions[
