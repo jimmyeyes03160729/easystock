@@ -1,4 +1,4 @@
-# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any revenue-conditioned return is read)
+# EasyStock Research Trial Ledger — PREREGISTERED trial, sealed after its single run (2026-10-08)
 
 trial_id: "TRIAL_REVENUE_DRIFT_V1"
 parent_trial_id: "TRIAL_EA_PASSIVE_FILL_V1"
@@ -37,13 +37,27 @@ data:
   discovery_data_reused: true
   independent_confirmation: false
 
+
 exposure_state:
   train_seen: false
   validation_seen: false
-  oos_seen: false
+  oos_seen: true
   future_holdout_seen: false
-  exposed_dimensions: []
-  exposures: []
+  exposed_dimensions:
+    - "monthly top-decile and universe net returns, excess, t and per-year folds for 2 signals x 3 horizons, plus two post-hoc feasibility stresses"
+  exposures:
+    - exposure_id: "EXP_REVENUE_DRIFT_V1_DAILY_2022_2026"
+      dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+      dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+      dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+      start_date: "2022-01-03"
+      end_date: "2026-10-02"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "monthly revenue-sorted portfolio net and excess returns by horizon and calendar year"
+      source_trial_id: "TRIAL_REVENUE_DRIFT_V1"
+      first_seen_at: "2026-10-08T17:08:03+08:00"
 
 search:
   parameters_searched:
@@ -56,18 +70,28 @@ search:
 
 governance:
   plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/REVENUE_DRIFT_V1.yaml"
-  registry_hash: "NOT_YET_RUN"
+  registry_hash: "7fb9f83c6f44d27e7ca13b20d7bed129327d3b8326b01b3c2d6820b53562550d"
   no_oos_tuning: true
   production_effect: "NONE"
 
 result:
-  status: "IN_PROGRESS"
-  decision: "FROZEN_NOT_RUN"
-  sealed_commit: ""
+  status: "SEALED"
+  decision: "STRONG_CANDIDATE_S1_H20_S2_H5_S2_H20"
+  sealed_commit: "78b4ebf"
   PRODUCTION_READY: false
   DISCOVERY_DATA_REUSED: true
   INDEPENDENT_CONFIRMATION: false
   FUTURE_CONFIRMATION_UNTOUCHED: true
   notes: >
-    Revenue data: MOPS_MONTHLY_REVENUE_2020_01_2026_08. Runs on the VM from research/revenue_v1 after this record is
-    merged and the fetch has completed.
+    Frozen rule: STRONG for S1_YOY H20, S2_SUR H5 and S2_SUR H20; same-day exit (DT) fails (S2 DT is RELATIVE_ONLY:
+    excess +0.25%, t 4.0, but net -0.25%); S1 H5 WEAK; S1 DT NO_EDGE. 56 event months 2022-02..2026-08 (55 for H20).
+    Top-decile net / universe net / excess per event month: S2_SUR H20 +2.87% / +0.99% / +1.88% (t 5.52, all five
+    calendar years positive in excess, 2022 absolute -0.76%); S2_SUR H5 +1.06% / +0.42% / +0.64% (t 3.63);
+    S1_YOY H20 +2.19% / +0.97% / +1.22% (t 3.25). Bottom decile underperforms the universe at H20 (-1.16..-1.47%).
+    Six tests were run (disclosed); S2 H20 survives a Bonferroni correction, S1 H20 and S2 H5 are marginal under it.
+    Post-hoc feasibility stresses (disclosed, not part of the classification; code research/revenue_v1/rev_robust.py):
+    excluding 150 symbol-events that opened >= 1.09 x reference (unbuyable limit-up opens) and then charging an extra
+    20 bps per leg changes none of the classifications (S2 H20 excess +1.91%, t 5.52). Limitations: MOPS tables were
+    compiled 2026-10-03..10-08 and include late filers and corrections; the daily DB includes later delistings;
+    absolute return of the long-only top decile still carries market risk (2022 negative). Candidate for a separately
+    preregistered forward paper confirmation on revenue months >= 2026-09, never production on this evidence alone.
