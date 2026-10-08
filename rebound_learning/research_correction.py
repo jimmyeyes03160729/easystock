@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
+import hashlib
 import json
 from pathlib import Path
 import random
@@ -115,6 +116,10 @@ def main():
             str(length): block_bootstrap(by_day, p3_calendar, ranges, length) for length in (10, 20)}
     report = {'correction_id': CORRECTION_ID, 'input_manifest': manifest,
               'analysis_role': 'EXPOSED_HISTORY_CORRECTION_ONLY', 'holdout_read': False,
+              'implementation_sha256': {
+                  name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
+                  for name in ('market_daily.py', 'simulation.py', 'research.py', 'research_horizon.py',
+                               'research_filter.py', 'research_correction.py')},
               'P2': p2, 'P3': p3, 'P4': p4}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True, allow_nan=False), encoding='utf-8')
