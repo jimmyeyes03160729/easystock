@@ -166,3 +166,113 @@ def test_comparison_report_format():
         assert "跑道 A：現有 AI 模型體系" in report
         assert "跑道 B：新獨立動能跑道 V2" in report
         assert "台積電" in report
+
+
+def test_orderbook_tick_size():
+    from runway_v2.orderbook import get_tick_size
+    assert get_tick_size(8.5) == 0.01
+    assert get_tick_size(35.0) == 0.05
+    assert get_tick_size(88.0) == 0.10
+    assert get_tick_size(250.0) == 0.50
+    assert get_tick_size(850.0) == 1.00
+    assert get_tick_size(1200.0) == 5.00
+
+
+def test_orderbook_validation_pass():
+    from runway_v2.orderbook import OrderBookSnapshot, validate_orderbook
+    # 正常緊密五檔：買一 100.0 (30張), 賣一 100.5 (20張)，價差 1 檔 (0.50)
+    ob = OrderBookSnapshot(
+        symbol="2330",
+        dt_str="2026-10-08T09:10:00",
+        bid_prices=[100.0, 99.5, 99.0, 98.5, 98.0],
+        bid_volumes=[30, 40, 50, 30, 20],
+        ask_prices=[100.5, 101.0, 101.5, 102.0, 102.5],
+        ask_volumes=[20, 25, 30, 40, 50],
+    )
+    is_valid, reject_reason, reasons = validate_orderbook(ob, 100.5)
+    assert is_valid is True
+    assert reject_reason == ""
+    assert any("五檔緊密" in r for r in reasons)
+    assert any("委買OBI=" in r for r in reasons)
+
+
+def test_orderbook_wide_spread_reject():
+    from runway_v2.orderbook import OrderBookSnapshot, validate_orderbook
+    # 價差過大：買一 100.0，賣一 102.0 (差 4 檔，流動性斷層)
+    ob = OrderBookSnapshot(
+        symbol="2330",
+        dt_str="2026-10-08T09:10:00",
+        bid_prices=[100.0, 99.5, 99.0, 98.5, 98.0],
+        bid_volumes=[10, 10, 10, 10, 10],
+        ask_prices=[102.0, 102.5, 103.0, 103.5, 104.0],
+        ask_volumes=[5, 5, 5, 5, 5],
+    )
+    is_valid, reject_reason, _ = validate_orderbook(ob, 102.0)
+    assert is_valid is False
+    assert "買賣價差過大" in reject_reason
+
+
+def test_orderbook_severe_imbalance_reject():
+    from runway_v2.orderbook import OrderBookSnapshot, validate_orderbook
+    # 極端賣壓壓頂：買方全部只有 10 張，賣方壓了 1000 張 (OBI = (10-1000)/1010 = -0.98)
+    ob = OrderBookSnapshot(
+        symbol="2330",
+        dt_str="2026-10-08T09:10:00",
+        bid_prices=[100.0, 99.5, 99.0, 98.5, 98.0],
+        bid_volumes=[2, 2, 2, 2, 2],
+        ask_prices=[100.5, 101.0, 101.5, 102.0, 102.5],
+        ask_volumes=[200, 200, 200, 200, 200],
+    )
+    is_valid, reject_reason, _ = validate_orderbook(ob, 100.5)
+    assert is_valid is False
+    assert "賣壓" in reject_reason or "買一掛單過薄" in reject_reason
+
+
+def test_evaluate_signal_with_orderbook_integration():
+    from runway_v2.orderbook import OrderBookSnapshot
+    kbars5 = [{"high": 101.5, "low": 99.5, "close": 101.0, "volume": 500}]
+    radar = {"surge_60s": 2.5, "buy_ratio_60s": 0.80}
+
+    # 1. 帶入優質五檔 -> 順利產生訊號且理由包含五檔資訊
+    good_ob = OrderBookSnapshot(
+        symbol="2330",
+        dt_str="2026-10-08T09:10:00",
+        bid_prices=[101.5, 101.0, 100.5, 100.0, 99.5],
+        bid_volumes=[50, 40, 30, 20, 10],
+        ask_prices=[102.0, 102.5, 103.0, 103.5, 104.0],
+        ask_volumes=[30, 20, 20, 20, 20],
+    )
+    signal = evaluate_signal(
+        symbol="2330",
+        name="台積電",
+        current_price=102.0,
+        previous_close=100.0,
+        current_time_str="09:10:00",
+        kbars5=kbars5,
+        radar_metrics=radar,
+        orderbook=good_ob,
+    )
+    assert signal is not None
+    assert any("五檔緊密" in r for r in signal["reasons"])
+
+    # 2. 帶入劣質五檔 (價差過大) -> 直接否決
+    bad_ob = OrderBookSnapshot(
+        symbol="2330",
+        dt_str="2026-10-08T09:10:00",
+        bid_prices=[100.0, 99.5, 99.0, 98.5, 98.0],
+        bid_volumes=[10, 10, 10, 10, 10],
+        ask_prices=[103.0, 103.5, 104.0, 104.5, 105.0],
+        ask_volumes=[5, 5, 5, 5, 5],
+    )
+    signal_bad = evaluate_signal(
+        symbol="2330",
+        name="台積電",
+        current_price=102.0,
+        previous_close=100.0,
+        current_time_str="09:10:00",
+        kbars5=kbars5,
+        radar_metrics=radar,
+        orderbook=bad_ob,
+    )
+    assert signal_bad is None
+

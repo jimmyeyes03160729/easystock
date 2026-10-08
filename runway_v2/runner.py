@@ -16,6 +16,7 @@ from .strategy import evaluate_signal
 from .manager import PositionManagerV2
 from .notifier import notify_entry, notify_exit
 from .ledger import get_daily_trades
+from .orderbook import OrderBookTracker
 
 
 class RunwayV2Runner:
@@ -23,6 +24,9 @@ class RunwayV2Runner:
         self.enabled = RUNWAY_V2_ENABLED
         self.db_path = db_path or DB_PATH
         self.manager = PositionManagerV2(db_path=self.db_path)
+        self.orderbook_tracker = OrderBookTracker()
+        self.subscribe_bidask_fn: Any = None
+        self.subscribed_bidask_symbols: set[str] = set()
         self.lock = threading.Lock()
         self.last_eval_time = ""
 
@@ -69,6 +73,14 @@ class RunwayV2Runner:
                     except Exception:
                         rows5 = []
 
+                if self.subscribe_bidask_fn and symbol not in self.subscribed_bidask_symbols:
+                    try:
+                        self.subscribe_bidask_fn(symbol)
+                        self.subscribed_bidask_symbols.add(symbol)
+                    except Exception:
+                        pass
+
+                ob = self.orderbook_tracker.get(symbol)
                 signal = evaluate_signal(
                     symbol=symbol,
                     name=name,
@@ -77,6 +89,7 @@ class RunwayV2Runner:
                     current_time_str=time_str,
                     kbars5=rows5,
                     radar_metrics=row,
+                    orderbook=ob,
                 )
 
                 if signal:
@@ -221,6 +234,16 @@ class RunwayV2Runner:
                 db.reference("/market_data/intraday_live/runway_v2").set(snapshot)
         except Exception:
             pass
+
+    def register_bidask_subscriber(self, fn: Any) -> None:
+        """註冊向 Shioaji 訂閱 BidAsk 的回呼函式 fn(symbol)"""
+        self.subscribe_bidask_fn = fn
+
+    def on_bidask(self, symbol: str, quote: Any) -> None:
+        """接收 Shioaji BidAsk 即時推播並更新五檔快照"""
+        if not self.enabled:
+            return
+        self.orderbook_tracker.update(symbol, quote)
 
 
 _INSTANCE: RunwayV2Runner | None = None

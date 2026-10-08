@@ -13,6 +13,7 @@ from .config import (
     MIN_GAIN_PCT,
     MAX_GAIN_PCT,
 )
+from .orderbook import OrderBookSnapshot, validate_orderbook
 
 
 def calculate_vwap(bars: list[dict]) -> float | None:
@@ -99,6 +100,7 @@ def evaluate_signal(
     current_time_str: str,  # "HH:MM:SS"
     kbars5: list[dict],
     radar_metrics: dict,
+    orderbook: OrderBookSnapshot | None = None,
 ) -> dict | None:
     """評估單檔股票是否符合進場訊號。
     回傳訊號字典或 None。
@@ -164,6 +166,14 @@ def evaluate_signal(
     # 門檻：綜合評分 >= 60 分
     if score < 60.0:
         return None
+
+    # 6. 五檔微結構檢驗 (價差、流動性與 OBI 失衡度)
+    if orderbook is not None:
+        ob_ok, ob_reject, ob_reasons = validate_orderbook(orderbook, current_price)
+        if not ob_ok:
+            print(f"[RUNWAY_V2_OB_REJECT] {symbol} {name}: {ob_reject}")
+            return None
+        reasons.extend(ob_reasons)
 
     # 設定防守停損價：以進場價格下緣 1.5% 或 VWAP 低點
     structural_stop = current_price * 0.985

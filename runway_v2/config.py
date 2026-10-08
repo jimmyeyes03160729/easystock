@@ -38,3 +38,10 @@ if not _DEFAULT_DIR.exists() and not Path("/home/ubuntu").exists():
 
 DB_DIR = _DEFAULT_DIR
 DB_PATH = DB_DIR / "ledger_v2.sqlite"
+
+# 五檔 BidAsk 微結構風控
+ORDERBOOK_ENABLED = os.environ.get("RUNWAY_V2_ORDERBOOK_ENABLED", "1").lower() in ("1", "true", "yes")
+MAX_SPREAD_TICKS = int(os.environ.get("RUNWAY_V2_MAX_SPREAD_TICKS", "2"))        # 買一賣一跳檔差距不可超過 2 ticks
+MAX_SPREAD_PCT = float(os.environ.get("RUNWAY_V2_MAX_SPREAD_PCT", "0.0060"))     # 價差比例上限 0.60% (防多跳檔滑價)
+MIN_OBI_THRESHOLD = float(os.environ.get("RUNWAY_V2_MIN_OBI", "-0.40"))         # 委買賣量失衡度不得低於 -0.40 (防極端賣壓壓頂)
+MIN_BID1_VOLUME = int(os.environ.get("RUNWAY_V2_MIN_BID1_VOL", "3"))            # 買一至少需有 3 張掛單承接

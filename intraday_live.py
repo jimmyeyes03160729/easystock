@@ -2633,6 +2633,16 @@ class IntradayLiveEngine:
             from runway_v2.runner import get_runway_v2
             self.runway_v2 = get_runway_v2()
             print(f"[RUNWAY_V2_BOOT] enabled={self.runway_v2.enabled}")
+            if self.runway_v2 and self.runway_v2.enabled:
+                def _sub_bidask(symbol: str) -> None:
+                    c = self.contracts.get(symbol)
+                    if c:
+                        try:
+                            self.api.subscribe(c, quote_type=sj.QuoteType.BidAsk)
+                            print(f"[RUNWAY_V2_BIDASK_SUB] {symbol}")
+                        except Exception as e:
+                            print(f"[RUNWAY_V2_BIDASK_SUB_FAIL] {symbol}: {e}")
+                self.runway_v2.register_bidask_subscriber(_sub_bidask)
         except Exception as exc:
             self.runway_v2 = None
             print(f"[RUNWAY_V2_BOOT_FAIL] {exc}")
@@ -3074,12 +3084,28 @@ class IntradayLiveEngine:
     # Subscribe
     # -----------------------------------------------------
 
+    def on_bidask(self, *args, **kwargs) -> None:
+        try:
+            quote = args[1] if len(args) > 1 else (args[0] if args else None)
+            if quote:
+                symbol = getattr(quote, "code", "")
+                if getattr(self, "runway_v2", None) and symbol:
+                    self.runway_v2.on_bidask(symbol, quote)
+        except Exception:
+            pass
+
     def install_callback(self) -> None:
         # 重要：全系統只註冊一個 callback，
         # 不在每檔 subscribe_stock 裡重複定義。
         self.api.on_tick_stk_v1()(
             self.on_tick
         )
+        try:
+            self.api.on_bidask_stk_v1()(
+                self.on_bidask
+            )
+        except Exception as exc:
+            print(f"[WARN] on_bidask_stk_v1 bind: {exc}")
 
     def subscribe_all(self) -> None:
         print("[BOOT] Subscribe Shioaji Tick...")
