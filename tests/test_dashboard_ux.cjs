@@ -101,3 +101,18 @@ test('production renderer integration retains offline historical warning, fresh-
   w.fetch=async()=>{throw Error('offline');};await assert.rejects(evalCode("fetchJson('https://synthetic.invalid/summary')"));
   assert.match(w.document.getElementById('requestTiming').textContent,/失敗/);
 });
+
+test('runway B shows only backend records, an honest label and the preregistered backtest disclosure',t=>{
+  assert(!html.includes('高勝率'));
+  assert(!html.includes('V2-6226-1008') && !html.includes('實盤驗證戰報'));
+  assert.match(html,/跑道 B · 實驗動能規則 V2/);
+  const {w,evalCode}=setup(t,{withMain:true});
+  assert.match(w.document.getElementById('runwayV2Disclosure').textContent,/非買進訊號.*−0\.43%.*−4,250/);
+  evalCode('INTRADAY_LIVE = {runway_v2:{}}; renderRunwayV2Live();');
+  const list=w.document.getElementById('runwayV2PickList').textContent;
+  assert.match(list,/尚無跑道 B 模擬交易紀錄/);
+  assert(!/光鼎|聯嘉投控|華通|福懋科/.test(list));
+  evalCode(`INTRADAY_LIVE = {runway_v2:{closed_trades:{a:{symbol:'2330',name:'台積電',entry_time:new Date().toISOString(),exit_time:new Date().toISOString(),entry_price:100,exit_price:101,return_pct:1,signal_type:'ORB_BREAKOUT'}}}}; renderRunwayV2Live();`);
+  const card=w.document.getElementById('runwayV2PickList').textContent;
+  assert.match(card,/出場原因未提供/);assert.match(card,/進場理由未提供/);
+});
