@@ -93,16 +93,18 @@ def main():
         unseen = [p for p in all_picks if research_filter.UNSEEN_SLICE[0] <= p['date'] <= research_filter.UNSEEN_SLICE[1]]
         p4 = research_filter.evaluate(unseen, picks)
     # Bootstrap is diagnostic and cannot authorize holdout use.
+    p2_calendar = calendar[:-research.HORIZON]
+    p3_calendar = calendar[:-research_horizon.MAX_HORIZON]
     for name, stop, take, horizon in research_horizon.EXITS:
         by_day = exit_days(picks, stop, take, horizon)
         p3['exits'][name]['moving_block_bootstrap'] = {
-            str(length): block_bootstrap(by_day, calendar, research.FOLDS, length) for length in (10, 20)}
+            str(length): block_bootstrap(by_day, p3_calendar, research.FOLDS, length) for length in (10, 20)}
     base = research.select([r for r in rows if r['kind'] == 'PENDING'], None)
     p2['baseline_moving_block_bootstrap'] = {
-        str(length): block_bootstrap(base, calendar, research.FOLDS, length) for length in (10, 20)}
+        str(length): block_bootstrap(base, p2_calendar, research.FOLDS, length) for length in (10, 20)}
     for name, daily in day_returns.items():
         p2['variants'][name]['moving_block_bootstrap_delta'] = {
-            str(length): block_bootstrap(daily['model'], calendar, research.FOLDS, length,
+            str(length): block_bootstrap(daily['model'], p2_calendar, research.FOLDS, length,
                                         comparison=daily['baseline']) for length in (10, 20)}
     for key, part, ranges in (
         ('unseen_2022', unseen, (research_filter.UNSEEN_SLICE,)),
@@ -110,7 +112,7 @@ def main():
     ):
         by_day = exit_days([p for p in part if research_filter.market_on(p)], True, True, 20)
         p4[key]['moving_block_bootstrap'] = {
-            str(length): block_bootstrap(by_day, calendar, ranges, length) for length in (10, 20)}
+            str(length): block_bootstrap(by_day, p3_calendar, ranges, length) for length in (10, 20)}
     report = {'correction_id': CORRECTION_ID, 'input_manifest': manifest,
               'analysis_role': 'EXPOSED_HISTORY_CORRECTION_ONLY', 'holdout_read': False,
               'P2': p2, 'P3': p3, 'P4': p4}
