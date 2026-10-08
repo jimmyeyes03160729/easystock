@@ -246,6 +246,10 @@ INSTANT_ENTRY_EVAL_SECONDS = max(
     ),
 )
 
+# 同一檔、同一個未進場原因，最多每 N 秒重印一次 [ENTRY_REJECT]；原因改變時立即印。
+ENTRY_REJECT_LOG_SECONDS = 300.0
+ENTRY_REJECT_SUMMARY_SECONDS = 60.0
+
 RADAR_TOP_N = max(
     1,
     min(
@@ -2631,6 +2635,10 @@ class IntradayLiveEngine:
               f"threshold={self.daytrade_model.threshold} learning={self.learning.enabled}")
         self._market_checked_at = 0.0
         self._market_block_counts = {'market_risk_red': 0, 'market_data_unavailable': 0}
+        self._entry_reject_counts = {}
+        self._entry_reject_last = {}
+        self._entry_reject_summary_at = 0.0
+        self._entry_reject_summary_logged = {}
         self.market_valid_until = 0.0
         self.market_risk = {'valid': False, 'gate_reason': 'not_checked'}
         paper_wallet.execution_evidence = self.paper_execution_evidence
@@ -3783,11 +3791,18 @@ class IntradayLiveEngine:
         today = current.date().isoformat()
         cached = self._previous_closes.get(symbol)
         if not cached or cached[0] != today:
-            if not allow_lookup or time.monotonic() < self._previous_close_retry.get(symbol, 0):
+            if not allow_lookup:
+                self._entry_reject(symbol, 'previous_close_not_cached')
+                return None
+            retry_at = self._previous_close_retry.get(symbol, 0)
+            if time.monotonic() < retry_at:
+                self._entry_reject(symbol, 'previous_close_retry_wait',
+                                   f'retry_in={retry_at - time.monotonic():.0f}s')
                 return None
             self._previous_close_retry[symbol] = time.monotonic() + 300
             contract = self.contracts.get(symbol)
             if contract is None:
+                self._entry_reject(symbol, 'contract_missing')
                 return None
             try:
                 payload = self.api.kbars(
@@ -3798,22 +3813,28 @@ class IntradayLiveEngine:
                 )
                 rows = [r for r in kbars_to_1m(payload) if r.start.date() < current.date()]
                 if not rows or rows[-1].start.time() != dtime(13, 29):
+                    last_bar = rows[-1].start.isoformat() if rows else '-'
+                    self._entry_reject(symbol, 'previous_close_incomplete',
+                                       f'bars={len(rows)} last_bar={last_bar}')
                     return None
                 previous = float(rows[-1].close)
                 if not math.isfinite(previous) or previous <= 0:
+                    self._entry_reject(symbol, 'previous_close_invalid', f'close={previous}')
                     return None
                 cached = (today, previous)
                 self._previous_closes[symbol] = cached
             except Exception as exc:
-                print("[ENTRY FILTER] previous close unavailable:", symbol, type(exc).__name__)
+                self._entry_reject(symbol, 'previous_close_unavailable', type(exc).__name__)
                 return None
         current = now_tpe()
         if not in_entry_window(current):
+            self._entry_reject(symbol, 'outside_entry_window', current.strftime('%H:%M:%S'))
             return None
         with self._lock:
             ticks = list(self.radar_ticks.get(symbol, []))
         valid = [t for t in ticks if 0 <= current.timestamp()-t[0] <= 30]
         if not valid:
+            self._entry_reject(symbol, 'no_fresh_tick', f'ticks={len(ticks)}')
             return None
         latest = max(valid, key=lambda t:t[0])
         price = float(latest[3])
@@ -3821,13 +3842,43 @@ class IntradayLiveEngine:
             settings = read_live_settings()
             lo, hi, cap = (settings[k] for k in ("min_price", "max_price", "max_gain_pct"))
             if not all(math.isfinite(v) for v in (price,lo,hi,cap)) or not 0 < lo <= hi or not 0 <= cap <= 100:
+                self._entry_reject(symbol, 'settings_invalid')
                 return None
             if not lo <= price <= hi or (price/cached[1]-1)*100 > cap + 1e-9:
+                self._entry_reject(symbol, 'user_limits',
+                                   f'price={price:.2f} gain={(price/cached[1]-1)*100:+.2f}% '
+                                   f'range={lo:g}-{hi:g} cap={cap:g}%')
                 return None
         except Exception as exc:
-            print("[ENTRY FILTER] settings unavailable:", type(exc).__name__)
+            self._entry_reject(symbol, 'settings_unavailable', type(exc).__name__)
             return None
         return price, current
+
+    def _entry_reject(self, symbol, reason, detail=''):
+        """Count one no-ENTRY outcome and log it, throttling repeats per symbol."""
+        now_mono = time.monotonic()
+        with self._lock:
+            self._entry_reject_counts[reason] = min(
+                1_000_000_000, self._entry_reject_counts.get(reason, 0) + 1)
+            last = self._entry_reject_last.get(symbol)
+            if last and last[0] == reason and now_mono - last[1] < ENTRY_REJECT_LOG_SECONDS:
+                return
+            self._entry_reject_last[symbol] = (reason, now_mono)
+        print(f"[ENTRY_REJECT] {symbol} reason={reason}" + (f" {detail}" if detail else ""))
+
+    def log_entry_reject_summary(self, force=False):
+        """Print cumulative no-ENTRY reasons for the session when they changed."""
+        now_mono = time.monotonic()
+        with self._lock:
+            counts = dict(self._entry_reject_counts)
+            if counts == self._entry_reject_summary_logged:
+                return
+            if not force and now_mono - self._entry_reject_summary_at < ENTRY_REJECT_SUMMARY_SECONDS:
+                return
+            self._entry_reject_summary_at = now_mono
+            self._entry_reject_summary_logged = counts
+        ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+        print("[ENTRY_REJECT_SUMMARY] " + " ".join(f"{k}={v}" for k, v in ranked))
 
     def evaluate_symbol(
         self,
@@ -3880,6 +3931,7 @@ class IntradayLiveEngine:
             )
 
         if price is None:
+            self._entry_reject(symbol, 'no_price')
             return
 
         score = result.get(
@@ -3959,26 +4011,35 @@ class IntradayLiveEngine:
         if not in_entry_window(
             strategy_time
         ):
+            self._entry_reject(symbol, 'outside_entry_window', strategy_time.strftime('%H:%M:%S'))
             return
 
         if getattr(self, 'market_gate', {}).get('gate_action', 'PASS') != 'PASS' or now_tpe().timestamp() > self.market_valid_until:
-            reason = ('market_risk_red' if getattr(self, 'market_gate', {}).get('gate_reason') == 'market_risk_red'
+            gate = getattr(self, 'market_gate', {})
+            reason = ('market_risk_red' if gate.get('gate_reason') == 'market_risk_red'
                       else 'market_data_unavailable')
             counts = getattr(self, '_market_block_counts', None)
             if isinstance(counts, dict):
                 with self._lock:
                     counts[reason] = min(1_000_000_000, counts.get(reason, 0) + 1)
+            self._entry_reject(symbol, reason,
+                               f"gate={gate.get('gate_action', 'PASS')}/{gate.get('gate_reason', '-')} "
+                               f"valid_for={self.market_valid_until - now_tpe().timestamp():.0f}s")
             return
         if self.entry_mode == 'rules' and not eligible:
+            self._entry_reject(symbol, 'rule_ineligible', f'score={score}')
             self.manager.observe_entry_predicate(symbol, False, strategy_time)
             return
         if self.entry_mode == 'model' and vetoes:
+            self._entry_reject(symbol, 'strategy_veto', 'veto=' + ','.join(map(str, vetoes)))
             self.manager.observe_entry_predicate(symbol, False, strategy_time)
             return
 
         if symbol not in self.scanner_top_symbols:
+            self._entry_reject(symbol, 'not_radar_top')
             self.manager.observe_entry_predicate(symbol, False, strategy_time)
             return
+        # fresh_entry_quote records its own ENTRY_REJECT reason when it returns None.
         checked = self.fresh_entry_quote(symbol, allow_lookup=True)
         if checked is None:
             return
@@ -4011,10 +4072,14 @@ class IntradayLiveEngine:
                   f"version={model_decision.get('model_version')}")
             if not (model_decision.get('active') and model_decision.get('evaluated')
                     and model_decision.get('approved') and model_decision.get('accepted')):
+                self._entry_reject(symbol, 'model_rejected' if model_decision.get('evaluated') else 'model_not_ready',
+                                   f"model_reason={model_decision.get('reason')}")
                 if model_decision.get('evaluated'):
                     self.manager.observe_entry_predicate(symbol, False, strategy_time)
                 return
             if float(model_decision['probability']) < float(model_decision['threshold']):
+                self._entry_reject(symbol, 'model_rejected',
+                                   f"probability={model_decision['probability']} threshold={model_decision['threshold']}")
                 self.manager.observe_entry_predicate(symbol, False, strategy_time)
                 return
             model_reason = f"模型分數 {model_decision['probability']:.3f} ({model_decision['model_version']})"
@@ -4024,10 +4089,13 @@ class IntradayLiveEngine:
             limits = read_live_settings()
             gain = (price / previous_close - 1) * 100 if previous_close else None
             if gain is None or not limits['min_price'] <= price <= limits['max_price'] or gain > limits['max_gain_pct']:
+                gain_text = '-' if gain is None else f'{gain:+.2f}%'
+                self._entry_reject(symbol, 'user_limits' if gain is not None else 'previous_close_missing',
+                                   f'price={price:.2f} gain={gain_text}')
                 self.manager.observe_entry_predicate(symbol, False, strategy_time)
                 return
         except Exception as exc:
-            print('[ENTRY] settings unavailable:', type(exc).__name__)
+            self._entry_reject(symbol, 'settings_unavailable', type(exc).__name__)
             return
 
         # Research episodes are serialized by PositionManager; paper-only daily
@@ -4088,21 +4156,29 @@ class IntradayLiveEngine:
         price, strategy_time = checked
         if self.entry_mode == 'model' and price != evaluated_price:
             # The score belonged to a different tick; evaluate anew on the next pass.
+            self._entry_reject(symbol, 'quote_moved', f'scored={evaluated_price} latest={price}')
             return
         if getattr(self, 'market_gate', {}).get('gate_action', 'PASS') != 'PASS' or now_tpe().timestamp() > self.market_valid_until:
-            reason = ('market_risk_red' if getattr(self, 'market_gate', {}).get('gate_reason') == 'market_risk_red'
+            gate = getattr(self, 'market_gate', {})
+            reason = ('market_risk_red' if gate.get('gate_reason') == 'market_risk_red'
                       else 'market_data_unavailable')
             counts = getattr(self, '_market_block_counts', None)
             if isinstance(counts, dict):
                 with self._lock:
                     counts[reason] = min(1_000_000_000, counts.get(reason, 0) + 1)
+            self._entry_reject(symbol, reason,
+                               f"gate={gate.get('gate_action', 'PASS')}/{gate.get('gate_reason', '-')} "
+                               f"valid_for={self.market_valid_until - now_tpe().timestamp():.0f}s")
             return
         try:
             limits = read_live_settings()
             if not previous_close or not limits['min_price'] <= price <= limits['max_price'] or (price/previous_close-1)*100 > limits['max_gain_pct']:
+                self._entry_reject(symbol, 'user_limits' if previous_close else 'previous_close_missing',
+                                   f'price={price:.2f}')
                 self.manager.observe_entry_predicate(symbol, False, strategy_time)
                 return
-        except Exception:
+        except Exception as exc:
+            self._entry_reject(symbol, 'settings_unavailable', type(exc).__name__)
             return
         try:
             event = self.manager.open_position(
@@ -4755,6 +4831,7 @@ class IntradayLiveEngine:
             self.store,
             self.market_level,
         )
+        self.log_entry_reject_summary()
 
         if self._runtime_instance_id:
             try:
@@ -4782,6 +4859,7 @@ class IntradayLiveEngine:
         print(
             f"[SHUTDOWN] {reason}"
         )
+        self.log_entry_reject_summary(force=True)
 
         self.running = False
 

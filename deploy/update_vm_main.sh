@@ -7,8 +7,40 @@ restore_intraday_timer=0
 collect_only_before=0
 systemctl is-enabled --quiet easystock-intraday.timer && restore_intraday_timer=1
 test -f /etc/easystock/collect-only && collect_only_before=1
+# preflight: checkout untouched. code: checkout changed, nothing else yet, so a
+# failure rolls the checkout back. mutating: migrations / env / services may have
+# changed, so a failure keeps the new checkout and leaves the timer off.
+phase=preflight
+pre_update_head=''
+backup=''
+rollback_code() {
+  git reset --hard --quiet "$pre_update_head" || return 1
+  if [[ -d "$backup/untracked" ]]; then
+    cp -a "$backup/untracked/." ./ || return 1
+  fi
+  if [[ -f "$backup/release-info-before.json" ]]; then
+    cp -p "$backup/release-info-before.json" release-info.json || return 1
+  else
+    rm -f release-info.json || return 1
+  fi
+  [[ "$(git rev-parse HEAD)" == "$pre_update_head" ]] && git diff --quiet HEAD --
+}
 restore_timer() {
   status=$?
+  trap - EXIT
+  timer_safe=1
+  if [[ "$status" != 0 && "$phase" == code ]]; then
+    echo "更新後驗證失敗；將程式回滾到 ${pre_update_head:0:12}。" >&2
+    if rollback_code; then
+      echo "已回滾到更新前的程式：$(git rev-parse --short HEAD)。" >&2
+    else
+      echo "程式回滾失敗；目前 HEAD=$(git rev-parse --short HEAD)，備份：$backup" >&2
+      timer_safe=0
+    fi
+  elif [[ "$status" != 0 && "$phase" == mutating ]]; then
+    echo "migrate / 安裝步驟失敗；資料庫或服務設定可能已變更，不自動回滾程式。備份：$backup" >&2
+    timer_safe=0
+  fi
   if [[ "$restore_intraday_timer" == 1 ]] && ! systemctl is-enabled --quiet easystock-intraday.timer; then
     if [[ "$collect_only_before" == 1 ]]; then
       restore_command=(bash deploy/enable_collect_only.sh)
@@ -17,7 +49,9 @@ restore_timer() {
       restore_command=(sudo systemctl enable --now easystock-intraday.timer)
       restore_label='模擬買進排程'
     fi
-    if "${restore_command[@]}"; then
+    if [[ "$timer_safe" != 1 ]]; then
+      echo "不自動恢復${restore_label}；人工確認程式與資料後再執行：${restore_command[*]}" >&2
+    elif "${restore_command[@]}"; then
       echo "已恢復同步前的${restore_label}。"
     else
       echo "無法自動恢復${restore_label}；請檢查上方輸出。" >&2
@@ -48,6 +82,11 @@ mkdir -p "$backup"
 chmod 700 "$backup"
 printf '備份位置：%s\n' "$backup"
 git bundle create "$backup/repo-before.bundle" --all
+pre_update_head="$(git rev-parse HEAD)"
+if [[ -f release-info.json ]]; then
+  cp -p release-info.json "$backup/release-info-before.json"
+fi
+phase=code
 python3 - "$backup" <<'PY'
 from contextlib import closing
 from pathlib import Path
@@ -100,6 +139,7 @@ chmod 600 release-info.json
 .venv/bin/python3 tests/test_paper_legacy.py -q
 .venv/bin/python3 tests/test_research_schedule.py -q
 .venv/bin/python3 deploy/verify_paper_ledger.py --runtime /home/ubuntu/easystock
+phase=mutating
 .venv/bin/python3 deploy/migrate_paper_daily_limit.py --apply --backup-dir "$backup"
 python3 - <<'PY'
 from pathlib import Path
@@ -135,6 +175,7 @@ bash deploy/install_history_schedule.sh
 bash deploy/install_rebound_research.sh
 .venv/bin/python -m guardian.cli validate-policy
 bash deploy/install_architecture_guardian.sh
+phase=done
 printf '主線更新完成：'
 git rev-parse --short HEAD
 printf '備份位置：%s\n' "$backup"

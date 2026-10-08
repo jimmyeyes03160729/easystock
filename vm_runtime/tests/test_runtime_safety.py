@@ -160,7 +160,8 @@ class EngineTests(unittest.TestCase):
     def setUp(self):
         tree=ast.parse((ROOT/'intraday_live.py').read_text())
         cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='IntradayLiveEngine')
-        method=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='evaluate_symbol')
+        wanted=('evaluate_symbol','_entry_reject','log_entry_reject_summary','fresh_entry_quote')
+        methods=[n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name in wanted]
         result=dict(eligible=True,daytrade_score=90,vetoes=[],reasons=['one','two'],price=100)
         self.ns=dict(datetime=datetime,MIN_WARM_5M_BARS=1,MIN_WARM_15M_BARS=1,
             evaluate_daytrade=Mock(return_value=result),get_position_safe=lambda m,s:m.get_position(s),
@@ -169,17 +170,80 @@ class EngineTests(unittest.TestCase):
             read_live_settings=lambda:dict(min_price=1,max_price=200,max_gain_pct=5),
             call_manager_strategy_result=lambda **kw: kw['manager'].on_strategy_result(kw['symbol'], kw['result'], kw['dt']),
             is_exit_event=lambda event: isinstance(event, dict) and event.get('type') == 'EXIT',
-            push_line_text=Mock(),format_entry_message=Mock(return_value='entry'))
-        exec(compile(ast.Module(body=[method],type_ignores=[]),'<engine>','exec'),self.ns)
+            push_line_text=Mock(),format_entry_message=Mock(return_value='entry'),
+            time=types.SimpleNamespace(monotonic=lambda:self.mono),ENTRY_REJECT_LOG_SECONDS=300.0,
+            ENTRY_REJECT_SUMMARY_SECONDS=60.0)
+        self.mono=1000.0
+        exec(compile(ast.Module(body=methods,type_ignores=[]),'<engine>','exec'),self.ns)
         self.manager=PositionManager(research_mode=True, before_open=Mock(return_value=dict(status='skipped',skip_reason='daily_buy_limit_exceeded',shares=0)))
         self.engine=types.SimpleNamespace(bars=types.SimpleNamespace(rows5=lambda _: [{}],rows15=lambda _:[{}]),
             candidates={'TEST':{}},market_level='GREEN',market_valid_until=NOW.timestamp()+30,
             entry_mode='rules',collect_only=False,last_prices={'TEST':100},manager=self.manager,scanner_top_symbols={'TEST'},
             fresh_entry_quote=Mock(return_value=(100,NOW)),_previous_closes={'TEST':(None,100)},
             _lock=threading.RLock(),radar_ticks={'TEST':[]},daytrade_model=DaytradeModel(path=''),
-            entry_symbols=set(),_entry_limit_logged=False,learning=Mock(),store=Mock())
+            entry_symbols=set(),_entry_limit_logged=False,learning=Mock(),store=Mock(),
+            _entry_reject_counts={},_entry_reject_last={},_entry_reject_summary_at=0.0,_entry_reject_summary_logged={})
+        for name in ('_entry_reject','log_entry_reject_summary'):
+            setattr(self.engine,name,types.MethodType(self.ns[name],self.engine))
 
     def run_engine(self):self.ns['evaluate_symbol'](self.engine,'TEST',NOW)
+
+    def captured(self,fn):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        output=StringIO()
+        with redirect_stdout(output):
+            fn()
+        return output.getvalue()
+
+    def test_market_block_logs_entry_reject_reason(self):
+        self.engine.market_gate={'gate_action':'BLOCK','gate_reason':'market_data_unavailable'}
+        self.engine._market_block_counts={'market_risk_red':0,'market_data_unavailable':0}
+        out=self.captured(self.run_engine)
+        self.assertIn('[ENTRY_REJECT] TEST reason=market_data_unavailable gate=BLOCK/market_data_unavailable',out)
+        self.assertEqual(self.engine._entry_reject_counts,{'market_data_unavailable':1})
+
+    def test_silent_exits_now_log_a_reason(self):
+        self.engine.scanner_top_symbols=set()
+        self.assertIn('reason=not_radar_top',self.captured(self.run_engine))
+        self.engine.entry_mode='model'
+        self.ns['evaluate_daytrade'].return_value['vetoes']=['5分K破短低']
+        self.assertIn('reason=strategy_veto veto=5分K破短低',self.captured(self.run_engine))
+        self.manager.before_open.assert_not_called()
+
+    def test_repeated_reject_is_throttled_but_still_counted(self):
+        self.engine.scanner_top_symbols=set()
+        out=self.captured(lambda:[self.run_engine() for _ in range(5)])
+        self.assertEqual(out.count('[ENTRY_REJECT]'),1)
+        self.assertEqual(self.engine._entry_reject_counts['not_radar_top'],5)
+        self.engine.scanner_top_symbols={'TEST'}
+        self.ns['in_entry_window']=lambda _:False
+        self.assertIn('reason=outside_entry_window',self.captured(self.run_engine))
+        self.engine.scanner_top_symbols=set();self.ns['in_entry_window']=lambda _:True
+        self.assertIn('reason=not_radar_top',self.captured(self.run_engine))
+        self.assertNotIn('[ENTRY_REJECT]',self.captured(self.run_engine))
+        self.mono+=301
+        self.assertIn('reason=not_radar_top',self.captured(self.run_engine))
+
+    def test_reject_summary_prints_only_when_counts_change(self):
+        self.engine.scanner_top_symbols=set()
+        self.captured(self.run_engine)
+        out=self.captured(self.engine.log_entry_reject_summary)
+        self.assertEqual(out.strip(),'[ENTRY_REJECT_SUMMARY] not_radar_top=1')
+        self.assertEqual(self.captured(lambda:self.engine.log_entry_reject_summary(force=True)),'')
+        self.captured(self.run_engine)
+        self.assertEqual(self.captured(self.engine.log_entry_reject_summary),'')
+        self.assertIn('not_radar_top=2',self.captured(lambda:self.engine.log_entry_reject_summary(force=True)))
+
+    def test_incomplete_previous_day_bars_log_a_reason(self):
+        bar=types.SimpleNamespace(start=NOW.replace(hour=13,minute=20)-timedelta(days=1),close=99.0)
+        self.ns.update(timedelta=timedelta,kbars_to_1m=lambda payload:[bar],dtime=lambda h,m:NOW.replace(hour=h,minute=m).timetz().replace(tzinfo=None))
+        self.engine.contracts={'TEST':object()};self.engine.api=Mock();self.engine._previous_closes={}
+        self.engine._previous_close_retry={}
+        out=self.captured(lambda:self.assertIsNone(self.ns['fresh_entry_quote'](self.engine,'TEST',allow_lookup=True)))
+        self.assertIn('[ENTRY_REJECT] TEST reason=previous_close_incomplete bars=1',out)
+        out=self.captured(lambda:self.ns['fresh_entry_quote'](self.engine,'TEST',allow_lookup=True))
+        self.assertIn('reason=previous_close_retry_wait',out)
 
     def test_insufficient_cash_records_research_without_paper_fill(self):
         self.run_engine()
