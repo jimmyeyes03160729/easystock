@@ -33,11 +33,13 @@ def test_decision_paths():
     r = evaluate(good_unseen + bad_off, good_exposed, folds=folds)
     assert r['unseen_2022']['filtered']['trades'] == MIN_UNSEEN_TRADES
     assert r['unseen_2022']['unfiltered_descriptive']['trades'] == MIN_UNSEEN_TRADES + 50
-    assert r['decision']['outcome'] == 'CONFIRMATION_CANDIDATE' and r['decision']['production_ready'] is False
+    assert r['decision']['outcome'] == 'DESCRIPTIVE_PASS' and r['decision']['production_ready'] is False
+    assert r['decision']['legacy_criteria_outcome'] == 'CONFIRMATION_CANDIDATE'
+    assert r['decision']['holdout_authorized'] is False
 
     assert evaluate(good_unseen, bad_exposed, folds=folds)['decision']['outcome'] == 'REJECTED'
     few = good_unseen[:MIN_UNSEEN_TRADES - 1]
-    assert evaluate(few, good_exposed, folds=folds)['decision']['outcome'] == 'INCONCLUSIVE_HOLDOUT_DECIDES'
+    assert evaluate(few, good_exposed, folds=folds)['decision']['legacy_criteria_outcome'] == 'INCONCLUSIVE_HOLDOUT_DECIDES'
     assert evaluate(few, bad_exposed, folds=folds)['decision']['outcome'] == 'REJECTED'
     losing = [pick(d, 1.0, 9.5) for d in days('2022', MIN_UNSEEN_TRADES)]
     assert evaluate(losing, good_exposed, folds=folds)['decision']['stage1_unseen_2022'] == 'FAIL'

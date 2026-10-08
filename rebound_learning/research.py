@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
-from collections import defaultdict
+from collections import Counter, defaultdict
 from math import isfinite
 from pathlib import Path
 
@@ -18,6 +18,7 @@ from .collector import SETTINGS
 from .market_daily import connect as market_connect, future_bars
 from .official import dataset_path
 from .schema import connect, database_path
+from .simulation import CORRECTION_ID, cost_sensitivity, missing_outcome_threshold, replay, session_bars
 
 PREREGISTRATION_ID = 'REBOUND_P2_RANKER_V1'
 RESERVED_FROM = SETTINGS['reserved_confirmation_start']
@@ -43,31 +44,18 @@ VARIANTS = (
 BOOTSTRAP = 2000
 
 
-def simulate(bars: list[dict], target: float, invalid: float) -> float | None:
+def simulate(bars: list[dict | None], target: float, invalid: float) -> float | None:
     """Gross % return of the bracket trade; bars are D1..D10 on the D0 price basis.
 
     Entry at D1 open (None when it is outside the bracket: no fill). From D2 an
     opening gap through a level exits at the open. Within a bar the stop has
     priority over the target. Otherwise exit at the D10 close.
     """
-    if len(bars) < HORIZON:
-        return None
-    entry = bars[0]['open']
-    if not invalid < entry < target:
-        return None
-    for n, bar in enumerate(bars[:HORIZON]):
-        if n:
-            if bar['open'] <= invalid or bar['open'] >= target:
-                return (bar['open'] / entry - 1) * 100
-        if bar['low'] <= invalid:
-            return (invalid / entry - 1) * 100
-        if bar['high'] >= target:
-            return (target / entry - 1) * 100
-    return (bars[HORIZON - 1]['close'] / entry - 1) * 100
+    return replay(bars, target, invalid, stop=True, take=True, horizon=HORIZON)['gross']
 
 
 def load_rows(db, market, *, reserved_from: str = RESERVED_FROM) -> tuple[list[dict], list[str], list[str]]:
-    """Matured historical rows with a complete horizon strictly before reserved_from."""
+    """D0 rows with a mature calendar horizon; missing bars never remove a row."""
     calendar = [r[0] for r in db.execute('SELECT day FROM trading_days WHERE day<? ORDER BY day', (reserved_from,))]
     position = {day: i for i, day in enumerate(calendar)}
     rows, names = [], None
@@ -79,11 +67,11 @@ def load_rows(db, market, *, reserved_from: str = RESERVED_FROM) -> tuple[list[d
         if i is None or i + HORIZON >= len(calendar):
             continue  # horizon would reach the reserved partition: not loaded
         sessions = calendar[i + 1:i + 1 + HORIZON]
-        bars = [b for b in future_bars(market, snap['symbol'], day, HORIZON) if b['time'] < reserved_from]
-        if [b['time'] for b in bars] != sessions:
-            continue  # suspension inside the horizon: excluded for every ranker
+        bars = session_bars(market, snap['symbol'], day, sessions, before=reserved_from)
         evidence = snap['evidence']
-        gross = simulate(bars, evidence['target_price'], evidence['invalid_price'])
+        outcome = replay(bars, evidence['target_price'], evidence['invalid_price'],
+                         stop=True, take=True, horizon=HORIZON)
+        gross = outcome['gross']
         if names is None:
             names = sorted(snap['features'])
         if sorted(snap['features']) != names:
@@ -93,6 +81,7 @@ def load_rows(db, market, *, reserved_from: str = RESERVED_FROM) -> tuple[list[d
             'x': [snap['features'][k] for k in names],
             'breakout': evidence.get('confirmation') == 'breakout', 'score': evidence.get('rule_score') or 0,
             'gross': gross, 'net': None if gross is None else gross - COST_PCT,
+            'status': outcome['status'],
         })
     return rows, names or [], calendar
 
@@ -161,6 +150,17 @@ def select(test: list[dict], preds: list[float] | None, k: int = TOP_K, abstain:
     return out
 
 
+def selection_status(test: list[dict], preds: list[float] | None, k: int = TOP_K) -> dict:
+    by_day, counts = defaultdict(list), Counter()
+    for i, row in enumerate(test):
+        by_day[row['date']].append((row, preds[i] if preds is not None else None))
+    for items in by_day.values():
+        key = (lambda item: baseline_key(item[0])) if preds is None else (lambda item: (-item[1], item[0]['symbol']))
+        for row, _ in sorted(items, key=key)[:k]:
+            counts[row.get('status', 'EXECUTED' if row['net'] is not None else 'UNKNOWN')] += 1
+    return dict(counts)
+
+
 def bootstrap_delta(model: dict, base: dict, seed: int = 0) -> dict:
     days = sorted(set(model) | set(base))
     rng = random.Random(seed)
@@ -209,7 +209,9 @@ def criteria(folds: list[dict], pooled: dict, boot: dict) -> dict:
 
 def evaluate(rows: list[dict], calendar: list[str], *, folds=FOLDS, variants=VARIANTS) -> dict:
     position = {d: i for i, d in enumerate(calendar)}
-    report = {'preregistration_id': PREREGISTRATION_ID, 'reserved_from': RESERVED_FROM, 'cost_pct': COST_PCT,
+    report = {'preregistration_id': PREREGISTRATION_ID, 'correction_id': CORRECTION_ID,
+              'analysis_role': 'EXPOSED_HISTORY_CORRECTION_ONLY',
+              'reserved_from': RESERVED_FROM, 'cost_pct': COST_PCT,
               'top_k': TOP_K, 'rows_loaded': len(rows), 'variants': {}}
     base_by_fold = []
     for start, end in folds:
@@ -217,6 +219,7 @@ def evaluate(rows: list[dict], calendar: list[str], *, folds=FOLDS, variants=VAR
         base_by_fold.append(select(test, None))
     for name, model_kind, kinds in variants:
         fold_reports, model_days, base_days, descriptive = [], {}, {}, defaultdict(dict)
+        model_status, base_status = Counter(), Counter()
         for (start, end), base in zip(folds, base_by_fold):
             first = next(i for i, d in enumerate(calendar) if d >= start)
             cutoff = calendar[max(0, first - EMBARGO_SESSIONS)]
@@ -226,10 +229,14 @@ def evaluate(rows: list[dict], calendar: list[str], *, folds=FOLDS, variants=VAR
             if any(not isfinite(p) for p in preds):
                 raise ValueError('nonfinite_prediction')
             chosen = select(test, preds)
+            ms, bs = selection_status(test, preds), selection_status(test, None)
+            model_status.update(ms)
+            base_status.update(bs)
             m = metrics([t for v in chosen.values() for t in v])
             b = metrics([t for v in base.values() for t in v])
             fold_reports.append({'test_start': start, 'test_end': end, 'train_rows': len(train),
                                  'train_cutoff': cutoff, 'test_rows': len(test), 'model': m, 'baseline': b,
+                                 'model_status': ms, 'baseline_status': bs,
                                  'delta_mean_net_pct': round(m['mean_net_pct'] - b['mean_net_pct'], 4)
                                  if m['mean_net_pct'] is not None and b['mean_net_pct'] is not None else None})
             model_days.update({(start, d): v for d, v in chosen.items()})
@@ -246,18 +253,26 @@ def evaluate(rows: list[dict], calendar: list[str], *, folds=FOLDS, variants=VAR
         boot = bootstrap_delta(model_days, base_days)
         report['variants'][name] = {'folds': fold_reports, 'pooled': pooled, 'bootstrap_delta': boot,
                                     'criteria': criteria(fold_reports, pooled, boot),
+                                    'model_status': dict(model_status), 'baseline_status': dict(base_status),
+                                    'model_cost_sensitivity': cost_sensitivity([t for v in model_days.values() for t in v]),
+                                    'baseline_cost_sensitivity': cost_sensitivity([t for v in base_days.values() for t in v]),
+                                    'model_missing_outcome': missing_outcome_threshold(
+                                        [t for v in model_days.values() for t in v], model_status['UNRESOLVED_MISSING_BAR']),
+                                    'baseline_missing_outcome': missing_outcome_threshold(
+                                        [t for v in base_days.values() for t in v], base_status['UNRESOLVED_MISSING_BAR']),
                                     'descriptive_only': descriptive}
     passing = [n for n, v in report['variants'].items() if v['criteria']['ALL_PASS']]
     simplicity = {name: i for i, (name, _, _) in enumerate(variants)}
     passing.sort(key=lambda n: (-report['variants'][n]['pooled']['delta_mean_net_pct'], simplicity[n]))
     report['decision'] = {'passing_variants': passing, 'selected_variant': passing[0] if passing else None,
-                          'outcome': 'SHADOW_CANDIDATE' if passing else 'REJECTED', 'production_ready': False}
+                          'outcome': 'DESCRIPTIVE_PASS' if passing else 'REJECTED',
+                          'holdout_authorized': False, 'production_ready': False}
     return report
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output', type=Path, default=database_path().parent / 'phase2' / f'{PREREGISTRATION_ID}-result.json')
+    parser.add_argument('--output', type=Path, default=database_path().parent / 'corrections' / f'{PREREGISTRATION_ID}-{CORRECTION_ID}.json')
     args = parser.parse_args()
     with market_connect() as market, connect(dataset_path()) as db:
         rows, names, calendar = load_rows(db, market)
