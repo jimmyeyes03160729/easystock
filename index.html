@@ -1059,7 +1059,7 @@
 
 
 <script src="assets/rebound-engine.js?v=bfd4819e5bc1"></script>
-<script src="assets/dashboard-ux.js?v=aa82af4ef3f8"></script>
+<script src="assets/dashboard-ux.js?v=45e47442de37"></script>
 <script>
 
   /* ========================================================
@@ -3149,7 +3149,7 @@
     const metaDaytradeModel = document.getElementById("metaDaytradeModel");
     const config = INTRADAY_LIVE?.config || {};
     const modeLabel = config.entry_mode === 'rules' ? '規則模式'
-      : config.entry_mode === 'model' ? (config.model_ready ? '模型模式' : '模型未就緒，禁止進場')
+      : config.entry_mode === 'model' ? (config.model_ready ? '模型模式' : 'A 暫停進場（模型改版中）')
       : '模式待確認';
     const modeDate = INTRADAY_LIVE?.scan_date || '日期未知';
     if (modelBadge) {

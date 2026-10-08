@@ -49,7 +49,10 @@ test('empty reasons use fresh backend evidence; unknown, stale, session, filters
   market_risk.gate_reason='<script>untrusted</script>';assert.match(ux.emptyReason({...base,live:{...base.live,market_risk}}),/具體原因待確認/);
   for(const checked_at of ['bad',new Date(now-91000).toISOString(),new Date(now+61000).toISOString()])
     assert.match(ux.emptyReason({...base,live:{...base.live,market_risk:{...market_risk,checked_at,gate_reason:'market_risk_red'}}}),/不能由空清單推定/);
-  assert.match(ux.emptyReason({...base,live:{session:'daytrade',config:{entry_mode:'model',model_ready:false}}}),/模型未就緒/);
+  for(const session of ['daytrade','preopen','closed'])
+    assert.match(ux.emptyReason({...base,live:{session,config:{entry_mode:'model',model_ready:false}}}),/跑道 A 暫停進場：模型未就緒.*不切換策略或放寬條件/);
+  assert.match(ux.emptyReason({...base,live:{session:'daytrade',config:{entry_mode:'model',model_ready:true}}}),/不能由空清單推定/);
+  assert.match(ux.emptyReason({...base,filtered:true,live:{session:'daytrade',config:{entry_mode:'model',model_ready:false}}}),/篩選隱藏/);
 });
 
 test('mobile fields remain visible, 1000-share budget/range affect display only, clear restores all',t=>{
