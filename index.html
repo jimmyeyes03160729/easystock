@@ -672,12 +672,12 @@
   </section>
 
   <!-- =====================================================
-       02 底部反彈 TOP 3
+       02 底部反彈觀察名單
        ===================================================== -->
   <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]" id="bottom-rebound">
     <div class="flex items-center gap-2">
       <span class="h-6 w-6 rounded-md bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#06B6D4] font-mono text-xs font-bold">02</span>
-      <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9]">底部反彈 TOP 3 · 接近支撐・等待止跌</h2>
+      <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9]">底部反彈觀察名單 · 接近支撐・等待止跌</h2>
     </div>
     <span class="text-xs text-[#64748B]">波段觀察 · 多次回測支撐確認</span>
   </div>
@@ -688,20 +688,20 @@
         <h2 id="reboundTitle" class="text-sm font-bold text-[#F1F5F9] m-0">底部反彈觀察標的 · 有支撐，也要等站穩</h2>
         <p class="text-xs text-[#64748B] mt-1">多次回測支撐與壓力，確認止跌後再檢查基本面。可能持有數日，不是當沖訊號。</p>
       </div>
-      <button class="btn share-btn flex items-center gap-1 px-2.5 py-1 rounded bg-[#1C2B3C] hover:bg-[#273647] text-[#F1F5F9] text-xs flex-shrink-0" type="button" data-share-ignore onclick="prepareModuleShare('reboundModule','底部反彈 TOP 3')">
+      <button class="btn share-btn flex items-center gap-1 px-2.5 py-1 rounded bg-[#1C2B3C] hover:bg-[#273647] text-[#F1F5F9] text-xs flex-shrink-0" type="button" data-share-ignore onclick="prepareModuleShare('reboundModule','底部反彈觀察名單')">
         <span class="material-symbols-outlined text-[13px]">share</span> 分享圖片 ↗
       </button>
     </div>
     <div class="flex items-center justify-between flex-wrap gap-2 my-2.5 font-mono text-xs sm:text-[13px]">
       <p id="activeFilterLabel" class="text-[#64748B] font-medium">全部價格</p>
-      <div class="rebound-rule-note px-3 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 text-xs font-semibold">規則試行 · 尚無驗證勝率 · 資料不足不列入推薦</div>
+      <div class="rebound-rule-note px-3 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 text-xs font-semibold">觀察名單 · 非買進訊號 · 歷史回測扣成本後為負</div>
     </div>
     <p id="reboundStatus" role="status" aria-live="polite" class="text-xs text-[#64748B] font-mono font-medium">等待日線資料…</p>
     <p id="reboundProgress" class="text-xs text-[#64748B] font-mono font-medium"></p>
     <div id="reboundPicks" class="rebound-grid mt-3"></div>
     <div id="reboundWatchSection" hidden class="mt-4 pt-3 border-t border-[#232F42]">
       <h3 class="text-sm sm:text-base font-bold text-[#F1F5F9] mb-1">型態符合，基本面待確認</h3>
-      <p class="text-xs text-[#64748B] mb-2 font-medium">以下是技術觀察名單，尚未列入推薦 TOP 3。</p>
+      <p class="text-xs text-[#64748B] mb-2 font-medium">以下型態相同，但基本面資料不完整，排在觀察名單之後。</p>
       <div id="reboundWatch" class="rebound-grid"></div>
     </div>
     <details class="rebound-method mt-3 p-3.5 rounded-xl bg-[#0D1C2D] border border-[#232F42]/60 text-xs sm:text-[13px] text-[#64748B] leading-relaxed">
@@ -710,6 +710,7 @@
         <span>篩選方式與本次檢查結果</span>
       </summary>
       <p class="mt-2.5">使用 Firebase 同一版本最近 90～252 根日 K，支撐與壓力至少觸及兩次、相隔至少 7 個交易日、首末跨度至少 14 日。區間至少 10%，價格位於底部 35% 且距支撐不超過 10%，近 8 日需回測支撐。近 3 日突破昨高並守穩者優先；連兩日收高、收紅且收在當日上緣者列為「初步止跌」。今日不可明顯破近期低點。</p>
+      <p class="mt-2.5">2026-10 歷史研究：依此規則每天前 3 檔、隔日開盤買進、規則停損／目標出場、最多持有 10 個交易日，2024–2026 扣 0.6% 交易成本後平均每筆約 −0.55%，5 段期間中 4 段為負；AI 重新排序也沒有改善。因此本區只作觀察名單，不是買進建議。</p>
       <p class="mt-1.5">扣除假設來回成本 0.6% 後，價格空間／失效風險至少 1.5 倍。基本面初篩：單月營收年增不低於 −20%、EPS 與營業利益率為正、負債比低於 70%。</p>
       <p id="reboundDiagnostics" class="mt-2 text-[#06B6D4] font-mono font-medium">等待檢查結果。</p>
       <button id="reboundRetry" class="btn mt-2 px-3 py-1.5 rounded-lg bg-[#1C2B3C] text-xs font-semibold text-[#F1F5F9]" type="button">重新檢查</button>
@@ -5058,7 +5059,7 @@
 <script src="assets/vendor/html2canvas.min.js"></script>
 <script src="assets/module-share.js?v=d047d833f8a3"></script>
 <script src="assets/learning-status.js?v=7abe6c98e7b4"></script>
-<script src="assets/rebound-ui.js?v=ae4710a833b0"></script>
+<script src="assets/rebound-ui.js?v=81e93ff0ad7b"></script>
 <script src="assets/dashboard-layout.js?v=ab06770c6379"></script>
 <script src="assets/intraday-chart.js?v=17c577fb8eaa"></script>
 <script src="assets/provider-health.js?v=e8f08c578597"></script>

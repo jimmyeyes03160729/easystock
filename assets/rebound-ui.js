@@ -26,7 +26,7 @@ function saveCache(release){
 function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;}
 function card(r,index,watch){
  const s=r.stock,t=r.technical,f=r.financial,e=node('article',undefined,'rebound-card');
- const header=node('div',undefined,'rebound-card-head');header.append(node('span',watch?'資料待補':`TOP ${index+1} · ${t.confirmation==='early'?'初步止跌':'突破確認'}`,'rebound-rank'),node('span',`排序 ${t.score} 分 · 非勝率`,'text-sub'));e.append(header);
+ const header=node('div',undefined,'rebound-card-head');header.append(node('span',watch?'資料待補':`觀察 ${index+1} · ${t.confirmation==='early'?'初步止跌':'突破確認'}`,'rebound-rank'),node('span',`排序 ${t.score} 分 · 非勝率`,'text-sub'));e.append(header);
  const quote=node('div',undefined,'rebound-quote');
  quote.append(node('h3',`${s.symbol} ${s.name||''}`));
  const price=node('strong',money(s.price)+' 元','rebound-price');
