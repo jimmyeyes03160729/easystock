@@ -2629,6 +2629,13 @@ class IntradayLiveEngine:
         print(f"[MODEL_BOOT] mode={self.entry_mode} collect_only={self.collect_only} ready={self.daytrade_model.artifact is not None} "
               f"version={self.daytrade_model.model_version} sha256={self.daytrade_model.artifact_sha256} "
               f"threshold={self.daytrade_model.threshold} learning={self.learning.enabled}")
+        try:
+            from runway_v2.runner import get_runway_v2
+            self.runway_v2 = get_runway_v2()
+            print(f"[RUNWAY_V2_BOOT] enabled={self.runway_v2.enabled}")
+        except Exception as exc:
+            self.runway_v2 = None
+            print(f"[RUNWAY_V2_BOOT_FAIL] {exc}")
         self._market_checked_at = 0.0
         self._market_block_counts = {'market_risk_red': 0, 'market_data_unavailable': 0}
         self.market_valid_until = 0.0
@@ -3626,6 +3633,13 @@ class IntradayLiveEngine:
 
             self.scanner_top_symbols = new_top
 
+            if getattr(self, "runway_v2", None) is not None and top_rows:
+                try:
+                    prev_map = {str(r.get("symbol")): self._previous_closes.get(str(r.get("symbol")), (None, None))[1] for r in top_rows}
+                    self.runway_v2.on_radar_update(top_rows, self.bars, prev_map, current)
+                except Exception as exc:
+                    print(f"[RUNWAY_V2_RADAR_WARN] {exc}")
+
         # Research records all observed pool members, not only today's winners.
         for symbol in symbols:
             try:
@@ -4535,6 +4549,12 @@ class IntradayLiveEngine:
             self.last_prices[
                 symbol
             ] = price
+
+            if getattr(self, "runway_v2", None) is not None:
+                try:
+                    self.runway_v2.on_tick(symbol, price, dt)
+                except Exception:
+                    pass
 
             # ---------------------------------------------
             # 1) Position Tick 管理

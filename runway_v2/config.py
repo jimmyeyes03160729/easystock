@@ -1,0 +1,40 @@
+"""Runway V2: 獨立高勝率當沖動能跑道配置
+完全獨立於生產環境與既有 AI 模型訓練，零干擾。
+"""
+import os
+from pathlib import Path
+
+# 開關
+RUNWAY_V2_ENABLED = os.environ.get("RUNWAY_V2_ENABLED", "1").lower() in ("1", "true", "yes")
+
+# 時間時窗（解鎖早盤黃金動能時段）
+ENTRY_START_TIME = os.environ.get("RUNWAY_V2_ENTRY_START", "09:05:00")
+ENTRY_CUTOFF_TIME = os.environ.get("RUNWAY_V2_ENTRY_CUTOFF", "12:30:00")
+FORCE_EXIT_TIME = os.environ.get("RUNWAY_V2_FORCE_EXIT", "12:55:00")
+
+# 篩選條件
+MIN_PRICE = float(os.environ.get("RUNWAY_V2_MIN_PRICE", "15.0"))
+MAX_PRICE = float(os.environ.get("RUNWAY_V2_MAX_PRICE", "600.0"))
+MIN_GAIN_PCT = float(os.environ.get("RUNWAY_V2_MIN_GAIN_PCT", "1.0"))  # 至少 1% 漲幅動能
+MAX_GAIN_PCT = float(os.environ.get("RUNWAY_V2_MAX_GAIN_PCT", "7.5"))  # 放寬至 7.5%，避開已漲停追不到的
+
+# 風控與部位
+MAX_CONCURRENT_POSITIONS = int(os.environ.get("RUNWAY_V2_MAX_POSITIONS", "3"))
+DEFAULT_POSITION_AMOUNT = float(os.environ.get("RUNWAY_V2_POS_AMOUNT", "300000.0"))  # 每檔約 30 萬
+STOP_LOSS_PCT = float(os.environ.get("RUNWAY_V2_STOP_LOSS_PCT", "0.015"))  # 1.5% 結構停損
+TAKE_PROFIT_HALF_PCT = float(os.environ.get("RUNWAY_V2_TP_HALF_PCT", "0.015"))  # +1.5% 先出 50% 鎖利保本
+TRAILING_TRIGGER_PCT = float(os.environ.get("RUNWAY_V2_TRAILING_TRIGGER_PCT", "0.020"))  # +2.0% 啟動移動停利
+TRAILING_PULLBACK_PCT = float(os.environ.get("RUNWAY_V2_TRAILING_PULLBACK_PCT", "0.008"))  # 回檔 0.8% 出場
+
+# 成本計算 (28折手續費 + 0.15% 當沖稅)
+FEE_RATE = 0.001425 * 0.28
+TAX_RATE = 0.0015
+SLIPPAGE_RATE = 0.0005  # 滑價估計 0.05%
+
+# 資料庫路徑 (本地 fallback，VM 為 /home/ubuntu/easystock-runway-v2/ledger_v2.sqlite)
+_DEFAULT_DIR = Path(os.environ.get("RUNWAY_V2_DATA_DIR", "/home/ubuntu/easystock-runway-v2"))
+if not _DEFAULT_DIR.exists() and not Path("/home/ubuntu").exists():
+    _DEFAULT_DIR = Path(__file__).resolve().parent / "data"
+
+DB_DIR = _DEFAULT_DIR
+DB_PATH = DB_DIR / "ledger_v2.sqlite"
