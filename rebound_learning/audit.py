@@ -21,7 +21,9 @@ def build_audit(db, *, before: str | None = None) -> dict:
     seen=set(); first=None; last=None; total=0; feature_versions=Counter()
     bars_by_symbol=defaultdict(list)
     volume_available=0; bar_total=0
-    for item in db.execute('SELECT symbol,day,bar FROM daily_bars ORDER BY symbol,day'):
+    # Scan metadata obeys the same reserved-partition bound as candidates.
+    bound=' WHERE day<?' if before else ''; bound_args=(before,) if before else ()
+    for item in db.execute('SELECT symbol,day,bar FROM daily_bars'+bound+' ORDER BY symbol,day', bound_args):
         try:
             bar=json.loads(item['bar'])
             if item['day']>today: critical.append(f'future_kline_timestamp:{item["symbol"]}:{item["day"]}')
@@ -73,9 +75,9 @@ def build_audit(db, *, before: str | None = None) -> dict:
             if outcome.get('reason')=='entry_outside_bracket':
                 warnings.append(f'entry_outside_bracket:{key}')
         else: labels['UNLABELED']+=1
-    scans=db.execute('SELECT COUNT(*),COALESCE(SUM(symbols_scanned),0),COALESCE(SUM(symbols_expected),0),MIN(day),MAX(day) FROM scan_days').fetchone()
+    scans=db.execute('SELECT COUNT(*),COALESCE(SUM(symbols_scanned),0),COALESCE(SUM(symbols_expected),0),MIN(day),MAX(day) FROM scan_days'+bound, bound_args).fetchone()
     distinct_scanned=db.execute('''SELECT COUNT(DISTINCT b.symbol) FROM daily_bars b
-        JOIN scan_days s ON s.day=b.day''').fetchone()[0]
+        JOIN scan_days s ON s.day=b.day'''+(' WHERE s.day<?' if before else ''), bound_args).fetchone()[0]
     if not financial: warnings.append('historical_financial_point_in_time_unavailable')
     if not market: warnings.append('historical_market_context_unavailable')
     if not total: warnings.append('no_candidates')

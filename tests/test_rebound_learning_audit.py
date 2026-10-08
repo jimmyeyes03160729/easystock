@@ -46,3 +46,15 @@ def test_duplicate_identity_detected_by_database_guard(tmp_path):
             assert 'UNIQUE' in str(exc)
         else:
             raise AssertionError('database accepted a duplicate ID')
+
+
+def test_before_bound_hides_reserved_scan_metadata(tmp_path):
+    source=bars();day=source[-1]['time']
+    with connect(tmp_path/'db.sqlite') as db:
+        run(db,{'2330':source},[day])
+        full=build_audit(db)
+        blinded=build_audit(db,before=day)
+    assert full['scan_last_date']==day and full['trading_days_scanned']==1
+    assert blinded['scan_last_date'] is None and blinded['trading_days_scanned']==0
+    assert blinded['stock_days_scanned']==0 and blinded['symbols_scanned']==0
+    assert blinded['coverage']['kline_bar_count']<full['coverage']['kline_bar_count']
