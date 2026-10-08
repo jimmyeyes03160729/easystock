@@ -1,4 +1,4 @@
-"""Amendments 1 and 2: 2026-10-06 and 2026-10-05 are carved out of the reserved future-confirmation partition."""
+"""Amendments 1-3: 2026-10-05 through 2026-10-08 are carved out of the reserved future-confirmation partition."""
 from pathlib import Path
 import sys
 
@@ -15,6 +15,7 @@ GOV = ROOT / 'docs' / 'research_governance'
 REGISTRY = str(GOV / 'DATASET_REGISTRY_v1.yaml')
 EXCLUDED = 'LIVE_LEARNING_20261006_EXCLUDED_DAY'
 EXCLUDED_2 = 'LIVE_LEARNING_20261005_EXCLUDED_DAY'
+EXCLUDED_3 = 'LIVE_LEARNING_20261007_08_EXCLUDED_DAYS'
 RESERVED = 'PHASE2C_FUTURE_CONFIRMATION_60D'
 
 
@@ -26,19 +27,20 @@ def test_registry_carves_out_the_inspected_day_and_keeps_the_rest_reserved():
     reg = DatasetRegistry(REGISTRY)
     reserved = reg.get(RESERVED)
     assert reserved['canonical_status'] == 'RESERVED_UNTOUCHED'
-    assert sorted(reserved['excluded_dates']) == ['2026-10-05', '2026-10-06']
-    for name, day in ((EXCLUDED, '2026-10-06'), (EXCLUDED_2, '2026-10-05')):
+    assert sorted(reserved['excluded_dates']) == ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08']
+    for name, first, last in ((EXCLUDED, '2026-10-06', '2026-10-06'), (EXCLUDED_2, '2026-10-05', '2026-10-05'),
+                              (EXCLUDED_3, '2026-10-07', '2026-10-08')):
         excluded = reg.get(name)
         assert excluded['canonical_status'] == 'EXCLUDED_FROM_RESERVED_PARTITION'
-        assert excluded['start_date'] == excluded['end_date'] == day
+        assert (excluded['start_date'], excluded['end_date']) == (first, last)
         assert RESERVED in excluded['parent_dataset_ids']
 
 
 def test_holdout_record_lists_the_same_exclusion_and_stays_pristine():
     h = load('holdouts/PHASE2C_FUTURE_60D_HOLDOUT.yaml')
     ex = h['partition_definition']['excluded_dates']
-    assert sorted(e['date'] for e in ex) == ['2026-10-05', '2026-10-06']
-    assert {e['amendment'] for e in ex} == {'AMENDMENT_1_20261007', 'AMENDMENT_2_20261008'}
+    assert sorted(e['date'] for e in ex) == ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08']
+    assert {e['amendment'] for e in ex} == {'AMENDMENT_1_20261007', 'AMENDMENT_2_20261008', 'AMENDMENT_3_20261008'}
     assert all(e['outcome_dependent'] is False for e in ex)
     assert h['partition_definition']['selection_rule'] == 'FIRST_60_ELIGIBLE_TRADING_DAYS'
     assert h['lifecycle']['status'] == 'RESERVED_UNTOUCHED'
@@ -62,6 +64,16 @@ def test_amendment_2_exposure_is_recorded_against_2026_10_05_only():
     assert event['slice']['start_date'] == event['slice']['end_date'] == '2026-10-05'
     assert event['exposure']['performance_seen'] is False and event['exposure']['labels_seen'] is False
     assert event['exposure']['aggregate_metrics_seen'] is True
+    assert event['governance']['independent_confirmation_eligible_after'] is False
+
+
+def test_amendment_3_exposure_is_recorded_against_2026_10_07_and_08_only():
+    ledger = load('oos_consumption/PHASE2C_FUTURE_PARTITION_EXCLUDED_DAYS_20261007_08.yaml')
+    (event,) = ledger['consumption_events']
+    assert event['dataset_id'] == EXCLUDED_3
+    assert (event['slice']['start_date'], event['slice']['end_date']) == ('2026-10-07', '2026-10-08')
+    assert event['exposure']['parameter_selection_influenced'] is True
+    assert event['exposure_level'] == 'LEVEL_4_PARAMETER_SELECTION_USED'
     assert event['governance']['independent_confirmation_eligible_after'] is False
 
 

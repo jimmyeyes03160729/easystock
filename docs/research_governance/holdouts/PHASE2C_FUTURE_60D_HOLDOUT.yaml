@@ -35,6 +35,16 @@ partition_definition:
       outcome_dependent: false
       amendment: "AMENDMENT_2_20261008"
       dataset_id: "LIVE_LEARNING_20261005_EXCLUDED_DAY"
+    - date: "2026-10-07"
+      reason: "THIRD_PARTY_BACKTEST_PARAMETER_SELECTION_INCIDENT"
+      outcome_dependent: false
+      amendment: "AMENDMENT_3_20261008"
+      dataset_id: "LIVE_LEARNING_20261007_08_EXCLUDED_DAYS"
+    - date: "2026-10-08"
+      reason: "THIRD_PARTY_BACKTEST_PARAMETER_SELECTION_INCIDENT"
+      outcome_dependent: false
+      amendment: "AMENDMENT_3_20261008"
+      dataset_id: "LIVE_LEARNING_20261007_08_EXCLUDED_DAYS"
   target_eligible_days: 60
   eligible_days_collected: 0
   collected_eligible_trading_days: []
