@@ -12,6 +12,7 @@ provenance:
   source_classification: "EXPLORATORY_HEURISTIC"
   source_refs:
     - "docs/research_governance/preregistrations/META_B_FILTER_V1.yaml"
+    - "docs/research_governance/preregistrations/META_B_FILTER_V1_AMENDMENT_1.yaml"
     - "docs/research_governance/incidents/2026-10-08_RUNWAY_B_RESERVED_DAYS_BACKTEST.md"
     - "runway_v2/ at 6aa1e5a (candidate generator, pinned blob hashes in the preregistration)"
 
@@ -66,13 +67,14 @@ governance:
 
 result:
   status: "IN_PROGRESS"
-  decision: "FROZEN_AWAITING_CODE"
+  decision: "FROZEN_AWAITING_RUN"
   sealed_commit: ""
   PRODUCTION_READY: false
   DISCOVERY_DATA_REUSED: true
   INDEPENDENT_CONFIRMATION: false
   FUTURE_CONFIRMATION_UNTOUCHED: true
   notes: >
-    Stage 1 runs only after research/meta_b_filter_v1 is merged with unit tests. Stage 2 needs Stage 1 =
-    PASS_TO_FORWARD and the owner decisions in the incident record. Until then no directional statistic of the
-    B rule or the filter may be computed by this study.
+    Stage 1 runs once from a git archive of the merged research/meta_b_filter_v1 code (Amendment 1 applies).
+    A runtime smoke run processed one training-period day (2024-06-04) and viewed only counts, run time, memory
+    and missing-feature names. Stage 2 needs Stage 1 = PASS_TO_FORWARD (Amendment 3 of PHASE2C is in place).
+    Until the run, no directional statistic of the B rule or the filter may be computed by this study.
