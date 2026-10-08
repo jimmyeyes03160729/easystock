@@ -1,4 +1,4 @@
-"""Rebound exit-horizon study, preregistration REBOUND_P3_HORIZON_V1.
+"""Historical correction of REBOUND_P3_HORIZON_V1 (not a new confirmation).
 
 Frozen in docs/research_governance/preregistrations/REBOUND_P3_HORIZON_V1.yaml
 before any 20-session or 5-session outcome of these exits was computed.
@@ -13,7 +13,7 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from .market_daily import connect as market_connect, future_bars
+from .market_daily import connect as market_connect
 from .official import dataset_path
 from .research import (COST_PCT, FOLDS, HISTORICAL_START, RESERVED_FROM, TOP_K, baseline_key,
                        bootstrap_mean, metrics)
@@ -104,7 +104,7 @@ def evaluate(picks: list[dict], *, folds=FOLDS, exits=EXITS) -> dict:
             'A_pooled_net_positive': (pooled['mean_net_pct'] or 0) > 0,
             'B_pooled_profit_factor_ge_1_05': (pooled['profit_factor'] or 0) >= 1.05,
             'C_net_positive_4_of_5': sum((f['mean_net_pct'] or 0) > 0 for f in fold_reports) >= 4,
-            'D_bootstrap_p10_positive': boot['p10'] > 0,
+            'D_bootstrap_p10_positive': (boot['p10'] or 0) > 0,
             'E_min_100_trades_per_fold': all(f['trades'] >= 100 for f in fold_reports),
         }
         crit['ALL_PASS'] = all(crit.values())

@@ -1,0 +1,66 @@
+trial_id: "TRIAL_REBOUND_SIMULATION_CORRECTION_V1"
+parent_trial_id: "TRIAL_REBOUND_P4_MARKET_FILTER_V1"
+created_at: "2026-10-08T16:00:00+08:00"
+study_name: "Historical replay correction of P2/P3/P4; no new strategy selection"
+research_stage: "EXPLORATORY"
+ledger_record_type: "EXPLORATORY_SPIKE"
+recorded_after_experiment: false
+provenance:
+  source_classification: "CANONICAL_INTERNAL_PRIMITIVE"
+  source_refs:
+    - "docs/REBOUND_SIMULATION_CORRECTION_PLAN.md"
+hypothesis:
+  statement: "Correct future-availability selection and post-exit censoring, then describe the impact on already exposed historical results."
+  preregistered: false
+  exploratory: true
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "net_return_pct"
+  direction: "DESCRIPTIVE"
+  baseline: "ORIGINAL_P2_P3_P4_RESULTS"
+  frozen_before_search: true
+data:
+  dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+  dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+  dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+  start_date: "2022-05-01"
+  end_date: "2026-10-06"
+  dataset_end: "2026-10-06"
+  universe: "ALL_LISTED_AND_OTC_COMMON_STOCKS"
+  discovery_data_reused: true
+  independent_confirmation: false
+exposure_state:
+  train_seen: true
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "Existing P2/P3/P4 returns and folds; correction outcomes not yet computed when this record was created"
+  exposures: []
+search:
+  parameters_searched:
+    - "none: same four P2 rankers, four P3 exits and one P4 filter"
+  search_space:
+    corrected_configurations: "4 rankers + 4 exits + 1 market filter"
+    descriptive_costs_pct: [0.60, 0.50, 0.45, 0.40, 0.30]
+    descriptive_block_sessions: [10, 20]
+  trial_count: 9
+  post_hoc_changes: true
+governance:
+  plan_hash: "PLAN_COMMIT:2cdccaf;docs/REBOUND_SIMULATION_CORRECTION_PLAN.md"
+  registry_hash: "PENDING_CORRECTION_RESULT"
+  no_oos_tuning: true
+  production_effect: "NONE"
+result:
+  status: "IN_PROGRESS"
+  decision: "DESCRIPTIVE_CORRECTION_ONLY"
+  sealed_commit: null
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    The correction plan was committed before corrected outcomes were computed. All replay
+    uses a SQL-bounded temporary historical snapshot; source labels are not selected.
+    Changes correct known simulation defects, not model hyperparameters or strategy rules.
+    Unresolved live-position paths remain censored and are reported explicitly.

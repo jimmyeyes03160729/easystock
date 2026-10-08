@@ -124,3 +124,12 @@ def test_moving_blocks_preserve_fold_and_calendar_including_empty_days():
     assert actual['p10'] == actual['p90'] == 1.0
     assert actual['calendar_sessions'] == 20 and actual['samples'] == 30
     assert actual == block_bootstrap(by_day, calendar, (('d00', 'd09'), ('d10', 'd19')), 10, samples=30)
+    delta = block_bootstrap(by_day, calendar, (('d00', 'd09'),), 10, samples=30,
+                           comparison={d: [0.25] for d in calendar[:10]})
+    assert delta['p10'] == delta['p90'] == 0.75
+
+
+def test_empty_bootstrap_is_reportable_without_nonfinite_json():
+    assert research.bootstrap_delta({'d': []}, {'d': []})['p10'] is None
+    assert research.bootstrap_mean({})['p10'] is None
+    json.dumps(research.bootstrap_mean({}), allow_nan=False)

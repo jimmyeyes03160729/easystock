@@ -13,7 +13,8 @@ from .simulation import CORRECTION_ID, replay
 
 
 def block_bootstrap(by_day: dict[str, list[float]], calendar: list[str], ranges: tuple,
-                    length: int, *, samples: int = 2000, seed: int = 0) -> dict:
+                    length: int, *, samples: int = 2000, seed: int = 0,
+                    comparison: dict[str, list[float]] | None = None) -> dict:
     """Moving blocks within each fold; preserve adjacent session dependence.
 
     Noncircular blocks; end blocks are sampled with the same probability as
@@ -25,7 +26,7 @@ def block_bootstrap(by_day: dict[str, list[float]], calendar: list[str], ranges:
     groups = [[d for d in calendar if start <= d <= end] for start, end in ranges]
     rng, values = random.Random(seed), []
     for _ in range(samples):
-        total, count = 0.0, 0
+        total, count, other_total, other_count = 0.0, 0, 0.0, 0
         for days in groups:
             if not days:
                 continue
@@ -38,8 +39,12 @@ def block_bootstrap(by_day: dict[str, list[float]], calendar: list[str], ranges:
                 trades = by_day.get(day, [])
                 total += sum(trades)
                 count += len(trades)
-        if count:
-            values.append(total / count)
+                if comparison is not None:
+                    other = comparison.get(day, [])
+                    other_total += sum(other)
+                    other_count += len(other)
+        if count and (comparison is None or other_count):
+            values.append(total / count - (other_total / other_count if comparison is not None else 0))
     values.sort()
     return {'block_sessions': length, 'calendar_sessions': sum(map(len, groups)),
             'samples': len(values), 'seed': seed, 'descriptive_only': True,
@@ -78,7 +83,8 @@ def main():
         print('Loading P2 historical candidate rows', flush=True)
         rows, names, _ = research.load_rows(db, market)
         print(f'Evaluating P2: {len(rows)} rows', flush=True)
-        p2 = research.evaluate(rows, calendar)
+        day_returns = {}
+        p2 = research.evaluate(rows, calendar, day_returns=day_returns)
         p2['feature_names'] = names
         print('Loading P3/P4 historical picks', flush=True)
         all_picks = research_horizon.load_picks(db, market, start='2022-05-01')
@@ -94,6 +100,10 @@ def main():
     base = research.select([r for r in rows if r['kind'] == 'PENDING'], None)
     p2['baseline_moving_block_bootstrap'] = {
         str(length): block_bootstrap(base, calendar, research.FOLDS, length) for length in (10, 20)}
+    for name, daily in day_returns.items():
+        p2['variants'][name]['moving_block_bootstrap_delta'] = {
+            str(length): block_bootstrap(daily['model'], calendar, research.FOLDS, length,
+                                        comparison=daily['baseline']) for length in (10, 20)}
     for key, part, ranges in (
         ('unseen_2022', unseen, (research_filter.UNSEEN_SLICE,)),
         ('exposed_2023_2026', picks, (research_filter.EXPOSED_SLICE,)),

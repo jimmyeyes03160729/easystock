@@ -1,4 +1,4 @@
-"""Rebound market-filter study, preregistration REBOUND_P4_MARKET_FILTER_V1.
+"""Historical correction of REBOUND_P4_MARKET_FILTER_V1 (not a new confirmation).
 
 Frozen in docs/research_governance/preregistrations/REBOUND_P4_MARKET_FILTER_V1.yaml
 before any 2022 rebound signal existed and before any filtered result was

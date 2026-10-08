@@ -1,4 +1,4 @@
-"""Rebound Phase 2 ranker study, preregistration REBOUND_P2_RANKER_V1.
+"""Historical correction of REBOUND_P2_RANKER_V1 (not a new confirmation).
 
 Frozen in docs/research_governance/preregistrations/REBOUND_P2_RANKER_V1.yaml
 before any model output was computed. Research only: no feed, no model file,
@@ -15,7 +15,7 @@ from math import isfinite
 from pathlib import Path
 
 from .collector import SETTINGS
-from .market_daily import connect as market_connect, future_bars
+from .market_daily import connect as market_connect
 from .official import dataset_path
 from .schema import connect, database_path
 from .simulation import CORRECTION_ID, cost_sensitivity, missing_outcome_threshold, replay, session_bars
@@ -172,8 +172,9 @@ def bootstrap_delta(model: dict, base: dict, seed: int = 0) -> dict:
         if m and b:
             values.append(sum(m) / len(m) - sum(b) / len(b))
     values.sort()
-    return {'p10': round(values[int(0.10 * len(values))], 4), 'p50': round(values[len(values) // 2], 4),
-            'p90': round(values[int(0.90 * len(values))], 4), 'samples': len(values)}
+    return {'p10': round(values[int(0.10 * len(values))], 4) if values else None,
+            'p50': round(values[len(values) // 2], 4) if values else None,
+            'p90': round(values[int(0.90 * len(values))], 4) if values else None, 'samples': len(values)}
 
 
 def bootstrap_mean(by_day: dict, seed: int = 0) -> dict:
@@ -187,7 +188,7 @@ def bootstrap_mean(by_day: dict, seed: int = 0) -> dict:
             values.append(sum(trades) / len(trades))
     values.sort()
     if not values:
-        return {'p10': float('-inf'), 'p50': None, 'p90': None, 'samples': 0}
+        return {'p10': None, 'p50': None, 'p90': None, 'samples': 0}
     return {'p10': round(values[int(0.10 * len(values))], 4), 'p50': round(values[len(values) // 2], 4),
             'p90': round(values[int(0.90 * len(values))], 4), 'samples': len(values)}
 
@@ -201,13 +202,14 @@ def criteria(folds: list[dict], pooled: dict, boot: dict) -> dict:
         'D_pooled_profit_factor_ge_1_05': (pooled['model']['profit_factor'] or 0) >= 1.05,
         'E_model_net_positive_3_of_5': sum((f['model']['mean_net_pct'] or 0) > 0 for f in folds) >= 3,
         'F_min_100_trades_per_fold': all(f['model']['trades'] >= 100 for f in folds),
-        'G_bootstrap_p10_delta_positive': boot['p10'] > 0,
+        'G_bootstrap_p10_delta_positive': (boot['p10'] or 0) > 0,
     }
     result['ALL_PASS'] = all(result.values())
     return result
 
 
-def evaluate(rows: list[dict], calendar: list[str], *, folds=FOLDS, variants=VARIANTS) -> dict:
+def evaluate(rows: list[dict], calendar: list[str], *, folds=FOLDS, variants=VARIANTS,
+             day_returns: dict | None = None) -> dict:
     position = {d: i for i, d in enumerate(calendar)}
     report = {'preregistration_id': PREREGISTRATION_ID, 'correction_id': CORRECTION_ID,
               'analysis_role': 'EXPOSED_HISTORY_CORRECTION_ONLY',
@@ -251,6 +253,9 @@ def evaluate(rows: list[dict], calendar: list[str], *, folds=FOLDS, variants=VAR
                   'delta_mean_net_pct': round(pm['mean_net_pct'] - pb['mean_net_pct'], 4)
                   if pm['mean_net_pct'] is not None and pb['mean_net_pct'] is not None else None}
         boot = bootstrap_delta(model_days, base_days)
+        if day_returns is not None:
+            day_returns[name] = {'model': {d: v for (_, d), v in model_days.items()},
+                                 'baseline': {d: v for (_, d), v in base_days.items()}}
         report['variants'][name] = {'folds': fold_reports, 'pooled': pooled, 'bootstrap_delta': boot,
                                     'criteria': criteria(fold_reports, pooled, boot),
                                     'model_status': dict(model_status), 'baseline_status': dict(base_status),
