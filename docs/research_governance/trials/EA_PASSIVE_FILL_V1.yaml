@@ -1,4 +1,4 @@
-# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any fill or shortfall statistic is read)
+# EasyStock Research Trial Ledger — PREREGISTERED trial, sealed after its single run (2026-10-08)
 
 trial_id: "TRIAL_EA_PASSIVE_FILL_V1"
 parent_trial_id: "TRIAL_EA_HV60_V1"
@@ -40,10 +40,23 @@ data:
 exposure_state:
   train_seen: false
   validation_seen: false
-  oos_seen: false
+  oos_seen: true
   future_holdout_seen: false
-  exposed_dimensions: []
-  exposures: []
+  exposed_dimensions:
+    - "execution shortfall, fill rates and savings vs taker per policy, fill model, horizon, group and fold"
+  exposures:
+    - exposure_id: "EXP_EA_PASSIVE_FILL_V1_TEST_WINDOWS"
+      dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+      dataset_family_id: "TWSE_EQUITY_INTRADAY"
+      dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "execution shortfall, fill rates and savings vs taker; filled vs unfilled mid-to-mid returns"
+      source_trial_id: "TRIAL_EA_PASSIVE_FILL_V1"
+      first_seen_at: "2026-10-08T15:20:00+08:00"
 
 search:
   parameters_searched:
@@ -56,17 +69,23 @@ search:
 
 governance:
   plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/PASSIVE_FILL_V1.yaml"
-  registry_hash: "NOT_YET_RUN"
+  registry_hash: "538ee8420868060eb6ffcf2b3170f7b2617a8a47765bba8b67c7b8e3d90570c1"
   no_oos_tuning: true
   production_effect: "NONE"
 
 result:
-  status: "IN_PROGRESS"
-  decision: "FROZEN_NOT_RUN"
-  sealed_commit: ""
+  status: "SEALED"
+  decision: "SAVING_CONFIRMED_SMALL"
+  sealed_commit: "96d6198"
   PRODUCTION_READY: false
   DISCOVERY_DATA_REUSED: true
   INDEPENDENT_CONFIRMATION: false
   FUTURE_CONFIRMATION_UNTOUCHED: true
   notes: >
-    Signal-independent execution study. Runs on the VM from research/passive_fill_v1 after this record is merged.
+    Frozen rule: all four primary keys (60m x PF60/PF300 x ALL/HV_TIER) SAVING_CONFIRMED, every fold positive.
+    Magnitude is small. 60m ALL: taker all-in cost 51.2 bps (fee+tax 27.9, shortfall 23.3); PF300 saves 7.2 bps
+    under QUEUE (all-in 43.9) but only 1.2 bps under STRICT (all-in 50.0); PF60 saves 3.4 / 0.6. HV_TIER: PF300
+    8.7 / 0.9 (all-in 41.8 / 49.6). Strong adverse selection: when a passive buy fills, the 60m mid-to-mid return is
+    -22 to -36 bps vs -6 bps unconditional, and unfilled orders are followed by +8 to +17 bps (300s), so skip
+    policies capture the spread but select worse trades. Usable cost assumption for later preregistrations:
+    42-50 bps round trip (QUEUE..STRICT), not the hoped-for ~30 bps. 24,887 symbol-days, 0 failures.

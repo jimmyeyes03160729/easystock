@@ -1,0 +1,45 @@
+# EasyStock OOS Consumption Ledger — PASSIVE_FILL_V1 execution-cost study (preregistered, run once)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "PHASE2_HISTORICAL_PASSIVE_FILL_V1_RUN"
+created_at: "2026-10-08T15:40:00+08:00"
+description: >
+  The single preregistered run of PASSIVE_FILL_V1 (frozen in 96d6198) over the five test windows for the 100-stock
+  pool: taker vs passive execution on unconditional LONG round trips. Signal-independent; no entry rule was
+  evaluated. The reserved future partitions and days > 2026-10-02 were not read.
+
+consumption_events:
+  - consumption_id: "CNS_EA_PASSIVE_FILL_V1_TEST_WINDOWS"
+    trial_id: "TRIAL_EA_PASSIVE_FILL_V1"
+    dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      slice_definition: "PASSIVE_FILL_V1: 15-minute grid 09:30-11:45, 15m/60m round trips, 100-stock pool, five test windows"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "execution shortfall and fill rates per policy, fill model, horizon, group and fold"
+      - "unconditional mid-to-mid return on the grid (base rate)"
+      - "mid-to-mid return of filled vs unfilled passive orders (adverse selection)"
+    consumed_at: "2026-10-08T15:20:00+08:00"
+    record_type: "PREREGISTERED_CONSUMPTION"
+    recorded_after_exposure: true
+    source_artifact: "VM:/home/ubuntu/easystock-research/passive_fill_v1/output/easystock_passive_fill_v1_20261008.tar.gz (sha256 538ee8420868060eb6ffcf2b3170f7b2617a8a47765bba8b67c7b8e3d90570c1)"
+    source_commit: "96d6198"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Execution cost only; the filled-vs-unfilled split is a diagnostic and must not be turned into an entry rule on this data."
