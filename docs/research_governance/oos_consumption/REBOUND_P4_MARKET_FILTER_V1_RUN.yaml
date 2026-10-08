@@ -1,0 +1,78 @@
+# EasyStock OOS Consumption Ledger — rebound market-filter study (preregistered, run once)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "REBOUND_P4_MARKET_FILTER_V1_RUN"
+created_at: "2026-10-08T11:30:00+08:00"
+description: >
+  The single preregistered run of REBOUND_P4_MARKET_FILTER_V1. It consumed the previously unbuilt and unseen
+  2022-05..2022-12 rebound signal slice (decisive stage) and re-read 2023-2026 (necessary condition).
+  The reserved future partition was not loaded.
+
+consumption_events:
+  - consumption_id: "CNS_REBOUND_P4_2022_SLICE"
+    trial_id: "TRIAL_REBOUND_P4_MARKET_FILTER_V1"
+    dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+    dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+    dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+    slice:
+      start_date: "2022-05-01"
+      end_date: "2022-12-31"
+      slice_definition: "Rebound homepage picks 2022-05..2022-12, filtered and unfiltered, BRACKET_H20"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "filtered and unfiltered net mean, profit factor, win rate and trades"
+      - "filter-on signal day count"
+    consumed_at: "2026-10-08T11:05:06+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/research_governance/trials/REBOUND_P4_MARKET_FILTER_V1.yaml"
+    source_commit: "1fef953"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: >
+        Recorded with pristine_before false because the slice belongs to a registered dataset whose whole-archive
+        bar counts had been seen; no 2022 rebound signal or outcome existed before this run. Result: REJECTED.
+  - consumption_id: "CNS_REBOUND_P4_2023_2026_REREAD"
+    trial_id: "TRIAL_REBOUND_P4_MARKET_FILTER_V1"
+    dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+    dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+    dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+    slice:
+      start_date: "2023-01-03"
+      end_date: "2026-10-06"
+      slice_definition: "Filtered homepage picks, pooled and per fold (necessary condition)"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "filtered net mean, PF and trades, pooled and per fold"
+    consumed_at: "2026-10-08T11:05:06+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/research_governance/trials/REBOUND_P4_MARKET_FILTER_V1.yaml"
+    source_commit: "1fef953"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Already exposed by P1.5-P3; re-read as the preregistered necessary condition."
