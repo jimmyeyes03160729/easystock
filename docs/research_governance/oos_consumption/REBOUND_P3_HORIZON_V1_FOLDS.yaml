@@ -1,0 +1,44 @@
+# EasyStock OOS Consumption Ledger — rebound exit horizon study (preregistered, run once)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "REBOUND_P3_HORIZON_V1_FOLDS"
+created_at: "2026-10-08T09:00:00+08:00"
+description: >
+  The single preregistered run of REBOUND_P3_HORIZON_V1: four exits x five folds on homepage picks (rule-order
+  top 3) with signals before 2026-10-07. The reserved future partition was not loaded.
+
+consumption_events:
+  - consumption_id: "CNS_REBOUND_P3_HORIZON_V1_FOLDS"
+    trial_id: "TRIAL_REBOUND_P3_HORIZON_V1"
+    dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+    dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+    dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+    slice:
+      start_date: "2024-01-01"
+      end_date: "2026-10-06"
+      slice_definition: "Five preregistered folds, rule-order top-3 picks, horizons 5 and 20"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "exit x fold net mean, profit factor, win rate and trades"
+    consumed_at: "2026-10-08T08:40:40+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/research_governance/trials/REBOUND_P3_HORIZON_V1.yaml"
+    source_commit: "99c4d51"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: >
+        Result: REJECTED. Horizons 5, 10 and 20 of these picks are now all exposed on 2023-2026; any later rebound
+        study on these dates is a reuse of discovery data.
