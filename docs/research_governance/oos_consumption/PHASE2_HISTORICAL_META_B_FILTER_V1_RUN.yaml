@@ -1,0 +1,44 @@
+# EasyStock OOS Consumption Ledger — META_B_FILTER_V1 Stage 1 (preregistered, run once)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "PHASE2_HISTORICAL_META_B_FILTER_V1_RUN"
+created_at: "2026-10-09T07:10:00+08:00"
+description: >
+  The single preregistered Stage 1 run of META_B_FILTER_V1 (code ea27d9f, Amendment 1) over every archived day
+  <= 2026-08-27 for the 100-stock pool: runway B rule replay, expanding walk-forward over the five test windows.
+  Reserved future partitions and days > 2026-10-02 were not read.
+
+consumption_events:
+  - consumption_id: "CNS_EA_META_B_FILTER_V1_STAGE1"
+    trial_id: "TRIAL_EA_META_B_FILTER_V1"
+    dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2023-09-27"
+      end_date: "2026-08-27"
+      slice_definition: "META_B_FILTER_V1 Stage 1: runway B rule (6aa1e5a) on a minute grid 09:05-12:30, top-30 radar, level-1 checks, B exits, 100-stock pool"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "runway B rule trade returns per fold, signal type and fill convention"
+      - "meta-label filter selections, excess and portfolio TWD per 1M buys per fold"
+    consumed_at: "2026-10-09T04:07:11+08:00"
+    record_type: "PREREGISTERED_CONSUMPTION"
+    recorded_after_exposure: true
+    source_artifact: "VM:/home/ubuntu/easystock-research/meta_b_filter_v1/research/meta_b_filter_v1/output/meta_b_filter_v1_stage1_bundle.tar.gz (sha256 aad95c9a06cf83ee9843d21621a2f27925ad36c7fe50507b10180dbe6774e251)"
+    source_commit: "ea27d9f"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Decision FILTER_HELPS_NET_NEGATIVE; no variant of B or the filter may be re-tested on these days."

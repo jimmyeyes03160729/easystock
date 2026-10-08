@@ -1,0 +1,9 @@
+META_B_FILTER_V1 stage 1 decision: FILTER_HELPS_NET_NEGATIVE
+criteria: A=F B=T C=F D=T E=F G=T
+aggregate: all 9627 mean -43.13 bps | filtered 1007 mean -30.94 bps | excess 12.19 t 2.08
+portfolio TWD per 1M buys: unfiltered -4249.59 (1309 trades) | filtered -2129.09 (681 trades)
+fold 1 ESTIMATED: all 1240 -39.47 bps | filtered 49 -28.73 bps | t 0.53 | tau 0.5 | 1M unfiltered -3591.36 filtered -3466.15
+fold 2 ESTIMATED: all 1522 -45.83 bps | filtered 69 0.81 bps | t 2.48 | tau 0.5 | 1M unfiltered -4752.76 filtered -761.12
+fold 3 ESTIMATED: all 1871 -43.45 bps | filtered 143 -28.57 bps | t 1.06 | tau 0.55 | 1M unfiltered -4064.30 filtered -3249.72
+fold 4 ESTIMATED: all 2192 -40.17 bps | filtered 115 -36.93 bps | t 0.19 | tau 0.6 | 1M unfiltered -4225.78 filtered -1161.22
+fold 5 ESTIMATED: all 2802 -45.39 bps | filtered 631 -34.03 bps | t 1.53 | tau 0.5 | 1M unfiltered -4569.28 filtered -1995.39
