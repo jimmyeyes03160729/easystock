@@ -351,10 +351,25 @@ def load_histories(db, symbols: list[str] | None = None):
         yield symbol, (rows[-1]['exchange'] if rows else None), with_factors(db, symbol, rows)
 
 
-def future_bars(db, symbol: str, signal_date: str, limit: int = 20) -> list[dict]:
-    """Bars after D0 rescaled to the D0 price basis using events as they occur."""
-    rows = db.execute('SELECT * FROM bars WHERE symbol=? AND day>=? ORDER BY day LIMIT ?',
-                      (symbol, signal_date, limit + 1)).fetchall()
+def future_bars(db, symbol: str, signal_date: str, limit: int = 20, *,
+                before: str | None = None, through: str | None = None) -> list[dict]:
+    """Bars after D0 on its price basis; optional bounds apply BEFORE fetching.
+
+    Historical research must supply ``before`` to protect its reserved partition.
+    ``through`` also prevents suspensions from extending a calendar horizon.
+    Unbounded calls remain available for the separate daily label collector.
+    """
+    if limit < 1 or (before is not None and signal_date >= before):
+        raise ValueError('invalid_future_bar_boundary')
+    query, args = 'SELECT * FROM bars WHERE symbol=? AND day>=?', [symbol, signal_date]
+    if before is not None:
+        query += ' AND day<?'
+        args.append(before)
+    if through is not None:
+        query += ' AND day<=?'
+        args.append(through)
+    query += ' ORDER BY day LIMIT ?'
+    rows = db.execute(query, (*args, limit + 1)).fetchall()
     if not rows or rows[0]['day'] != signal_date:
         rows = [None] + rows  # D0 missing: never invent a factor across a gap
     out, cum = [], 1.0

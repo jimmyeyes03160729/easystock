@@ -1,0 +1,3201 @@
+{
+  "P2": {
+    "analysis_role": "EXPOSED_HISTORY_CORRECTION_ONLY",
+    "baseline_moving_block_bootstrap": {
+      "10": {
+        "block_sessions": 10,
+        "calendar_sessions": 658,
+        "descriptive_only": true,
+        "p10": -1.031239,
+        "p50": -0.613938,
+        "p90": -0.168739,
+        "samples": 2000,
+        "seed": 0
+      },
+      "20": {
+        "block_sessions": 20,
+        "calendar_sessions": 658,
+        "descriptive_only": true,
+        "p10": -1.064361,
+        "p50": -0.642836,
+        "p90": -0.193158,
+        "samples": 2000,
+        "seed": 0
+      }
+    },
+    "correction_id": "REBOUND_SIMULATION_CORRECTION_V1",
+    "cost_pct": 0.6,
+    "decision": {
+      "holdout_authorized": false,
+      "outcome": "REJECTED",
+      "passing_variants": [],
+      "production_ready": false,
+      "selected_variant": null
+    },
+    "feature_names": [
+      "amount",
+      "amount_rank",
+      "atr_pct",
+      "bias_ma20_pct",
+      "bias_ma60_pct",
+      "breadth_up_ratio",
+      "candle_body_pct",
+      "close_position",
+      "daily_change_pct",
+      "distance_to_resistance_pct",
+      "distance_to_support_pct",
+      "is_otc",
+      "lower_shadow_pct",
+      "ma20_slope",
+      "ma60_slope",
+      "net_rr",
+      "range_position",
+      "raw_rr",
+      "resistance_touches",
+      "return_20d_pct",
+      "return_3d_pct",
+      "return_5d_pct",
+      "stock_vs_market_20d_pct",
+      "stock_vs_market_5d_pct",
+      "support_age_days",
+      "support_span_days",
+      "support_touches",
+      "taiex_bias_ma60_pct",
+      "taiex_return_1d_pct",
+      "taiex_return_20d_pct",
+      "taiex_return_5d_pct",
+      "tpex_return_1d_pct",
+      "tpex_return_20d_pct",
+      "tpex_return_5d_pct",
+      "upper_shadow_pct",
+      "volume_ratio_20d",
+      "volume_ratio_5d"
+    ],
+    "preregistration_id": "REBOUND_P2_RANKER_V1",
+    "reserved_from": "2026-10-07",
+    "rows_loaded": 25639,
+    "top_k": 3,
+    "variants": {
+      "HGB_RULE_ONLY": {
+        "baseline_cost_sensitivity": {
+          "break_even_cost_pct": 0.040098,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": -0.2599,
+              "profit_factor": 0.9059,
+              "trades": 1622,
+              "win_rate": 0.3964
+            },
+            "0.40": {
+              "mean_net_pct": -0.3599,
+              "profit_factor": 0.8725,
+              "trades": 1622,
+              "win_rate": 0.3884
+            },
+            "0.45": {
+              "mean_net_pct": -0.4099,
+              "profit_factor": 0.8564,
+              "trades": 1622,
+              "win_rate": 0.3853
+            },
+            "0.50": {
+              "mean_net_pct": -0.4599,
+              "profit_factor": 0.8406,
+              "trades": 1622,
+              "win_rate": 0.3816
+            },
+            "0.60": {
+              "mean_net_pct": -0.5599,
+              "profit_factor": 0.81,
+              "trades": 1622,
+              "win_rate": 0.3736
+            }
+          }
+        },
+        "baseline_missing_outcome": {
+          "resolved_trades": 1622,
+          "unresolved_mean_net_to_break_even_pct": 908.160286,
+          "unresolved_trades": 1
+        },
+        "baseline_status": {
+          "EXECUTED": 1622,
+          "NO_FILL_OUTSIDE_BRACKET": 9,
+          "UNRESOLVED_MISSING_BAR": 1
+        },
+        "bootstrap_delta": {
+          "p10": -0.2428,
+          "p50": -0.0489,
+          "p90": 0.1445,
+          "samples": 2000
+        },
+        "criteria": {
+          "ALL_PASS": false,
+          "A_pooled_delta_positive": false,
+          "B_delta_positive_4_of_5": false,
+          "C_pooled_model_net_positive": false,
+          "D_pooled_profit_factor_ge_1_05": false,
+          "E_model_net_positive_3_of_5": false,
+          "F_min_100_trades_per_fold": true,
+          "G_bootstrap_p10_delta_positive": false
+        },
+        "descriptive_only": {
+          "top_1": {
+            "2024-01-01": {
+              "mean_net_pct": 0.0925,
+              "profit_factor": 1.0431,
+              "trades": 103,
+              "win_rate": 0.3786
+            },
+            "2024-07-01": {
+              "mean_net_pct": -1.0427,
+              "profit_factor": 0.6919,
+              "trades": 113,
+              "win_rate": 0.3717
+            },
+            "2025-01-01": {
+              "mean_net_pct": 0.417,
+              "profit_factor": 1.1504,
+              "trades": 105,
+              "win_rate": 0.4667
+            },
+            "2025-07-01": {
+              "mean_net_pct": -1.2009,
+              "profit_factor": 0.6034,
+              "trades": 124,
+              "win_rate": 0.3226
+            },
+            "2026-01-01": {
+              "mean_net_pct": -0.9951,
+              "profit_factor": 0.7444,
+              "trades": 166,
+              "win_rate": 0.3614
+            }
+          },
+          "top_2": {
+            "2024-01-01": {
+              "mean_net_pct": 0.9448,
+              "profit_factor": 1.4968,
+              "trades": 189,
+              "win_rate": 0.4444
+            },
+            "2024-07-01": {
+              "mean_net_pct": -1.3987,
+              "profit_factor": 0.5842,
+              "trades": 217,
+              "win_rate": 0.3502
+            },
+            "2025-01-01": {
+              "mean_net_pct": -0.1809,
+              "profit_factor": 0.9378,
+              "trades": 201,
+              "win_rate": 0.4527
+            },
+            "2025-07-01": {
+              "mean_net_pct": -0.9852,
+              "profit_factor": 0.6598,
+              "trades": 239,
+              "win_rate": 0.3305
+            },
+            "2026-01-01": {
+              "mean_net_pct": -0.9695,
+              "profit_factor": 0.7448,
+              "trades": 302,
+              "win_rate": 0.3344
+            }
+          },
+          "top_3_abstain_nonpositive": {
+            "2024-01-01": {
+              "mean_net_pct": 0.751,
+              "profit_factor": 1.3992,
+              "trades": 183,
+              "win_rate": 0.4426
+            },
+            "2024-07-01": {
+              "mean_net_pct": -1.4772,
+              "profit_factor": 0.5581,
+              "trades": 236,
+              "win_rate": 0.3517
+            },
+            "2025-01-01": {
+              "mean_net_pct": -0.0566,
+              "profit_factor": 0.9809,
+              "trades": 209,
+              "win_rate": 0.4545
+            },
+            "2025-07-01": {
+              "mean_net_pct": -0.637,
+              "profit_factor": 0.7518,
+              "trades": 263,
+              "win_rate": 0.3536
+            },
+            "2026-01-01": {
+              "mean_net_pct": -0.3626,
+              "profit_factor": 0.9106,
+              "trades": 167,
+              "win_rate": 0.3892
+            }
+          },
+          "top_5": {
+            "2024-01-01": {
+              "mean_net_pct": 0.7216,
+              "profit_factor": 1.3644,
+              "trades": 336,
+              "win_rate": 0.4435
+            },
+            "2024-07-01": {
+              "mean_net_pct": -1.2089,
+              "profit_factor": 0.6476,
+              "trades": 454,
+              "win_rate": 0.348
+            },
+            "2025-01-01": {
+              "mean_net_pct": -0.5956,
+              "profit_factor": 0.7993,
+              "trades": 450,
+              "win_rate": 0.4267
+            },
+            "2025-07-01": {
+              "mean_net_pct": -0.6721,
+              "profit_factor": 0.7433,
+              "trades": 529,
+              "win_rate": 0.3592
+            },
+            "2026-01-01": {
+              "mean_net_pct": -0.8274,
+              "profit_factor": 0.7669,
+              "trades": 614,
+              "win_rate": 0.3567
+            }
+          }
+        },
+        "folds": [
+          {
+            "baseline": {
+              "mean_net_pct": 0.9502,
+              "profit_factor": 1.4932,
+              "trades": 256,
+              "win_rate": 0.4609
+            },
+            "baseline_status": {
+              "EXECUTED": 256
+            },
+            "delta_mean_net_pct": -0.0282,
+            "model": {
+              "mean_net_pct": 0.922,
+              "profit_factor": 1.4748,
+              "trades": 256,
+              "win_rate": 0.4531
+            },
+            "model_status": {
+              "EXECUTED": 256
+            },
+            "test_end": "2024-06-30",
+            "test_rows": 387,
+            "test_start": "2024-01-01",
+            "train_cutoff": "2023-12-11",
+            "train_rows": 968
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -1.1899,
+              "profit_factor": 0.631,
+              "trades": 307,
+              "win_rate": 0.3257
+            },
+            "baseline_status": {
+              "EXECUTED": 307,
+              "NO_FILL_OUTSIDE_BRACKET": 1
+            },
+            "delta_mean_net_pct": -0.4181,
+            "model": {
+              "mean_net_pct": -1.608,
+              "profit_factor": 0.5464,
+              "trades": 306,
+              "win_rate": 0.3399
+            },
+            "model_status": {
+              "EXECUTED": 306,
+              "NO_FILL_OUTSIDE_BRACKET": 1,
+              "UNRESOLVED_MISSING_BAR": 1
+            },
+            "test_end": "2024-12-31",
+            "test_rows": 835,
+            "test_start": "2024-07-01",
+            "train_cutoff": "2024-06-07",
+            "train_rows": 1332
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -0.7733,
+              "profit_factor": 0.7542,
+              "trades": 291,
+              "win_rate": 0.3918
+            },
+            "baseline_status": {
+              "EXECUTED": 291,
+              "NO_FILL_OUTSIDE_BRACKET": 4
+            },
+            "delta_mean_net_pct": 0.2228,
+            "model": {
+              "mean_net_pct": -0.5505,
+              "profit_factor": 0.8209,
+              "trades": 291,
+              "win_rate": 0.4227
+            },
+            "model_status": {
+              "EXECUTED": 291,
+              "NO_FILL_OUTSIDE_BRACKET": 4
+            },
+            "test_end": "2025-06-30",
+            "test_rows": 1138,
+            "test_start": "2025-01-01",
+            "train_cutoff": "2024-12-11",
+            "train_rows": 2088
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -0.6652,
+              "profit_factor": 0.7675,
+              "trades": 346,
+              "win_rate": 0.3353
+            },
+            "baseline_status": {
+              "EXECUTED": 346,
+              "NO_FILL_OUTSIDE_BRACKET": 2,
+              "UNRESOLVED_MISSING_BAR": 1
+            },
+            "delta_mean_net_pct": -0.1037,
+            "model": {
+              "mean_net_pct": -0.7689,
+              "profit_factor": 0.7195,
+              "trades": 346,
+              "win_rate": 0.341
+            },
+            "model_status": {
+              "EXECUTED": 346,
+              "NO_FILL_OUTSIDE_BRACKET": 2,
+              "UNRESOLVED_MISSING_BAR": 1
+            },
+            "test_end": "2025-12-31",
+            "test_rows": 1201,
+            "test_start": "2025-07-01",
+            "train_cutoff": "2025-06-10",
+            "train_rows": 3047
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -0.7842,
+              "profit_factor": 0.7621,
+              "trades": 422,
+              "win_rate": 0.3744
+            },
+            "baseline_status": {
+              "EXECUTED": 422,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "delta_mean_net_pct": 0.026,
+            "model": {
+              "mean_net_pct": -0.7582,
+              "profit_factor": 0.7888,
+              "trades": 419,
+              "win_rate": 0.3532
+            },
+            "model_status": {
+              "EXECUTED": 419,
+              "NO_FILL_OUTSIDE_BRACKET": 3,
+              "UNRESOLVED_MISSING_BAR": 2
+            },
+            "test_end": "2026-10-06",
+            "test_rows": 1016,
+            "test_start": "2026-01-01",
+            "train_cutoff": "2025-12-10",
+            "train_rows": 4338
+          }
+        ],
+        "model_cost_sensitivity": {
+          "break_even_cost_pct": -0.018017,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": -0.318,
+              "profit_factor": 0.8889,
+              "trades": 1618,
+              "win_rate": 0.398
+            },
+            "0.40": {
+              "mean_net_pct": -0.418,
+              "profit_factor": 0.857,
+              "trades": 1618,
+              "win_rate": 0.39
+            },
+            "0.45": {
+              "mean_net_pct": -0.468,
+              "profit_factor": 0.8415,
+              "trades": 1618,
+              "win_rate": 0.3888
+            },
+            "0.50": {
+              "mean_net_pct": -0.518,
+              "profit_factor": 0.8264,
+              "trades": 1618,
+              "win_rate": 0.3826
+            },
+            "0.60": {
+              "mean_net_pct": -0.618,
+              "profit_factor": 0.7971,
+              "trades": 1618,
+              "win_rate": 0.3764
+            }
+          }
+        },
+        "model_missing_outcome": {
+          "resolved_trades": 1618,
+          "unresolved_mean_net_to_break_even_pct": 249.987726,
+          "unresolved_trades": 4
+        },
+        "model_status": {
+          "EXECUTED": 1618,
+          "NO_FILL_OUTSIDE_BRACKET": 10,
+          "UNRESOLVED_MISSING_BAR": 4
+        },
+        "moving_block_bootstrap_delta": {
+          "10": {
+            "block_sessions": 10,
+            "calendar_sessions": 658,
+            "descriptive_only": true,
+            "p10": -0.283308,
+            "p50": -0.0825,
+            "p90": 0.102637,
+            "samples": 2000,
+            "seed": 0
+          },
+          "20": {
+            "block_sessions": 20,
+            "calendar_sessions": 658,
+            "descriptive_only": true,
+            "p10": -0.237302,
+            "p50": -0.069164,
+            "p90": 0.105043,
+            "samples": 2000,
+            "seed": 0
+          }
+        },
+        "pooled": {
+          "baseline": {
+            "mean_net_pct": -0.5599,
+            "profit_factor": 0.81,
+            "trades": 1622,
+            "win_rate": 0.3736
+          },
+          "delta_mean_net_pct": -0.0581,
+          "model": {
+            "mean_net_pct": -0.618,
+            "profit_factor": 0.7971,
+            "trades": 1618,
+            "win_rate": 0.3764
+          }
+        }
+      },
+      "HGB_WIDE_POOL": {
+        "baseline_cost_sensitivity": {
+          "break_even_cost_pct": 0.040098,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": -0.2599,
+              "profit_factor": 0.9059,
+              "trades": 1622,
+              "win_rate": 0.3964
+            },
+            "0.40": {
+              "mean_net_pct": -0.3599,
+              "profit_factor": 0.8725,
+              "trades": 1622,
+              "win_rate": 0.3884
+            },
+            "0.45": {
+              "mean_net_pct": -0.4099,
+              "profit_factor": 0.8564,
+              "trades": 1622,
+              "win_rate": 0.3853
+            },
+            "0.50": {
+              "mean_net_pct": -0.4599,
+              "profit_factor": 0.8406,
+              "trades": 1622,
+              "win_rate": 0.3816
+            },
+            "0.60": {
+              "mean_net_pct": -0.5599,
+              "profit_factor": 0.81,
+              "trades": 1622,
+              "win_rate": 0.3736
+            }
+          }
+        },
+        "baseline_missing_outcome": {
+          "resolved_trades": 1622,
+          "unresolved_mean_net_to_break_even_pct": 908.160286,
+          "unresolved_trades": 1
+        },
+        "baseline_status": {
+          "EXECUTED": 1622,
+          "NO_FILL_OUTSIDE_BRACKET": 9,
+          "UNRESOLVED_MISSING_BAR": 1
+        },
+        "bootstrap_delta": {
+          "p10": -0.4187,
+          "p50": -0.2273,
+          "p90": -0.0417,
+          "samples": 2000
+        },
+        "criteria": {
+          "ALL_PASS": false,
+          "A_pooled_delta_positive": false,
+          "B_delta_positive_4_of_5": false,
+          "C_pooled_model_net_positive": false,
+          "D_pooled_profit_factor_ge_1_05": false,
+          "E_model_net_positive_3_of_5": false,
+          "F_min_100_trades_per_fold": true,
+          "G_bootstrap_p10_delta_positive": false
+        },
+        "descriptive_only": {
+          "top_1": {
+            "2024-01-01": {
+              "mean_net_pct": 0.3995,
+              "profit_factor": 1.1917,
+              "trades": 103,
+              "win_rate": 0.3883
+            },
+            "2024-07-01": {
+              "mean_net_pct": -1.047,
+              "profit_factor": 0.6587,
+              "trades": 114,
+              "win_rate": 0.3684
+            },
+            "2025-01-01": {
+              "mean_net_pct": -1.1098,
+              "profit_factor": 0.657,
+              "trades": 106,
+              "win_rate": 0.3774
+            },
+            "2025-07-01": {
+              "mean_net_pct": -0.206,
+              "profit_factor": 0.9249,
+              "trades": 124,
+              "win_rate": 0.3629
+            },
+            "2026-01-01": {
+              "mean_net_pct": -1.1667,
+              "profit_factor": 0.6822,
+              "trades": 167,
+              "win_rate": 0.3473
+            }
+          },
+          "top_2": {
+            "2024-01-01": {
+              "mean_net_pct": 0.5557,
+              "profit_factor": 1.2774,
+              "trades": 189,
+              "win_rate": 0.4074
+            },
+            "2024-07-01": {
+              "mean_net_pct": -1.3202,
+              "profit_factor": 0.5904,
+              "trades": 218,
+              "win_rate": 0.3349
+            },
+            "2025-01-01": {
+              "mean_net_pct": -0.6532,
+              "profit_factor": 0.7921,
+              "trades": 201,
+              "win_rate": 0.408
+            },
+            "2025-07-01": {
+              "mean_net_pct": -0.7503,
+              "profit_factor": 0.7316,
+              "trades": 240,
+              "win_rate": 0.3417
+            },
+            "2026-01-01": {
+              "mean_net_pct": -1.3875,
+              "profit_factor": 0.6341,
+              "trades": 301,
+              "win_rate": 0.3488
+            }
+          },
+          "top_3_abstain_nonpositive": {
+            "2024-01-01": {
+              "mean_net_pct": 0.4456,
+              "profit_factor": 1.2426,
+              "trades": 159,
+              "win_rate": 0.3836
+            },
+            "2024-07-01": {
+              "mean_net_pct": -1.0338,
+              "profit_factor": 0.6512,
+              "trades": 216,
+              "win_rate": 0.3519
+            },
+            "2025-01-01": {
+              "mean_net_pct": -0.4188,
+              "profit_factor": 0.8642,
+              "trades": 186,
+              "win_rate": 0.4086
+            },
+            "2025-07-01": {
+              "mean_net_pct": -0.686,
+              "profit_factor": 0.7309,
+              "trades": 170,
+              "win_rate": 0.3118
+            },
+            "2026-01-01": {
+              "mean_net_pct": -1.4635,
+              "profit_factor": 0.669,
+              "trades": 144,
+              "win_rate": 0.3611
+            }
+          },
+          "top_5": {
+            "2024-01-01": {
+              "mean_net_pct": 0.7083,
+              "profit_factor": 1.3572,
+              "trades": 336,
+              "win_rate": 0.4345
+            },
+            "2024-07-01": {
+              "mean_net_pct": -1.3335,
+              "profit_factor": 0.6174,
+              "trades": 453,
+              "win_rate": 0.3201
+            },
+            "2025-01-01": {
+              "mean_net_pct": -0.5388,
+              "profit_factor": 0.8205,
+              "trades": 450,
+              "win_rate": 0.42
+            },
+            "2025-07-01": {
+              "mean_net_pct": -0.7898,
+              "profit_factor": 0.7102,
+              "trades": 531,
+              "win_rate": 0.3409
+            },
+            "2026-01-01": {
+              "mean_net_pct": -0.9862,
+              "profit_factor": 0.7256,
+              "trades": 615,
+              "win_rate": 0.3545
+            }
+          }
+        },
+        "folds": [
+          {
+            "baseline": {
+              "mean_net_pct": 0.9502,
+              "profit_factor": 1.4932,
+              "trades": 256,
+              "win_rate": 0.4609
+            },
+            "baseline_status": {
+              "EXECUTED": 256
+            },
+            "delta_mean_net_pct": -0.332,
+            "model": {
+              "mean_net_pct": 0.6182,
+              "profit_factor": 1.3059,
+              "trades": 256,
+              "win_rate": 0.4219
+            },
+            "model_status": {
+              "EXECUTED": 256
+            },
+            "test_end": "2024-06-30",
+            "test_rows": 387,
+            "test_start": "2024-01-01",
+            "train_cutoff": "2023-12-11",
+            "train_rows": 5568
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -1.1899,
+              "profit_factor": 0.631,
+              "trades": 307,
+              "win_rate": 0.3257
+            },
+            "baseline_status": {
+              "EXECUTED": 307,
+              "NO_FILL_OUTSIDE_BRACKET": 1
+            },
+            "delta_mean_net_pct": -0.2515,
+            "model": {
+              "mean_net_pct": -1.4414,
+              "profit_factor": 0.5687,
+              "trades": 307,
+              "win_rate": 0.3192
+            },
+            "model_status": {
+              "EXECUTED": 307,
+              "NO_FILL_OUTSIDE_BRACKET": 1
+            },
+            "test_end": "2024-12-31",
+            "test_rows": 835,
+            "test_start": "2024-07-01",
+            "train_cutoff": "2024-06-07",
+            "train_rows": 8438
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -0.7733,
+              "profit_factor": 0.7542,
+              "trades": 291,
+              "win_rate": 0.3918
+            },
+            "baseline_status": {
+              "EXECUTED": 291,
+              "NO_FILL_OUTSIDE_BRACKET": 4
+            },
+            "delta_mean_net_pct": 0.3809,
+            "model": {
+              "mean_net_pct": -0.3924,
+              "profit_factor": 0.8678,
+              "trades": 291,
+              "win_rate": 0.4055
+            },
+            "model_status": {
+              "EXECUTED": 291,
+              "NO_FILL_OUTSIDE_BRACKET": 4
+            },
+            "test_end": "2025-06-30",
+            "test_rows": 1138,
+            "test_start": "2025-01-01",
+            "train_cutoff": "2024-12-11",
+            "train_rows": 12180
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -0.6652,
+              "profit_factor": 0.7675,
+              "trades": 346,
+              "win_rate": 0.3353
+            },
+            "baseline_status": {
+              "EXECUTED": 346,
+              "NO_FILL_OUTSIDE_BRACKET": 2,
+              "UNRESOLVED_MISSING_BAR": 1
+            },
+            "delta_mean_net_pct": -0.2103,
+            "model": {
+              "mean_net_pct": -0.8755,
+              "profit_factor": 0.6888,
+              "trades": 347,
+              "win_rate": 0.3343
+            },
+            "model_status": {
+              "EXECUTED": 347,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "test_end": "2025-12-31",
+            "test_rows": 1201,
+            "test_start": "2025-07-01",
+            "train_cutoff": "2025-06-10",
+            "train_rows": 15497
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -0.7842,
+              "profit_factor": 0.7621,
+              "trades": 422,
+              "win_rate": 0.3744
+            },
+            "baseline_status": {
+              "EXECUTED": 422,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "delta_mean_net_pct": -0.5966,
+            "model": {
+              "mean_net_pct": -1.3808,
+              "profit_factor": 0.6257,
+              "trades": 420,
+              "win_rate": 0.3357
+            },
+            "model_status": {
+              "EXECUTED": 420,
+              "NO_FILL_OUTSIDE_BRACKET": 3,
+              "UNRESOLVED_MISSING_BAR": 1
+            },
+            "test_end": "2026-10-06",
+            "test_rows": 1016,
+            "test_start": "2026-01-01",
+            "train_cutoff": "2025-12-10",
+            "train_rows": 20295
+          }
+        ],
+        "model_cost_sensitivity": {
+          "break_even_cost_pct": -0.190987,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": -0.491,
+              "profit_factor": 0.828,
+              "trades": 1621,
+              "win_rate": 0.3806
+            },
+            "0.40": {
+              "mean_net_pct": -0.591,
+              "profit_factor": 0.7973,
+              "trades": 1621,
+              "win_rate": 0.3726
+            },
+            "0.45": {
+              "mean_net_pct": -0.641,
+              "profit_factor": 0.7825,
+              "trades": 1621,
+              "win_rate": 0.3714
+            },
+            "0.50": {
+              "mean_net_pct": -0.691,
+              "profit_factor": 0.7681,
+              "trades": 1621,
+              "win_rate": 0.3677
+            },
+            "0.60": {
+              "mean_net_pct": -0.791,
+              "profit_factor": 0.74,
+              "trades": 1621,
+              "win_rate": 0.3584
+            }
+          }
+        },
+        "model_missing_outcome": {
+          "resolved_trades": 1621,
+          "unresolved_mean_net_to_break_even_pct": 1282.189949,
+          "unresolved_trades": 1
+        },
+        "model_status": {
+          "EXECUTED": 1621,
+          "NO_FILL_OUTSIDE_BRACKET": 10,
+          "UNRESOLVED_MISSING_BAR": 1
+        },
+        "moving_block_bootstrap_delta": {
+          "10": {
+            "block_sessions": 10,
+            "calendar_sessions": 658,
+            "descriptive_only": true,
+            "p10": -0.429056,
+            "p50": -0.208106,
+            "p90": 0.000426,
+            "samples": 2000,
+            "seed": 0
+          },
+          "20": {
+            "block_sessions": 20,
+            "calendar_sessions": 658,
+            "descriptive_only": true,
+            "p10": -0.416502,
+            "p50": -0.193811,
+            "p90": 0.011553,
+            "samples": 2000,
+            "seed": 0
+          }
+        },
+        "pooled": {
+          "baseline": {
+            "mean_net_pct": -0.5599,
+            "profit_factor": 0.81,
+            "trades": 1622,
+            "win_rate": 0.3736
+          },
+          "delta_mean_net_pct": -0.2311,
+          "model": {
+            "mean_net_pct": -0.791,
+            "profit_factor": 0.74,
+            "trades": 1621,
+            "win_rate": 0.3584
+          }
+        }
+      },
+      "RIDGE_RULE_ONLY": {
+        "baseline_cost_sensitivity": {
+          "break_even_cost_pct": 0.040098,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": -0.2599,
+              "profit_factor": 0.9059,
+              "trades": 1622,
+              "win_rate": 0.3964
+            },
+            "0.40": {
+              "mean_net_pct": -0.3599,
+              "profit_factor": 0.8725,
+              "trades": 1622,
+              "win_rate": 0.3884
+            },
+            "0.45": {
+              "mean_net_pct": -0.4099,
+              "profit_factor": 0.8564,
+              "trades": 1622,
+              "win_rate": 0.3853
+            },
+            "0.50": {
+              "mean_net_pct": -0.4599,
+              "profit_factor": 0.8406,
+              "trades": 1622,
+              "win_rate": 0.3816
+            },
+            "0.60": {
+              "mean_net_pct": -0.5599,
+              "profit_factor": 0.81,
+              "trades": 1622,
+              "win_rate": 0.3736
+            }
+          }
+        },
+        "baseline_missing_outcome": {
+          "resolved_trades": 1622,
+          "unresolved_mean_net_to_break_even_pct": 908.160286,
+          "unresolved_trades": 1
+        },
+        "baseline_status": {
+          "EXECUTED": 1622,
+          "NO_FILL_OUTSIDE_BRACKET": 9,
+          "UNRESOLVED_MISSING_BAR": 1
+        },
+        "bootstrap_delta": {
+          "p10": -0.3319,
+          "p50": -0.1558,
+          "p90": 0.0293,
+          "samples": 2000
+        },
+        "criteria": {
+          "ALL_PASS": false,
+          "A_pooled_delta_positive": false,
+          "B_delta_positive_4_of_5": false,
+          "C_pooled_model_net_positive": false,
+          "D_pooled_profit_factor_ge_1_05": false,
+          "E_model_net_positive_3_of_5": false,
+          "F_min_100_trades_per_fold": true,
+          "G_bootstrap_p10_delta_positive": false
+        },
+        "descriptive_only": {
+          "top_1": {
+            "2024-01-01": {
+              "mean_net_pct": 0.2694,
+              "profit_factor": 1.1286,
+              "trades": 103,
+              "win_rate": 0.3883
+            },
+            "2024-07-01": {
+              "mean_net_pct": -0.3459,
+              "profit_factor": 0.8783,
+              "trades": 114,
+              "win_rate": 0.4123
+            },
+            "2025-01-01": {
+              "mean_net_pct": -0.9613,
+              "profit_factor": 0.6761,
+              "trades": 106,
+              "win_rate": 0.3868
+            },
+            "2025-07-01": {
+              "mean_net_pct": -1.3834,
+              "profit_factor": 0.6004,
+              "trades": 125,
+              "win_rate": 0.304
+            },
+            "2026-01-01": {
+              "mean_net_pct": -0.0896,
+              "profit_factor": 0.9722,
+              "trades": 167,
+              "win_rate": 0.4311
+            }
+          },
+          "top_2": {
+            "2024-01-01": {
+              "mean_net_pct": 0.597,
+              "profit_factor": 1.3096,
+              "trades": 189,
+              "win_rate": 0.4339
+            },
+            "2024-07-01": {
+              "mean_net_pct": -1.2348,
+              "profit_factor": 0.6172,
+              "trades": 217,
+              "win_rate": 0.3594
+            },
+            "2025-01-01": {
+              "mean_net_pct": -1.2894,
+              "profit_factor": 0.5962,
+              "trades": 201,
+              "win_rate": 0.3682
+            },
+            "2025-07-01": {
+              "mean_net_pct": -1.0422,
+              "profit_factor": 0.6754,
+              "trades": 240,
+              "win_rate": 0.2958
+            },
+            "2026-01-01": {
+              "mean_net_pct": -0.5445,
+              "profit_factor": 0.8423,
+              "trades": 305,
+              "win_rate": 0.4098
+            }
+          },
+          "top_3_abstain_nonpositive": {
+            "2024-01-01": {
+              "mean_net_pct": 0.937,
+              "profit_factor": 1.5495,
+              "trades": 204,
+              "win_rate": 0.4314
+            },
+            "2024-07-01": {
+              "mean_net_pct": -1.4357,
+              "profit_factor": 0.5778,
+              "trades": 215,
+              "win_rate": 0.3488
+            },
+            "2025-01-01": {
+              "mean_net_pct": -1.5466,
+              "profit_factor": 0.5431,
+              "trades": 191,
+              "win_rate": 0.3822
+            },
+            "2025-07-01": {
+              "mean_net_pct": -0.6615,
+              "profit_factor": 0.7915,
+              "trades": 217,
+              "win_rate": 0.3318
+            },
+            "2026-01-01": {
+              "mean_net_pct": -0.2103,
+              "profit_factor": 0.9412,
+              "trades": 116,
+              "win_rate": 0.431
+            }
+          },
+          "top_5": {
+            "2024-01-01": {
+              "mean_net_pct": 0.7378,
+              "profit_factor": 1.3781,
+              "trades": 336,
+              "win_rate": 0.4464
+            },
+            "2024-07-01": {
+              "mean_net_pct": -1.1947,
+              "profit_factor": 0.6437,
+              "trades": 454,
+              "win_rate": 0.348
+            },
+            "2025-01-01": {
+              "mean_net_pct": -1.1612,
+              "profit_factor": 0.6337,
+              "trades": 450,
+              "win_rate": 0.3867
+            },
+            "2025-07-01": {
+              "mean_net_pct": -0.7103,
+              "profit_factor": 0.7526,
+              "trades": 530,
+              "win_rate": 0.3509
+            },
+            "2026-01-01": {
+              "mean_net_pct": -0.8616,
+              "profit_factor": 0.7554,
+              "trades": 616,
+              "win_rate": 0.3799
+            }
+          }
+        },
+        "folds": [
+          {
+            "baseline": {
+              "mean_net_pct": 0.9502,
+              "profit_factor": 1.4932,
+              "trades": 256,
+              "win_rate": 0.4609
+            },
+            "baseline_status": {
+              "EXECUTED": 256
+            },
+            "delta_mean_net_pct": -0.0757,
+            "model": {
+              "mean_net_pct": 0.8745,
+              "profit_factor": 1.473,
+              "trades": 256,
+              "win_rate": 0.4414
+            },
+            "model_status": {
+              "EXECUTED": 256
+            },
+            "test_end": "2024-06-30",
+            "test_rows": 387,
+            "test_start": "2024-01-01",
+            "train_cutoff": "2023-12-11",
+            "train_rows": 968
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -1.1899,
+              "profit_factor": 0.631,
+              "trades": 307,
+              "win_rate": 0.3257
+            },
+            "baseline_status": {
+              "EXECUTED": 307,
+              "NO_FILL_OUTSIDE_BRACKET": 1
+            },
+            "delta_mean_net_pct": 0.008,
+            "model": {
+              "mean_net_pct": -1.1819,
+              "profit_factor": 0.646,
+              "trades": 306,
+              "win_rate": 0.3497
+            },
+            "model_status": {
+              "EXECUTED": 306,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "test_end": "2024-12-31",
+            "test_rows": 835,
+            "test_start": "2024-07-01",
+            "train_cutoff": "2024-06-07",
+            "train_rows": 1332
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -0.7733,
+              "profit_factor": 0.7542,
+              "trades": 291,
+              "win_rate": 0.3918
+            },
+            "baseline_status": {
+              "EXECUTED": 291,
+              "NO_FILL_OUTSIDE_BRACKET": 4
+            },
+            "delta_mean_net_pct": -0.4769,
+            "model": {
+              "mean_net_pct": -1.2502,
+              "profit_factor": 0.604,
+              "trades": 291,
+              "win_rate": 0.378
+            },
+            "model_status": {
+              "EXECUTED": 291,
+              "NO_FILL_OUTSIDE_BRACKET": 4
+            },
+            "test_end": "2025-06-30",
+            "test_rows": 1138,
+            "test_start": "2025-01-01",
+            "train_cutoff": "2024-12-11",
+            "train_rows": 2088
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -0.6652,
+              "profit_factor": 0.7675,
+              "trades": 346,
+              "win_rate": 0.3353
+            },
+            "baseline_status": {
+              "EXECUTED": 346,
+              "NO_FILL_OUTSIDE_BRACKET": 2,
+              "UNRESOLVED_MISSING_BAR": 1
+            },
+            "delta_mean_net_pct": -0.1802,
+            "model": {
+              "mean_net_pct": -0.8454,
+              "profit_factor": 0.7251,
+              "trades": 347,
+              "win_rate": 0.3141
+            },
+            "model_status": {
+              "EXECUTED": 347,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "test_end": "2025-12-31",
+            "test_rows": 1201,
+            "test_start": "2025-07-01",
+            "train_cutoff": "2025-06-10",
+            "train_rows": 3047
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -0.7842,
+              "profit_factor": 0.7621,
+              "trades": 422,
+              "win_rate": 0.3744
+            },
+            "baseline_status": {
+              "EXECUTED": 422,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "delta_mean_net_pct": -0.0873,
+            "model": {
+              "mean_net_pct": -0.8715,
+              "profit_factor": 0.7571,
+              "trades": 422,
+              "win_rate": 0.391
+            },
+            "model_status": {
+              "EXECUTED": 422,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "test_end": "2026-10-06",
+            "test_rows": 1016,
+            "test_start": "2026-01-01",
+            "train_cutoff": "2025-12-10",
+            "train_rows": 4338
+          }
+        ],
+        "model_cost_sensitivity": {
+          "break_even_cost_pct": -0.116851,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": -0.4169,
+              "profit_factor": 0.856,
+              "trades": 1622,
+              "win_rate": 0.3933
+            },
+            "0.40": {
+              "mean_net_pct": -0.5169,
+              "profit_factor": 0.8251,
+              "trades": 1622,
+              "win_rate": 0.3859
+            },
+            "0.45": {
+              "mean_net_pct": -0.5669,
+              "profit_factor": 0.8102,
+              "trades": 1622,
+              "win_rate": 0.3847
+            },
+            "0.50": {
+              "mean_net_pct": -0.6169,
+              "profit_factor": 0.7955,
+              "trades": 1622,
+              "win_rate": 0.3779
+            },
+            "0.60": {
+              "mean_net_pct": -0.7169,
+              "profit_factor": 0.7672,
+              "trades": 1622,
+              "win_rate": 0.3724
+            }
+          }
+        },
+        "model_missing_outcome": {
+          "resolved_trades": 1622,
+          "unresolved_mean_net_to_break_even_pct": null,
+          "unresolved_trades": 0
+        },
+        "model_status": {
+          "EXECUTED": 1622,
+          "NO_FILL_OUTSIDE_BRACKET": 10
+        },
+        "moving_block_bootstrap_delta": {
+          "10": {
+            "block_sessions": 10,
+            "calendar_sessions": 658,
+            "descriptive_only": true,
+            "p10": -0.412656,
+            "p50": -0.192408,
+            "p90": 0.022122,
+            "samples": 2000,
+            "seed": 0
+          },
+          "20": {
+            "block_sessions": 20,
+            "calendar_sessions": 658,
+            "descriptive_only": true,
+            "p10": -0.416156,
+            "p50": -0.210771,
+            "p90": 0.002182,
+            "samples": 2000,
+            "seed": 0
+          }
+        },
+        "pooled": {
+          "baseline": {
+            "mean_net_pct": -0.5599,
+            "profit_factor": 0.81,
+            "trades": 1622,
+            "win_rate": 0.3736
+          },
+          "delta_mean_net_pct": -0.157,
+          "model": {
+            "mean_net_pct": -0.7169,
+            "profit_factor": 0.7672,
+            "trades": 1622,
+            "win_rate": 0.3724
+          }
+        }
+      },
+      "RIDGE_WIDE_POOL": {
+        "baseline_cost_sensitivity": {
+          "break_even_cost_pct": 0.040098,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": -0.2599,
+              "profit_factor": 0.9059,
+              "trades": 1622,
+              "win_rate": 0.3964
+            },
+            "0.40": {
+              "mean_net_pct": -0.3599,
+              "profit_factor": 0.8725,
+              "trades": 1622,
+              "win_rate": 0.3884
+            },
+            "0.45": {
+              "mean_net_pct": -0.4099,
+              "profit_factor": 0.8564,
+              "trades": 1622,
+              "win_rate": 0.3853
+            },
+            "0.50": {
+              "mean_net_pct": -0.4599,
+              "profit_factor": 0.8406,
+              "trades": 1622,
+              "win_rate": 0.3816
+            },
+            "0.60": {
+              "mean_net_pct": -0.5599,
+              "profit_factor": 0.81,
+              "trades": 1622,
+              "win_rate": 0.3736
+            }
+          }
+        },
+        "baseline_missing_outcome": {
+          "resolved_trades": 1622,
+          "unresolved_mean_net_to_break_even_pct": 908.160286,
+          "unresolved_trades": 1
+        },
+        "baseline_status": {
+          "EXECUTED": 1622,
+          "NO_FILL_OUTSIDE_BRACKET": 9,
+          "UNRESOLVED_MISSING_BAR": 1
+        },
+        "bootstrap_delta": {
+          "p10": -0.2596,
+          "p50": -0.063,
+          "p90": 0.1415,
+          "samples": 2000
+        },
+        "criteria": {
+          "ALL_PASS": false,
+          "A_pooled_delta_positive": false,
+          "B_delta_positive_4_of_5": false,
+          "C_pooled_model_net_positive": false,
+          "D_pooled_profit_factor_ge_1_05": false,
+          "E_model_net_positive_3_of_5": false,
+          "F_min_100_trades_per_fold": true,
+          "G_bootstrap_p10_delta_positive": false
+        },
+        "descriptive_only": {
+          "top_1": {
+            "2024-01-01": {
+              "mean_net_pct": 0.625,
+              "profit_factor": 1.3164,
+              "trades": 103,
+              "win_rate": 0.4563
+            },
+            "2024-07-01": {
+              "mean_net_pct": -0.8376,
+              "profit_factor": 0.7504,
+              "trades": 114,
+              "win_rate": 0.3684
+            },
+            "2025-01-01": {
+              "mean_net_pct": -0.5763,
+              "profit_factor": 0.8028,
+              "trades": 106,
+              "win_rate": 0.434
+            },
+            "2025-07-01": {
+              "mean_net_pct": -1.8201,
+              "profit_factor": 0.4681,
+              "trades": 125,
+              "win_rate": 0.288
+            },
+            "2026-01-01": {
+              "mean_net_pct": -0.4734,
+              "profit_factor": 0.8598,
+              "trades": 167,
+              "win_rate": 0.4132
+            }
+          },
+          "top_2": {
+            "2024-01-01": {
+              "mean_net_pct": 0.9956,
+              "profit_factor": 1.5595,
+              "trades": 189,
+              "win_rate": 0.4603
+            },
+            "2024-07-01": {
+              "mean_net_pct": -0.4527,
+              "profit_factor": 0.8581,
+              "trades": 218,
+              "win_rate": 0.3716
+            },
+            "2025-01-01": {
+              "mean_net_pct": -0.9819,
+              "profit_factor": 0.6668,
+              "trades": 201,
+              "win_rate": 0.3831
+            },
+            "2025-07-01": {
+              "mean_net_pct": -1.5169,
+              "profit_factor": 0.5309,
+              "trades": 240,
+              "win_rate": 0.3042
+            },
+            "2026-01-01": {
+              "mean_net_pct": -0.5772,
+              "profit_factor": 0.8403,
+              "trades": 304,
+              "win_rate": 0.3914
+            }
+          },
+          "top_3_abstain_nonpositive": {
+            "2024-01-01": {
+              "mean_net_pct": 1.153,
+              "profit_factor": 1.6548,
+              "trades": 210,
+              "win_rate": 0.4429
+            },
+            "2024-07-01": {
+              "mean_net_pct": -0.7933,
+              "profit_factor": 0.7636,
+              "trades": 225,
+              "win_rate": 0.3644
+            },
+            "2025-01-01": {
+              "mean_net_pct": -0.6977,
+              "profit_factor": 0.7472,
+              "trades": 204,
+              "win_rate": 0.4265
+            },
+            "2025-07-01": {
+              "mean_net_pct": -1.1731,
+              "profit_factor": 0.6267,
+              "trades": 199,
+              "win_rate": 0.3166
+            },
+            "2026-01-01": {
+              "mean_net_pct": -0.7953,
+              "profit_factor": 0.8138,
+              "trades": 129,
+              "win_rate": 0.3953
+            }
+          },
+          "top_5": {
+            "2024-01-01": {
+              "mean_net_pct": 0.7204,
+              "profit_factor": 1.37,
+              "trades": 336,
+              "win_rate": 0.4375
+            },
+            "2024-07-01": {
+              "mean_net_pct": -0.8825,
+              "profit_factor": 0.7351,
+              "trades": 453,
+              "win_rate": 0.3576
+            },
+            "2025-01-01": {
+              "mean_net_pct": -0.7556,
+              "profit_factor": 0.7399,
+              "trades": 450,
+              "win_rate": 0.4089
+            },
+            "2025-07-01": {
+              "mean_net_pct": -0.6724,
+              "profit_factor": 0.7664,
+              "trades": 530,
+              "win_rate": 0.334
+            },
+            "2026-01-01": {
+              "mean_net_pct": -0.7669,
+              "profit_factor": 0.7802,
+              "trades": 615,
+              "win_rate": 0.374
+            }
+          }
+        },
+        "folds": [
+          {
+            "baseline": {
+              "mean_net_pct": 0.9502,
+              "profit_factor": 1.4932,
+              "trades": 256,
+              "win_rate": 0.4609
+            },
+            "baseline_status": {
+              "EXECUTED": 256
+            },
+            "delta_mean_net_pct": 0.1008,
+            "model": {
+              "mean_net_pct": 1.051,
+              "profit_factor": 1.5806,
+              "trades": 256,
+              "win_rate": 0.457
+            },
+            "model_status": {
+              "EXECUTED": 256
+            },
+            "test_end": "2024-06-30",
+            "test_rows": 387,
+            "test_start": "2024-01-01",
+            "train_cutoff": "2023-12-11",
+            "train_rows": 5568
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -1.1899,
+              "profit_factor": 0.631,
+              "trades": 307,
+              "win_rate": 0.3257
+            },
+            "baseline_status": {
+              "EXECUTED": 307,
+              "NO_FILL_OUTSIDE_BRACKET": 1
+            },
+            "delta_mean_net_pct": 0.1648,
+            "model": {
+              "mean_net_pct": -1.0251,
+              "profit_factor": 0.7013,
+              "trades": 306,
+              "win_rate": 0.3529
+            },
+            "model_status": {
+              "EXECUTED": 306,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "test_end": "2024-12-31",
+            "test_rows": 835,
+            "test_start": "2024-07-01",
+            "train_cutoff": "2024-06-07",
+            "train_rows": 8438
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -0.7733,
+              "profit_factor": 0.7542,
+              "trades": 291,
+              "win_rate": 0.3918
+            },
+            "baseline_status": {
+              "EXECUTED": 291,
+              "NO_FILL_OUTSIDE_BRACKET": 4
+            },
+            "delta_mean_net_pct": -0.0633,
+            "model": {
+              "mean_net_pct": -0.8366,
+              "profit_factor": 0.7023,
+              "trades": 291,
+              "win_rate": 0.4021
+            },
+            "model_status": {
+              "EXECUTED": 291,
+              "NO_FILL_OUTSIDE_BRACKET": 4
+            },
+            "test_end": "2025-06-30",
+            "test_rows": 1138,
+            "test_start": "2025-01-01",
+            "train_cutoff": "2024-12-11",
+            "train_rows": 12180
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -0.6652,
+              "profit_factor": 0.7675,
+              "trades": 346,
+              "win_rate": 0.3353
+            },
+            "baseline_status": {
+              "EXECUTED": 346,
+              "NO_FILL_OUTSIDE_BRACKET": 2,
+              "UNRESOLVED_MISSING_BAR": 1
+            },
+            "delta_mean_net_pct": -0.4409,
+            "model": {
+              "mean_net_pct": -1.1061,
+              "profit_factor": 0.643,
+              "trades": 348,
+              "win_rate": 0.3161
+            },
+            "model_status": {
+              "EXECUTED": 348,
+              "NO_FILL_OUTSIDE_BRACKET": 1
+            },
+            "test_end": "2025-12-31",
+            "test_rows": 1201,
+            "test_start": "2025-07-01",
+            "train_cutoff": "2025-06-10",
+            "train_rows": 15497
+          },
+          {
+            "baseline": {
+              "mean_net_pct": -0.7842,
+              "profit_factor": 0.7621,
+              "trades": 422,
+              "win_rate": 0.3744
+            },
+            "baseline_status": {
+              "EXECUTED": 422,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "delta_mean_net_pct": -0.0215,
+            "model": {
+              "mean_net_pct": -0.8057,
+              "profit_factor": 0.778,
+              "trades": 422,
+              "win_rate": 0.3744
+            },
+            "model_status": {
+              "EXECUTED": 422,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "test_end": "2026-10-06",
+            "test_rows": 1016,
+            "test_start": "2026-01-01",
+            "train_cutoff": "2025-12-10",
+            "train_rows": 20295
+          }
+        ],
+        "model_cost_sensitivity": {
+          "break_even_cost_pct": -0.024162,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": -0.3242,
+              "profit_factor": 0.8867,
+              "trades": 1623,
+              "win_rate": 0.3968
+            },
+            "0.40": {
+              "mean_net_pct": -0.4242,
+              "profit_factor": 0.8548,
+              "trades": 1623,
+              "win_rate": 0.39
+            },
+            "0.45": {
+              "mean_net_pct": -0.4742,
+              "profit_factor": 0.8394,
+              "trades": 1623,
+              "win_rate": 0.3894
+            },
+            "0.50": {
+              "mean_net_pct": -0.5242,
+              "profit_factor": 0.8243,
+              "trades": 1623,
+              "win_rate": 0.3839
+            },
+            "0.60": {
+              "mean_net_pct": -0.6242,
+              "profit_factor": 0.795,
+              "trades": 1623,
+              "win_rate": 0.3758
+            }
+          }
+        },
+        "model_missing_outcome": {
+          "resolved_trades": 1623,
+          "unresolved_mean_net_to_break_even_pct": null,
+          "unresolved_trades": 0
+        },
+        "model_status": {
+          "EXECUTED": 1623,
+          "NO_FILL_OUTSIDE_BRACKET": 9
+        },
+        "moving_block_bootstrap_delta": {
+          "10": {
+            "block_sessions": 10,
+            "calendar_sessions": 658,
+            "descriptive_only": true,
+            "p10": -0.357245,
+            "p50": -0.100417,
+            "p90": 0.145025,
+            "samples": 2000,
+            "seed": 0
+          },
+          "20": {
+            "block_sessions": 20,
+            "calendar_sessions": 658,
+            "descriptive_only": true,
+            "p10": -0.346674,
+            "p50": -0.113312,
+            "p90": 0.129583,
+            "samples": 2000,
+            "seed": 0
+          }
+        },
+        "pooled": {
+          "baseline": {
+            "mean_net_pct": -0.5599,
+            "profit_factor": 0.81,
+            "trades": 1622,
+            "win_rate": 0.3736
+          },
+          "delta_mean_net_pct": -0.0643,
+          "model": {
+            "mean_net_pct": -0.6242,
+            "profit_factor": 0.795,
+            "trades": 1623,
+            "win_rate": 0.3758
+          }
+        }
+      }
+    }
+  },
+  "P3": {
+    "analysis_role": "EXPOSED_HISTORY_CORRECTION_ONLY",
+    "correction_id": "REBOUND_SIMULATION_CORRECTION_V1",
+    "cost_pct": 0.6,
+    "decision": {
+      "holdout_authorized": false,
+      "outcome": "REJECTED",
+      "passing_exits": [],
+      "production_ready": false,
+      "selected_exit": null
+    },
+    "exits": {
+      "BRACKET_H20": {
+        "bootstrap_mean": {
+          "p10": -0.617,
+          "p50": -0.2951,
+          "p90": 0.0296,
+          "samples": 2000
+        },
+        "cost_sensitivity": {
+          "break_even_cost_pct": 0.307545,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": 0.0075,
+              "profit_factor": 1.0022,
+              "trades": 1593,
+              "win_rate": 0.3798
+            },
+            "0.40": {
+              "mean_net_pct": -0.0925,
+              "profit_factor": 0.9732,
+              "trades": 1593,
+              "win_rate": 0.3735
+            },
+            "0.45": {
+              "mean_net_pct": -0.1425,
+              "profit_factor": 0.9591,
+              "trades": 1593,
+              "win_rate": 0.3704
+            },
+            "0.50": {
+              "mean_net_pct": -0.1925,
+              "profit_factor": 0.9453,
+              "trades": 1593,
+              "win_rate": 0.3697
+            },
+            "0.60": {
+              "mean_net_pct": -0.2925,
+              "profit_factor": 0.9183,
+              "trades": 1593,
+              "win_rate": 0.366
+            }
+          }
+        },
+        "criteria": {
+          "ALL_PASS": false,
+          "A_pooled_net_positive": false,
+          "B_pooled_profit_factor_ge_1_05": false,
+          "C_net_positive_4_of_5": false,
+          "D_bootstrap_p10_positive": false,
+          "E_min_100_trades_per_fold": true
+        },
+        "folds": [
+          {
+            "mean_net_pct": 2.9548,
+            "profit_factor": 2.3745,
+            "status": {
+              "EXECUTED": 256
+            },
+            "test_end": "2024-06-30",
+            "test_start": "2024-01-01",
+            "trades": 256,
+            "win_rate": 0.5234
+          },
+          {
+            "mean_net_pct": -1.9069,
+            "profit_factor": 0.5427,
+            "status": {
+              "EXECUTED": 307,
+              "NO_FILL_OUTSIDE_BRACKET": 1
+            },
+            "test_end": "2024-12-31",
+            "test_start": "2024-07-01",
+            "trades": 307,
+            "win_rate": 0.2964
+          },
+          {
+            "mean_net_pct": -0.7382,
+            "profit_factor": 0.8053,
+            "status": {
+              "EXECUTED": 291,
+              "NO_FILL_OUTSIDE_BRACKET": 4
+            },
+            "test_end": "2025-06-30",
+            "test_start": "2025-01-01",
+            "trades": 291,
+            "win_rate": 0.3643
+          },
+          {
+            "mean_net_pct": 0.3214,
+            "profit_factor": 1.095,
+            "status": {
+              "EXECUTED": 346,
+              "NO_FILL_OUTSIDE_BRACKET": 2,
+              "UNRESOLVED_MISSING_BAR": 1
+            },
+            "test_end": "2025-12-31",
+            "test_start": "2025-07-01",
+            "trades": 346,
+            "win_rate": 0.3931
+          },
+          {
+            "mean_net_pct": -1.3569,
+            "profit_factor": 0.6667,
+            "status": {
+              "EXECUTED": 393,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "test_end": "2026-10-06",
+            "test_start": "2026-01-01",
+            "trades": 393,
+            "win_rate": 0.2952
+          }
+        ],
+        "missing_outcome": {
+          "resolved_trades": 1593,
+          "unresolved_mean_net_to_break_even_pct": 465.880479,
+          "unresolved_trades": 1
+        },
+        "moving_block_bootstrap": {
+          "10": {
+            "block_sessions": 10,
+            "calendar_sessions": 648,
+            "descriptive_only": true,
+            "p10": -0.789768,
+            "p50": -0.240383,
+            "p90": 0.328473,
+            "samples": 2000,
+            "seed": 0
+          },
+          "20": {
+            "block_sessions": 20,
+            "calendar_sessions": 648,
+            "descriptive_only": true,
+            "p10": -0.913055,
+            "p50": -0.268397,
+            "p90": 0.370603,
+            "samples": 2000,
+            "seed": 0
+          }
+        },
+        "pooled": {
+          "mean_net_pct": -0.2925,
+          "profit_factor": 0.9183,
+          "trades": 1593,
+          "win_rate": 0.366
+        },
+        "status": {
+          "EXECUTED": 1593,
+          "NO_FILL_OUTSIDE_BRACKET": 9,
+          "UNRESOLVED_MISSING_BAR": 1
+        }
+      },
+      "STOP_ONLY_H20": {
+        "bootstrap_mean": {
+          "p10": -1.1603,
+          "p50": -0.8443,
+          "p90": -0.5143,
+          "samples": 2000
+        },
+        "cost_sensitivity": {
+          "break_even_cost_pct": -0.239519,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": -0.5395,
+              "profit_factor": 0.8445,
+              "trades": 1593,
+              "win_rate": 0.3597
+            },
+            "0.40": {
+              "mean_net_pct": -0.6395,
+              "profit_factor": 0.819,
+              "trades": 1593,
+              "win_rate": 0.3534
+            },
+            "0.45": {
+              "mean_net_pct": -0.6895,
+              "profit_factor": 0.8066,
+              "trades": 1593,
+              "win_rate": 0.3497
+            },
+            "0.50": {
+              "mean_net_pct": -0.7395,
+              "profit_factor": 0.7945,
+              "trades": 1593,
+              "win_rate": 0.349
+            },
+            "0.60": {
+              "mean_net_pct": -0.8395,
+              "profit_factor": 0.7708,
+              "trades": 1593,
+              "win_rate": 0.3446
+            }
+          }
+        },
+        "criteria": {
+          "ALL_PASS": false,
+          "A_pooled_net_positive": false,
+          "B_pooled_profit_factor_ge_1_05": false,
+          "C_net_positive_4_of_5": false,
+          "D_bootstrap_p10_positive": false,
+          "E_min_100_trades_per_fold": true
+        },
+        "folds": [
+          {
+            "mean_net_pct": 2.0023,
+            "profit_factor": 1.9113,
+            "status": {
+              "EXECUTED": 256
+            },
+            "test_end": "2024-06-30",
+            "test_start": "2024-01-01",
+            "trades": 256,
+            "win_rate": 0.4961
+          },
+          {
+            "mean_net_pct": -2.6411,
+            "profit_factor": 0.3761,
+            "status": {
+              "EXECUTED": 307,
+              "NO_FILL_OUTSIDE_BRACKET": 1
+            },
+            "test_end": "2024-12-31",
+            "test_start": "2024-07-01",
+            "trades": 307,
+            "win_rate": 0.2801
+          },
+          {
+            "mean_net_pct": -1.305,
+            "profit_factor": 0.6721,
+            "status": {
+              "EXECUTED": 291,
+              "NO_FILL_OUTSIDE_BRACKET": 4
+            },
+            "test_end": "2025-06-30",
+            "test_start": "2025-01-01",
+            "trades": 291,
+            "win_rate": 0.3368
+          },
+          {
+            "mean_net_pct": -0.3095,
+            "profit_factor": 0.9104,
+            "status": {
+              "EXECUTED": 346,
+              "NO_FILL_OUTSIDE_BRACKET": 2,
+              "UNRESOLVED_MISSING_BAR": 1
+            },
+            "test_end": "2025-12-31",
+            "test_start": "2025-07-01",
+            "trades": 346,
+            "win_rate": 0.3699
+          },
+          {
+            "mean_net_pct": -1.4053,
+            "profit_factor": 0.6591,
+            "status": {
+              "EXECUTED": 393,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "test_end": "2026-10-06",
+            "test_start": "2026-01-01",
+            "trades": 393,
+            "win_rate": 0.2799
+          }
+        ],
+        "missing_outcome": {
+          "resolved_trades": 1593,
+          "unresolved_mean_net_to_break_even_pct": 1337.353593,
+          "unresolved_trades": 1
+        },
+        "moving_block_bootstrap": {
+          "10": {
+            "block_sessions": 10,
+            "calendar_sessions": 648,
+            "descriptive_only": true,
+            "p10": -1.337949,
+            "p50": -0.764728,
+            "p90": -0.1618,
+            "samples": 2000,
+            "seed": 0
+          },
+          "20": {
+            "block_sessions": 20,
+            "calendar_sessions": 648,
+            "descriptive_only": true,
+            "p10": -1.446403,
+            "p50": -0.78165,
+            "p90": -0.113933,
+            "samples": 2000,
+            "seed": 0
+          }
+        },
+        "pooled": {
+          "mean_net_pct": -0.8395,
+          "profit_factor": 0.7708,
+          "trades": 1593,
+          "win_rate": 0.3446
+        },
+        "status": {
+          "EXECUTED": 1593,
+          "NO_FILL_OUTSIDE_BRACKET": 9,
+          "UNRESOLVED_MISSING_BAR": 1
+        }
+      },
+      "TIME_H20": {
+        "bootstrap_mean": {
+          "p10": -0.842,
+          "p50": -0.435,
+          "p90": 0.0165,
+          "samples": 2000
+        },
+        "cost_sensitivity": {
+          "break_even_cost_pct": 0.170512,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": -0.1295,
+              "profit_factor": 0.9674,
+              "trades": 1588,
+              "win_rate": 0.466
+            },
+            "0.40": {
+              "mean_net_pct": -0.2295,
+              "profit_factor": 0.943,
+              "trades": 1588,
+              "win_rate": 0.4553
+            },
+            "0.45": {
+              "mean_net_pct": -0.2795,
+              "profit_factor": 0.9311,
+              "trades": 1588,
+              "win_rate": 0.4515
+            },
+            "0.50": {
+              "mean_net_pct": -0.3295,
+              "profit_factor": 0.9193,
+              "trades": 1588,
+              "win_rate": 0.4509
+            },
+            "0.60": {
+              "mean_net_pct": -0.4295,
+              "profit_factor": 0.8962,
+              "trades": 1588,
+              "win_rate": 0.4446
+            }
+          }
+        },
+        "criteria": {
+          "ALL_PASS": false,
+          "A_pooled_net_positive": false,
+          "B_pooled_profit_factor_ge_1_05": false,
+          "C_net_positive_4_of_5": false,
+          "D_bootstrap_p10_positive": false,
+          "E_min_100_trades_per_fold": true
+        },
+        "folds": [
+          {
+            "mean_net_pct": 3.7231,
+            "profit_factor": 2.8548,
+            "status": {
+              "EXECUTED": 256
+            },
+            "test_end": "2024-06-30",
+            "test_start": "2024-01-01",
+            "trades": 256,
+            "win_rate": 0.5977
+          },
+          {
+            "mean_net_pct": -2.5507,
+            "profit_factor": 0.4356,
+            "status": {
+              "EXECUTED": 307,
+              "NO_FILL_OUTSIDE_BRACKET": 1
+            },
+            "test_end": "2024-12-31",
+            "test_start": "2024-07-01",
+            "trades": 307,
+            "win_rate": 0.3616
+          },
+          {
+            "mean_net_pct": -2.4672,
+            "profit_factor": 0.5637,
+            "status": {
+              "EXECUTED": 290,
+              "NO_FILL_OUTSIDE_BRACKET": 4,
+              "UNRESOLVED_MISSING_BAR": 1
+            },
+            "test_end": "2025-06-30",
+            "test_start": "2025-01-01",
+            "trades": 290,
+            "win_rate": 0.4138
+          },
+          {
+            "mean_net_pct": -0.3481,
+            "profit_factor": 0.9177,
+            "status": {
+              "EXECUTED": 345,
+              "NO_FILL_OUTSIDE_BRACKET": 2,
+              "UNRESOLVED_MISSING_BAR": 2
+            },
+            "test_end": "2025-12-31",
+            "test_start": "2025-07-01",
+            "trades": 345,
+            "win_rate": 0.4406
+          },
+          {
+            "mean_net_pct": -0.0423,
+            "profit_factor": 0.9895,
+            "status": {
+              "EXECUTED": 390,
+              "NO_FILL_OUTSIDE_BRACKET": 2,
+              "UNRESOLVED_MISSING_BAR": 3
+            },
+            "test_end": "2026-10-06",
+            "test_start": "2026-01-01",
+            "trades": 390,
+            "win_rate": 0.4359
+          }
+        ],
+        "missing_outcome": {
+          "resolved_trades": 1588,
+          "unresolved_mean_net_to_break_even_pct": 113.671287,
+          "unresolved_trades": 6
+        },
+        "moving_block_bootstrap": {
+          "10": {
+            "block_sessions": 10,
+            "calendar_sessions": 648,
+            "descriptive_only": true,
+            "p10": -1.294855,
+            "p50": -0.427997,
+            "p90": 0.441028,
+            "samples": 2000,
+            "seed": 0
+          },
+          "20": {
+            "block_sessions": 20,
+            "calendar_sessions": 648,
+            "descriptive_only": true,
+            "p10": -1.509975,
+            "p50": -0.449713,
+            "p90": 0.489962,
+            "samples": 2000,
+            "seed": 0
+          }
+        },
+        "pooled": {
+          "mean_net_pct": -0.4295,
+          "profit_factor": 0.8962,
+          "trades": 1588,
+          "win_rate": 0.4446
+        },
+        "status": {
+          "EXECUTED": 1588,
+          "NO_FILL_OUTSIDE_BRACKET": 9,
+          "UNRESOLVED_MISSING_BAR": 6
+        }
+      },
+      "TIME_H5": {
+        "bootstrap_mean": {
+          "p10": -0.9908,
+          "p50": -0.7759,
+          "p90": -0.5672,
+          "samples": 2000
+        },
+        "cost_sensitivity": {
+          "break_even_cost_pct": -0.179162,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": -0.4792,
+              "profit_factor": 0.7853,
+              "trades": 1594,
+              "win_rate": 0.4128
+            },
+            "0.40": {
+              "mean_net_pct": -0.5792,
+              "profit_factor": 0.7472,
+              "trades": 1594,
+              "win_rate": 0.4028
+            },
+            "0.45": {
+              "mean_net_pct": -0.6292,
+              "profit_factor": 0.7289,
+              "trades": 1594,
+              "win_rate": 0.3971
+            },
+            "0.50": {
+              "mean_net_pct": -0.6792,
+              "profit_factor": 0.7112,
+              "trades": 1594,
+              "win_rate": 0.3927
+            },
+            "0.60": {
+              "mean_net_pct": -0.7792,
+              "profit_factor": 0.6771,
+              "trades": 1594,
+              "win_rate": 0.3814
+            }
+          }
+        },
+        "criteria": {
+          "ALL_PASS": false,
+          "A_pooled_net_positive": false,
+          "B_pooled_profit_factor_ge_1_05": false,
+          "C_net_positive_4_of_5": false,
+          "D_bootstrap_p10_positive": false,
+          "E_min_100_trades_per_fold": true
+        },
+        "folds": [
+          {
+            "mean_net_pct": -0.0594,
+            "profit_factor": 0.9634,
+            "status": {
+              "EXECUTED": 256
+            },
+            "test_end": "2024-06-30",
+            "test_start": "2024-01-01",
+            "trades": 256,
+            "win_rate": 0.4492
+          },
+          {
+            "mean_net_pct": -1.1019,
+            "profit_factor": 0.5786,
+            "status": {
+              "EXECUTED": 307,
+              "NO_FILL_OUTSIDE_BRACKET": 1
+            },
+            "test_end": "2024-12-31",
+            "test_start": "2024-07-01",
+            "trades": 307,
+            "win_rate": 0.3648
+          },
+          {
+            "mean_net_pct": -1.2499,
+            "profit_factor": 0.5552,
+            "status": {
+              "EXECUTED": 291,
+              "NO_FILL_OUTSIDE_BRACKET": 4
+            },
+            "test_end": "2025-06-30",
+            "test_start": "2025-01-01",
+            "trades": 291,
+            "win_rate": 0.3711
+          },
+          {
+            "mean_net_pct": -0.7572,
+            "profit_factor": 0.6586,
+            "status": {
+              "EXECUTED": 347,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "test_end": "2025-12-31",
+            "test_start": "2025-07-01",
+            "trades": 347,
+            "win_rate": 0.3458
+          },
+          {
+            "mean_net_pct": -0.6668,
+            "profit_factor": 0.7484,
+            "status": {
+              "EXECUTED": 393,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "test_end": "2026-10-06",
+            "test_start": "2026-01-01",
+            "trades": 393,
+            "win_rate": 0.3893
+          }
+        ],
+        "missing_outcome": {
+          "resolved_trades": 1594,
+          "unresolved_mean_net_to_break_even_pct": null,
+          "unresolved_trades": 0
+        },
+        "moving_block_bootstrap": {
+          "10": {
+            "block_sessions": 10,
+            "calendar_sessions": 648,
+            "descriptive_only": true,
+            "p10": -1.08506,
+            "p50": -0.773115,
+            "p90": -0.464449,
+            "samples": 2000,
+            "seed": 0
+          },
+          "20": {
+            "block_sessions": 20,
+            "calendar_sessions": 648,
+            "descriptive_only": true,
+            "p10": -1.159557,
+            "p50": -0.824403,
+            "p90": -0.50301,
+            "samples": 2000,
+            "seed": 0
+          }
+        },
+        "pooled": {
+          "mean_net_pct": -0.7792,
+          "profit_factor": 0.6771,
+          "trades": 1594,
+          "win_rate": 0.3814
+        },
+        "status": {
+          "EXECUTED": 1594,
+          "NO_FILL_OUTSIDE_BRACKET": 9
+        }
+      }
+    },
+    "picks_loaded": 2095,
+    "preregistration_id": "REBOUND_P3_HORIZON_V1",
+    "reserved_from": "2026-10-07",
+    "top_k": 3
+  },
+  "P4": {
+    "analysis_role": "EXPOSED_HISTORY_CORRECTION_ONLY",
+    "correction_id": "REBOUND_SIMULATION_CORRECTION_V1",
+    "cost_pct": 0.6,
+    "decision": {
+      "holdout_authorized": false,
+      "legacy_criteria_outcome": "REJECTED",
+      "outcome": "REJECTED",
+      "production_ready": false,
+      "stage1_unseen_2022": "FAIL",
+      "stage2_exposed_net_positive": false
+    },
+    "exit": "BRACKET_H20",
+    "exposed_2023_2026": {
+      "bootstrap_descriptive": {
+        "p10": -0.4549,
+        "p50": -0.1682,
+        "p90": 0.1213,
+        "samples": 2000
+      },
+      "filtered": {
+        "cost_sensitivity": {
+          "break_even_cost_pct": 0.428797,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": 0.1288,
+              "profit_factor": 1.0411,
+              "trades": 1688,
+              "win_rate": 0.3957
+            },
+            "0.40": {
+              "mean_net_pct": 0.0288,
+              "profit_factor": 1.009,
+              "trades": 1688,
+              "win_rate": 0.3892
+            },
+            "0.45": {
+              "mean_net_pct": -0.0212,
+              "profit_factor": 0.9934,
+              "trades": 1688,
+              "win_rate": 0.3851
+            },
+            "0.50": {
+              "mean_net_pct": -0.0712,
+              "profit_factor": 0.9782,
+              "trades": 1688,
+              "win_rate": 0.3833
+            },
+            "0.60": {
+              "mean_net_pct": -0.1712,
+              "profit_factor": 0.9484,
+              "trades": 1688,
+              "win_rate": 0.3786
+            }
+          }
+        },
+        "mean_net_pct": -0.1712,
+        "missing_outcome": {
+          "resolved_trades": 1688,
+          "unresolved_mean_net_to_break_even_pct": 144.494921,
+          "unresolved_trades": 2
+        },
+        "profit_factor": 0.9484,
+        "status": {
+          "EXECUTED": 1688,
+          "NO_FILL_OUTSIDE_BRACKET": 5,
+          "UNRESOLVED_MISSING_BAR": 2
+        },
+        "trades": 1688,
+        "win_rate": 0.3786
+      },
+      "folds_descriptive": [
+        {
+          "filtered": {
+            "cost_sensitivity": {
+              "break_even_cost_pct": 3.565612,
+              "fixed_trade_list": true,
+              "scenarios": {
+                "0.30": {
+                  "mean_net_pct": 3.2656,
+                  "profit_factor": 2.6243,
+                  "trades": 254,
+                  "win_rate": 0.5591
+                },
+                "0.40": {
+                  "mean_net_pct": 3.1656,
+                  "profit_factor": 2.5401,
+                  "trades": 254,
+                  "win_rate": 0.5433
+                },
+                "0.45": {
+                  "mean_net_pct": 3.1156,
+                  "profit_factor": 2.4989,
+                  "trades": 254,
+                  "win_rate": 0.5315
+                },
+                "0.50": {
+                  "mean_net_pct": 3.0656,
+                  "profit_factor": 2.4584,
+                  "trades": 254,
+                  "win_rate": 0.5315
+                },
+                "0.60": {
+                  "mean_net_pct": 2.9656,
+                  "profit_factor": 2.3798,
+                  "trades": 254,
+                  "win_rate": 0.5236
+                }
+              }
+            },
+            "mean_net_pct": 2.9656,
+            "missing_outcome": {
+              "resolved_trades": 254,
+              "unresolved_mean_net_to_break_even_pct": null,
+              "unresolved_trades": 0
+            },
+            "profit_factor": 2.3798,
+            "status": {
+              "EXECUTED": 254
+            },
+            "trades": 254,
+            "win_rate": 0.5236
+          },
+          "test_end": "2024-06-30",
+          "test_start": "2024-01-01",
+          "unfiltered": {
+            "cost_sensitivity": {
+              "break_even_cost_pct": 3.554794,
+              "fixed_trade_list": true,
+              "scenarios": {
+                "0.30": {
+                  "mean_net_pct": 3.2548,
+                  "profit_factor": 2.6186,
+                  "trades": 256,
+                  "win_rate": 0.5586
+                },
+                "0.40": {
+                  "mean_net_pct": 3.1548,
+                  "profit_factor": 2.5346,
+                  "trades": 256,
+                  "win_rate": 0.543
+                },
+                "0.45": {
+                  "mean_net_pct": 3.1048,
+                  "profit_factor": 2.4934,
+                  "trades": 256,
+                  "win_rate": 0.5312
+                },
+                "0.50": {
+                  "mean_net_pct": 3.0548,
+                  "profit_factor": 2.453,
+                  "trades": 256,
+                  "win_rate": 0.5312
+                },
+                "0.60": {
+                  "mean_net_pct": 2.9548,
+                  "profit_factor": 2.3745,
+                  "trades": 256,
+                  "win_rate": 0.5234
+                }
+              }
+            },
+            "mean_net_pct": 2.9548,
+            "missing_outcome": {
+              "resolved_trades": 256,
+              "unresolved_mean_net_to_break_even_pct": null,
+              "unresolved_trades": 0
+            },
+            "profit_factor": 2.3745,
+            "status": {
+              "EXECUTED": 256
+            },
+            "trades": 256,
+            "win_rate": 0.5234
+          }
+        },
+        {
+          "filtered": {
+            "cost_sensitivity": {
+              "break_even_cost_pct": -1.870262,
+              "fixed_trade_list": true,
+              "scenarios": {
+                "0.30": {
+                  "mean_net_pct": -2.1703,
+                  "profit_factor": 0.4803,
+                  "trades": 215,
+                  "win_rate": 0.2744
+                },
+                "0.40": {
+                  "mean_net_pct": -2.2703,
+                  "profit_factor": 0.4657,
+                  "trades": 215,
+                  "win_rate": 0.2744
+                },
+                "0.45": {
+                  "mean_net_pct": -2.3203,
+                  "profit_factor": 0.4585,
+                  "trades": 215,
+                  "win_rate": 0.2744
+                },
+                "0.50": {
+                  "mean_net_pct": -2.3703,
+                  "profit_factor": 0.4515,
+                  "trades": 215,
+                  "win_rate": 0.2744
+                },
+                "0.60": {
+                  "mean_net_pct": -2.4703,
+                  "profit_factor": 0.4378,
+                  "trades": 215,
+                  "win_rate": 0.2698
+                }
+              }
+            },
+            "mean_net_pct": -2.4703,
+            "missing_outcome": {
+              "resolved_trades": 215,
+              "unresolved_mean_net_to_break_even_pct": null,
+              "unresolved_trades": 0
+            },
+            "profit_factor": 0.4378,
+            "status": {
+              "EXECUTED": 215,
+              "NO_FILL_OUTSIDE_BRACKET": 1
+            },
+            "trades": 215,
+            "win_rate": 0.2698
+          },
+          "test_end": "2024-12-31",
+          "test_start": "2024-07-01",
+          "unfiltered": {
+            "cost_sensitivity": {
+              "break_even_cost_pct": -1.306904,
+              "fixed_trade_list": true,
+              "scenarios": {
+                "0.30": {
+                  "mean_net_pct": -1.6069,
+                  "profit_factor": 0.5942,
+                  "trades": 307,
+                  "win_rate": 0.3062
+                },
+                "0.40": {
+                  "mean_net_pct": -1.7069,
+                  "profit_factor": 0.5764,
+                  "trades": 307,
+                  "win_rate": 0.2997
+                },
+                "0.45": {
+                  "mean_net_pct": -1.7569,
+                  "profit_factor": 0.5677,
+                  "trades": 307,
+                  "win_rate": 0.2997
+                },
+                "0.50": {
+                  "mean_net_pct": -1.8069,
+                  "profit_factor": 0.5592,
+                  "trades": 307,
+                  "win_rate": 0.2997
+                },
+                "0.60": {
+                  "mean_net_pct": -1.9069,
+                  "profit_factor": 0.5427,
+                  "trades": 307,
+                  "win_rate": 0.2964
+                }
+              }
+            },
+            "mean_net_pct": -1.9069,
+            "missing_outcome": {
+              "resolved_trades": 307,
+              "unresolved_mean_net_to_break_even_pct": null,
+              "unresolved_trades": 0
+            },
+            "profit_factor": 0.5427,
+            "status": {
+              "EXECUTED": 307,
+              "NO_FILL_OUTSIDE_BRACKET": 1
+            },
+            "trades": 307,
+            "win_rate": 0.2964
+          }
+        },
+        {
+          "filtered": {
+            "cost_sensitivity": {
+              "break_even_cost_pct": 0.020272,
+              "fixed_trade_list": true,
+              "scenarios": {
+                "0.30": {
+                  "mean_net_pct": -0.2797,
+                  "profit_factor": 0.9095,
+                  "trades": 170,
+                  "win_rate": 0.4
+                },
+                "0.40": {
+                  "mean_net_pct": -0.3797,
+                  "profit_factor": 0.8795,
+                  "trades": 170,
+                  "win_rate": 0.3882
+                },
+                "0.45": {
+                  "mean_net_pct": -0.4297,
+                  "profit_factor": 0.865,
+                  "trades": 170,
+                  "win_rate": 0.3882
+                },
+                "0.50": {
+                  "mean_net_pct": -0.4797,
+                  "profit_factor": 0.8507,
+                  "trades": 170,
+                  "win_rate": 0.3882
+                },
+                "0.60": {
+                  "mean_net_pct": -0.5797,
+                  "profit_factor": 0.823,
+                  "trades": 170,
+                  "win_rate": 0.3824
+                }
+              }
+            },
+            "mean_net_pct": -0.5797,
+            "missing_outcome": {
+              "resolved_trades": 170,
+              "unresolved_mean_net_to_break_even_pct": null,
+              "unresolved_trades": 0
+            },
+            "profit_factor": 0.823,
+            "status": {
+              "EXECUTED": 170
+            },
+            "trades": 170,
+            "win_rate": 0.3824
+          },
+          "test_end": "2025-06-30",
+          "test_start": "2025-01-01",
+          "unfiltered": {
+            "cost_sensitivity": {
+              "break_even_cost_pct": -0.138238,
+              "fixed_trade_list": true,
+              "scenarios": {
+                "0.30": {
+                  "mean_net_pct": -0.4382,
+                  "profit_factor": 0.8784,
+                  "trades": 291,
+                  "win_rate": 0.3746
+                },
+                "0.40": {
+                  "mean_net_pct": -0.5382,
+                  "profit_factor": 0.8532,
+                  "trades": 291,
+                  "win_rate": 0.3677
+                },
+                "0.45": {
+                  "mean_net_pct": -0.5882,
+                  "profit_factor": 0.8409,
+                  "trades": 291,
+                  "win_rate": 0.3677
+                },
+                "0.50": {
+                  "mean_net_pct": -0.6382,
+                  "profit_factor": 0.8288,
+                  "trades": 291,
+                  "win_rate": 0.3677
+                },
+                "0.60": {
+                  "mean_net_pct": -0.7382,
+                  "profit_factor": 0.8053,
+                  "trades": 291,
+                  "win_rate": 0.3643
+                }
+              }
+            },
+            "mean_net_pct": -0.7382,
+            "missing_outcome": {
+              "resolved_trades": 291,
+              "unresolved_mean_net_to_break_even_pct": null,
+              "unresolved_trades": 0
+            },
+            "profit_factor": 0.8053,
+            "status": {
+              "EXECUTED": 291,
+              "NO_FILL_OUTSIDE_BRACKET": 4
+            },
+            "trades": 291,
+            "win_rate": 0.3643
+          }
+        },
+        {
+          "filtered": {
+            "cost_sensitivity": {
+              "break_even_cost_pct": 0.830307,
+              "fixed_trade_list": true,
+              "scenarios": {
+                "0.30": {
+                  "mean_net_pct": 0.5303,
+                  "profit_factor": 1.1641,
+                  "trades": 343,
+                  "win_rate": 0.4052
+                },
+                "0.40": {
+                  "mean_net_pct": 0.4303,
+                  "profit_factor": 1.1307,
+                  "trades": 343,
+                  "win_rate": 0.3994
+                },
+                "0.45": {
+                  "mean_net_pct": 0.3803,
+                  "profit_factor": 1.1145,
+                  "trades": 343,
+                  "win_rate": 0.3936
+                },
+                "0.50": {
+                  "mean_net_pct": 0.3303,
+                  "profit_factor": 1.0985,
+                  "trades": 343,
+                  "win_rate": 0.3907
+                },
+                "0.60": {
+                  "mean_net_pct": 0.2303,
+                  "profit_factor": 1.0675,
+                  "trades": 343,
+                  "win_rate": 0.3878
+                }
+              }
+            },
+            "mean_net_pct": 0.2303,
+            "missing_outcome": {
+              "resolved_trades": 343,
+              "unresolved_mean_net_to_break_even_pct": -78.995378,
+              "unresolved_trades": 1
+            },
+            "profit_factor": 1.0675,
+            "status": {
+              "EXECUTED": 343,
+              "NO_FILL_OUTSIDE_BRACKET": 2,
+              "UNRESOLVED_MISSING_BAR": 1
+            },
+            "trades": 343,
+            "win_rate": 0.3878
+          },
+          "test_end": "2025-12-31",
+          "test_start": "2025-07-01",
+          "unfiltered": {
+            "cost_sensitivity": {
+              "break_even_cost_pct": 0.921431,
+              "fixed_trade_list": true,
+              "scenarios": {
+                "0.30": {
+                  "mean_net_pct": 0.6214,
+                  "profit_factor": 1.194,
+                  "trades": 346,
+                  "win_rate": 0.4104
+                },
+                "0.40": {
+                  "mean_net_pct": 0.5214,
+                  "profit_factor": 1.1598,
+                  "trades": 346,
+                  "win_rate": 0.4046
+                },
+                "0.45": {
+                  "mean_net_pct": 0.4714,
+                  "profit_factor": 1.1432,
+                  "trades": 346,
+                  "win_rate": 0.3988
+                },
+                "0.50": {
+                  "mean_net_pct": 0.4214,
+                  "profit_factor": 1.1268,
+                  "trades": 346,
+                  "win_rate": 0.396
+                },
+                "0.60": {
+                  "mean_net_pct": 0.3214,
+                  "profit_factor": 1.095,
+                  "trades": 346,
+                  "win_rate": 0.3931
+                }
+              }
+            },
+            "mean_net_pct": 0.3214,
+            "missing_outcome": {
+              "resolved_trades": 346,
+              "unresolved_mean_net_to_break_even_pct": -111.215067,
+              "unresolved_trades": 1
+            },
+            "profit_factor": 1.095,
+            "status": {
+              "EXECUTED": 346,
+              "NO_FILL_OUTSIDE_BRACKET": 2,
+              "UNRESOLVED_MISSING_BAR": 1
+            },
+            "trades": 346,
+            "win_rate": 0.3931
+          }
+        },
+        {
+          "filtered": {
+            "cost_sensitivity": {
+              "break_even_cost_pct": -1.084543,
+              "fixed_trade_list": true,
+              "scenarios": {
+                "0.30": {
+                  "mean_net_pct": -1.3845,
+                  "profit_factor": 0.6533,
+                  "trades": 365,
+                  "win_rate": 0.2767
+                },
+                "0.40": {
+                  "mean_net_pct": -1.4845,
+                  "profit_factor": 0.6349,
+                  "trades": 365,
+                  "win_rate": 0.2767
+                },
+                "0.45": {
+                  "mean_net_pct": -1.5345,
+                  "profit_factor": 0.6259,
+                  "trades": 365,
+                  "win_rate": 0.2767
+                },
+                "0.50": {
+                  "mean_net_pct": -1.5845,
+                  "profit_factor": 0.6171,
+                  "trades": 365,
+                  "win_rate": 0.2767
+                },
+                "0.60": {
+                  "mean_net_pct": -1.6845,
+                  "profit_factor": 0.6,
+                  "trades": 365,
+                  "win_rate": 0.274
+                }
+              }
+            },
+            "mean_net_pct": -1.6845,
+            "missing_outcome": {
+              "resolved_trades": 365,
+              "unresolved_mean_net_to_break_even_pct": null,
+              "unresolved_trades": 0
+            },
+            "profit_factor": 0.6,
+            "status": {
+              "EXECUTED": 365,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "trades": 365,
+            "win_rate": 0.274
+          },
+          "test_end": "2026-10-06",
+          "test_start": "2026-01-01",
+          "unfiltered": {
+            "cost_sensitivity": {
+              "break_even_cost_pct": -0.756937,
+              "fixed_trade_list": true,
+              "scenarios": {
+                "0.30": {
+                  "mean_net_pct": -1.0569,
+                  "profit_factor": 0.7262,
+                  "trades": 393,
+                  "win_rate": 0.2977
+                },
+                "0.40": {
+                  "mean_net_pct": -1.1569,
+                  "profit_factor": 0.7056,
+                  "trades": 393,
+                  "win_rate": 0.2977
+                },
+                "0.45": {
+                  "mean_net_pct": -1.2069,
+                  "profit_factor": 0.6956,
+                  "trades": 393,
+                  "win_rate": 0.2977
+                },
+                "0.50": {
+                  "mean_net_pct": -1.2569,
+                  "profit_factor": 0.6858,
+                  "trades": 393,
+                  "win_rate": 0.2977
+                },
+                "0.60": {
+                  "mean_net_pct": -1.3569,
+                  "profit_factor": 0.6667,
+                  "trades": 393,
+                  "win_rate": 0.2952
+                }
+              }
+            },
+            "mean_net_pct": -1.3569,
+            "missing_outcome": {
+              "resolved_trades": 393,
+              "unresolved_mean_net_to_break_even_pct": null,
+              "unresolved_trades": 0
+            },
+            "profit_factor": 0.6667,
+            "status": {
+              "EXECUTED": 393,
+              "NO_FILL_OUTSIDE_BRACKET": 2
+            },
+            "trades": 393,
+            "win_rate": 0.2952
+          }
+        }
+      ],
+      "moving_block_bootstrap": {
+        "10": {
+          "block_sessions": 10,
+          "calendar_sessions": 887,
+          "descriptive_only": true,
+          "p10": -0.710568,
+          "p50": -0.214054,
+          "p90": 0.321746,
+          "samples": 2000,
+          "seed": 0
+        },
+        "20": {
+          "block_sessions": 20,
+          "calendar_sessions": 887,
+          "descriptive_only": true,
+          "p10": -0.828531,
+          "p50": -0.231892,
+          "p90": 0.40662,
+          "samples": 2000,
+          "seed": 0
+        }
+      },
+      "slice": [
+        "2023-01-03",
+        "2026-10-06"
+      ]
+    },
+    "filter": "taiex_bias_ma60_pct > 0",
+    "preregistration_id": "REBOUND_P4_MARKET_FILTER_V1",
+    "reserved_from": "2026-10-07",
+    "unseen_2022": {
+      "bootstrap_descriptive": {
+        "p10": -1.6152,
+        "p50": -0.607,
+        "p90": 0.5466,
+        "samples": 2000
+      },
+      "filter_on_days": 38,
+      "filtered": {
+        "cost_sensitivity": {
+          "break_even_cost_pct": 0.025591,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": -0.2744,
+              "profit_factor": 0.9172,
+              "trades": 99,
+              "win_rate": 0.4141
+            },
+            "0.40": {
+              "mean_net_pct": -0.3744,
+              "profit_factor": 0.889,
+              "trades": 99,
+              "win_rate": 0.404
+            },
+            "0.45": {
+              "mean_net_pct": -0.4244,
+              "profit_factor": 0.8753,
+              "trades": 99,
+              "win_rate": 0.404
+            },
+            "0.50": {
+              "mean_net_pct": -0.4744,
+              "profit_factor": 0.8618,
+              "trades": 99,
+              "win_rate": 0.404
+            },
+            "0.60": {
+              "mean_net_pct": -0.5744,
+              "profit_factor": 0.8355,
+              "trades": 99,
+              "win_rate": 0.3939
+            }
+          }
+        },
+        "mean_net_pct": -0.5744,
+        "missing_outcome": {
+          "resolved_trades": 99,
+          "unresolved_mean_net_to_break_even_pct": null,
+          "unresolved_trades": 0
+        },
+        "profit_factor": 0.8355,
+        "status": {
+          "EXECUTED": 99
+        },
+        "trades": 99,
+        "win_rate": 0.3939
+      },
+      "moving_block_bootstrap": {
+        "10": {
+          "block_sessions": 10,
+          "calendar_sessions": 171,
+          "descriptive_only": true,
+          "p10": -2.449813,
+          "p50": -0.76241,
+          "p90": 1.216807,
+          "samples": 2000,
+          "seed": 0
+        },
+        "20": {
+          "block_sessions": 20,
+          "calendar_sessions": 171,
+          "descriptive_only": true,
+          "p10": -2.423251,
+          "p50": -0.629494,
+          "p90": 1.659181,
+          "samples": 1981,
+          "seed": 0
+        }
+      },
+      "signal_days": 141,
+      "slice": [
+        "2022-05-01",
+        "2022-12-31"
+      ],
+      "unfiltered_descriptive": {
+        "cost_sensitivity": {
+          "break_even_cost_pct": -0.122413,
+          "fixed_trade_list": true,
+          "scenarios": {
+            "0.30": {
+              "mean_net_pct": -0.4224,
+              "profit_factor": 0.8854,
+              "trades": 375,
+              "win_rate": 0.3813
+            },
+            "0.40": {
+              "mean_net_pct": -0.5224,
+              "profit_factor": 0.8606,
+              "trades": 375,
+              "win_rate": 0.3787
+            },
+            "0.45": {
+              "mean_net_pct": -0.5724,
+              "profit_factor": 0.8486,
+              "trades": 375,
+              "win_rate": 0.376
+            },
+            "0.50": {
+              "mean_net_pct": -0.6224,
+              "profit_factor": 0.8367,
+              "trades": 375,
+              "win_rate": 0.376
+            },
+            "0.60": {
+              "mean_net_pct": -0.7224,
+              "profit_factor": 0.8135,
+              "trades": 375,
+              "win_rate": 0.3733
+            }
+          }
+        },
+        "mean_net_pct": -0.7224,
+        "missing_outcome": {
+          "resolved_trades": 375,
+          "unresolved_mean_net_to_break_even_pct": 135.452505,
+          "unresolved_trades": 2
+        },
+        "profit_factor": 0.8135,
+        "status": {
+          "EXECUTED": 375,
+          "NO_FILL_OUTSIDE_BRACKET": 1,
+          "UNRESOLVED_MISSING_BAR": 2
+        },
+        "trades": 375,
+        "win_rate": 0.3733
+      }
+    }
+  },
+  "analysis_role": "EXPOSED_HISTORY_CORRECTION_ONLY",
+  "correction_id": "REBOUND_SIMULATION_CORRECTION_V1",
+  "holdout_read": false,
+  "implementation_sha256": {
+    "market_daily.py": "35c8622af11bd12bce5f188ddcd5a45604e21f7323f79807de57b3b0bb1e3ad7",
+    "research.py": "fffa70983a028f6b64eae1f11d1448846124c9f6cb8636df2e6cf8a6a003014a",
+    "research_correction.py": "a36d987fb8873af29411c1521ff1c3ab5cac4129d69bf066a0b0bd55453a41ce",
+    "research_filter.py": "c888117fd8e4ef4ec4d3a6c1249aa8485c1fbd14d49fa9917dbef39030fd70ea",
+    "research_horizon.py": "8de1dba9844abe9efeacf79e69a754502bdb95829c540134f5ca58f44b377157",
+    "simulation.py": "dc746b9de61e9db8639afabee22c659322a360bd9f78fab45c5006f83dd2f6da"
+  },
+  "input_manifest": {
+    "before": "2026-10-07",
+    "files": {
+      "dataset-v2.sqlite": {
+        "sha256": "99f52742033531f7afc6e38d4ae36467d55382056516300dad275ef545a97327",
+        "tables": {
+          "candidates": {
+            "latest": "2026-10-06",
+            "rows": 53203
+          },
+          "trading_days": {
+            "latest": "2026-10-06",
+            "rows": 1153
+          }
+        }
+      },
+      "market-daily.sqlite": {
+        "sha256": "43f80c2a070cf06991096a9b5118ab830a6647f2008891e8ebf52b8df2f3a59b",
+        "tables": {
+          "bars": {
+            "latest": "2026-10-06",
+            "rows": 2107485
+          },
+          "ex_rights": {
+            "latest": "2026-10-06",
+            "rows": 4551
+          },
+          "tpex_next_reference": {
+            "latest": "2026-10-06",
+            "rows": 956492
+          }
+        }
+      }
+    },
+    "labels_read": false,
+    "source_read_only": true
+  }
+}

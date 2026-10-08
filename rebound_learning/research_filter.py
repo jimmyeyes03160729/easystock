@@ -1,4 +1,4 @@
-"""Rebound market-filter study, preregistration REBOUND_P4_MARKET_FILTER_V1.
+"""Historical correction of REBOUND_P4_MARKET_FILTER_V1 (not a new confirmation).
 
 Frozen in docs/research_governance/preregistrations/REBOUND_P4_MARKET_FILTER_V1.yaml
 before any 2022 rebound signal existed and before any filtered result was
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 from .market_daily import connect as market_connect
@@ -17,6 +17,7 @@ from .official import dataset_path
 from .research import COST_PCT, FOLDS, RESERVED_FROM, bootstrap_mean, metrics
 from .research_horizon import load_picks, simulate_exit
 from .schema import connect, database_path
+from .simulation import CORRECTION_ID, cost_sensitivity, missing_outcome_threshold, replay
 
 PREREGISTRATION_ID = 'REBOUND_P4_MARKET_FILTER_V1'
 UNSEEN_SLICE = ('2022-05-01', '2022-12-31')
@@ -46,18 +47,25 @@ def profit_factor_ok(m: dict, minimum: float = 1.05) -> bool:
 
 def summarize(picks: list[dict], filtered: bool) -> tuple[dict, dict]:
     by_day = defaultdict(list)
+    status = Counter()
     for p in picks:
         if filtered and not market_on(p):
             continue
-        net = trade(p)
+        by_day[p['date']]
+        result = replay(p['bars'] or [], p['target'], p['invalid'], stop=True, take=True, horizon=20)
+        status[result['status']] += 1
+        net = None if result['gross'] is None else result['gross'] - COST_PCT
         if net is not None:
             by_day[p['date']].append(net)
     trades = [t for v in by_day.values() for t in v]
-    return metrics(trades), by_day
+    return {**metrics(trades), 'status': dict(status), 'cost_sensitivity': cost_sensitivity(trades),
+            'missing_outcome': missing_outcome_threshold(trades, status['UNRESOLVED_MISSING_BAR'])}, by_day
 
 
 def evaluate(unseen: list[dict], exposed: list[dict], *, folds=FOLDS) -> dict:
-    report = {'preregistration_id': PREREGISTRATION_ID, 'reserved_from': RESERVED_FROM, 'cost_pct': COST_PCT,
+    report = {'preregistration_id': PREREGISTRATION_ID, 'correction_id': CORRECTION_ID,
+              'analysis_role': 'EXPOSED_HISTORY_CORRECTION_ONLY',
+              'reserved_from': RESERVED_FROM, 'cost_pct': COST_PCT,
               'exit': 'BRACKET_H20', 'filter': 'taiex_bias_ma60_pct > 0'}
     s1, s1_days = summarize(unseen, True)
     s1_unfiltered, _ = summarize(unseen, False)
@@ -86,14 +94,18 @@ def evaluate(unseen: list[dict], exposed: list[dict], *, folds=FOLDS) -> dict:
         outcome = 'INCONCLUSIVE_HOLDOUT_DECIDES'
     else:
         outcome = 'REJECTED'
+    descriptive_outcome = {'CONFIRMATION_CANDIDATE': 'DESCRIPTIVE_PASS',
+                           'INCONCLUSIVE_HOLDOUT_DECIDES': 'DESCRIPTIVE_INCONCLUSIVE',
+                           'REJECTED': 'REJECTED'}[outcome]
     report['decision'] = {'stage1_unseen_2022': stage1, 'stage2_exposed_net_positive': s2_ok,
-                          'outcome': outcome, 'production_ready': False}
+                          'outcome': descriptive_outcome,
+                          'legacy_criteria_outcome': outcome, 'holdout_authorized': False, 'production_ready': False}
     return report
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output', type=Path, default=database_path().parent / 'phase4' / f'{PREREGISTRATION_ID}-result.json')
+    parser.add_argument('--output', type=Path, default=database_path().parent / 'corrections' / f'{PREREGISTRATION_ID}-{CORRECTION_ID}.json')
     args = parser.parse_args()
     with market_connect() as market, connect(dataset_path()) as db:
         unseen = load_picks(db, market, start=UNSEEN_SLICE[0], end=UNSEEN_SLICE[1])
