@@ -58,6 +58,37 @@ BUILTIN_2026_CLOSED: dict[str, str] = {
     "2026-12-25": "行憲紀念日",
 }
 
+# 2027 年暫定休市表：TWSE 尚未公布時使用，官方公布（API 或快取）後一律以官方為準。
+# 來源：行政院人事行政總處 116 年政府行政機關辦公日曆表（115.05.21 院授人培字第1153026132號函）的平日放假日，
+# 加上 TWSE 歷年慣例「春節假期前最後兩個交易日市場無交易」（2024、2025、2026 皆是），保守視為休市。
+PROVISIONAL_2027_CLOSED: dict[str, str] = {
+    "2027-01-01": "中華民國開國紀念日（暫定，DGPA）",
+    "2027-02-02": "市場無交易，僅辦理結算交割作業（暫定，依 TWSE 慣例推估）",
+    "2027-02-03": "市場無交易，僅辦理結算交割作業（暫定，依 TWSE 慣例推估）",
+    "2027-02-04": "農曆除夕前一日（暫定，DGPA）",
+    "2027-02-05": "農曆除夕（暫定，DGPA）",
+    "2027-02-08": "春節（暫定，DGPA）",
+    "2027-02-09": "春節補假（暫定，DGPA）",
+    "2027-02-10": "春節補假（暫定，DGPA）",
+    "2027-03-01": "和平紀念日補假（暫定，DGPA）",
+    "2027-04-05": "民族掃墓節（暫定，DGPA）",
+    "2027-04-06": "兒童節補假（暫定，DGPA）",
+    "2027-04-30": "勞動節補假（暫定，DGPA）",
+    "2027-06-09": "端午節（暫定，DGPA）",
+    "2027-09-15": "中秋節（暫定，DGPA）",
+    "2027-09-28": "孔子誕辰紀念日 / 教師節（暫定，DGPA）",
+    "2027-10-11": "國慶日補假（暫定，DGPA）",
+    "2027-10-25": "臺灣光復暨金門古寧頭大捷紀念日（暫定，DGPA）",
+    "2027-12-24": "行憲紀念日補假（暫定，DGPA）",
+    "2027-12-31": "2028 開國紀念日補假（暫定，DGPA）",
+}
+PROVISIONAL_CLOSED: dict[int, dict[str, str]] = {2027: PROVISIONAL_2027_CLOSED}
+
+# 台指期日盤（08:45 開盤）是否已成交：颱風、地震等臨時休市時期交所與證交所同步停止交易。
+TAIFEX_QUOTE_URL = "https://mis.taifex.com.tw/futures/api/getQuoteList"
+FUTURES_CHECK_START = (8, 50)    # 開盤後 5 分鐘才判定，避免剛開盤尚無成交
+FUTURES_CHECK_END = (13, 45)
+
 # 快取檔案儲存目錄
 CALENDAR_CACHE_DIR = Path(os.environ.get("CALENDAR_CACHE_DIR", Path(__file__).resolve().parent / "data"))
 
@@ -187,6 +218,9 @@ def fetch_twse_calendar(year: int, timeout: float = 8.0) -> dict[str, str]:
     if year == 2026:
         return dict(BUILTIN_2026_CLOSED)
 
+    if year in PROVISIONAL_CLOSED:
+        return dict(PROVISIONAL_CLOSED[year])
+
     raise CalendarUnavailable(f"TWSE {year} 年行事曆尚未取得；請於官方公布後執行 market_calendar.py --sync {year}")
 
 
@@ -253,6 +287,70 @@ def check_dgpa_typhoon_closure(target_date: date, timeout: float = 6.0) -> tuple
     return False, "無台北市停止上班資訊"
 
 
+def _futures_cache_path(day: date) -> Path:
+    return CALENDAR_CACHE_DIR / f"futures-open-{day.isoformat()}.json"
+
+
+def check_taifex_day_session(now: datetime | None = None, timeout: float = 6.0) -> tuple[str, str]:
+    """
+    以台指期近月合約當日是否已成交，判斷今日期貨日盤（08:45 開盤）有無開市。
+
+    回傳 (state, reason)，state 為：
+        "OPEN"    今日已有成交
+        "CLOSED"  08:50 後仍無任何今日成交 → 視為臨時休市（颱風、地震等）
+        "UNKNOWN" 不在判定時段、查詢失敗或資料不足 → 不做判斷，交由其他規則
+    OPEN/CLOSED 當日結果會快取，避免盤中反覆查詢。
+    """
+    now = (now or now_tpe()).astimezone(TPE)
+    if os.environ.get("EASYSTOCK_FUTURES_OPEN_CHECK", "1") == "0":
+        return "UNKNOWN", "期貨開盤檢查已停用"
+    hm = (now.hour, now.minute)
+    if not (FUTURES_CHECK_START <= hm < FUTURES_CHECK_END):
+        return "UNKNOWN", "非台指期日盤判定時段"
+    cache = _futures_cache_path(now.date())
+    try:
+        cached = json.loads(cache.read_text(encoding="utf-8"))
+        if cached.get("state") in ("OPEN", "CLOSED"):
+            return cached["state"], cached.get("reason", "")
+    except Exception:
+        pass
+    body = {"MarketType": "0", "SymbolType": "F", "KindID": "1", "CID": "TXF", "ExpireMonth": "",
+            "RowSize": "全部", "PageNo": "", "SortColumn": "", "AscDesc": "A"}
+    try:
+        resp = requests.post(TAIFEX_QUOTE_URL, json=body, timeout=timeout,
+                             headers={"User-Agent": "Mozilla/5.0 (compatible; EasyStock/1.0)"})
+        if resp.status_code != 200:
+            return "UNKNOWN", f"期交所回應碼異常 ({resp.status_code})"
+        quotes = ((resp.json() or {}).get("RtData") or {}).get("QuoteList") or []
+    except Exception as exc:
+        return "UNKNOWN", f"期交所查詢失敗 ({type(exc).__name__})"
+    futures = [q for q in quotes if str(q.get("SymbolID", "")).startswith("TXF") and str(q.get("SymbolID", "")).endswith("-F")]
+    if not futures:
+        return "UNKNOWN", "期交所未回傳台指期合約"
+    today = now.strftime("%Y%m%d")
+
+    def volume(q):
+        try:
+            return float(str(q.get("CTotalVolume") or "0").replace(",", ""))
+        except ValueError:
+            return 0.0
+
+    traded = [q for q in futures if str(q.get("CDate")) == today and volume(q) > 0]
+    if traded:
+        state, reason = "OPEN", f"台指期今日已成交（{traded[0].get('DispCName', 'TXF')}）"
+    elif all(str(q.get("CDate") or "") < today for q in futures):
+        state, reason = "CLOSED", "台指期日盤 08:50 後仍無今日成交（判定臨時休市）"
+    else:
+        return "UNKNOWN", "台指期資料日期與成交量不一致，不做判斷"
+    try:
+        CALENDAR_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps({"state": state, "reason": reason, "checked_at": now.isoformat(timespec="seconds")},
+                                    ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+    return state, reason
+
+
 def get_extra_closed_dates() -> set[str]:
     """取得由環境變數或自訂設定傳入的額外休市日"""
     env_dates = os.environ.get("EXTRA_CLOSED_DATES", "").strip()
@@ -296,6 +394,8 @@ def is_market_open(target: Any = None) -> tuple[bool, str, dict[str, Any]]:
         "is_scheduled_holiday": False,
         "is_typhoon_closure": False,
         "is_extra_closed": False,
+        "is_futures_closure": False,
+        "provisional_calendar": False,
     }
 
     # 1. 週末例假日檢查（週六、週日休市）
@@ -313,6 +413,7 @@ def is_market_open(target: Any = None) -> tuple[bool, str, dict[str, Any]]:
     # 3. 證交所（TWSE）排定國定假日與節慶休市檢查
     year = target_date.year
     twse_calendar = fetch_twse_calendar(year)
+    details["provisional_calendar"] = twse_calendar == PROVISIONAL_CLOSED.get(year)
     if day_str in twse_calendar:
         holiday_name = twse_calendar[day_str]
         details["is_scheduled_holiday"] = True
@@ -326,7 +427,16 @@ def is_market_open(target: Any = None) -> tuple[bool, str, dict[str, Any]]:
         details["typhoon_reason"] = typhoon_reason
         return False, f"天然災害/颱風停班休市: {typhoon_reason}", details
 
-    # 5. 通過所有檢查，今日為正常交易日
+    # 5. 當日盤中：台指期日盤沒有成交 → 臨時休市（颱風、地震等未及時反映於公告時的備援）
+    if target_date == now_tpe().date():
+        fut_state, fut_reason = check_taifex_day_session()
+        details["futures_day_session"] = fut_state
+        details["futures_reason"] = fut_reason
+        if fut_state == "CLOSED":
+            details["is_futures_closure"] = True
+            return False, f"臨時休市: {fut_reason}", details
+
+    # 6. 通過所有檢查，今日為正常交易日
     return True, "台股正常開盤交易日", details
 
 
@@ -344,6 +454,10 @@ def main():
         if args.sync:
             year = args.sync
             calendar = fetch_twse_calendar(year)
+            if calendar == PROVISIONAL_CLOSED.get(year):
+                print(f"⚠️ TWSE 尚未公布 {year} 年行事曆；目前使用 DGPA 暫定表（{len(calendar)} 天），公布後請再執行 --sync {year}",
+                      file=sys.stderr)
+                sys.exit(2)
             print(f"✅ 已同步 {year} 年 TWSE 行事曆，共 {len(calendar)} 個排定休市日")
             return
     except CalendarUnavailable as exc:
