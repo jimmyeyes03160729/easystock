@@ -68,9 +68,14 @@ def calculate_trade_costs(buy_price: float, sell_price: float, shares: int) -> t
 
 
 class RunwayV2Backtester:
-    def __init__(self, data_root: str = "/home/ubuntu/easystock-learning-data"):
+    def __init__(
+        self,
+        data_root: str = "/home/ubuntu/easystock-learning-data",
+        daily_max_buy_amount: float | None = None,
+    ):
         self.data_root = Path(data_root)
         self.bars_dir = self.data_root / "bars"
+        self.daily_max_buy_amount = daily_max_buy_amount
 
     def load_day_data(self, date_str: str) -> tuple[dict[str, dict], dict[tuple[str, str], dict], dict[str, str]]:
         """載入特定交易日的 bars 資料與 journal 雷達記錄。"""
@@ -153,6 +158,7 @@ class RunwayV2Backtester:
 
         open_positions: dict[str, BacktestTrade] = {}
         completed_trades: list[BacktestTrade] = []
+        daily_buy_spent = 0.0
 
         # 依時間推進每一分鐘
         for current_hhmm in minutes:
@@ -225,6 +231,9 @@ class RunwayV2Backtester:
             # 2. 新進場訊號評估 (09:05 ~ 12:30)
             # ----------------------------------------------------
             if not ("09:05" <= current_hhmm <= "12:30"):
+                continue
+
+            if self.daily_max_buy_amount is not None and daily_buy_spent >= self.daily_max_buy_amount:
                 continue
 
             available_slots = MAX_CONCURRENT_POSITIONS - len(open_positions)
@@ -349,11 +358,30 @@ class RunwayV2Backtester:
 
             # 依分數排序，優先進場最高分者
             candidates.sort(key=lambda x: x["score"], reverse=True)
-            for c in candidates[:available_slots]:
+            for c in candidates:
+                if len(open_positions) >= MAX_CONCURRENT_POSITIONS:
+                    break
                 sym = c["symbol"]
                 # 進場成交價計入滑價 (買貴 0.05%)
                 exec_price = c["price"] * (1.0 + SLIPPAGE_RATE)
-                shares = max(1000, int(DEFAULT_POSITION_AMOUNT // (exec_price * 1000)) * 1000)
+
+                if self.daily_max_buy_amount is not None:
+                    rem_budget = self.daily_max_buy_amount - daily_buy_spent
+                    if rem_budget < exec_price * 1000:
+                        continue
+                    max_pos_budget = min(DEFAULT_POSITION_AMOUNT, rem_budget)
+                    shares = max(1000, int(max_pos_budget // (exec_price * 1000)) * 1000)
+                    buy_total = exec_price * shares
+                    if (daily_buy_spent + buy_total) > self.daily_max_buy_amount:
+                        shares = int((self.daily_max_buy_amount - daily_buy_spent) // (exec_price * 1000)) * 1000
+                        if shares < 1000:
+                            continue
+                        buy_total = exec_price * shares
+                else:
+                    shares = max(1000, int(DEFAULT_POSITION_AMOUNT // (exec_price * 1000)) * 1000)
+                    buy_total = exec_price * shares
+
+                daily_buy_spent += buy_total
                 trade = BacktestTrade(
                     trade_id=f"BT-{sym}-{date_str}-{current_hhmm.replace(':', '')}",
                     symbol=sym,
@@ -392,6 +420,7 @@ class RunwayV2Backtester:
 def run_10_days_backtest(
     dates: list[str] | None = None,
     data_root: str = "/home/ubuntu/easystock-learning-data",
+    daily_max_buy_amount: float | None = None,
 ) -> dict[str, Any]:
     """執行近 10 天全市場前向盲測回測並彙整報表。"""
     if dates is None:
@@ -408,11 +437,12 @@ def run_10_days_backtest(
             "2026-10-08",
         ]
 
-    tester = RunwayV2Backtester(data_root=data_root)
+    tester = RunwayV2Backtester(data_root=data_root, daily_max_buy_amount=daily_max_buy_amount)
     all_trades: list[BacktestTrade] = []
     daily_summaries = []
 
-    print(f"=== 開始執行跑道 B (Runway V2) 近 {len(dates)} 日前向盲測回測 ===")
+    cap_str = f" (每日買入額上限: {daily_max_buy_amount:,.0f} 元)" if daily_max_buy_amount else " (無額度限制)"
+    print(f"=== 開始執行跑道 B (Runway V2) 近 {len(dates)} 日前向盲測回測{cap_str} ===")
 
     for d in dates:
         trades = tester.run_day(d)
@@ -423,6 +453,7 @@ def run_10_days_backtest(
         day_count = len(trades)
         day_pnl = sum(t.net_pnl for t in trades)
         day_win_rate = (day_wins / day_count * 100.0) if day_count > 0 else 0.0
+        day_buy_amount = sum(t.entry_price * (t.shares * (2 if t.half_closed else 1)) for t in trades)
 
         daily_summaries.append({
             "date": d,
@@ -431,9 +462,10 @@ def run_10_days_backtest(
             "losses": day_losses,
             "win_rate": round(day_win_rate, 1),
             "net_pnl": round(day_pnl, 0),
+            "buy_amount": round(day_buy_amount, 0),
             "trades": trades,
         })
-        print(f"[{d}] 交易: {day_count:2d} 檔 | 勝: {day_wins} 負: {day_losses} | 勝率: {day_win_rate:5.1f}% | 淨損益: {day_pnl:+9.0f} 元")
+        print(f"[{d}] 買入額: {day_buy_amount:>9,.0f} 元 | 交易: {day_count:2d} 檔 | 勝: {day_wins} 負: {day_losses} | 勝率: {day_win_rate:5.1f}% | 淨損益: {day_pnl:+9.0f} 元")
 
     total_count = len(all_trades)
     total_wins = sum(1 for t in all_trades if t.net_pnl > 0)
@@ -475,8 +507,16 @@ def run_10_days_backtest(
 
 
 if __name__ == "__main__":
-    res = run_10_days_backtest()
+    import sys
+    cap = 1000000.0 if "--cap-1m" in sys.argv or "--cap" in sys.argv else None
+    if len(sys.argv) > 1 and sys.argv[1].isdigit():
+        cap = float(sys.argv[1])
+    elif "--cap-1m" in sys.argv:
+        cap = 1000000.0
+
+    res = run_10_days_backtest(daily_max_buy_amount=cap)
     print("\n" + "=" * 50)
+    print(f"每日買入上限: {'不設限' if cap is None else f'{cap:,.0f} 元'}")
     print(f"總交易筆數: {res['total_trades']}")
     print(f"勝率: {res['win_rate']}% ({res['total_wins']} 勝 / {res['total_losses']} 負)")
     print(f"盈虧比 (Profit Factor): {res['profit_factor']}")
