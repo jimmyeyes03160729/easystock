@@ -2,12 +2,50 @@ from datetime import datetime,date
 from pathlib import Path
 import tempfile
 import unittest
+import sys
+import types
 from unittest.mock import patch,Mock
 import daily_history as h
 
 class Tests(unittest.TestCase):
-    def test_frozen_pool_supports_100_unique_symbols(self):
-        symbols=[str(1000+i) for i in range(100)]
+    def test_separate_capped_runs_resume_without_repeating_archived_pairs(self):
+        with tempfile.TemporaryDirectory() as folder:
+            data=Path(folder)/'expanded';data.mkdir()
+            plan={'symbols':['2330'],'dates':['2026-09-01','2026-09-02','2026-09-03']}
+            h.core.save(data/'plan.json',plan)
+            api=Mock()
+            sj=types.SimpleNamespace(Shioaji=Mock(return_value=api),
+                ScannerType=types.SimpleNamespace(AmountRank='amount'),
+                constant=types.SimpleNamespace(TicksQueryType=types.SimpleNamespace(AllDay='all')))
+            session=Mock();session.check.return_value=Mock(remaining_bytes=200*h.core.MB)
+            requested=[]
+            def collect(_session,_api,symbol,day,_query):
+                requested.append((day,symbol))
+                h.core.save(data/'raw'/day/(symbol+'.json.gz'),{'fixture':True},True)
+            settings={'history_max_pairs':1,'history_target_symbols':1}
+            with patch.object(h,'DATA',data),patch.object(h,'OLDDATA',Path(folder)/'old'), \
+                 patch.object(h.core,'DATA',data),patch.object(h,'pipeline_settings',return_value=settings), \
+                 patch.object(h,'allowed',return_value=True),patch.object(h,'Session',return_value=session), \
+                 patch.object(h,'extend_recent_calendar'),patch.object(h,'expand_from_scanner',return_value=plan), \
+                 patch.object(h,'collect_pair',side_effect=collect),patch('dotenv.load_dotenv'), \
+                 patch.dict(sys.modules,{'shioaji':sj}),patch.dict(h.os.environ,{'SJ_API_KEY':'fixture','SJ_SEC_KEY':'fixture'}):
+                self.assertEqual(h.run(),0)
+                first=h.core.load(data/'progress.json')
+                self.assertEqual(first['stop_reason'],'pair_limit')
+                self.assertEqual(first['archived_stock_days'],1)
+                self.assertEqual(h.run(),0)
+                second=h.core.load(data/'progress.json')
+                self.assertEqual(second['stop_reason'],'pair_limit')
+                self.assertEqual(second['archived_stock_days'],2)
+            self.assertEqual(requested,[('2026-09-03','2330'),('2026-09-02','2330')])
+
+    def test_outside_window_does_not_load_plan_or_connect(self):
+        with patch.object(h,'allowed',return_value=False),patch.object(h.core,'load') as load:
+            self.assertEqual(h.run(),0)
+            load.assert_not_called()
+
+    def test_frozen_pool_supports_200_unique_symbols(self):
+        symbols=[str(1000+i) for i in range(200)]
         plan={'symbols':symbols,'dates':['2026-09-01']}
         self.assertEqual(h.validate_plan(plan)['symbols'],symbols)
         for invalid in (symbols+['2000'],symbols[:-1]+[symbols[0]],['ETF']):
@@ -26,9 +64,11 @@ class Tests(unittest.TestCase):
             self.assertEqual(cached.read_bytes(),b'keep-existing-archive')
 
     def test_window_every_day_taipei(self):
+        settings={'history_window_start':'14:00','history_window_end':'22:00','history_weekends':False}
         for day in (15,19,20):
             for hour,expected in [(8,False),(13,False),(14,True),(21,True),(22,False)]:
-                self.assertEqual(h.allowed(datetime(2026,9,day,hour,tzinfo=h.core.TPE)),expected)
+                if datetime(2026,9,day).weekday() >= 5: expected=False
+                self.assertEqual(h.allowed(datetime(2026,9,day,hour,tzinfo=h.core.TPE),settings),expected)
     def test_never_query_before_source_boundary_or_more_than_30_days(self):
         plan={'dates':['2026-09-01']}
         start,end=h.next_window(plan);self.assertEqual((end-start).days,29)

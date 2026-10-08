@@ -233,6 +233,35 @@ def test_public_paper_snapshot_excludes_legacy_equity_fields(account):
     assert all('equity_start' not in row and 'equity_end' not in row for row in snapshot['logs'])
 
 
+@pytest.mark.parametrize('fail', [False, True])
+def test_snapshot_closes_read_connection(account, monkeypatch, fail):
+    _, path = account
+    connect = sqlite3.connect
+    connections = []
+
+    def tracked_connect(*args, **kwargs):
+        connection = connect(*args, **kwargs)
+        connections.append(connection)
+        return connection
+
+    monkeypatch.setattr(ledger.sqlite3, 'connect', tracked_connect)
+    if fail:
+        def missing_period(connection):
+            raise RuntimeError('missing period')
+        monkeypatch.setattr(ledger, 'period', missing_period)
+        with pytest.raises(RuntimeError, match='missing period'):
+            ledger.snapshot(path)
+    else:
+        ledger.snapshot(path)
+
+    assert len(connections) == 1
+    try:
+        with pytest.raises(sqlite3.ProgrammingError, match='closed'):
+            connections[0].execute('SELECT 1')
+    finally:
+        connections[0].close()
+
+
 def test_core_and_admin_root_vm_sources_match():
     for name in ('paper_ledger.py','paper_account.py','position_manager.py','daytrade_summary_push.py',
                  'easystock_admin/store.py','easystock_admin/web.py','easystock_admin/health.py',

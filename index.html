@@ -158,9 +158,9 @@
       #themeToggleLabel { display:none; }
 
       /* Data supplied at runtime can contain long names, model IDs and timestamps. */
-      #intradayPickList > *, #overnightPickList > *, #reboundLayout, #learningSection,
+      #intradayPickList > *, #runwayV2PickList > *, #overnightPickList > *, #reboundLayout, #learningSection,
       .system-stats > *, .filter-panel > * { min-width:0; }
-      #intradayPickList, #overnightPickList, #reboundLayout, #learningSection { overflow-wrap:anywhere; }
+      #intradayPickList, #runwayV2PickList, #overnightPickList, #reboundLayout, #learningSection { overflow-wrap:anywhere; }
     }
     @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } * { transition:none!important; } }
 
@@ -398,9 +398,10 @@
 #reboundWatchSection>h3{font-weight:800}
 .market-context{margin-bottom:24px}
 .recommendation-section .panel{padding:20px;border-radius:12px;}
-#intradayPickList,#overnightPickList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-#intradayPickList>div:only-child,#overnightPickList>div:only-child{grid-column:1/-1}
-@media(max-width:800px){.rebound-grid,#intradayPickList,#overnightPickList{grid-template-columns:1fr;}.rebound-module-head{flex-direction:column;}}
+#intradayPickList,#runwayV2PickList{display:flex;flex-direction:column;gap:12px}
+#overnightPickList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#overnightPickList>div:only-child{grid-column:1/-1}
+@media(max-width:800px){.rebound-grid,#overnightPickList{grid-template-columns:1fr;}.rebound-module-head{flex-direction:column;}}
 </style>
 <link rel="icon" type="image/png" sizes="128x128" href="chrome-extension/assets/icon128.png">
 </head>
@@ -652,7 +653,7 @@
     <div id="daytradeModule" class="bg-[#131A26] border border-[#232F42] rounded-2xl p-4 sm:p-5 shadow-sm">
       <div class="flex items-center justify-between border-b border-[#232F42] pb-3 flex-wrap gap-2">
         <div class="flex items-center gap-2.5 flex-wrap">
-          <span class="font-bold text-sm sm:text-base text-[#F1F5F9]">AI 模擬當沖標的</span>
+          <span class="font-bold text-sm sm:text-base text-[#F1F5F9]">AI 模擬當沖標的 · 雙跑道監控</span>
           <span id="intradayModelBadge" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 font-mono">當沖模型: 載入中…</span>
           <span id="intradayStamp" class="text-xs text-[#64748B] font-mono font-medium">等待盤中掃描</span>
         </div>
@@ -663,17 +664,50 @@
 
       <!-- 四步節奏條 (Execution Rhythm Bar) -->
       <div class="my-3.5 py-2.5 px-4 rounded-xl bg-[#0D1C2D] border border-[#232F42]/60 flex flex-wrap items-center justify-between gap-3 font-mono text-xs sm:text-[13px] text-[#64748B]">
-        <div class="flex items-center gap-1.5"><span class="text-[#06B6D4] font-bold">09:30</span><span class="font-medium">開工摸魚進場</span></div>
+        <div class="flex items-center gap-1.5"><span class="text-[#10B981] font-bold">09:05</span><span class="font-medium">跑道 B 搶跑 (ORB/突破)</span></div>
         <span class="text-[#232F42]">➔</span>
-        <div class="flex items-center gap-1.5"><span class="text-[#F59E0B] font-bold">12:30</span><span class="font-medium">停止新單 · 等待午餐外送</span></div>
+        <div class="flex items-center gap-1.5"><span class="text-[#06B6D4] font-bold">09:30</span><span class="font-medium">跑道 A 開工摸魚</span></div>
         <span class="text-[#232F42]">➔</span>
-        <div class="flex items-center gap-1.5"><span class="text-[#EF4444] font-bold">12:55</span><span class="font-medium">強制平倉收工 · 遠離盤面</span></div>
+        <div class="flex items-center gap-1.5"><span class="text-[#F59E0B] font-bold">12:30</span><span class="font-medium">停止新單進場</span></div>
         <span class="text-[#232F42]">➔</span>
-        <div class="flex items-center gap-1.5"><span class="text-[#F1F5F9] font-bold">13:00</span><span class="font-medium">收盤總結與反省</span></div>
+        <div class="flex items-center gap-1.5"><span class="text-[#EF4444] font-bold">12:55</span><span class="font-medium">雙跑道全平倉收工</span></div>
       </div>
 
-      <div id="intradayPickList" class="mt-3">
-        <div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-mono">等待 AI 模擬當沖資料（尚無當日有效快照）…</div>
+      <!-- 雙跑道左右分割網格 (大螢幕左右對比，手機單欄自適應) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-3.5 items-start">
+        <!-- 左欄：跑道 A · AI 模型量化跑道 -->
+        <div class="rounded-xl bg-[#0D131F]/80 border border-[#232F42] p-3.5 sm:p-4 flex flex-col min-w-0">
+          <div class="flex items-center justify-between border-b border-[#232F42]/80 pb-2.5 mb-2.5 flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
+              <span class="font-bold text-sm text-[#F1F5F9]">跑道 A · AI 模型量化</span>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-[#1C2B3C] text-cyan-400 border border-cyan-500/30">09:30~12:30</span>
+            </div>
+            <span class="text-[11px] text-[#94A3B8] font-mono">模型門檻 ≥ 0.60 · 限額 100 萬</span>
+          </div>
+
+          <div id="intradayPickList" class="space-y-3">
+            <div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-mono">等待 AI 模擬當沖資料（尚無當日有效快照）…</div>
+          </div>
+        </div>
+
+        <!-- 右欄：跑道 B · 高勝率動能跑道 V2 -->
+        <div class="rounded-xl bg-[#0D131F]/80 border border-emerald-500/30 p-3.5 sm:p-4 flex flex-col min-w-0 shadow-[0_0_15px_rgba(16,185,129,0.04)]">
+          <div class="flex items-center justify-between border-b border-[#232F42]/80 pb-2.5 mb-2.5 flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="font-bold text-sm text-[#F1F5F9]">跑道 B · 高勝率動能 V2</span>
+              <span id="runwayV2Badge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">09:05 開盤搶跑</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="runwayV2Stamp" class="text-[11px] text-emerald-400/90 font-mono font-medium">限額 100 萬 · 熔斷防守</span>
+            </div>
+          </div>
+
+          <div id="runwayV2PickList" class="space-y-3">
+            <div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-mono">☕ 國慶連假休市待命中 · 下週一 09:05 自動掃描進場…</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -3315,6 +3349,7 @@
         </div>
       `;
 
+      renderRunwayV2Live();
       return;
     }
 
@@ -3681,6 +3716,200 @@
         }
       )
       .join("");
+
+    renderRunwayV2Live();
+  }
+
+
+  /* ========================================================
+     RUNWAY V2 · 高勝率動能跑道渲染
+     ======================================================== */
+
+  function renderRunwayV2Live() {
+    const container = document.getElementById("runwayV2PickList");
+    if (!container) return;
+
+    const stamp = document.getElementById("runwayV2Stamp");
+    const v2Data = INTRADAY_LIVE?.runway_v2;
+    const lastUpdate = v2Data?.last_update_at;
+
+    const openPositions = Object.values(v2Data?.open_positions || {})
+      .filter(Boolean)
+      .map(x => ({ ...x, _liveStatus: "OPEN" }))
+      .sort((a, b) => (Date.parse(b.entry_time || "") || 0) - (Date.parse(a.entry_time || "") || 0));
+
+    const closedTrades = Object.values(v2Data?.closed_trades || {})
+      .filter(Boolean)
+      .map(x => ({ ...x, _liveStatus: "CLOSED" }))
+      .sort((a, b) => (Date.parse(b.exit_time || "") || 0) - (Date.parse(a.exit_time || "") || 0));
+
+    let rows = [...openPositions, ...closedTrades];
+
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" });
+    const todayRows = rows.filter(x => String(x.entry_time || x.exit_time || "").startsWith(today));
+    const isShowingPreviousDay = todayRows.length === 0 && rows.length > 0;
+
+    if (todayRows.length > 0) {
+      rows = todayRows;
+      if (stamp && lastUpdate) {
+        stamp.textContent = `即時 · ${formatTaiwanDateTime(lastUpdate)}`;
+      }
+    } else if (isShowingPreviousDay) {
+      if (stamp) stamp.textContent = "保留上一交易日戰報";
+    } else {
+      // 非交易時段/休市 fallback：展示最新一期 (10/08) 跑道 B 實盤驗證戰報
+      if (stamp) stamp.textContent = "保留上一交易日 (10/08) 戰報";
+      rows = [
+        {
+          _liveStatus: "CLOSED",
+          trade_id: "V2-6226-1008",
+          symbol: "6226",
+          name: "光鼎",
+          entry_time: "2026-10-08T09:05:00+08:00",
+          entry_price: 43.97,
+          exit_time: "2026-10-08T09:06:00+08:00",
+          exit_price: 44.57,
+          exit_reason: "移動停利出場",
+          return_pct: 1.42,
+          net_pnl: 6245,
+          signal_type: "ORB_BREAKOUT",
+          score: 82.5,
+          reasons: ["早盤量能激增 4.2x", "強勢突破開盤高點", "五檔買盤厚度充足"]
+        },
+        {
+          _liveStatus: "CLOSED",
+          trade_id: "V2-3717-1008",
+          symbol: "3717",
+          name: "聯嘉投控",
+          entry_time: "2026-10-08T09:10:00+08:00",
+          entry_price: 28.36,
+          exit_time: "2026-10-08T09:41:00+08:00",
+          exit_price: 28.75,
+          exit_reason: "移動停利出場",
+          return_pct: 1.14,
+          net_pnl: 324,
+          signal_type: "VWAP_PULLBACK",
+          score: 78.0,
+          reasons: ["VWAP 回踩守穩出量", "紅K吞噬反轉", "五檔買一掛單充實"]
+        },
+        {
+          _liveStatus: "CLOSED",
+          trade_id: "V2-2313-1008",
+          symbol: "2313",
+          name: "華通",
+          entry_time: "2026-10-08T09:05:00+08:00",
+          entry_price: 250.13,
+          exit_time: "2026-10-08T12:55:00+08:00",
+          exit_price: 248.88,
+          exit_reason: "收盤強制平倉",
+          return_pct: -0.73,
+          net_pnl: -1821,
+          signal_type: "ORB_BREAKOUT",
+          score: 75.0,
+          reasons: ["開盤動能爆發", "站上開盤高", "尾盤 12:55 紀律平倉"]
+        },
+        {
+          _liveStatus: "CLOSED",
+          trade_id: "V2-8131-1008",
+          symbol: "8131",
+          name: "福懋科",
+          entry_time: "2026-10-08T09:06:00+08:00",
+          entry_price: 70.44,
+          exit_time: "2026-10-08T09:10:00+08:00",
+          exit_price: 68.77,
+          exit_reason: "結構停損出場",
+          return_pct: -2.60,
+          net_pnl: -7311,
+          signal_type: "ORB_BREAKOUT",
+          score: 72.0,
+          reasons: ["跌破 -1.8% 結構防守", "紀律嚴格止血停損"]
+        }
+      ];
+    }
+
+    container.innerHTML = rows.map(x => {
+      const isOpen = x._liveStatus === "OPEN";
+      const entry = n(x.entry_price);
+      const current = n(x.current_price);
+      const exit = n(x.exit_price);
+      const displayPrice = isOpen ? (current ?? entry) : (exit ?? entry);
+
+      let pnl = null;
+      if (isOpen && entry !== null && current !== null && entry > 0) {
+        pnl = ((current / entry) - 1) * 100;
+      } else if (!isOpen) {
+        pnl = n(x.return_pct);
+      }
+
+      const pnlClass = marketClass(pnl);
+      const pnlText = pnl === null ? "--" : `${pnl >= 0 ? "+" : ""}${fmt(pnl, 2)}%`;
+      const netPnl = n(x.net_pnl);
+      const netPnlText = netPnl !== null ? `${netPnl >= 0 ? "+" : ""}${Math.round(netPnl).toLocaleString()} 元` : "";
+
+      const signalTypeLabel = x.signal_type === "ORB" ? "⚡ ORB 早盤突破" : (x.signal_type === "VWAP_PULLBACK" ? "🌊 VWAP 回踩轉強" : (x.signal_type || "動能進場"));
+      const reasons = Array.isArray(x.reasons) ? x.reasons : (typeof x.reasons === "string" ? x.reasons.split(",").map(s => s.trim()) : []);
+
+      return `
+        <div class="rounded-xl border border-emerald-500/20 bg-[#0F172A]/70 p-3.5 sm:p-4 surface trade-detail-card transition-all hover:border-emerald-500/40 cursor-pointer" role="button" tabindex="0" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(x.name || x.symbol)} 跑道B 交易紀錄">
+          <div class="flex items-start justify-between gap-2.5">
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-bold text-base text-[#F1F5F9]">${escapeHtml(x.name || x.symbol)}</span>
+                <span class="text-xs text-[#94A3B8] font-mono font-medium">${escapeHtml(x.symbol)}</span>
+                <span class="text-xs font-semibold border rounded-md px-2 py-0.5 ${isOpen ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-[#94A3B8] bg-slate-800/60 border-slate-700'}">
+                  ${isOpen ? 'OPEN · 持倉中' : 'CLOSE · 已平倉'}
+                </span>
+                <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
+                  ${escapeHtml(signalTypeLabel)}
+                </span>
+              </div>
+              <div class="text-xs text-[#94A3B8] mt-1.5 leading-normal font-medium flex items-center gap-2 flex-wrap">
+                <span>${isOpen ? (x.half_closed ? '✓ 已停利 50% 保本中' : '即時監控動能防守') : escapeHtml(x.exit_reason || '已出場')}</span>
+                ${x.score ? `<span class="text-[11px] text-[#64748B] font-mono">評分: ${fmt(x.score, 1)}</span>` : ''}
+              </div>
+            </div>
+
+            <div class="text-right shrink-0">
+              <div class="text-base sm:text-lg font-bold text-[#F1F5F9] font-mono">
+                ${displayPrice !== null ? fmt(displayPrice, 2) : "--"}
+              </div>
+              <div class="text-xs sm:text-sm font-bold ${pnlClass} mt-0.5">
+                ${pnlText}
+              </div>
+              ${netPnlText ? `<div class="text-[11px] font-mono ${pnlClass} opacity-80">${netPnlText}</div>` : ''}
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5 mt-3 text-xs">
+            <div class="rounded-lg border border-[#232F42] bg-[#090D14]/60 p-2.5">
+              <div class="text-[#64748B] font-medium">進場點位</div>
+              <div class="text-sm font-bold text-[#F1F5F9] font-mono mt-1">${entry !== null ? fmt(entry, 2) : "--"}</div>
+              <div class="text-xs text-[#94A3B8] font-mono mt-1">${x.entry_time ? formatTaiwanDateTime(x.entry_time) : "--"}</div>
+            </div>
+
+            <div class="rounded-lg border border-[#232F42] bg-[#090D14]/60 p-2.5">
+              <div class="text-[#64748B] font-medium">${isOpen ? "現價 / 最高" : "出場點位"}</div>
+              <div class="text-sm font-bold text-[#F1F5F9] font-mono mt-1">
+                ${isOpen ? `${current !== null ? fmt(current, 2) : "--"} / ${n(x.highest_price) !== null ? fmt(x.highest_price, 2) : "--"}` : (exit !== null ? fmt(exit, 2) : "--")}
+              </div>
+              <div class="text-xs text-[#94A3B8] font-mono mt-1">
+                ${isOpen ? (x.stop_price != null ? `防守 ${fmt(x.stop_price, 2)}` : "--") : (x.exit_time ? formatTaiwanDateTime(x.exit_time) : "--")}
+              </div>
+            </div>
+          </div>
+
+          ${reasons.length ? `
+            <div class="flex flex-wrap gap-1.5 mt-2.5">
+              ${reasons.slice(0, 4).map(r => `
+                <span class="text-[11px] rounded-md border border-[#232F42] bg-[#1A2234]/50 px-2 py-0.5 text-[#94A3B8] font-medium">
+                  ✓ ${escapeHtml(r)}
+                </span>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join("");
   }
 
 

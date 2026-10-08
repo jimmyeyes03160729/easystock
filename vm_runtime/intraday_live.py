@@ -2633,6 +2633,23 @@ class IntradayLiveEngine:
         print(f"[MODEL_BOOT] mode={self.entry_mode} collect_only={self.collect_only} ready={self.daytrade_model.artifact is not None} "
               f"version={self.daytrade_model.model_version} sha256={self.daytrade_model.artifact_sha256} "
               f"threshold={self.daytrade_model.threshold} learning={self.learning.enabled}")
+        try:
+            from runway_v2.runner import get_runway_v2
+            self.runway_v2 = get_runway_v2()
+            print(f"[RUNWAY_V2_BOOT] enabled={self.runway_v2.enabled}")
+            if self.runway_v2 and self.runway_v2.enabled:
+                def _sub_bidask(symbol: str) -> None:
+                    c = self.contracts.get(symbol)
+                    if c:
+                        try:
+                            self.api.subscribe(c, quote_type=sj.QuoteType.BidAsk)
+                            print(f"[RUNWAY_V2_BIDASK_SUB] {symbol}")
+                        except Exception as e:
+                            print(f"[RUNWAY_V2_BIDASK_SUB_FAIL] {symbol}: {e}")
+                self.runway_v2.register_bidask_subscriber(_sub_bidask)
+        except Exception as exc:
+            self.runway_v2 = None
+            print(f"[RUNWAY_V2_BOOT_FAIL] {exc}")
         self._market_checked_at = 0.0
         self._market_block_counts = {'market_risk_red': 0, 'market_data_unavailable': 0}
         self._entry_reject_counts = {}
@@ -3075,12 +3092,28 @@ class IntradayLiveEngine:
     # Subscribe
     # -----------------------------------------------------
 
+    def on_bidask(self, *args, **kwargs) -> None:
+        try:
+            quote = args[1] if len(args) > 1 else (args[0] if args else None)
+            if quote:
+                symbol = getattr(quote, "code", "")
+                if getattr(self, "runway_v2", None) and symbol:
+                    self.runway_v2.on_bidask(symbol, quote)
+        except Exception:
+            pass
+
     def install_callback(self) -> None:
         # 重要：全系統只註冊一個 callback，
         # 不在每檔 subscribe_stock 裡重複定義。
         self.api.on_tick_stk_v1()(
             self.on_tick
         )
+        try:
+            self.api.on_bidask_stk_v1()(
+                self.on_bidask
+            )
+        except Exception as exc:
+            print(f"[WARN] on_bidask_stk_v1 bind: {exc}")
 
     def subscribe_all(self) -> None:
         print("[BOOT] Subscribe Shioaji Tick...")
@@ -3633,6 +3666,13 @@ class IntradayLiveEngine:
                 self.candidates[symbol] = row
 
             self.scanner_top_symbols = new_top
+
+            if getattr(self, "runway_v2", None) is not None and top_rows:
+                try:
+                    prev_map = {str(r.get("symbol")): self._previous_closes.get(str(r.get("symbol")), (None, None))[1] for r in top_rows}
+                    self.runway_v2.on_radar_update(top_rows, self.bars, prev_map, current)
+                except Exception as exc:
+                    print(f"[RUNWAY_V2_RADAR_WARN] {exc}")
 
         # Research records all observed pool members, not only today's winners.
         for symbol in symbols:
@@ -4611,6 +4651,12 @@ class IntradayLiveEngine:
             self.last_prices[
                 symbol
             ] = price
+
+            if getattr(self, "runway_v2", None) is not None:
+                try:
+                    self.runway_v2.on_tick(symbol, price, dt)
+                except Exception:
+                    pass
 
             # ---------------------------------------------
             # 1) Position Tick 管理

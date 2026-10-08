@@ -174,6 +174,14 @@ def main():
         if not args.send:
             return
     send_daily_summary(text, day=day, store=Store())
+    try:
+        from runway_v2.reporter import generate_comparison_report
+        from runway_v2.notifier import notify_channels
+        comparison_text = generate_comparison_report(day=day)
+        if comparison_text:
+            notify_channels(comparison_text)
+    except Exception as exc:
+        print("[SUMMARY] runway_v2 report push skipped:", type(exc).__name__)
 
 
 if __name__ == '__main__':

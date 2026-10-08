@@ -34,6 +34,28 @@ run(main);w.onload=null;
   run(`INTRADAY_LIVE={last_update_at:taiwanDay()+'T13:00:00+08:00',session:'closed'};`);
   assert.equal(run(`liveDataState(Date.parse(taiwanDay()+'T20:00:00+08:00')).label`),'當沖已結束');
 
+  // Runway V2: independent rendering and standby
+  assert(w.document.getElementById('runwayV2PickList').textContent.includes('待命中') || w.document.getElementById('runwayV2PickList').textContent.includes('09:05'));
+  run(`
+    INTRADAY_LIVE.runway_v2 = {
+      last_update_at: new Date().toISOString(),
+      open_positions: {
+        '2330': {
+          symbol: '2330', name: '台積電',
+          entry_time: taiwanDay()+'T09:12:00+08:00',
+          entry_price: 1000, current_price: 1015,
+          signal_type: 'ORB', score: 92.5,
+          reasons: ['早盤突破', '量比>1.5']
+        }
+      }
+    };
+    renderLiveIntraday();
+  `);
+  assert(w.document.getElementById('runwayV2PickList').textContent.includes('台積電'));
+  assert(w.document.getElementById('runwayV2PickList').textContent.includes('ORB 早盤突破'));
+  assert(w.document.getElementById('runwayV2PickList').textContent.includes('+1.50%'));
+
+
   // A date embedded in an old model name is not deployment evidence.
   run(`INTRADAY_LIVE={model_status:{version:'paper-adaptive-2026-09-10-old'}};renderLiveIntraday();`);
   assert(w.document.getElementById('intradayModelBadge').textContent.includes('模式待確認'));

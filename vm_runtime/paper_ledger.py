@@ -9,7 +9,7 @@ import math
 import os
 import sqlite3
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, closing
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from paper_execution import fee, tax, STANDARD_FEE_RATE, SIMULATED_DISCOUNT, DAY_TAX_RATE
@@ -369,7 +369,7 @@ def finalize_today(path=None):
 
 def snapshot(path=None):
     p = Path(path or path_default())
-    with sqlite3.connect(p.resolve().as_uri()+'?mode=ro',uri=True,timeout=5) as con:
+    with closing(sqlite3.connect(p.resolve().as_uri()+'?mode=ro',uri=True,timeout=5)) as con, con:
         con.row_factory=sqlite3.Row
         con.execute('BEGIN')
         pid=period(con)

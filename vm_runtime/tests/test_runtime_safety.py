@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+from contextlib import closing
 import subprocess
 import sys
 import tempfile
@@ -104,7 +105,7 @@ class AccountTests(unittest.TestCase):
         self.assertIsNone(self.open(m,price=500))
         self.assertFalse(m.positions)
         self.assertFalse(m.traded_symbols)
-        with sqlite3.connect(self.db) as db:db.execute("UPDATE paper_trade_settings SET status='stopped'")
+        with closing(sqlite3.connect(self.db)) as db, db:db.execute("UPDATE paper_trade_settings SET status='stopped'")
         self.assertIsNone(self.open(m))
 
     def test_parallel_buys_reserve_cash(self):
@@ -118,21 +119,21 @@ class AccountTests(unittest.TestCase):
         with ThreadPoolExecutor(2) as pool:
             events=list(pool.map(lambda _:m.close_position('TEST',101,NOW,'test'),range(2)))
         self.assertEqual(sum(x is not None for x in events),1)
-        with sqlite3.connect(self.db) as db:db.execute('UPDATE paper_trade_settings SET daily_buy_limit=400000')
+        with closing(sqlite3.connect(self.db)) as db, db:db.execute('UPDATE paper_trade_settings SET daily_buy_limit=400000')
         self.open(m,symbol='OTHER')
         m.close_position('OTHER',101,NOW,'test')
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             self.assertEqual(db.execute('SELECT trades_count FROM paper_trade_logs').fetchone()[0],2)
             self.assertEqual(db.execute('SELECT COUNT(*) FROM paper_trade_positions').fetchone()[0],0)
 
     def test_settlement_failure_keeps_both_positions(self):
         m=self.manager();self.open(m)
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             db.execute("CREATE TRIGGER fail_settle BEFORE INSERT ON paper_trade_fills WHEN NEW.side='SELL' BEGIN SELECT RAISE(ABORT,'fixture'); END")
         with self.assertRaises(sqlite3.IntegrityError):m.close_position('TEST',101,NOW,'test')
         self.assertTrue(m.has_open_position('TEST'))
         self.assertEqual(len(paper_account.open_positions()),1)
-        with sqlite3.connect(self.db) as db:self.assertEqual(db.execute('SELECT settlement_status FROM paper_trade_logs').fetchone()[0],'pending')
+        with closing(sqlite3.connect(self.db)) as db, db:self.assertEqual(db.execute('SELECT settlement_status FROM paper_trade_logs').fetchone()[0],'pending')
 
     def test_receipt_retry_does_not_settle_twice(self):
         fill=paper_account.buy('TEST','TEST',100)
@@ -149,7 +150,7 @@ class AccountTests(unittest.TestCase):
     def test_hybrid_target_and_technical_policy(self):
         m=self.manager();self.open(m)
         self.assertEqual(m.on_tick('TEST',101.2,NOW)['trade']['exit_reason'],'固定停利')
-        with sqlite3.connect(self.db) as db:db.execute('UPDATE paper_trade_settings SET daily_buy_limit=400000')
+        with closing(sqlite3.connect(self.db)) as db, db:db.execute('UPDATE paper_trade_settings SET daily_buy_limit=400000')
         m=self.manager(technical_exit_enabled=False);self.open(m,'OTHER')
         self.assertIsNone(m.on_strategy_result('OTHER',{'vetoes':['跌破VWAP'],'price':99.7},NOW))
         self.assertEqual(m.on_tick('OTHER',99,NOW)['trade']['exit_reason'],'固定停損')
@@ -158,7 +159,7 @@ class AccountTests(unittest.TestCase):
 class EngineTests(unittest.TestCase):
     """Execute the real orchestration method with inert external adapters."""
     def setUp(self):
-        tree=ast.parse((ROOT/'intraday_live.py').read_text())
+        tree=ast.parse((ROOT/'intraday_live.py').read_text(encoding='utf-8'))
         cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='IntradayLiveEngine')
         wanted=('evaluate_symbol','_entry_reject','log_entry_reject_summary','fresh_entry_quote')
         methods=[n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name in wanted]
@@ -383,7 +384,7 @@ class EngineTests(unittest.TestCase):
 
 class PublicFeedTests(unittest.TestCase):
     def test_wallet_balances_and_sizes_stay_private(self):
-        tree=ast.parse((ROOT/'firebase_store.py').read_text())
+        tree=ast.parse((ROOT/'firebase_store.py').read_text(encoding='utf-8'))
         fn=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='public_trade')
         ns={};exec(compile(ast.Module(body=[fn],type_ignores=[]),'<public>','exec'),ns)
         private=dict(symbol='TEST',entry_price=100,shares=1000,settlement={'end_balance':123456},trade_id='abc')
@@ -394,7 +395,7 @@ class PublicFeedTests(unittest.TestCase):
 
 class DeploymentTests(unittest.TestCase):
     def test_daily_limit_uses_actual_runtime_configuration(self):
-        tree = ast.parse((ROOT/'intraday_live.py').read_text())
+        tree = ast.parse((ROOT/'intraday_live.py').read_text(encoding='utf-8'))
         assignment = next(n for n in tree.body if isinstance(n,ast.Assign)
                           and any(isinstance(t,ast.Name) and t.id=='MAX_DAILY_ENTRIES' for t in n.targets))
         code = compile(ast.Module(body=[assignment],type_ignores=[]),'<limit>','exec')
@@ -406,17 +407,17 @@ class DeploymentTests(unittest.TestCase):
     def test_tracked_vm_entrypoint_matches_runtime(self):
         """A VM pull must not leave the scheduled root entrypoint on old code."""
         repo = ROOT.parent
-        tree = ast.parse((repo/'deploy/install_intraday_runtime.py').read_text())
+        tree = ast.parse((repo/'deploy/install_intraday_runtime.py').read_text(encoding='utf-8'))
         files = next(ast.literal_eval(n.value) for n in tree.body
                      if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='FILES'
                                                           for t in n.targets))
         for rel in files:
             with self.subTest(file=rel):
                 self.assertEqual((repo/rel).read_bytes(),(ROOT/rel).read_bytes())
-        self.assertIn('PositionManager', (repo/'position_manager.py').read_text())
+        self.assertIn('PositionManager', (repo/'position_manager.py').read_text(encoding='utf-8'))
 
     def test_calendar_failure_keeps_engine_stopped(self):
-        tree = ast.parse((ROOT/'intraday_live.py').read_text())
+        tree = ast.parse((ROOT/'intraday_live.py').read_text(encoding='utf-8'))
         main = next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')
         engine = Mock()
         ns = {'os':os, 'IntradayLiveEngine':engine, '_ENGINE':None}
@@ -429,7 +430,7 @@ class DeploymentTests(unittest.TestCase):
         self.assertIsNone(ns['_ENGINE'])
 
     def test_calendar_failure_keeps_premarket_stopped(self):
-        tree = ast.parse((ROOT/'premarket_ai.py').read_text())
+        tree = ast.parse((ROOT/'premarket_ai.py').read_text(encoding='utf-8'))
         main = next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')
         build_brief = Mock()
         status = Mock()
@@ -444,7 +445,7 @@ class DeploymentTests(unittest.TestCase):
         status.assert_called_once_with('failed', 'calendar_error')
 
     def test_premarket_publish_failure_reports_failure_not_success(self):
-        tree = ast.parse((ROOT/'premarket_ai.py').read_text())
+        tree = ast.parse((ROOT/'premarket_ai.py').read_text(encoding='utf-8'))
         main = next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')
         status = Mock()
         ns = {'os':os, 'sys':sys, 'datetime':datetime,'TPE':TPE,'now_tpe':lambda:NOW,
@@ -469,7 +470,7 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(result.returncode,0,result.stderr)
 
     def test_premarket_rejects_wrong_day_before_publishing(self):
-        tree=ast.parse((ROOT/'premarket_ai.py').read_text())
+        tree=ast.parse((ROOT/'premarket_ai.py').read_text(encoding='utf-8'))
         main=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')
         publish=Mock();status=Mock()
         ns={'os':os,'sys':sys,'datetime':datetime,'TPE':TPE,'now_tpe':lambda:NOW,
@@ -485,7 +486,7 @@ class DeploymentTests(unittest.TestCase):
         status.assert_called_once_with('failed','build_or_publish_error')
 
     def test_premarket_dry_run_does_not_publish_status(self):
-        tree=ast.parse((ROOT/'premarket_ai.py').read_text())
+        tree=ast.parse((ROOT/'premarket_ai.py').read_text(encoding='utf-8'))
         main=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')
         status=Mock();build=Mock()
         ns={'os':os,'sys':sys,'write_premarket_status':status,'build_brief':build}
@@ -497,7 +498,7 @@ class DeploymentTests(unittest.TestCase):
         status.assert_not_called();build.assert_not_called()
 
     def test_premarket_ai_exception_keeps_deterministic_brief(self):
-        tree=ast.parse((ROOT/'premarket_ai.py').read_text())
+        tree=ast.parse((ROOT/'premarket_ai.py').read_text(encoding='utf-8'))
         build=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='build_brief')
         ns={'now_tpe':lambda:NOW,'fetch_market_snapshot':lambda:{},
             'fetch_taiwan_futures':lambda:{},'fetch_news':lambda **_:[],
