@@ -1,0 +1,47 @@
+# EasyStock OOS Consumption Ledger — rebound future partition carve-out for REVENUE_FORWARD_V1 (Rebound Amendment 1)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "REBOUND_V2_FUTURE_PARTITION_EXCLUDED_RANGE_20261013"
+created_at: "2026-10-08T22:00:00+08:00"
+description: >
+  Weekdays 2026-10-13..2027-04-16 are carved out of REBOUND_V2_FUTURE_CONFIRMATION_60D because REVENUE_FORWARD_V1
+  will read daily open and close prices on them. This is a planned exposure: nothing has been read yet. The realised
+  exposure is added when the forward trial reports results.
+
+consumption_events:
+  - consumption_id: "CNS_REBOUND_V2_EXCLUDED_RANGE_20261013_PLANNED"
+    trial_id: "TRIAL_REVENUE_FORWARD_V1"
+    dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+    dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+    slice:
+      start_date: "2026-10-13"
+      end_date: "2027-04-16"
+      slice_definition: "Weekdays carved out of the rebound future partition; daily open/close of REVENUE_FORWARD_V1 picked and scored stocks"
+    role: "OOS"
+    exposure:
+      performance_seen: false
+      labels_seen: false
+      aggregate_metrics_seen: false
+      subgroup_results_seen: false
+      parameter_selection_influenced: false
+      research_direction_influenced: false
+      human_seen: false
+      ai_seen: false
+    exposure_level: "LEVEL_0_UNTOUCHED"
+    dimensions_seen: []
+    consumed_at: null
+    record_type: "PREREGISTERED_CONSUMPTION"
+    recorded_after_exposure: false
+    source_artifact: "docs/research_governance/holdouts/REBOUND_V2_FUTURE_60D_AMENDMENT_1.md"
+    source_commit: "PENDING_MERGE"
+    governance:
+      pristine_before: true
+      pristine_after: true
+      independent_confirmation_eligible_after: false
+      notes: >
+        Planned exposure only: no price on the span has been read, so the content flags stay untouched; the dataset is
+        nevertheless carved out and may not be used as rebound confirmation evidence. The realised exposure (level,
+        dimensions, consumed_at) is recorded in a separate consumption file when the forward evaluation reads prices.
+        Owner chose option 1 on 2026-10-08: carve out, do not invalidate. The span is a fixed calendar range set before
+        any price on it is read; it is not outcome-dependent.
