@@ -1,0 +1,61 @@
+# EasyStock preregistration — TOB_IMBALANCE_V1 (top-of-book size imbalance, forward mid and taker-cost returns)
+# Frozen in git BEFORE any imbalance-conditioned return is computed.
+# Motivation: the book-derived Knowledge V1 rules that need the five-level order book (order_book_imbalance_5, fake-defence
+#   walls, eaten ask-1) could not be tested because neither the live engine (QuoteType.Tick only) nor the history archive
+#   (best bid/ask price and size only) holds levels 2-5. This study tests the part that exists: best-bid vs best-ask
+#   displayed size. A positive result would justify collecting full BidAsk; a negative one means level 1 carries no
+#   usable signal at taker cost.
+
+preregistration_id: "TOB_IMBALANCE_V1"
+created_at: "2026-10-08T19:00:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE"
+code: "research/tob_imbalance_v1/{tob_run.py,tob_finalize.py} (pure helpers unit-tested in tests/test_tob_imbalance.py)"
+
+data:
+  archive: "easystock-history-expanded-data + easystock-history-data, days in the five frozen test windows (<= 2026-08-27)"
+  universe: "frozen 100-stock pool, every archived symbol-day (same loaders as PASSIVE_FILL_V1)"
+  groups: ["ALL (primary)", "CORE42", "HV_TIER (HV60 Amendment 1, previous sessions only)"]
+  fields: "trade ticks with best bid/ask price and best bid/ask size (lots) carried by each tick"
+  forbidden: ["PHASE2C_FUTURE_CONFIRMATION_60D", "REBOUND_V2 future partition", "any day > 2026-10-02"]
+
+signal:
+  imbalance: "I = (bid_size - ask_size) / (bid_size + ask_size) from the latest trade tick at or before t with a valid two-sided quote and age <= 30s; skipped when sizes sum to 0"
+  buckets: "B1: I <= -0.6; B2: -0.6 < I < -0.2; B3: -0.2 <= I <= 0.2; B4: 0.2 < I < 0.6; B5: I >= 0.6"
+  thresholds_note: "edges fixed a priori at +-0.2 / +-0.6; not searched"
+  decision_grid: "every 5 minutes from 09:30 to 12:25 inclusive (36 points per symbol-day)"
+  horizons: ["1m", "5m", "15m"]
+  forward_point: "touch quote at t + h with the same freshness rule; a point without it is skipped"
+
+returns:
+  mid: "mid(t+h) / mid(t) - 1, in bps"
+  long_net: "buy at the ask at t, sell at the bid at t+h, minus paper_execution fee and day-trade tax (daytrade_learning.event_audit.costs.cost_quote_pct)"
+  short_net: "sell at the bid at t, buy at the ask at t+h, minus fee on both legs and day-trade tax on the sale (paper_execution)"
+  baseline: "all valid points of the same horizon and group"
+
+statistics:
+  excess: "bucket mean minus baseline mean; SE by day-clustered linearization; t = excess / SE"
+  folds: "the five frozen test windows"
+
+primary_family:
+  hypotheses: "B5 LONG on group ALL at 1m, 5m, 15m (3 tests)"
+  descriptive: "B1 SHORT, buckets B2-B4, CORE42 and HV_TIER (not part of the family decision)"
+  criteria:
+    A: "directional excess mid return > 0 with t >= 2.0"
+    B: "directional excess mid return > 0 in >= 4/5 folds"
+    C: "mean taker-cost net return of the bucket > 0"
+    D: "taker-cost net > 0 in >= 4/5 folds"
+    G: ">= 1000 bucket points in every fold"
+  classification: "G false -> INSUFFICIENT; A-D all true -> STRONG; A and B true and C false -> SIGNAL_COST_BLOCKED; A false -> NO_EDGE; otherwise WEAK"
+  family_rule: "STRONG -> only a separately preregistered forward test; SIGNAL_COST_BLOCKED -> evidence for collecting full BidAsk and for maker-style or longer-horizon use, never a trade rule; never production"
+
+prohibited:
+  - "changing edges, grid, horizons, groups or criteria after seeing results"
+  - "combining imbalance with any other signal on this data"
+  - "reading any reserved future partition or any day > 2026-10-02"
+
+known_limitations:
+  - "sizes are observed only at trade ticks and right after the trade, so a trade that consumes one side biases I toward the other side"
+  - "only level 1; levels 2-5 are not archived"
+  - "overlapping grid points inside a day: handled only by day clustering"
