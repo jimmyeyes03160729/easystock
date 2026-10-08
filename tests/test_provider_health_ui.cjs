@@ -30,7 +30,7 @@ test('authenticated admin renderer shows safe diagnostics as text',async()=>{
         error_code:'<img src=x onerror=alert(1)>',connected:true,subscribed:true},
         fugle:{status:'ONLINE',kind:'scheduled',workflow_source:'github_actions',
           scan_date:'2026-09-30',expected_scan_date:'2026-09-30',run_id:'36673457508',
-          error_code:'<img src=x onerror=alert(1)>'}},
+          error_code:'<img src=x onerror=alert(1)>'},gemini:{status:'OFFLINE'},openai:{status:'UNKNOWN'}},
       market_gate:{status:'current',market_level:'GREEN',data_health:'DEGRADED',selected_source:'esun',
         model_ready:true,radar_candidate_count:3,entry_block_evaluations:{market_data_unavailable:8},
         sources:{esun:{age_seconds:5},shioaji:{age_seconds:90}}}}};
@@ -43,5 +43,6 @@ test('authenticated admin renderer shows safe diagnostics as text',async()=>{
   assert(target.textContent.includes('執行編號 36673457508'));
   assert(target.textContent.includes('當沖市場閘門'));
   assert(target.textContent.includes('資料不可用攔截 8'));
+  assert(!/Gemini|OpenAI/i.test(target.textContent));
   assert.equal(target.querySelectorAll('img').length,0);w.close();
 });

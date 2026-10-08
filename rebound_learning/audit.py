@@ -12,7 +12,7 @@ from .features import extract
 from .schema import candidates, connect, database_path
 
 
-def build_audit(db) -> dict:
+def build_audit(db, *, before: str | None = None) -> dict:
     today=datetime.now(timezone(timedelta(hours=8))).date().isoformat()
     critical=[]; warnings=[]
     kinds=Counter(); labels=Counter(); yearly=Counter(); monthly=Counter(); by_symbol=Counter()
@@ -35,7 +35,7 @@ def build_audit(db) -> dict:
             previous.append(item['day'])
         except (ValueError,KeyError,TypeError):
             critical.append(f'bad_ohlc:{item["symbol"]}:{item["day"]}')
-    for key,snapshot,outcome in candidates(db):
+    for key,snapshot,outcome in candidates(db, before=before):
         total+=1; feature_versions[snapshot['feature_schema_version']]+=1
         day=snapshot['signal_date']; symbol=snapshot['symbol']; kind=snapshot['candidate_kind']
         first=min(first,day) if first else day; last=max(last,day) if last else day

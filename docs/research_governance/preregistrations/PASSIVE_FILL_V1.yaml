@@ -1,0 +1,68 @@
+# EasyStock preregistration — PASSIVE_FILL_V1 (execution cost: taker vs passive limit orders)
+# Frozen in git BEFORE any fill or shortfall statistic of this study is computed.
+# Motivation: cost-feasibility scan 2026-10-08 (TRIAL_EA_COST_FEASIBILITY_V1): taker round trip ~52 bps
+#   = commission + day-trade tax ~28 bps + quoted spread ~24 bps. Commission and tax are identical for maker
+#   and taker orders in Taiwan, so only the spread part can be reduced by execution. This study measures how
+#   much of it a passive limit order recovers after adverse selection. It is signal-independent: no entry rule,
+#   no direction claim; the round trips are unconditional LONG on a fixed clock grid.
+
+preregistration_id: "PASSIVE_FILL_V1"
+created_at: "2026-10-08T15:30:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE"
+code: "research/passive_fill_v1/{pf_fill.py,pf_run.py,pf_finalize.py} (pf_fill unit-tested in tests/test_passive_fill.py)"
+
+data:
+  archive: "easystock-history-expanded-data + easystock-history-data, days in the five frozen test windows (<= 2026-08-27)"
+  universe: "frozen 100-stock pool (research/hv60_v1/hv60_common.pool), every archived symbol-day; no readiness gate (measurement, not an edge test)"
+  groups: ["ALL", "CORE42 (timebase.CORE_UNIVERSE)", "HV_TIER (HV60 Amendment 1 trailing_range_20 >= 0.030 from the official daily DB, previous sessions only)"]
+  timestamp_convention: "datetime(1970,1,1) + timedelta(microseconds=ns//1000); naive Taiwan wall-clock"
+  fields: "trade ticks with close, volume (lots), tick_type (1 buyer-initiated, 2 seller-initiated), best bid/ask price and size"
+  forbidden: ["PHASE2C_FUTURE_CONFIRMATION_60D", "REBOUND_V2 future partition", "any day > 2026-10-02"]
+
+round_trips:
+  decision_grid: "09:30, 09:45, ..., 11:45 (10 points per symbol-day), unconditional LONG"
+  horizons: ["15m", "60m"]
+  touch_quote: "bid/ask carried by the latest trade tick at or before the time with a valid two-sided quote, age <= 30s; a point without it at t or at t+h is skipped for every policy (paired design)"
+  exit_clock: "the exit leg starts at t + h for every policy (fixed clock, independent of the entry fill time)"
+
+policies:
+  TAKER: "buy at the ask at t; sell at the bid at t + h"
+  PF60: "post buy at the bid at t, wait 60s, then cross at the ask; exit: post sell at the ask at t + h, wait 60s, then cross at the bid"
+  PF300: "as PF60 with a 300s wait on both legs"
+  PS60: "post buy at the bid, cancel if unfilled after 60s (no trade); exit as PF60 — descriptive only (selection effect)"
+  PS300: "as PS60 with 300s"
+  fallback_quote: "latest valid trade-tick quote at or before the deadline (no age limit, quotes are only observed at trades)"
+
+fill_models:
+  QUEUE_primary: "join the back of the displayed queue; fill when a later trade prints through the limit, or when trades at exactly the limit initiated against our side (tick_type 2 for a resting buy, 1 for a resting sell) total >= displayed size ahead + 1 lot; cancellations ahead are ignored"
+  STRICT_sensitivity: "fill only when a later trade prints through the limit"
+  timing: "the order rests over (post time, post time + wait]; zero latency; 1 lot (1000 shares); our own impact ignored"
+
+costs:
+  model: "daytrade_learning.event_audit.costs.cost_pct (paper_execution fee/tax, ROUND_HALF_UP), same for maker and taker"
+
+metrics:
+  per_key: "(horizon, fill model, policy, group): points, mean mid-to-mid bps, realized gross/net bps, shortfall = mid - gross, all_in_cost = mid - net, passive fill rates per leg"
+  saving_vs_taker: "paired per point: gross(policy) - gross(TAKER); point-weighted mean, SE clustered by day, 95% lower bound = mean - 1.96 SE; per-fold means"
+  skip_policies: "on filled points only, plus the mean mid-to-mid return of unfilled points (adverse-selection diagnostic)"
+
+decision_rule:
+  keys: "60m x {PF60, PF300} x {ALL, HV_TIER} (CORE42 reported, not part of the family decision)"
+  INSUFFICIENT_DATA: "any fold with < 100 QUEUE points"
+  SAVING_CONFIRMED: "A QUEUE saving > 0, B its day-clustered 95% lower bound > 0, C saving > 0 in >= 4/5 folds, D STRICT saving > 0"
+  NOT_CONFIRMED: "otherwise"
+  family: "SAVING_CONFIRMED if any primary key is SAVING_CONFIRMED"
+  use_of_result: "a confirmed policy's all_in_cost (QUEUE and STRICT, both disclosed) becomes the cost assumption that later preregistrations may cite; it never changes production order handling by itself"
+
+prohibited:
+  - "changing waits, grid, fill rules, groups or the decision rule after seeing results"
+  - "adding policies (e.g. inside-spread pricing) and re-testing on the same data"
+  - "reading any reserved future partition or any day > 2026-10-02"
+  - "claiming an entry edge: mid-to-mid returns here are the unconditional base rate"
+
+known_limitations:
+  - "quotes only at trade ticks: the queue in between trades is unobserved"
+  - "ignoring cancellations ahead understates QUEUE fills; ignoring hidden priority effects may overstate them; STRICT bounds it from below"
+  - "zero latency and no own impact; one lot only"

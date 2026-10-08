@@ -1,0 +1,46 @@
+# EasyStock OOS Consumption Ledger — excluded day carved out of the future-confirmation partition
+# Amendment 2 (2026-10-08): 2026-10-05 entered whole-period aggregate counts and is excluded from the 60-day count.
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "PHASE2C_FUTURE_PARTITION_EXCLUDED_DAY_20261005"
+created_at: "2026-10-08T08:00:00+08:00"
+description: >
+  Records that 2026-10-05 was included in whole-period aggregate counts (rebound Dataset v2 build totals and an
+  undated v1 rule-candidate count) read by the assistant. No per-day value was viewed. The day is carved out into its
+  own dataset and excluded from PHASE2C_FUTURE_CONFIRMATION_60D; the remaining reserved days stay untouched.
+
+consumption_events:
+  - consumption_id: "CNS_EXCLUDED_DAY_20261005_AGGREGATE"
+    trial_id: "TRIAL_REBOUND_P1_DATASET_V2"
+    dataset_id: "LIVE_LEARNING_20261005_EXCLUDED_DAY"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2026-10-05"
+      end_date: "2026-10-05"
+      slice_definition: "Single day 2026-10-05, excluded from the reserved future-confirmation partition"
+    role: "DESCRIPTIVE"
+    exposure:
+      performance_seen: false
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: false
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "inclusion in whole-period rebound candidate counts per kind and bar counts (no per-day value)"
+    consumed_at: "2026-10-08T03:10:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/research_governance/incidents/2026-10-08_REBOUND_BUILD_RESERVED_DAYS_AGGREGATE.md"
+    source_commit: "600bc81"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: >
+        Owner chose option 1 (carve-out) on 2026-10-08: the exclusion reason is an aggregate read, not a result,
+        so it is not outcome-dependent skipping.

@@ -1,0 +1,90 @@
+# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any model output existed; run once, REJECTED)
+
+trial_id: "TRIAL_REBOUND_P2_RANKER_V1"
+parent_trial_id: "TRIAL_REBOUND_P1_DATASET_V2"
+created_at: "2026-10-08T07:00:00+08:00"
+study_name: "Rebound Phase 2: AI re-ranking of range-rebound-0.3 candidates (4 fixed variants)"
+research_stage: "EXPLORATORY"
+ledger_record_type: "PREREGISTERED_TRIAL"
+recorded_after_experiment: false
+
+provenance:
+  source_classification: "EXPLORATORY_HEURISTIC"
+  source_refs:
+    - "docs/research_governance/preregistrations/REBOUND_P2_RANKER_V1.yaml"
+
+hypothesis:
+  statement: "Ranking rule-eligible rebound candidates by a model of net bracket return beats the production rule order (top 3 per day) after 0.6% round-trip cost."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "delta_net_return_pct"
+  direction: "MAXIMIZE"
+  baseline: "PRODUCTION_RULE_ORDER_TOP3"
+  frozen_before_search: true
+
+data:
+  dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+  dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+  dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+  start_date: "2023-01-03"
+  end_date: "2026-10-06"
+  dataset_end: "2026-10-06"
+  universe: "ALL_LISTED_AND_OTC_COMMON_STOCKS"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: true
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "per variant and fold: model vs rule-order top-3 net return, profit factor, trade counts"
+    - "descriptive top 1/2/5 and abstaining top 3 per fold"
+  exposures:
+    - exposure_id: "EXP_REBOUND_P2_RANKER_V1_WALK_FORWARD"
+      dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+      dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+      dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+      start_date: "2024-01-01"
+      end_date: "2026-10-06"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "fold x variant net results of model and baseline rankers"
+      source_trial_id: "TRIAL_REBOUND_P2_RANKER_V1"
+      first_seen_at: "2026-10-08T07:06:15+08:00"
+
+search:
+  parameters_searched:
+    - "none: four fixed variants (ridge / HGB x rule-only / widened pool), fixed hyperparameters"
+  search_space:
+    models: "Ridge(alpha=1.0); HGB(max_iter=200, lr=0.05, leaves=15, min_leaf=100, l2=1.0)"
+    pools: "PENDING; PENDING+NEAR_MISS+BOTTOM_ZONE"
+  trial_count: 4
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/REBOUND_P2_RANKER_V1.yaml"
+  registry_hash: "RESULT_FILE_SHA256:9b6bfbc9433dd2d49ca971facf6d5609baec1c4caa556cc3ad13259250e5b499"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "REJECTED"
+  decision: "NO_VARIANT_PASSES_A_TO_G"
+  sealed_commit: "93649dd"
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    Run once on 2026-10-08 07:04-07:06 (Asia/Taipei) from merge commit 93649dd (research.py sha256
+    40aff1d7..., preregistration sha256 22671134...). 25,604 rows loaded. Pooled delta vs rule order:
+    RIDGE_RULE_ONLY -0.165, RIDGE_WIDE_POOL -0.099, HGB_RULE_ONLY -0.065, HGB_WIDE_POOL -0.002 percentage points
+    per trade; every variant fails A, B, C, D, E and G (F passes). The baseline itself averages -0.55% net per
+    trade (PF 0.81, 1,623 trades) and is negative in 4 of 5 folds (2024H1 +0.95%). Conclusion: re-ranking cannot
+    rescue this trade definition. REBOUND_V2_FUTURE_60D was not used and stays RESERVED_UNTOUCHED.

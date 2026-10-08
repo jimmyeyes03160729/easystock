@@ -136,7 +136,8 @@ def test_event_audit_trials_form_a_rejected_chain(trials_dir):
             trials[d["trial_id"]] = d
     chain = ["TRIAL_EA_H2_TICK_COMPRESSION_BREAKOUT", "TRIAL_EA_H3_COMPLETED_BAR_BREAKOUT",
              "TRIAL_EA_H4_SOURCE_NATIVE_ORB", "TRIAL_EA_SOURCE_PRIMITIVE_BATCH_V1",
-             "TRIAL_EA_BASE_RATE_MATCHED_CONTROL_V1", "TRIAL_EA_BOOK_RULES_V1"]
+             "TRIAL_EA_BASE_RATE_MATCHED_CONTROL_V1", "TRIAL_EA_BOOK_RULES_V1",
+             "TRIAL_EA_COST_FEASIBILITY_V1", "TRIAL_EA_HV60_V1", "TRIAL_EA_PASSIVE_FILL_V1", "TRIAL_EA_TOB_IMBALANCE_V1"]
     assert set(chain) == set(trials)
     assert trials[chain[0]]["parent_trial_id"] is None
     for parent, child in zip(chain, chain[1:]):

@@ -870,7 +870,7 @@ def evaluate_daytrade(
         )
 
 
-        if close <= recent_low:
+        if close < recent_low:
 
             vetoes.append(
                 "5分K破短低"

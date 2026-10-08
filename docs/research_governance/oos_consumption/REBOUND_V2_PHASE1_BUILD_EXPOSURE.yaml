@@ -1,0 +1,47 @@
+# EasyStock OOS Consumption Ledger — rebound Dataset v2 build aggregates (recorded after exposure)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "REBOUND_V2_PHASE1_BUILD_EXPOSURE"
+created_at: "2026-10-08T07:00:00+08:00"
+description: >
+  While reporting the Dataset v2 build, the assistant viewed whole-period aggregates per candidate kind
+  (label shares, mean 10D / MFE / MAE returns), trainable counts per year, and three 2024 rule-disagreement
+  case studies. No model, feature-level outcome or per-fold result was computed.
+
+consumption_events:
+  - consumption_id: "CNS_REBOUND_V2_BUILD_AGGREGATES"
+    trial_id: "TRIAL_REBOUND_P1_DATASET_V2"
+    dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+    dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+    dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+    slice:
+      start_date: "2023-01-03"
+      end_date: "2026-10-06"
+      slice_definition: "All Dataset v2 signals; aggregates by candidate kind over the whole period"
+    role: "DESCRIPTIVE"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "candidate kind x label share"
+      - "candidate kind x mean 10D, MFE_10D, MAE_10D"
+      - "trainable rows per year (counts)"
+    consumed_at: "2026-10-08T03:10:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/REBOUND_AI_DATASET.md"
+    source_commit: "8a93920"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: >
+        Influenced REBOUND_P2_RANKER_V1 toward a continuous net-return target and a widened-pool variant;
+        disclosed in that preregistration.

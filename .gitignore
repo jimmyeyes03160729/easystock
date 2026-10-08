@@ -61,3 +61,6 @@ data/
 *.raw_trades.json*
 *.raw_trades.parquet
 docs/daytrade_phase2/raw_trades/
+
+# Per-machine Claude Code settings
+.claude/settings.local.json

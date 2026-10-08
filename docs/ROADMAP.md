@@ -20,7 +20,7 @@
 ## 目前主要進行中主線（2026-10-07）
 
 - [ ] **AI Architecture Guardian v1 上線驗證**
-  - SCAN / ANALYZE / REPORT / NOTIFY 的只讀架構、政策、鏡像 manifest、報告歷史、diff review、Owner 私人健檢頁與 CI 已實作；此總項只在正式部署驗證完成後勾選。
+  - SCAN / ANALYZE / REPORT / NOTIFY 已實作；2026-10-08 正式 updater exit 0，VM scanner / Owner Admin runtime 已部署並通過 smoke verification。此總項仍保留 hosted daily / weekly / Trivy 驗收，不代表 VM 全部服務健康。
   - 不下單、不自動修正、不部署修正、不改策略/風控/模型/guard；blocking 僅提示。
   - [ ] OPTIONAL AI provider integration（未設定時 NOT_CONFIGURED；v1 提供 bundle / prompt / interface，不強接付費 API）。
   - 詳見 `ARCHITECTURE_GUARDIAN.md`。
@@ -51,17 +51,17 @@
 - [x] Root/vm_runtime mirror manifest 與結構責任／dependency checks。
 - [x] Owner Admin Guardian panel、既有 Owner auth、唯讀 API、stale/UNKNOWN 顯示。
 - [x] Daily CI scan 設定（只測試／掃描／artifact，未授權部署／寫程式）。
-- [x] CodeQL Python + JavaScript/TypeScript workflow 設定；GitHub default setup 已確認未配置。
+- [x] CodeQL Python + JavaScript/TypeScript workflow；2026-10-08 main `298d243` 兩種語言 hosted scan 成功（run 37654891505）。
 - [x] Dependabot 真實 npm / Actions / pip manifests 設定。
 - [x] 官方 Trivy 固定安全 SHA / 工具版本的 filesystem / Docker config scan 設定。
 - [x] Weekly 有界 review bundle / prompt / provider-neutral interface。
 - [ ] AI weekly provider execution（NOT_CONFIGURED；未呼叫付費 API）。
-- [ ] Hosted daily / weekly / CodeQL / Trivy 首次完整執行驗收（本地 YAML/actionlint 驗證不是雲端安全掃描成功）。
-- [ ] VM scanner / Admin runtime 部署與 smoke verification（等待 guard 工作自然結束）。
+- [ ] Hosted daily / weekly / Trivy 首次完整執行驗收（CodeQL 已實際通過；本地 YAML/actionlint 驗證不是其餘雲端掃描成功）。
+- [x] VM scanner / Admin runtime 部署與 smoke verification（2026-10-08 canonical updater exit 0；報告 CURRENT/REVIEW、Critical0/High6、Owner API401、私人權限0700/0600；既有 unrelated failed units 保留，未宣稱全 VM 健康）。
 
 ## 待新增 / 待執行主題總覽
 
-- [ ] AI Architecture Guardian v1：回歸與設定驗證已通過；VM 只讀 runtime 部署待訓練自然結束，既有 failed units 需如實驗證；OPTIONAL AI provider integration 未設定。詳見 `ARCHITECTURE_GUARDIAN_VALIDATION_2026-10-07.md`。
+- [ ] AI Architecture Guardian v1：回歸、CodeQL 與 VM 只讀 runtime 已驗證；hosted daily / weekly / Trivy 驗收待辦，OPTIONAL AI provider integration 未設定。既有 unrelated failed units 未修復；詳見 `ARCHITECTURE_GUARDIAN_VALIDATION_2026-10-07.md`。
 
 > 這一區固定放在 Roadmap 最前面，用來快速確認「還有哪些功能尚未執行」。  
 > 完成後改成 `[x]`；尚未開始或尚未完成維持 `[ ]`。細節保留在下方對應章節。
@@ -215,9 +215,12 @@
   - [x] Phase 1.5：重跑 Backfill / Labels / Audit（v2）：46,503 筆、可訓練 25,515 筆（v1 為 237），critical 0。正式規則候選 5,543 筆（SUCCESS 7.3%、FAIL 27.2%、TIMEOUT 65.6%）；新增 BOTTOM_ZONE 擴大池 16,828 筆。
   - [ ] Phase 1.5：TIMEOUT 約佔 65%，Phase 2 前需評估三分類（SUCCESS / FAIL / TIMEOUT）、兩階段或連續報酬標籤，避免只做 SUCCESS vs FAIL 丟掉大部分樣本。
   - [ ] Phase 2 前決定價格基準：v2 用除權息還原價判斷規則，正式 rebound_feed 目前用未還原 K 線；與 v1 重疊的 152 筆正式候選只有 94 筆在 v2 仍是正式候選（差異來自歷史長度與除權息還原，非資料錯誤）。訓練與上線必須使用同一價格基準。
-  - [ ] Phase 2：Baseline / Logistic Regression / HistGradientBoosting 正式比較；目前只允許 pipeline sanity check，不得 Candidate / Shadow。
-  - [ ] Phase 2：Walk-forward + 10 交易日 embargo + holdout；以相同 Top 3 訊號數比較 Target Hit Rate、5D / 10D return、MFE / MAE、PF、Drawdown、Brier。
-  - [ ] Phase 2：Shadow 驗證，再決定是否 Applied；不自動晉升。
+  - [x] Phase 2（2026-10-08，預先登記 `REBOUND_P2_RANKER_V1`，執行一次）：Ridge / HistGradientBoosting × 正式候選 / 擴大池 4 個固定版本，5 段 walk-forward + 15 交易日 embargo，每日 Top 3 對照現行排序。**結果 REJECTED**：4 個版本都沒有贏過現行排序（整體差距 −0.17～−0.00 個百分點）。
+  - [ ] 關鍵發現：現行規則 Top 3 本身以「D1 開盤進場、規則停損／目標、10 日出場」交易，扣 0.6% 成本後平均每筆 −0.55%（PF 0.81，1,623 筆），5 段中 4 段為負。排序無法救回這個交易定義；下一步需先重新檢討交易定義（進出場），任何新研究在同一段歷史上都屬重複使用資料，須另行預先登記。
+  - [x] 持有期研究（2026-10-08，預先登記 `REBOUND_P3_HORIZON_V1`，執行一次）：同樣首頁選股，改為 20 日（停損＋目標／只停損／不設）或 5 日出場。**結果 REJECTED**：每筆淨報酬 −0.27%～−0.81%，PF 0.68～0.93；只有 2024H1 明顯為正（多頭市場），其餘多為負。結論：`range-rebound-0.3` 選出的股票沒有扣成本後仍存在的反彈優勢，主要是跟隨大盤。下一步應重新設計選股本身，而不是再調整排序或出場。
+  - [x] 大盤濾網研究（2026-10-08，預先登記 `REBOUND_P4_MARKET_FILTER_V1`，執行一次）：首頁選股只在加權指數高於 60 日均線時交易、20 日停損＋目標。**結果 REJECTED**：從未看過的 2022 年 99 筆每筆淨 −0.57%（PF 0.84），2023–2026 濾網後每筆 −0.16%（PF 0.95）；濾網幾乎不改變結果。
+  - [ ] 未來確認保留期 `REBOUND_V2_FUTURE_60D`（2026-10-07 起前 60 個交易日）未使用，維持封存，留給下一個預先登記的研究。
+  - [ ] Shadow 驗證：目前沒有通過的版本，不進入 Shadow；不自動晉升。
 
 - [ ] **永豐實盤當沖後台（Owner-only）**
   - [x] 第一版 Owner backend / UI、既有 Google session + CSRF / Origin、401 / 403。

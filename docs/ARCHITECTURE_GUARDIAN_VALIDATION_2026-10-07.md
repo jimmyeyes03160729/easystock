@@ -1,5 +1,9 @@
 # AI Architecture Guardian v1 acceptance evidence — 2026-10-07 Taipei
 
+Current status (2026-10-08): VM DEPLOYED / GUARDIAN RUNTIME VERIFIED WITH
+EXISTING UNRELATED SERVICE FAILURES. This is not a claim that all VM services
+are healthy, or that the trading-day LIVE acceptance gates are closed.
+
 ## Scope and release identity
 
 Implemented observation-only SCAN / ANALYZE / REPORT / NOTIFY. Guardian cannot
@@ -72,7 +76,7 @@ Notification tests reuse existing LINE/Telegram senders with synthetic callbacks
 no production test message was sent. Production notification remains Owner
 opt-in and generic High/Critical counts with private Admin guidance.
 
-## VM pre-deployment evidence — PENDING_RUNNING_GUARD
+## Earlier VM pre-deployment evidence — PENDING_RUNNING_GUARD
 
 Read-only SSH inspection found production HEAD
 `c62512f4a4880b3aa25dea256f92e2669279cf1e`. History training is still active;
@@ -113,3 +117,76 @@ Paper daily limit, labels, Champion gate or Pristine Holdout contents.
 No secret values were committed or included in reports/evidence.
 Full-session Market Risk and natural Paper over-limit live cases remain pending;
 this work does not claim LIVE VERIFIED or production-ready research models.
+
+## Canonical deployment and verification — 2026-10-08 Taipei
+
+History training naturally completed at 02:09:44 with Result success / exit 0.
+All five canonical guard jobs were inactive before deployment. The user then
+directed VM synchronization first, retaining unrelated service failures rather
+than repairing/restarting their publishers. The same-chat continuation remains
+paused; no background update loop is needed after this operator synchronization.
+
+Incoming main through `298d243e6630f2309c3b94e55f4cfa6fda0ca612` was inspected:
+book-rule historical research ledgers/README and tests only, plus a Taiwan-date
+test correction. Guardian, rebound-v2 and trial-ledger targeted tests: 66 passed.
+Other local research-branch checkouts were left untouched; only inspected main
+revisions are deployed, never an unreviewed local branch tip.
+
+Only `bash deploy/update_vm_main.sh` was used. The initial invocation completed
+with explicit UPDATER_EXIT=0, synchronized main and release-info, but its running
+pre-update script did not yet contain the new Guardian installation steps.
+Read-only verification found Guardian units not-found; this was not presented as
+an installed runtime. A second invocation of the now-updated canonical updater
+also completed with explicit UPDATER_EXIT=0 and installed/scanned Guardian.
+No direct installer, reset, clean, forced checkout, job kill or manual failed-unit
+restart was used. Preserved maintenance backup names:
+
+- `main-update-20261008-063952`
+- `main-update-20261008-064219`
+
+Verification at the code release:
+
+- HEAD = origin/main = `298d243e6630f2309c3b94e55f4cfa6fda0ca612`;
+  release_id `main-298d243e6630`, source_commit matched.
+- Architecture Guardian service loaded, completed success / exit 0; timer
+  enabled/active. Initial report generated at 06:45:58 Taipei: scanner_complete
+  true, REVIEW, Critical 0 / High 6 / Medium 0 / Low 0. Owner projection CURRENT,
+  same commit, enforcement false. No High findings were auto-fixed or hidden.
+- Report directory 0700; JSON and Markdown 0600. Required Guardian/Admin source
+  mirrors checked byte-equivalent. Existing three historical/premarket drift
+  findings remain visible; no broad runtime copy was performed.
+- Existing Admin service active/running, exit status 0. Real local HTTP check:
+  Guardian API without session 401; Guardian/admin assets and Admin page 200.
+  Owner/non-Owner 403 behavior is covered by fixtures; no production login/session
+  was manufactured. An initial probe used the source's default port and was
+  refused; the actual existing service listener was then discovered read-only
+  and the real checks passed, without changing its configuration.
+- Premarket, intraday, research-cycle and provider-health timers enabled/active;
+  the updater restored the prior intraday timer mode on each successful exit.
+- Read-only Firebase/ledger audit: SQLite integrity ok, fills 30 / logs 7 /
+  positions 0. Updater's idempotent daily-limit validation also confirmed original
+  rows unchanged, events 457, same daily-buy-limit-v1 semantics before/after.
+  Console OFF, KILL false, live order rows 0; file-level live ordering flags false.
+- Firebase still contained the 10/7 08:35 brief before the next premarket run:
+  UNKNOWN / premarket_missing_or_stale. No fresh brief/quote was fabricated.
+- Existing market-update exit-code failure and rebound-research timeout remained
+  visible. Learning-status also showed an intermittent existing failure during
+  inspection and later recovered naturally. No reset-failed, unrelated publishing
+  job restart, or service repair was used; failed units zero is NOT claimed.
+- VM-local untracked modules and local research archives/data/credentials/logs
+  remain preserved. Actual deployment test output uses temporary fixture DBs,
+  never production trades. No broker order API was invoked by this operation.
+
+Hosted CodeQL on this main release completed successfully for Python and
+JavaScript/TypeScript ([run 37654891505](https://github.com/jimmyeyes03160729/easystock/actions/runs/37654891505)).
+Daily Guardian/Trivy had no hosted runs at inspection; weekly bundle hosted
+acceptance and optional AI provider execution remain unverified/NOT_CONFIGURED.
+During evidence preparation, main additionally merged research preregistration,
+historical consumption ledgers, Rebound v2 build-result documentation and a
+trial-chain test update through `9ade1f025ef731a91dc3baea9631f23ff09ae722`.
+All seven changed files were inspected: no production executable/strategy changes.
+The same Guardian/rebound-v2/trial-ledger targeted set again passed 66 tests.
+The documentation-only changes are retained in the final main synchronization;
+no dataset, outcome archive or pristine holdout was opened or changed by this work.
+The evidence/roadmap-only commit is synchronized with the same canonical updater;
+the final SHA and final verification result are reported in the operator handoff.

@@ -1,0 +1,30 @@
+# HV60_V1 Amendment 1 — data sources for reference price and tier (2026-10-08)
+# Made BEFORE any HV60_V1 outcome was computed (readiness gate not yet passed; no HV60 run exists).
+
+amends: "docs/research_governance/preregistrations/HV60_V1.yaml"
+created_at: "2026-10-08T10:00:00+08:00"
+reason: >
+  18 of the 100 pool symbols are TPEx listings (including many high-volatility names such as 3105, 4979, 6173)
+  and have no TWSE TWT84U reference price, so the frozen basic-limits rule would silently drop them. The archive
+  also holds only sparse history for symbols added to the pool in 2026, which would leave the trailing-range tier
+  undefined for most of the test windows.
+
+changes:
+  reference_price:
+    was: "TWSE TWT84U reference"
+    now: >
+      official daily database (rebound_learning market-daily.sqlite, read-only, rows with day <= 2026-10-02):
+      TWSE -> bars.reference of the decision day (verified identical to TWT84U on 2026-08-20: 1,069 symbols, 0 mismatches);
+      TPEx -> tpex_next_reference published on the latest session before the decision day
+  trailing_range_20:
+    was: "from archive 1m bars of the previous 20 archive trading days"
+    now: "from official daily bars (high, low, close) of the previous 20 sessions in the same database, days before the decision day only"
+
+unchanged:
+  - "tier threshold 0.030, hypotheses HV1-HV3 and their thresholds, 60m primary horizon, entry window, costs, folds, A-H criteria"
+  - "readiness gate (>= 80% of pool stock-days in the test windows archived)"
+  - "no read of the reserved future-confirmation partition; every query filters day <= 2026-10-02"
+
+execution:
+  where: "VM /home/ubuntu/easystock-research/hv60_v1 (outside the repo), daily cron after the archive download window"
+  behaviour: "checks the gate from file existence only; runs once when it passes; writes output/FINAL_LINES.txt and a bundle; never edits the repo"

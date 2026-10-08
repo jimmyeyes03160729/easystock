@@ -1,0 +1,87 @@
+# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any 2022 signal or filtered result existed; run once, REJECTED)
+
+trial_id: "TRIAL_REBOUND_P4_MARKET_FILTER_V1"
+parent_trial_id: "TRIAL_REBOUND_P3_HORIZON_V1"
+created_at: "2026-10-08T10:00:00+08:00"
+study_name: "Rebound homepage picks with a TAIEX-above-MA60 filter and 20-session bracket exit"
+research_stage: "EXPLORATORY"
+ledger_record_type: "PREREGISTERED_TRIAL"
+recorded_after_experiment: false
+
+provenance:
+  source_classification: "EXPLORATORY_HEURISTIC"
+  source_refs:
+    - "docs/research_governance/preregistrations/REBOUND_P4_MARKET_FILTER_V1.yaml"
+
+hypothesis:
+  statement: "Homepage rebound picks traded only when TAIEX is above its 60-session mean, with the rule bracket held up to 20 sessions, earn a positive net return after 0.6% cost."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "net_return_pct"
+  direction: "PASS_FAIL"
+  baseline: "ZERO_NET_RETURN"
+  frozen_before_search: true
+
+data:
+  dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+  dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+  dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+  start_date: "2022-05-01"
+  end_date: "2026-10-06"
+  dataset_end: "2026-10-06"
+  universe: "ALL_LISTED_AND_OTC_COMMON_STOCKS"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "2022-05..2022-12: filtered and unfiltered net mean, PF, win rate, trades; filter-on day count"
+    - "2023-2026: filtered pooled and per-fold results"
+  exposures:
+    - exposure_id: "EXP_REBOUND_P4_2022_SLICE"
+      dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+      dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+      dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+      start_date: "2022-05-01"
+      end_date: "2022-12-31"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "rebound homepage picks with and without the TAIEX MA60 filter, BRACKET_H20"
+      source_trial_id: "TRIAL_REBOUND_P4_MARKET_FILTER_V1"
+      first_seen_at: "2026-10-08T11:05:06+08:00"
+
+search:
+  parameters_searched:
+    - "none: one fixed filter (TAIEX close above 60-session mean) and one fixed exit (BRACKET_H20)"
+  search_space:
+    filter: "taiex_bias_ma60_pct > 0"
+  trial_count: 1
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/REBOUND_P4_MARKET_FILTER_V1.yaml"
+  registry_hash: "RESULT_FILE_SHA256:8ebfb08d5374e13f799ba4798c38794a8364ee268574c512334c803f06530228"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "REJECTED"
+  decision: "STAGE1_2022_FAIL_AND_STAGE2_NEGATIVE"
+  sealed_commit: "1fef953"
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    2022 signals built 09:59-11:04 (output discarded), single run 11:04-11:05 on 2026-10-08 (Asia/Taipei) from merge
+    commit 1fef953. 2022 (unseen): filter on 38 of 141 signal days, 99 trades, net mean -0.57%, PF 0.84 (unfiltered
+    375 trades, -0.72%) -> stage 1 FAIL. 2023-2026 filtered: 1,685 trades, -0.16%, PF 0.95 -> stage 2 false.
+    The filter barely changes results in either period. REBOUND_V2_FUTURE_60D stays RESERVED_UNTOUCHED.

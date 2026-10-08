@@ -92,6 +92,10 @@ def save_bar(db: sqlite3.Connection, symbol: str, bar: dict) -> None:
     db.execute('INSERT INTO daily_bars VALUES (?,?,?)', (symbol, bar['time'], value))
 
 
-def candidates(db: sqlite3.Connection):
-    for row in db.execute('SELECT id,snapshot,label FROM candidates ORDER BY signal_date,symbol'):
+def candidates(db: sqlite3.Connection, *, before: str | None = None):
+    """before excludes a reserved (blinded) partition from every reader."""
+    query, args = 'SELECT id,snapshot,label FROM candidates', ()
+    if before:
+        query, args = query + ' WHERE signal_date<?', (before,)
+    for row in db.execute(query + ' ORDER BY signal_date,symbol', args):
         yield row['id'], json.loads(row['snapshot']), json.loads(row['label']) if row['label'] else None

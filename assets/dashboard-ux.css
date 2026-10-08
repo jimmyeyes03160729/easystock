@@ -1,0 +1,21 @@
+.dashboard-ux { color:var(--main); font-size:14px; padding:16px; margin-bottom:20px; }
+.dashboard-ux h2 { font-size:16px; margin:0 0 12px; }
+.dashboard-ux h3 { font-size:14px; margin:20px 0 8px; }
+.dashboard-ux p { overflow-wrap:anywhere; margin:8px 0; }
+.dashboard-ux small,.ux-overview-grid>div>span { color:var(--sub); }
+.ux-overview-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.dashboard-data-details { margin-bottom:20px; }
+.dashboard-data-details>summary,.dashboard-ux summary { cursor:pointer; min-height:44px; padding:10px 0; font-weight:600; }
+.dashboard-ux input { box-sizing:border-box; display:block; width:min(100%,440px); min-height:44px; margin-top:6px; border:1px solid var(--border); border-radius:8px; padding:8px 12px; background:var(--surface); color:var(--main); font-size:16px; }
+.explorer-list { padding:0; list-style:none; }
+.explorer-list li { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:10px 0; border-bottom:1px solid var(--border); }
+.explorer-list li>span { flex:1 1 240px; overflow-wrap:anywhere; }
+.explorer-list button { min-height:44px; border:1px solid var(--border); border-radius:8px; padding:8px 12px; color:var(--main); background:var(--surface); cursor:pointer; }
+.dashboard-ux :focus-visible { outline:2px solid var(--accent,#f59e0b); outline-offset:3px; }
+@media(max-width:768px) {
+  .ux-overview-grid { grid-template-columns:1fr 1fr; }
+  .mobile-filter-inputs { max-width:100%; min-height:44px; flex-wrap:wrap; }
+  .mobile-filter-inputs input { font-size:16px; min-height:36px; }
+  .filter-panel button,.filter-panel select { min-height:44px; }
+}
+@media(max-width:380px) { .ux-overview-grid { grid-template-columns:1fr; } }

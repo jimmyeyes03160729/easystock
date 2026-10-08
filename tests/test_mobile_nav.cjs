@@ -1,5 +1,17 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
 const {createDOM}=require('./dom.cjs');
+test('Chrome install CTA reuses the extension manifest logo at a fixed undistorted size',()=>{
+  const {w}=createDOM(fs.readFileSync('index.html','utf8'));
+  const manifest=JSON.parse(fs.readFileSync('chrome-extension/manifest.json','utf8'));
+  const logo=w.document.querySelector('#chrome-tools .extension-cta .extension-icon img');
+  assert.equal(logo.getAttribute('src'),'chrome-extension/'+manifest.icons['128']);
+  assert.equal(manifest.action.default_icon['128'],manifest.icons['128']);
+  assert(fs.existsSync(logo.getAttribute('src')));
+  assert.equal(logo.width,32);assert.equal(logo.height,32);assert.equal(logo.alt,'');
+  assert.equal(logo.parentElement.getAttribute('aria-hidden'),'true');
+  assert.match(fs.readFileSync('index.html','utf8'),/\.extension-cta \.extension-icon img\s*\{[^}]*object-fit:contain/);
+  w.close();
+});
 test('M1-M7: real anchors, five labels, desktop/mobile safe-area, active and guarded admin route',()=>{
   const html=fs.readFileSync('index.html','utf8'),{w,run}=createDOM(html);
   const nav=w.document.querySelector('.mobile-bottom-nav'),links=[...nav.querySelectorAll('a')];

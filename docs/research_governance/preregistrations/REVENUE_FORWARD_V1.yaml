@@ -1,0 +1,51 @@
+# EasyStock preregistration — REVENUE_FORWARD_V1 (forward paper confirmation of REVENUE_DRIFT_V1)
+# Frozen in git BEFORE the first forward portfolio is created and before any price after 2026-10-02 is read for it.
+# Parent: TRIAL_REVENUE_DRIFT_V1 (S2_SUR H20 +1.88%/month excess net, t 5.5; S2_SUR H5 and S1_YOY H20 also STRONG).
+
+preregistration_id: "REVENUE_FORWARD_V1"
+created_at: "2026-10-08T21:00:00+08:00"
+status: "FROZEN_PICKS_ONLY"
+research_only: true
+production_effect: "NONE (paper tracking only; no orders)"
+code: "research/revenue_v1/{fwd_fetch.py,rev_fwd.py,run_fwd.sh} (tests/test_revenue_forward.py)"
+
+events:
+  revenue_months: "2026-09 .. 2027-02 (six monthly events)"
+  deadline_evening: "D(M) = first TWSE session on or after the 10th of month M+1; picks are frozen that evening"
+  entry: "official open of the next TWSE session E(M) = first session after D(M)"
+  schedule: "VM cron 21:00 daily runs run_fwd.sh; it acts only on a deadline evening and only once per month"
+
+signals_and_portfolios:
+  primary: "S2_SUR top decile, HOLD 20 sessions (exit at the official close of the 20th session E..E+19)"
+  descriptive: ["S2_SUR HOLD 5", "S1_YOY HOLD 20", "S1_YOY HOLD 5", "bottom deciles"]
+  definition: "identical to REVENUE_DRIFT_V1 (rev_study.signals_for, deciles = ceil(10%) with symbol tie-break), computed from the MOPS table of month M fetched on the deadline evening"
+  universe: "FROZEN once: liquid common stocks as of 2026-10-02 (20-session mean amount >= 50,000,000 TWD, last close >= 10, 4-digit code not starting with 0), stored in forward/universe_frozen.json"
+  deviation_from_backtest: "the backtest re-evaluated liquidity before each event; the forward test freezes it at 2026-10-02 so that picking reads no price after the cutoff"
+  picks_file: "forward/picks_YYYY-MM.json holds deadline session, creation time, the scored universe and the top and bottom deciles; its sha256 is recorded in git before E(M)"
+
+evaluation:
+  authorization: "price reads after 2026-10-02 are locked by the file research/revenue_v1/EVAL_AUTHORIZED, created only after the owner decides how the overlap with REBOUND_V2_FUTURE_60D is recorded (see governance_note)"
+  returns: "net of paper_execution fee and ordinary 0.3% tax (cost_pct same_day=False), ex-rights/dividend factors added back, as in the backtest"
+  fillability: "entries opening >= 1.09 x reference (limit-up) are excluded from top deciles and baseline alike"
+  baseline: "equal-weight scored universe of the same event and horizon"
+  event_result: "excess = top-decile net minus baseline net"
+
+decision_rule:
+  complete_when: "six events have a completed H20 exit"
+  PASS: "primary mean excess > 0, excess > 0 in >= 4 of 6 events, and primary mean top-decile net > 0"
+  FAIL: "otherwise"
+  reporting: "t statistic over six events is reported but not required (n too small)"
+  consequence: "PASS -> candidate for a paper portfolio and a production-readiness review by the owner; FAIL -> REVENUE_DRIFT_V1 is treated as in-sample only"
+  prohibited:
+    - "changing signals, deciles, horizons, universe or costs after the first picks are frozen"
+    - "stopping early because of interim results, or adding events selectively"
+    - "using any forward result to choose among S1/S2 or H5/H20 (the primary was fixed here)"
+
+governance_note: >
+  Picking reads no price after 2026-10-02 and only trading-calendar membership of later dates. Evaluation necessarily
+  reads open/close prices of the picked and scored stocks on 2026-10-13 and later, which overlap the reserved
+  partition REBOUND_V2_FUTURE_60D (rebound signals from 2026-10-07 on; the reservation forbids ohlcv values and
+  returns). That overlap is an exposure of daily price data to a second hypothesis and is NOT taken here: it needs an
+  owner decision and a git-recorded amendment or exposure record, after which EVAL_AUTHORIZED is created. Until then
+  only picks are frozen. Revenue months 2026-09 and later are a new dataset (MOPS_MONTHLY_REVENUE_2026_09_ONWARD) that
+  does not overlap the backtest revenue data (<= 2026-08).

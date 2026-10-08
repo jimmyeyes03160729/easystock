@@ -1,0 +1,78 @@
+# EasyStock preregistration — REVENUE_DRIFT_V1 (monthly revenue surprise, post-deadline drift)
+# Frozen in git BEFORE any return statistic conditioned on revenue is computed.
+# Motivation: intraday entries cannot beat a 42-52 bps round trip (TRIAL_EA_PASSIVE_FILL_V1). Monthly revenue
+#   momentum / post-announcement drift is a documented Taiwan-market effect, and buying at the opening auction and
+#   selling at the closing auction pays no spread. MOPS summary tables carry no per-company announcement time, so the
+#   design uses the legal deadline: on the session after the deadline every on-time report is public.
+
+preregistration_id: "REVENUE_DRIFT_V1"
+created_at: "2026-10-08T18:00:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE"
+direction: "LONG (top decile); bottom decile and long-short are descriptive only"
+code: "research/revenue_v1/{fetch_revenue.py,rev_study.py}"
+
+data:
+  revenue: "MOPS t21sc03 summary tables (TWSE sii + TPEx otc, domestic and foreign issuers), revenue months 2020-01..2026-08, fetched 2026-10-08 (compile date 2026-10-03 on every page)"
+  prices: "official daily DB /home/ubuntu/easystock-learning-data/rebound/market-daily.sqlite (bars, sessions, ex_rights), days <= 2026-10-02, read-only"
+  forbidden: ["any day > 2026-10-02", "revenue months >= 2026-09", "PHASE2C_FUTURE_CONFIRMATION_60D", "REBOUND_V2_FUTURE_CONFIRMATION_60D"]
+
+timing:
+  deadline: "D(M) = first TWSE session on or after the 10th of month M+1 (the legal deadline rolls to the next business day)"
+  entry_session: "E(M) = first TWSE session after D(M)"
+  entry_price: "official open of E (opening auction)"
+  event_months: "2022-01..2026-08 (E from 2022-02); an event is dropped when its exit session would be after 2026-10-02"
+
+universe_at_E:
+  - "4-digit symbol not starting with 0 (common stocks), bar on E"
+  - ">= 20 own sessions before E; mean amount over the last 20 sessions before E >= 50,000,000 TWD"
+  - "close of the last session before E >= 10 TWD"
+  - "revenue row for month M with revenue > 0 and last-year revenue > 0"
+
+signals:
+  S1_YOY: "revenue_M / last_year_revenue_M - 1 (values from the month-M table)"
+  S2_SUR: "g_t = ln(revenue_t / last_year_t) from each month's own table; SUR = (g_M - mean(g_{M-1..M-12})) / std(g_{M-1..M-12}), population std; requires all 12 prior g and std > 1e-9"
+  portfolio: "top decile (ceil(10%) of ranked eligible stocks) equal weight, LONG; bottom decile reported"
+
+horizons:
+  DT: "sell at the official close of E (closing auction); day-trade tax 0.15%"
+  H5: "sell at the close of the 5th session E..E+4; ordinary tax 0.3%"
+  H20: "sell at the close of the 20th session E..E+19; ordinary tax 0.3%"
+  ex_rights: "multi-day returns add back ex-rights/dividend drops: exit close x prod(previous_close / reference) over ex days in (E, exit]"
+  missing_exit: "no bar on the exit session -> last close before it (counted)"
+
+costs:
+  shares: 1000
+  model: "paper_execution.fee on both legs (0.1425% x 0.28, min 20 TWD) + paper_execution.tax on the exit amount (same_day for DT, ordinary otherwise); no spread (auction prices)"
+
+statistics:
+  unit: "one portfolio return per event month (equal-weight mean of its names)"
+  excess: "top-decile net minus the equal-weight net of the whole eligible universe, same month and horizon"
+  t_stat: "mean / (std / sqrt(months)) of the monthly excess series"
+  folds: "calendar year of E: 2022, 2023, 2024, 2025, 2026"
+
+pass_criteria:
+  A: "mean monthly top-decile net > 0"
+  B: "top-decile net > 0 in >= 4/5 folds"
+  C: "mean monthly excess > 0 with t >= 2.0"
+  D: "excess > 0 in >= 4/5 folds"
+  G: ">= 40 event months and mean top-decile size >= 20 names"
+  classification: "G false -> INSUFFICIENT; A-D true -> STRONG; C and D true -> RELATIVE_ONLY; A false and C false -> NO_EDGE; otherwise WEAK"
+  tests: "2 signals x 3 horizons = 6 (disclosed); no other combination is evaluated"
+  family_rule: "any STRONG -> candidate for forward paper confirmation on revenue months >= 2026-09 (events after the cutoff), to be preregistered separately and evaluated only after the 60-day reserved partitions are consumed; never production"
+
+secondary_descriptive:
+  - "bottom decile net and top-minus-bottom spread per signal and horizon"
+  - "number of eligible stocks and late-filer count per month"
+
+known_limitations:
+  - "tables are compiled after the fact: later corrections and late filers (after D) leak a little information into E"
+  - "no announcement time: the effect measured is the drift remaining after the deadline, not the announcement reaction"
+  - "auction fills assumed at the official open/close for 1000 shares; no impact"
+  - "survivorship: the daily DB includes later delistings; missing exits use the last close"
+
+prohibited:
+  - "changing signals, deciles, filters, horizons, costs or the timing after seeing results"
+  - "adding signals or combining S1 and S2 on this data"
+  - "reading revenue months >= 2026-09 or prices after 2026-10-02"

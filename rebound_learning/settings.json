@@ -11,5 +11,7 @@
   },
   "rejected_control_hash_modulus": 50,
   "label_horizon_trading_days": 10,
+  "reserved_confirmation_start": "2026-10-07",
+  "v1_blinded_from": "2026-10-05",
   "minimum_amount": 5000000
 }
