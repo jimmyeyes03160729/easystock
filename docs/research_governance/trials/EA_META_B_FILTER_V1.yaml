@@ -1,0 +1,78 @@
+# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any directional outcome is read)
+
+trial_id: "TRIAL_EA_META_B_FILTER_V1"
+parent_trial_id: "TRIAL_EA_TOB_IMBALANCE_V1"
+created_at: "2026-10-08T23:30:00+08:00"
+study_name: "META_B_FILTER_V1 runway A as a meta-label filter over the frozen runway B rule"
+research_stage: "EXPLORATORY"
+ledger_record_type: "PREREGISTERED_TRIAL"
+recorded_after_experiment: false
+
+provenance:
+  source_classification: "EXPLORATORY_HEURISTIC"
+  source_refs:
+    - "docs/research_governance/preregistrations/META_B_FILTER_V1.yaml"
+    - "docs/research_governance/incidents/2026-10-08_RUNWAY_B_RESERVED_DAYS_BACKTEST.md"
+    - "runway_v2/ at 6aa1e5a (candidate generator, pinned blob hashes in the preregistration)"
+
+hypothesis:
+  statement: >
+    Among trades fired by the frozen runway B rule (ORB / VWAP pullback with B's own exits), a logistic model on
+    19 decision-time features selects a subset whose mean quote-stress net return is positive and exceeds the
+    unfiltered rule, in a five-window expanding walk-forward and later in a one-shot forward partition.
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "filtered_minus_all_trade_return_bps_quote_stress"
+  direction: "PASS_FAIL"
+  baseline: "UNFILTERED_B_RULE_SAME_CANDIDATES"
+  frozen_before_search: true
+
+data:
+  dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2023-09-27"
+  end_date: "2026-08-27"
+  dataset_end: "2026-10-02"
+  universe: "100_STOCK_LIQUIDITY_POOL"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: false
+  future_holdout_seen: false
+  exposed_dimensions: []
+  exposures: []
+
+search:
+  parameters_searched:
+    - "decision threshold tau in {0.50, 0.55, ..., 0.80}, chosen only on each training window's inner validation split"
+  search_space:
+    model: "L2 logistic regression, C = 1.0, fixed 19 features"
+    tau: "7 values, inner validation only"
+  trial_count: 1
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/META_B_FILTER_V1.yaml"
+  registry_hash: "NOT_YET_RUN"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "IN_PROGRESS"
+  decision: "FROZEN_AWAITING_CODE"
+  sealed_commit: ""
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    Stage 1 runs only after research/meta_b_filter_v1 is merged with unit tests. Stage 2 needs Stage 1 =
+    PASS_TO_FORWARD and the owner decisions in the incident record. Until then no directional statistic of the
+    B rule or the filter may be computed by this study.

@@ -1,0 +1,162 @@
+# EasyStock preregistration — META_B_FILTER_V1 (runway A redesigned as a meta-label filter over the runway B rule)
+# Frozen in git BEFORE any filter-conditioned or B-rule outcome is computed by this study.
+# Motivation (no outcome of this study read):
+#   - Runway A's rolling model has not passed its promotion gate since 2026-09-24 (blocked 2026-10-05/07/08:
+#     one fold, zero picks). The latest approved model goes stale (> 10 weekdays) on 2026-10-12, after which A
+#     stops entering (model_not_ready). Its label profile (06470428...) also differs from current labels (72a58274...).
+#   - Every source-native 15m LONG entry family tested so far has gross <= 0 (event_audit README), and the realistic
+#     round-trip cost floor is 42-52 bps (PASSIVE_FILL_V1). A different model class on the same target cannot fix that.
+#   - Runway B (PR #51, runway_v2/) is an ORB / VWAP-pullback rule with stop, half take-profit and trailing exits.
+#     This study asks a narrower question than "does a 15m entry have edge": given that B's rule fires, can a model
+#     predict which of B's own trades end net-positive after costs (meta-labeling, Lopez de Prado 2018, ch. 3)?
+
+preregistration_id: "META_B_FILTER_V1"
+created_at: "2026-10-08T23:30:00+08:00"
+status: "FROZEN_AWAITING_CODE"
+research_only: true
+production_effect: "NONE"
+direction: "LONG"
+code: "research/meta_b_filter_v1/ (not yet written; must be merged with unit tests on synthetic data before any run)"
+
+disclosures:
+  discovery_data_reused: >
+    The five FOLD_WINDOWS were already used by H2-H4 (H4 is a source-native ORB, a close relative of B's ORB leg),
+    the 8 primitives, Knowledge V1 book rules, PASSIVE_FILL_V1 and TOB_IMBALANCE_V1. Several features below
+    (time of day, volatility level, opening move, breadth) are Phase 2C burned dimensions on 2023-09-27..2026-10-02.
+    Stage 1 is therefore a screening step, never independent evidence; only Stage 2 can be.
+  b_rule_exposure_by_another_agent: >
+    B's committed parameters (6aa1e5a) were chosen with backtests over 2026-09-11..2026-10-08
+    (runway_v2/optimize_study.py DATES_1M; VM file runway_v2_1m_results.json, 2026-10-08 19:09). A further
+    uncommitted VM study (run_6m_study.py) evaluated the same rule on archive days 2026-04-01..2026-10-08
+    (output written 2026-10-08 22:08). The assistant read only the date lists of those outputs, never their results.
+    Consequence: B-rule outcomes on fold 4 (from 2026-04-01) and fold 5 have been seen by an AI agent; they were not
+    used to design this study. B's parameter-selection days (2026-09-11..2026-10-08) are outside every FOLD_WINDOW.
+    See incidents/2026-10-08_RUNWAY_B_RESERVED_DAYS_BACKTEST.md for the reserved days 2026-10-07/08.
+
+candidate_generator:
+  name: "B_RULE_FROZEN_6AA1E5A"
+  pinned_sources:
+    runway_v2/strategy.py: "ebcd8a4c5ec414b8f2c5281021de5da4639e04b3"
+    runway_v2/manager.py: "58f9bc7a033ac9db5c8d316dca9738545b41136d"
+    runway_v2/config.py: "918711c038ec37bc792db56d3ab4925b9fc249e5 (defaults only; no environment overrides)"
+    runway_v2/orderbook.py: "0030b447291db53e1f9798d7ba7555bed9319572"
+  rule: >
+    At each decision point t, the symbols in the production radar's top-N (qualifies_volume_surge, sorted by
+    score_volume_surge, surge_60s, amount_60s; N = radar cap of the 2026-10-02 recorded policy via
+    daytrade_learning.historical_replay.canonical_policy, else RADAR_TOP_N) are passed, in radar order, to
+    runway_v2.strategy.evaluate_signal exactly as committed: price 15..600, gain 1.0..7.5%, price >= 0.998 x VWAP,
+    ORB_BREAKOUT (09:05..09:35, price >= high of the first completed 5m bar) or VWAP_PULLBACK (09:35..11:30),
+    score_candidate >= 60.
+  orderbook_part: >
+    Levels 2-5 are not archived, so the replay applies only the level-1 parts of validate_orderbook:
+    spread_ticks <= 2; if spread_ticks > 1 then spread_pct <= 0.60%; bid-1 size >= 3 lots. The OBI check is skipped.
+  decision_grid: "every minute at hh:mm:03 from 09:05:03 to 12:30:03 (B evaluates on every radar update; minute grid is the approximation)"
+  radar_inputs: "daytrade_learning.historical_replay sample construction (production radar functions) with previous close / reference taken from the official daily database as in HV60_V1 Amendment 1 (TWSE: bars.reference of the day; TPEx: tpex_next_reference of the previous session); a symbol-day without a reference is excluded and counted"
+  re_entry: "a symbol can signal again only after its previous replayed trade has fully closed (as live B); no capacity limit at event level"
+  entry_window: "09:05:00..12:30:00 (B config)"
+
+trade_replay:
+  sizing: "B open_position: shares = max(1000, floor(300000 / (price x 1000)) x 1000)"
+  initial_stop: "max(entry x 0.985, VWAP x 0.995) (strategy.evaluate_signal stop_price)"
+  exits_in_order_per_tick: >
+    on each trade tick strictly after entry: (1) at or after 12:55:00 close everything at that symbol's own latest
+    price <= 12:55:00; (2) price <= stop -> close all; (3) first time return >= +1.5% and half >= 1000 shares ->
+    sell half, stop := max(stop, entry); (4) return >= +2.0% activates trailing; when active and pullback from the
+    highest trade price >= 0.8% -> close the rest. (Live runner prices other symbols' force exits at their highest
+    price; the replay does not copy that defect.)
+  fills:
+    primary_quote_stress: "entry at the best ask of the latest tick <= t (age <= 30s, never the next tick); every exit at the best bid of the triggering tick"
+    secondary_trade_price: "entry at the latest trade price <= t; exits at the triggering trade price (as live B)"
+  costs: "paper_execution fee/tax per leg with ROUND_HALF_UP via daytrade_learning.event_audit.costs conventions, at B's share count; the half exit is its own leg"
+  trade_return: "net TWD of all legs / entry notional, in bps"
+
+label:
+  y: "1 if the primary (quote-stress) trade return of the candidate is > 0 bps, else 0"
+  horizon_note: "every label closes by 12:55 on the decision day, so no label overlaps another day"
+
+features:
+  rule: "computed only from data with timestamp <= t (and archive days before the decision date); a candidate with any missing feature is dropped from training but kept, unfiltered, in the baseline count"
+  list:
+    - "b_score (score_candidate)"
+    - "is_orb (1 ORB_BREAKOUT, 0 VWAP_PULLBACK)"
+    - "gain_pct vs previous close"
+    - "vwap_dist_pct"
+    - "buy_ratio_60s"
+    - "log(surge_60s)"
+    - "log(amount_60s)"
+    - "return_5m_pct"
+    - "return_15m_pct"
+    - "minutes_since_0900"
+    - "gap_open_pct (session open / previous close - 1)"
+    - "range_so_far_rel ((high - low so far) / previous close / trailing_range_20)"
+    - "trailing_range_20 (HV60_V1 Amendment 1: official daily bars of the previous 20 sessions)"
+    - "spread_bps_l1 ((ask - bid) / mid at the entry tick)"
+    - "radar_rank"
+    - "pool_up_from_open_share (share of pool symbols whose latest price > their session open at t)"
+    - "pool_median_return_from_open_pct"
+    - "prev_day_return_pct (official daily bars)"
+    - "prev_day_close_location ((close - low) / (high - low) of the previous official daily bar; 0.5 when high == low)"
+  excluded_on_purpose: "level-1 size imbalance (TOB_IMBALANCE_V1 prohibits combining it with other signals on this data)"
+
+model:
+  primary: "sklearn LogisticRegression(penalty='l2', C=1.0, solver='lbfgs', max_iter=1000), features standardized with training-window mean/std"
+  threshold: >
+    chosen inside each training window only: the last 25% of its trading dates form an inner validation split;
+    the model fitted on the first 75% scores it; tau = the value in {0.50, 0.55, ..., 0.80} with the highest inner
+    mean primary trade return among those with >= 30 inner picks (ties -> higher tau); if none has 30 picks, tau = 0.50.
+    The model is then refitted on the whole training window and applied with that tau.
+  searched: "nothing else (no feature selection, no other model class, no hyper-parameter search)"
+
+stage_1_historical_walk_forward:
+  data:
+    archive: "easystock-history-expanded-data + easystock-history-data, days <= 2026-08-27"
+    daily: "rebound_learning market-daily.sqlite (read-only), rows with day <= 2026-10-02"
+    universe: "frozen 100-stock pool, every archived symbol-day (no coverage gate; fold imbalance disclosed in the report)"
+    forbidden: ["PHASE2C_FUTURE_CONFIRMATION_60D", "REBOUND_V2 future partition", "any day > 2026-10-02"]
+  folds: "daytrade_learning.event_audit.timebase.FOLD_WINDOWS (five windows, 2024-12-25..2026-08-27)"
+  training: "expanding: all candidate events from archive start to the day before the fold's first date; no embargo (labels close the same day); a fold with < 300 training events or < 30 positive labels is NOT_ESTIMABLE"
+  metrics:
+    all: "mean primary trade return (bps) of every B-rule candidate in the fold"
+    filtered: "mean primary trade return of the candidates the model accepts"
+    excess: "filtered - all; SE by day-clustered linearization; t = excess / SE"
+    portfolio: >
+      B-constrained simulation per fold: candidates processed per minute in radar order; at most 3 open positions;
+      one position per symbol; daily buys <= 1,000,000 TWD (a position that would exceed it is skipped); no new
+      entry after the day's realized net loss reaches 6,000 TWD. Reported as net TWD per 1,000,000 TWD of buys,
+      for unfiltered B rule and filtered B rule.
+  pass_criteria:
+    A: "aggregate filtered mean primary return > 0 bps"
+    B: "filtered > all in >= 4/5 folds"
+    C: "filtered mean primary return > 0 in >= 3/5 folds"
+    D: "aggregate excess t >= 2.0"
+    E: "aggregate filtered portfolio net TWD per 1,000,000 of buys > 0"
+    G: ">= 30 filtered trades in every fold and no NOT_ESTIMABLE fold"
+  classification: >
+    G false -> INSUFFICIENT; A-E all true -> PASS_TO_FORWARD; D and B true but A or E false ->
+    FILTER_HELPS_NET_NEGATIVE; D false -> NO_FILTER_EDGE; otherwise WEAK.
+  family_rule: "only PASS_TO_FORWARD opens Stage 2; every other class ends the study (no variant re-tested on this data)"
+  secondary_descriptive:
+    - "B rule unfiltered per fold: trade count, win rate, mean primary and trade-price returns, portfolio TWD per 1M (this is the first preregistered test of B's own rule; it decides nothing)"
+    - "ORB vs VWAP_PULLBACK split"
+    - "logistic coefficients per fold"
+
+stage_2_forward_confirmation:
+  precondition: "Stage 1 = PASS_TO_FORWARD, plus the owner decisions listed in the incident record (Amendment 3 carving 2026-10-07/08 out of PHASE2C_FUTURE_60D, and no research reads of B-rule outcomes on reserved days by any agent)"
+  frozen_artifact: "one model refitted on all candidate events <= 2026-10-02 with tau re-chosen by the same inner rule; its file hash is committed in a PR before any reserved day is read"
+  partition: "PHASE2C_FUTURE_CONFIRMATION_60D after Amendment 3: the first 60 eligible days (eligibility per the holdout record, metadata only)"
+  evaluation: "one shot after the 60th eligible day, same replay, same A, D, E criteria (no folds); G: >= 30 filtered trades"
+  outcome_vocabulary: ["SUPPORTED_WITHIN_PREREGISTERED_SCOPE", "NOT_SUPPORTED", "INCONCLUSIVE", "INVALIDATED"]
+  production_ready: false
+  after_support: "deploying the filter into runway A needs new runtime features and a separate owner decision; nothing is automatic"
+
+prohibited:
+  - "changing the rule pins, grid, exits, costs, features, model, threshold rule, folds or criteria after any outcome is computed"
+  - "re-running a modified filter on the FOLD_WINDOWS after Stage 1"
+  - "using live runway B ledger results as the outcome source (different fills, OBI filter, force-exit defect)"
+  - "reading any reserved partition before the Stage 2 authorization record"
+
+known_limitations:
+  - "fixed 100-stock archive universe vs the live full-market radar universe"
+  - "minute decision grid vs live B evaluating on every radar update"
+  - "no OBI / levels 2-5"
+  - "historical_replay's minute-bar exit approximations are not used: exits replay trade ticks"
