@@ -15,6 +15,7 @@ from .config import (
 from .strategy import evaluate_signal
 from .manager import PositionManagerV2
 from .notifier import notify_entry, notify_exit
+from .ledger import get_daily_trades
 
 
 class RunwayV2Runner:
@@ -103,6 +104,7 @@ class RunwayV2Runner:
                             score=signal["score"],
                             reasons=signal["reasons"],
                         )
+                        self.sync_to_firebase()
 
     def on_tick(self, symbol: str, price: float, current_dt: datetime) -> None:
         """即時 Tick 更新：檢查現有持倉的停利、停損與收盤強制平倉。"""
@@ -137,6 +139,7 @@ class RunwayV2Runner:
                             return_pct=exit_event["return_pct"],
                             reason=exit_event["reason"],
                         )
+                self.sync_to_firebase()
                 return
 
             # 正常單一股票價格更新
@@ -158,6 +161,66 @@ class RunwayV2Runner:
                     return_pct=exit_event["return_pct"],
                     reason=exit_event["reason"],
                 )
+                self.sync_to_firebase()
+
+    def export_snapshot(self) -> dict:
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        open_positions = {}
+        for sym, pos in self.manager.positions.items():
+            open_positions[sym] = {
+                "trade_id": pos.trade_id,
+                "symbol": pos.symbol,
+                "name": pos.name,
+                "entry_time": pos.entry_time,
+                "entry_price": pos.entry_price,
+                "current_price": getattr(pos, "current_price", pos.highest_price),
+                "highest_price": pos.highest_price,
+                "stop_price": pos.stop_price,
+                "shares": pos.shares,
+                "signal_type": pos.signal_type,
+                "score": pos.score,
+                "reasons": pos.reasons,
+                "half_closed": pos.half_closed,
+            }
+
+        all_today = get_daily_trades(today_str, self.db_path)
+        closed_trades = {
+            t["trade_id"]: {
+                "trade_id": t["trade_id"],
+                "symbol": t["symbol"],
+                "name": t["name"],
+                "entry_time": t["entry_time"],
+                "entry_price": t["entry_price"],
+                "exit_time": t["exit_time"],
+                "exit_price": t["exit_price"],
+                "exit_reason": t["exit_reason"],
+                "shares": t["shares"],
+                "net_pnl": t["net_pnl"],
+                "return_pct": t["return_pct"],
+                "signal_type": t["signal_type"],
+                "score": t["score"],
+                "reasons": t["reasons"],
+            }
+            for t in all_today
+            if t.get("status") == "CLOSED"
+        }
+
+        return {
+            "last_update_at": datetime.now().isoformat(),
+            "open_positions": open_positions,
+            "closed_trades": closed_trades,
+            "session": "daytrade" if datetime.now().strftime("%H:%M:%S") < "13:00:00" else "closed",
+        }
+
+    def sync_to_firebase(self) -> None:
+        try:
+            import firebase_admin
+            from firebase_admin import db
+            if firebase_admin._apps:
+                snapshot = self.export_snapshot()
+                db.reference("/market_data/intraday_live/runway_v2").set(snapshot)
+        except Exception:
+            pass
 
 
 _INSTANCE: RunwayV2Runner | None = None

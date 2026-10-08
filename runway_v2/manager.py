@@ -59,6 +59,7 @@ class PositionV2:
 
         self.stop_price = initial_stop_price
         self.highest_price = entry_price
+        self.current_price = entry_price
         self.half_closed = False
         self.trailing_active = False
 
@@ -130,6 +131,7 @@ class PositionManagerV2:
         if not pos:
             return None
 
+        pos.current_price = current_price
         if current_price > pos.highest_price:
             pos.highest_price = current_price
 
