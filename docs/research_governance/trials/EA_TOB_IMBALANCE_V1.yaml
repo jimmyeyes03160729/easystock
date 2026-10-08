@@ -1,4 +1,4 @@
-# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any imbalance-conditioned return is read)
+# EasyStock Research Trial Ledger — PREREGISTERED trial, sealed after its single run (2026-10-08)
 
 trial_id: "TRIAL_EA_TOB_IMBALANCE_V1"
 parent_trial_id: "TRIAL_EA_PASSIVE_FILL_V1"
@@ -37,13 +37,27 @@ data:
   discovery_data_reused: true
   independent_confirmation: false
 
+
 exposure_state:
   train_seen: false
   validation_seen: false
-  oos_seen: false
+  oos_seen: true
   future_holdout_seen: false
-  exposed_dimensions: []
-  exposures: []
+  exposed_dimensions:
+    - "forward mid and taker-cost returns per imbalance bucket, horizon, group and fold"
+  exposures:
+    - exposure_id: "EXP_EA_TOB_IMBALANCE_V1_TEST_WINDOWS"
+      dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+      dataset_family_id: "TWSE_EQUITY_INTRADAY"
+      dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "best-bid/ask size imbalance buckets vs forward mid and taker-cost net returns"
+      source_trial_id: "TRIAL_EA_TOB_IMBALANCE_V1"
+      first_seen_at: "2026-10-08T18:10:00+08:00"
 
 search:
   parameters_searched:
@@ -55,17 +69,23 @@ search:
 
 governance:
   plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/TOB_IMBALANCE_V1.yaml"
-  registry_hash: "NOT_YET_RUN"
+  registry_hash: "bf034cd39dd53543834e04eee16ab544903fdb88a40253179be198a941f6d509"
   no_oos_tuning: true
   production_effect: "NONE"
 
 result:
-  status: "IN_PROGRESS"
-  decision: "FROZEN_NOT_RUN"
-  sealed_commit: ""
+  status: "SEALED"
+  decision: "SIGNAL_COST_BLOCKED"
+  sealed_commit: "e5e3708"
   PRODUCTION_READY: false
   DISCOVERY_DATA_REUSED: true
   INDEPENDENT_CONFIRMATION: false
   FUTURE_CONFIRMATION_UNTOUCHED: true
   notes: >
-    Level-1 only; the five-level knowledge-base rules remain untestable until BidAsk is collected.
+    All three primary tests (B5 LONG, group ALL, 1m/5m/15m) are SIGNAL_COST_BLOCKED: best-bid-heavy books (I >= 0.6)
+    are followed by +2.7 / +3.2 / +3.2 bps of excess mid return (t 53 / 32 / 18, positive in at least 4 of 5 folds), but
+    the quote-stress taker net is -48.8 / -48.3 / -49.1 bps. B1 SHORT mirrors it (+2.8 / +3.4 / +3.2 bps excess, net
+    -46..-48). CORE42 and HV_TIER are the same (excess +2.8..+3.3 bps, net -47..-50). The effect is about 1/15 of the
+    round-trip cost. Caveat: sizes are read right after a trade, so a trade that consumes one side biases I toward the
+    other. Level-1 imbalance carries a real but tiny signal; it does not justify collecting full BidAsk for taker
+    day-trade entries.
