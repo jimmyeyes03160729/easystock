@@ -8,6 +8,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link rel="stylesheet" href="assets/dashboard-ux.css?v=fc2dae56be79" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 
@@ -417,11 +418,7 @@
 
       <div class="hidden lg:flex items-center gap-2 xl:gap-3 shrink-0">
         <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-[#1A2234] border border-[#232F42]">
-          <span class="relative flex h-2 w-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          <span class="font-mono text-xs text-[#F1F5F9]">TWSE / TPEx 工位摸魚看盤中</span>
+          <span class="font-mono text-xs text-[#F1F5F9]">TWSE / TPEx · 研究資料看板</span>
         </div>
         <button type="button" onclick="fetchMarketData()" class="btn flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#122131] hover:bg-[#1C2B3C] text-[#F59E0B] border border-[#232F42] text-xs font-semibold">
           <span class="material-symbols-outlined text-[15px]">sync</span>
@@ -446,7 +443,7 @@
           <span class="material-symbols-outlined text-[#F59E0B] text-[18px]">coffee</span>
           <div class="flex flex-col text-left">
             <span class="font-mono text-xs text-[#F1F5F9] leading-none">工位摸魚工程師</span>
-            <span class="text-xs text-[#64748B] leading-normal font-mono font-medium">9527 · 在線</span>
+            <span class="text-xs text-[#64748B] leading-normal font-mono font-medium">9527 · 研究看板</span>
           </div>
         </div>
       </div>
@@ -462,7 +459,7 @@
     <div>
       <div class="flex items-center gap-2 mb-1.5">
         <span class="px-2 py-0.5 rounded bg-[#1C2B3C] text-[#F59E0B] font-mono text-xs uppercase font-bold tracking-wide">工位摸魚 · 社畜自救看盤室</span>
-        <span class="text-[#64748B] text-xs font-mono">/ TERMINAL_HUD_ONLINE</span>
+        <span class="text-[#64748B] text-xs font-mono">/ RESEARCH DASHBOARD</span>
       </div>
       <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-[#F1F5F9] my-2">上班很累，看盤要清楚。</h1>
       <p class="text-[#94A3B8] text-sm max-w-2xl leading-relaxed">有訊號偷摸魚，沒訊號專心裝忙。今日當沖機會、防守底線與下班進修進度，一眼看完。</p>
@@ -489,6 +486,17 @@
     <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener">社畜後台 ↗</a>
   </nav>
 
+  <section id="dashboardOverview" class="panel dashboard-ux" aria-labelledby="overviewTitle">
+    <h2 id="overviewTitle">現在的資料與模式</h2>
+    <div class="ux-overview-grid">
+      <div><span>盤中快照狀態</span><p id="overviewSession">等待有效快照</p></div>
+      <div><span>資料有效性</span><p id="overviewValidity">日線與盤中分開確認</p></div>
+      <div><span>用途 / 執行模式</span><p>Research 研究 · Paper 模擬</p><small>不是 Live 實盤控制台；公開快照無法確認實盤開關。</small></div>
+      <div><span>來源最後更新</span><p id="overviewUpdated">尚未取得</p></div>
+    </div>
+    <p id="overviewNotice" role="status"></p>
+  </section>
+
   <section id="providerHealthCard" class="panel" aria-labelledby="providerHealthTitle">
     <div class="provider-health-heading"><h2 id="providerHealthTitle">資料來源狀態</h2><span id="providerHealthChecked" role="status">正在檢查…</span></div>
     <div id="providerHealthRows" class="provider-health-rows" aria-live="polite"></div>
@@ -497,6 +505,7 @@
   <!-- =====================================================
        8-METRIC PULSE STREAM BAR
        ===================================================== -->
+  <details class="dashboard-data-details"><summary>資料與模型細節</summary>
   <header class="system-header panel" aria-label="資料狀態">
     <div class="system-stats grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2.5">
 
@@ -516,7 +525,7 @@
         <div id="metaDate" class="text-sm sm:text-base font-bold font-mono text-[#F1F5F9] my-0.5">
           載入中…
         </div>
-        <span class="text-xs text-[#64748B] font-medium leading-normal">後端即時同步</span>
+        <span class="text-xs text-[#64748B] font-medium leading-normal">日線收盤資料，非即時報價</span>
       </div>
 
       <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
@@ -532,8 +541,8 @@
         <div id="metaRefreshTime" class="text-sm sm:text-base font-bold font-mono text-[#F1F5F9] my-0.5">
           --
         </div>
-        <span class="text-xs text-emerald-400 flex items-center gap-1.5 font-mono font-medium leading-normal">
-          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span> 延遲 24ms
+        <span id="requestTiming" class="text-xs text-sub font-mono font-medium leading-normal">
+          尚未完成資料請求
         </span>
       </div>
 
@@ -566,7 +575,7 @@
           <span>今日當沖模組</span>
           <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
         </div>
-        <div id="metaDaytradeModel" class="text-sm sm:text-base font-bold font-mono text-[#F1F5F9] my-0.5" title="今日牛馬 AI 實盤當沖學習版本">
+        <div id="metaDaytradeModel" class="text-sm sm:text-base font-bold font-mono text-[#F1F5F9] my-0.5" title="Research / Paper 模擬當沖版本；不是實盤執行證明">
           載入中…
         </div>
         <div id="metaTracking" class="text-xs text-[#64748B] font-mono font-medium leading-normal">
@@ -577,6 +586,8 @@
     </div>
   </header>
 
+  </details>
+
   <!-- =====================================================
        RADAR FILTER TOOLBAR
        ===================================================== -->
@@ -584,24 +595,25 @@
     <div class="flex items-center gap-2 flex-wrap">
       <div class="flex items-center gap-1.5 text-[#64748B] font-mono text-xs sm:text-[13px]">
         <span class="material-symbols-outlined text-[18px] text-[#F59E0B]">filter_alt</span>
-        <span class="font-semibold text-[#F1F5F9]">單張預算快選:</span>
+        <span class="font-semibold text-[#F1F5F9]">每股價格快選（元）:</span>
       </div>
       <button data-price="" aria-pressed="true" onclick="setQuickPrice(null)" class="btn px-3 py-1.5 rounded-lg text-xs sm:text-[13px] font-semibold bg-[#F59E0B] text-[#0B0F17] border-0 shadow-sm">不限</button>
       <button data-price="50" aria-pressed="false" onclick="setQuickPrice(50)" class="btn px-3 py-1.5 rounded-lg text-xs sm:text-[13px] font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">50以下</button>
       <button data-price="100" aria-pressed="false" onclick="setQuickPrice(100)" class="btn px-3 py-1.5 rounded-lg text-xs sm:text-[13px] font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">100以下</button>
       <button data-price="200" aria-pressed="false" onclick="setQuickPrice(200)" class="btn px-3 py-1.5 rounded-lg text-xs sm:text-[13px] font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">200以下</button>
-      <div class="hidden sm:flex items-center gap-1.5 bg-[#0D1C2D] border border-[#232F42] px-2.5 py-1.5 rounded-lg text-xs">
-        <span class="text-xs text-[#64748B] font-medium">價格:</span>
+      <div class="mobile-filter-inputs flex items-center gap-1.5 bg-[#0D1C2D] border border-[#232F42] px-2.5 py-1.5 rounded-lg text-xs">
+        <span class="text-xs text-[#64748B] font-medium">每股（元）:</span>
         <input aria-label="最低股價" id="priceMin" type="number" min="0" step="1" placeholder="最低" oninput="setPriceRange()" class="w-14 bg-transparent text-xs text-[#F1F5F9] outline-none text-center font-mono" />
         <span class="text-[#64748B]">～</span>
         <input aria-label="最高股價" id="priceMax" type="number" min="0" step="1" placeholder="最高" oninput="setPriceRange()" class="w-14 bg-transparent text-xs text-[#F1F5F9] outline-none text-center font-mono" />
       </div>
-      <div class="hidden md:flex items-center gap-1.5 bg-[#0D1C2D] border border-[#232F42] px-2.5 py-1.5 rounded-lg text-xs" title="以一張約1000股估算，不影響零股交易">
-        <span class="text-xs text-[#64748B] font-medium">單張預算:</span>
+      <div class="mobile-filter-inputs flex items-center gap-1.5 bg-[#0D1C2D] border border-[#232F42] px-2.5 py-1.5 rounded-lg text-xs" title="以股價 × 1000 股估算，不含費稅；只篩選顯示，不更改 Paper 資金或交易設定">
+        <span class="text-xs text-[#64748B] font-medium">單張預算（元）:</span>
         <input aria-label="單張預算" id="budgetInput" type="number" min="0" step="10000" placeholder="不限" oninput="setBudget()" class="w-20 bg-transparent text-xs text-[#F1F5F9] outline-none text-right font-mono" />
       </div>
     </div>
     <div class="flex items-center gap-2 self-end lg:self-center">
+      <button type="button" class="btn px-3 py-1.5 rounded-lg text-xs" onclick="clearDisplayFilters()">清除價格 / 預算</button>
       <span class="text-[#64748B] text-xs sm:text-[13px] font-medium">顯示排行:</span>
       <select aria-label="顯示標的數量" onchange="setDisplayLimit(Number(this.value))" class="bg-[#0D1C2D] border border-[#232F42] rounded-lg px-3 py-1.5 text-xs sm:text-[13px] text-[#F1F5F9] outline-none font-mono">
         <option value="5">Top 5</option>
@@ -609,6 +621,20 @@
       </select>
     </div>
   </div>
+
+  <p id="priceFilterStatus" class="text-sub text-xs" role="status">僅篩選顯示；單張為 1000 股估算，不含費稅。</p>
+  <section class="panel dashboard-ux" id="stockExplorer" aria-labelledby="stockExplorerTitle">
+    <h2 id="stockExplorerTitle">搜尋 / 我的自選</h2>
+    <p class="text-sub">僅搜尋目前日線股票池，不是全市場即時報價；搜尋與自選不代表通過選股資格，也不受上方價格篩選限制。</p>
+    <label for="stockSearch">股票代號或名稱</label>
+    <input id="stockSearch" type="search" maxlength="80" autocomplete="off" placeholder="例如 2330 或 台積電" aria-controls="stockSearchResults" />
+    <p id="stockSearchStatus" role="status"></p>
+    <ul id="stockSearchResults" class="explorer-list"></ul>
+    <details open><summary>我的自選（只存此瀏覽器）</summary>
+    <p id="watchlistStorageStatus" role="status">不會上傳帳號或同步其他裝置；最多 100 檔。</p>
+    <ul id="stockWatchlist" class="explorer-list"></ul>
+    </details>
+  </section>
 
   <!-- =====================================================
        01 盤中摸魚 · AI 模擬當沖
@@ -810,11 +836,11 @@
   </section>
 
   <footer class="footer-line flex flex-wrap items-center justify-between gap-3 text-xs text-[#64748B] py-4 border-t border-[#232F42] font-mono">
-    <span>當沖吧！牛馬仔 QUANT LAB · TERMINAL BUILD 2026.09</span>
+    <span>當沖吧！牛馬仔 QUANT LAB · Research / Paper</span>
     <span class="flex items-center gap-2">
-      <span class="flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>API LATENCY 24ms</span>
+      <span id="footerRequestTiming">資料請求耗時尚未取得</span>
       <span>•</span>
-      <span>TWSE / TPEx REALTIME STREAM</span>
+      <span>TWSE / TPEx 日線 + VM 模擬快照</span>
       <span>•</span>
       <span class="text-[#F1F5F9]">牛馬下班，風險不加班。</span>
     </span>
@@ -1010,6 +1036,7 @@
 
 
 <script src="assets/rebound-engine.js?v=bfd4819e5bc1"></script>
+<script src="assets/dashboard-ux.js?v=1000ff36a3ee"></script>
 <script>
 
   /* ========================================================
@@ -1043,6 +1070,7 @@
   let COMPUTED_STOCKS = [];
 
   let META = {};
+  let DAILY_FETCH_STATE = 'waiting';
 
   // 舊 Fugle：只保留隔日衝
   let INTRADAY = {};
@@ -1057,6 +1085,8 @@
     const elapsed = now - Date.parse(at);
     if (LIVE_FETCH_ERROR) return {label:'連線失敗', message:'即時資料讀取失敗；保留最後成功快照，價格與部位狀態待確認。', current:false};
     if (!at) return {label:'等待資料', message:'尚未收到有效當沖快照，無法確認目前部位。', current:false};
+    if (!Number.isFinite(elapsed) || elapsed < -60000)
+      return {label:'資料時間異常', message:'快照時間無效或在未來，無法確認目前狀態。', current:false};
     if (INTRADAY_LIVE.session === 'closed') {
       const isToday = taiwanDay(at) === taiwanDay(new Date(now));
       return {
@@ -1068,7 +1098,7 @@
     if (!Number.isFinite(elapsed) || elapsed < -60000 || taiwanDay(at) !== taiwanDay(new Date(now)))
       return {label:'資料日期異常或過期', message:'目前不是今日有效快照，等待當沖服務更新。', current:false};
     if (elapsed > 60000) return {label:'更新逾時', message:'超過 60 秒未更新；下方為最後快照，不代表仍在即時監控。', current:false};
-    return {label:'即時監控', message:'', current:true};
+    return {label:({preopen:'開盤前',daytrade:'即時監控',no_new_entry:'停止新進場',force_exit:'強制出場'}[INTRADAY_LIVE.session] || '階段待確認'), message:'', current:true};
   }
 
   let DATA_MODE = "split";
@@ -2425,6 +2455,10 @@
      ======================================================== */
 
   function renderAllSections() {
+    const filterStatus = document.getElementById('priceFilterStatus');
+    if (filterStatus) filterStatus.textContent = PRICE_MIN !== null && PRICE_MAX !== null && PRICE_MIN > PRICE_MAX
+      ? '最低股價高於最高股價，請修正或清除篩選；不改變選股或交易條件。'
+      : '僅篩選顯示；每股以元計，單張為 1000 股估算，不含費稅。';
     document.querySelectorAll('[data-price]').forEach(button => {
       const value = button.dataset.price === '' ? null : Number(button.dataset.price);
       button.setAttribute('aria-pressed', String((PRICE_MIN === null || PRICE_MIN === 0) && PRICE_MAX === value));
@@ -2439,6 +2473,7 @@
 
 
     renderIntradayPicks();
+    updateDashboardUX();
 
   }
 
@@ -3033,6 +3068,7 @@
      ======================================================== */
 
   function renderLiveIntraday() {
+    updateDashboardUX();
 
     const container =
       document.getElementById(
@@ -3182,11 +3218,12 @@
     if (todayRows.length > 0) {
       rows = todayRows;
     } else if (isShowingPreviousDay && healthEl) {
-      healthEl.textContent = `☕ 目前非開盤交易時段 · 保留上一交易日模擬當沖戰報（09:00 開盤自動重置）`;
+      healthEl.textContent = `${health.message} 保留上一交易日模擬戰報，並非今日訊號。`;
     }
 
 
 
+    const unfilteredRowCount = rows.length;
     rows =
       rows.filter(
         x => {
@@ -3271,9 +3308,10 @@
           "目前沒有 OPEN 部位或今日完成交易。";
       }
 
+      if (window.DashboardUX) message = window.DashboardUX.emptyReason({live:INTRADAY_LIVE, health, filtered:unfilteredRowCount > 0});
       container.innerHTML = `
         <div class="text-xs sm:text-sm text-sub text-center py-8 font-medium">
-          ${message}
+          ${escapeHtml(message)}
         </div>
       `;
 
@@ -4558,11 +4596,36 @@
   async function fetchJson(url) {
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), 30000);
+    const clock = () => typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const started = clock();
+    let succeeded = false;
     try {
       const res = await fetch(url, {cache:'no-store', signal:abort.signal});
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } finally { clearTimeout(timer); }
+      const value = await res.json();
+      succeeded = true;
+      return value;
+    } finally {
+      clearTimeout(timer);
+      // Browser fetch + JSON parsing, not exchange latency or source freshness.
+      if (window.DashboardUX) window.DashboardUX.requestFinished(clock() - started, succeeded);
+    }
+  }
+
+  function updateDashboardUX() {
+    if (!window.DashboardUX) return;
+    window.DashboardUX.update({stocks:COMPUTED_STOCKS, meta:META, live:INTRADAY_LIVE,
+      health:liveDataState(), dailyValid:COMPUTED_STOCKS.some(validSelection),
+      dailyFetchState:DAILY_FETCH_STATE,
+      openStock:symbol=>openStockDetail(symbol, 'REBOUND')});
+  }
+
+  function clearDisplayFilters() {
+    BUDGET_MAX = null;
+    const budget = document.getElementById('budgetInput');
+    if (budget) budget.value = '';
+    localStorage.removeItem('MOHREN_BUDGET_MAX');
+    resetPriceRange();
   }
 
   function stockKlineUrl(stock) {
@@ -4711,9 +4774,8 @@
     if (sessionEl) {
 
       sessionEl.textContent =
-        INTRADAY?.session === "close"
-          ? "收盤版"
-          : "盤中掃描";
+        !liveDataState().current ? liveDataState().label
+          : ({preopen:'開盤前',daytrade:'Paper 盤中監控',no_new_entry:'停止新進場',force_exit:'強制出場',closed:'收盤 / 歷史快照'}[INTRADAY_LIVE.session] || '階段待確認');
 
     }
 
@@ -4729,6 +4791,7 @@
       trackingEl.textContent = liveDataState().label;
 
     }
+    updateDashboardUX();
 
   }
 
@@ -4738,6 +4801,8 @@
      ======================================================== */
 
   async function fetchMarketData() {
+    DAILY_FETCH_STATE = 'loading';
+    updateDashboardUX();
 
     /*
      * 這個時間代表：
@@ -4883,6 +4948,7 @@
         : '等待新版後端資料：請執行 Daily Stock Data Update；舊版評分不產生推薦。';
 
 
+      DAILY_FETCH_STATE = 'success';
       renderAllSections();
 
 
@@ -4901,6 +4967,8 @@
         if (stocksEl && stocksEl.textContent.includes('載入')) stocksEl.textContent = '讀取失敗';
         if (dateEl && dateEl.textContent.includes('載入')) dateEl.textContent = '連線逾時';
       }
+      DAILY_FETCH_STATE = 'failed';
+      updateDashboardUX();
 
     }
 
@@ -5059,7 +5127,7 @@
 <script src="assets/vendor/html2canvas.min.js"></script>
 <script src="assets/module-share.js?v=d047d833f8a3"></script>
 <script src="assets/learning-status.js?v=7abe6c98e7b4"></script>
-<script src="assets/rebound-ui.js?v=81e93ff0ad7b"></script>
+<script src="assets/rebound-ui.js?v=16bb35854edb"></script>
 <script src="assets/dashboard-layout.js?v=ab06770c6379"></script>
 <script src="assets/intraday-chart.js?v=17c577fb8eaa"></script>
 <script src="assets/provider-health.js?v=e8f08c578597"></script>
