@@ -94,8 +94,11 @@ def evaluate(unseen: list[dict], exposed: list[dict], *, folds=FOLDS) -> dict:
         outcome = 'INCONCLUSIVE_HOLDOUT_DECIDES'
     else:
         outcome = 'REJECTED'
+    descriptive_outcome = {'CONFIRMATION_CANDIDATE': 'DESCRIPTIVE_PASS',
+                           'INCONCLUSIVE_HOLDOUT_DECIDES': 'DESCRIPTIVE_INCONCLUSIVE',
+                           'REJECTED': 'REJECTED'}[outcome]
     report['decision'] = {'stage1_unseen_2022': stage1, 'stage2_exposed_net_positive': s2_ok,
-                          'outcome': 'DESCRIPTIVE_PASS' if outcome != 'REJECTED' else outcome,
+                          'outcome': descriptive_outcome,
                           'legacy_criteria_outcome': outcome, 'holdout_authorized': False, 'production_ready': False}
     return report
 

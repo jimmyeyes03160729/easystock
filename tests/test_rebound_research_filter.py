@@ -40,6 +40,8 @@ def test_decision_paths():
     assert evaluate(good_unseen, bad_exposed, folds=folds)['decision']['outcome'] == 'REJECTED'
     few = good_unseen[:MIN_UNSEEN_TRADES - 1]
     assert evaluate(few, good_exposed, folds=folds)['decision']['legacy_criteria_outcome'] == 'INCONCLUSIVE_HOLDOUT_DECIDES'
+    assert evaluate(few, good_exposed, folds=folds)['decision']['outcome'] == 'DESCRIPTIVE_INCONCLUSIVE'
+    assert evaluate(few, good_exposed, folds=folds)['decision']['holdout_authorized'] is False
     assert evaluate(few, bad_exposed, folds=folds)['decision']['outcome'] == 'REJECTED'
     losing = [pick(d, 1.0, 9.5) for d in days('2022', MIN_UNSEEN_TRADES)]
     assert evaluate(losing, good_exposed, folds=folds)['decision']['stage1_unseen_2022'] == 'FAIL'
