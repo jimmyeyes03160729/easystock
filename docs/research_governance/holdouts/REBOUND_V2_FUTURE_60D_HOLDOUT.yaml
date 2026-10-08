@@ -21,7 +21,677 @@ partition_definition:
   expected_start_date: "2026-10-07"
   selection_rule: "FIRST_60_ELIGIBLE_TRADING_DAYS"
   holdout_end_date: null
-  excluded_dates: []
+  excluded_dates:
+    - date: "2026-10-13"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-10-14"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-10-15"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-10-16"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-10-19"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-10-20"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-10-21"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-10-22"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-10-23"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-10-26"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-10-27"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-10-28"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-10-29"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-10-30"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-02"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-03"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-04"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-05"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-06"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-09"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-10"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-11"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-12"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-13"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-16"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-17"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-18"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-19"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-20"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-23"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-24"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-25"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-26"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-27"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-11-30"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-01"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-02"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-03"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-04"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-07"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-08"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-09"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-10"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-11"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-14"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-15"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-16"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-17"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-18"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-21"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-22"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-23"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-24"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-25"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-28"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-29"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-30"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2026-12-31"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-01"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-04"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-05"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-06"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-07"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-08"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-11"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-12"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-13"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-14"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-15"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-18"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-19"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-20"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-21"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-22"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-25"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-26"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-27"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-28"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-01-29"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-01"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-02"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-03"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-04"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-05"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-08"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-09"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-10"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-11"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-12"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-15"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-16"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-17"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-18"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-19"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-22"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-23"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-24"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-25"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-02-26"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-01"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-02"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-03"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-04"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-05"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-08"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-09"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-10"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-11"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-12"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-15"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-16"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-17"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-18"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-19"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-22"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-23"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-24"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-25"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-26"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-29"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-30"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-03-31"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-04-01"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-04-02"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-04-05"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-04-06"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-04-07"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-04-08"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-04-09"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-04-12"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-04-13"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-04-14"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-04-15"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
+    - date: "2027-04-16"
+      reason: "PLANNED_PRICE_READ_BY_REVENUE_FORWARD_V1"
+      outcome_dependent: false
+      amendment: "REBOUND_AMENDMENT_1_20261008"
+      dataset_id: "REBOUND_V2_DAILY_20261013_20270416_EXCLUDED_RANGE"
   target_eligible_days: 60
   eligible_days_collected: 0
   collected_eligible_trading_days: []
