@@ -1,0 +1,71 @@
+# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any imbalance-conditioned return is read)
+
+trial_id: "TRIAL_EA_TOB_IMBALANCE_V1"
+parent_trial_id: "TRIAL_EA_PASSIVE_FILL_V1"
+created_at: "2026-10-08T19:00:00+08:00"
+study_name: "TOB_IMBALANCE_V1 best-bid/best-ask size imbalance, forward mid and taker-cost returns"
+research_stage: "EXPLORATORY"
+ledger_record_type: "PREREGISTERED_TRIAL"
+recorded_after_experiment: false
+
+provenance:
+  source_classification: "EXPLORATORY_HEURISTIC"
+  source_refs:
+    - "docs/research_governance/preregistrations/TOB_IMBALANCE_V1.yaml"
+    - "docs/daytrade_knowledge_v1/TAIWAN_DAYTRADE_CANDIDATE_KNOWLEDGE_BASE.md"
+
+hypothesis:
+  statement: "When the best bid shows much more size than the best ask (I >= 0.6), the forward mid return exceeds the unconditional return at 1m, 5m or 15m, and the move is large enough to pay taker costs."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "directional_excess_mid_return_bps"
+  direction: "PASS_FAIL"
+  baseline: "ALL_VALID_POINTS_SAME_HORIZON"
+  frozen_before_search: true
+
+data:
+  dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2024-12-25"
+  end_date: "2026-08-27"
+  dataset_end: "2026-10-02"
+  universe: "100_STOCK_LIQUIDITY_POOL"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: false
+  future_holdout_seen: false
+  exposed_dimensions: []
+  exposures: []
+
+search:
+  parameters_searched:
+    - "none: one signal with fixed edges, three fixed horizons"
+  search_space:
+    horizons: "1m, 5m, 15m"
+  trial_count: 3
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/TOB_IMBALANCE_V1.yaml"
+  registry_hash: "NOT_YET_RUN"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "IN_PROGRESS"
+  decision: "FROZEN_NOT_RUN"
+  sealed_commit: ""
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    Level-1 only; the five-level knowledge-base rules remain untestable until BidAsk is collected.
