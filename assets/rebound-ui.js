@@ -101,8 +101,9 @@ async function renderPublishedFeed(pool,meta){
   pending.forEach((row,index)=>watch.append(card(row,index,true)));
   if(selected.length)status.textContent=`本次 ${selected.length} 檔通過正式 range-rebound 規則；Web / Chrome 共用同一結果。`;
   else if(pending.length)status.textContent='有股票形成底部止跌型態，但基本面資料仍不完整，暫不列入正式推薦。';
+  else if((feed.signals?.length||0)+(feed.pending?.length||0)>0)status.textContent='後端已發布觀察標的，但不在目前股票池 / 價格篩選範圍內；請清除篩選或確認股票池資料，不能判定為全市場無訊號。';
   else status.textContent='今天沒有符合正式底部反彈規則的股票，不硬湊標的。';
-  progress.textContent=`資料 ${feed.as_of} · 正式發布 ${selected.length} 檔 · 策略 ${feed.strategy_version}`;
+  progress.textContent=`資料 ${feed.as_of} · 正式發布 ${Array.isArray(feed.signals)?feed.signals.length:0} 檔 / 目前顯示 ${selected.length} 檔 · 策略 ${feed.strategy_version}`;
   el('reboundDiagnostics').textContent='此區目前使用後端發布的單一正式 Rebound feed，與 Chrome Extension 共用 signal / release / strategy version。';
   return true;
  }
@@ -151,6 +152,8 @@ async function refresh(pool,meta){
  const selected=ranked.filter(r=>r.financial.status==='passed').slice(0,3),pending=ranked.filter(r=>r.financial.status==='incomplete').slice(0,3);
  if(selected.length)status.textContent=`本次 ${selected.length} 檔通過試行規則；最多三檔。`;
  else if(pending.length)status.textContent='有股票形成底部止跌型態，但基本面資料仍不完整，暫不列入正式推薦。';
+ else if(!jobs.length)status.textContent='目前股票池沒有可進行日 K 型態檢查的標的；請查看資料 / 門檻檢查結果，不以未檢查推定市場無訊號。';
+ else if(tally.missing===jobs.length)status.textContent='本次日 K 全部讀取失敗；無法確認底部反彈訊號，不以缺資料判定沒有機會。';
  else status.textContent='今天沒有同時形成支撐、止跌與基本面合格的股票，不硬湊三檔。';
  selected.forEach((r,i)=>picks.append(card(r,i,false)));
  if(pending.length){el('reboundWatchSection').hidden=false;pending.forEach((r,i)=>watch.append(card(r,i,true)));}

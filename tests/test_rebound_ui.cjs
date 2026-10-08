@@ -24,6 +24,9 @@ const txt=id=>w.document.getElementById(id).textContent;
  const seen=[];w.fetch=async url=>{seen.push(url);if(url.endsWith('/releases/E/rebound_feed.json'))return {ok:true,json:async()=>feed};return {ok:false,status:403};};
  await w.RangeReboundUI.refresh([stock],{updated_at:day,release_id:'E'});assert(txt('reboundPicks').includes('觀察 1'));assert.deepEqual(seen,['https://fb.invalid/market_data/releases/E/rebound_feed.json']);
  await w.RangeReboundUI.refresh([stock,{...stock,symbol:'5678'}],{updated_at:day,release_id:'E'});assert.equal(seen.length,1,'filter change reuses feed');
+ await w.RangeReboundUI.refresh([{...stock,symbol:'5678'}],{updated_at:day,release_id:'E'});
+ assert(txt('reboundStatus').includes('價格篩選範圍內'));assert(!txt('reboundStatus').includes('今天沒有符合'));
+ assert(txt('reboundProgress').includes('正式發布 1 檔 / 目前顯示 0 檔'));
  w.eval(fs.readFileSync('assets/rebound-ui.js','utf8'));await w.RangeReboundUI.refresh([stock],{updated_at:day,release_id:'E'});assert.equal(seen.length,1,'reload reuses stored feed');
  // feed 被擋：同一 release 不重複打 feed，也不重複抓已計算的 K 線。
  seen.length=0;w.fetch=async url=>{seen.push(url);return url.startsWith('/pinned/')?{ok:true,json:async()=>rows}:{ok:false,status:403};};
