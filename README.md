@@ -101,7 +101,7 @@ python vm_runtime/daytrade_learning/test_eod_fix.py
 
 - `paper_account.py` 辨識舊五欄帳本與八欄交易期間帳本；交易期間缺漏會停止，不重設本金或補造期間。現金帳本支援原子結算與 trade_id 重試。
 - `deploy/verify_paper_ledger.py` 唯讀複製實際資料庫，在暫存副本測試買賣與現金核對；原始資料庫不寫入測試交易。
-- `deploy/update_vm_main.sh` 備份 Git、SQLite 及新增追蹤前的本機模組，快轉到 main 並執行驗證。當沖 timer 保持停用，模型與服務驗收需另外完成。
+- `deploy/update_vm_main.sh` 備份 Git、SQLite 及新增追蹤前的本機模組，快轉到 main 並執行驗證。驗證失敗時程式回滾到更新前的 commit；migrate 之後的步驟失敗則保留新程式、不自動恢復 timer，待人工確認。當沖 timer 保持停用，模型與服務驗收需另外完成。
 - 歷史下載先追加 0050 K 棒觀察到的近期交易日，再回補更早資料。沒有回傳日期不補造交易日。
 - 預設 `EASYSTOCK_HISTORY_TARGET_SYMBOLS=100`：保留既有名單，從 Shioaji AmountRank 前 200 筆的普通股四碼合約按成交金額遞減補足；名單存檔後固定，不每日汰換。排名不足時保留原池並記錄 pending。原 plan 備份及新選股依據寫入資料目錄。
 - 目前流動性選股存在存活者偏差，不能當成當年全市場；下載日期範圍不代表每檔每日完整，也不代表新模型已訓練或部署。

@@ -151,3 +151,11 @@ def test_simulation_follows_opt_in_rules():
     assert why is None and row['reason'] == '動態保本出場' and row['exit_price'] < 301.5
     s, p = sim_fixture(10, dict(POLICY, max_roundtrip_cost_pct=.6))
     assert simulate(s, p, COSTS)[1] == 'cost_filter'
+
+
+def test_flat_limit_up_bar_is_not_a_short_low_break():
+    # A locked limit-up bar has open == high == low == close; touching the recent low is not breaking it.
+    locked = [{'open': 110, 'high': 110, 'low': 110, 'close': 110, 'volume': 1000} for _ in range(8)]
+    assert '5分K破短低' not in strategy_engine.evaluate_daytrade(locked, bars(110, 3))['vetoes']
+    broken = locked[:-1] + [{'open': 110, 'high': 110, 'low': 109.5, 'close': 109.5, 'volume': 1000}]
+    assert '5分K破短低' in strategy_engine.evaluate_daytrade(broken, bars(110, 3))['vetoes']
