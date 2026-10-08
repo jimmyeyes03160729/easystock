@@ -4,6 +4,7 @@
 from __future__ import annotations
 import threading
 from datetime import datetime
+from typing import Any
 from pathlib import Path
 from .config import (
     RUNWAY_V2_ENABLED,
@@ -15,8 +16,18 @@ from .config import (
 from .strategy import evaluate_signal
 from .manager import PositionManagerV2
 from .notifier import notify_entry, notify_exit
-from .ledger import get_daily_trades
+from .ledger import (
+    delete_position_state,
+    get_daily_trades,
+    init_position_state,
+    save_position_state,
+)
+from .restore import restore_positions
+from .limits import DailyLimits, planned_shares
 from .orderbook import OrderBookTracker
+
+# 盤中部位狀態 sidecar：停損/最高價/旗標/股數一變就寫；只有現價變動時每檔最多每 N 秒寫一次
+STATE_PRICE_PERSIST_SECONDS = 5.0
 
 
 class RunwayV2Runner:
@@ -24,11 +35,75 @@ class RunwayV2Runner:
         self.enabled = RUNWAY_V2_ENABLED
         self.db_path = db_path or DB_PATH
         self.manager = PositionManagerV2(db_path=self.db_path)
+        self.limits = DailyLimits(db_path=self.db_path)
         self.orderbook_tracker = OrderBookTracker()
         self.subscribe_bidask_fn: Any = None
         self.subscribed_bidask_symbols: set[str] = set()
         self.lock = threading.Lock()
         self.last_eval_time = ""
+        init_position_state(self.db_path)
+        self._restored_day: str | None = None
+        self._persisted: dict[str, tuple[tuple, float, datetime]] = {}
+
+    def _ensure_restored(self, current_dt: datetime) -> None:
+        """每個交易日第一次事件 (含重啟後第一次) 由 ledger 還原今日仍在手的部位；呼叫端須持有 lock。"""
+        day = current_dt.strftime("%Y-%m-%d")
+        if day == self._restored_day:
+            return
+        self._restored_day = day
+        try:
+            result = restore_positions(
+                self.manager, day, current_dt.isoformat(), db_path=self.db_path
+            )
+        except Exception as exc:
+            print(f"[RUNWAY_V2_RESTORE] failed day={day} error={type(exc).__name__}: {exc}")
+            return
+        self._persisted.clear()
+        if result["restored"] or result["orphaned"]:
+            self.sync_to_firebase()
+
+    def _persist_state(self, symbol: str, current_dt: datetime, force: bool = False) -> None:
+        pos = self.manager.positions.get(symbol)
+        if pos is None:
+            return
+        key = (pos.shares, round(pos.stop_price, 4), pos.highest_price, pos.half_closed, pos.trailing_active)
+        last = self._persisted.get(pos.trade_id)
+        if not force and last is not None:
+            last_key, last_price, last_dt = last
+            if key == last_key:
+                if pos.current_price == last_price:
+                    return
+                try:
+                    if (current_dt - last_dt).total_seconds() < STATE_PRICE_PERSIST_SECONDS:
+                        return
+                except TypeError:
+                    pass
+        try:
+            save_position_state(
+                trade_id=pos.trade_id,
+                symbol=pos.symbol,
+                shares=pos.shares,
+                stop_price=pos.stop_price,
+                highest_price=pos.highest_price,
+                current_price=pos.current_price,
+                half_closed=pos.half_closed,
+                trailing_active=pos.trailing_active,
+                price_time=current_dt.isoformat(),
+                db_path=self.db_path,
+            )
+            self._persisted[pos.trade_id] = (key, pos.current_price, current_dt)
+        except Exception as exc:
+            print(f"[RUNWAY_V2_STATE_WARN] {symbol} {type(exc).__name__}: {exc}")
+
+    def _after_exit(self, exit_event: dict, current_dt: datetime) -> None:
+        if exit_event.get("is_partial"):
+            self._persist_state(exit_event["symbol"], current_dt, force=True)
+            return
+        self._persisted.pop(exit_event["trade_id"], None)
+        try:
+            delete_position_state(exit_event["trade_id"], self.db_path)
+        except Exception as exc:
+            print(f"[RUNWAY_V2_STATE_WARN] {exit_event['symbol']} {type(exc).__name__}: {exc}")
 
     def on_radar_update(
         self,
@@ -44,12 +119,17 @@ class RunwayV2Runner:
         time_str = current_dt.strftime("%H:%M:%S")
 
         with self.lock:
+            self._ensure_restored(current_dt)
+
             # 1. 檢查是否在進場時間窗口內 (09:05:00 ~ 12:30:00)
             if not (ENTRY_START_TIME <= time_str <= ENTRY_CUTOFF_TIME):
                 return
 
             if not self.manager.can_open_new():
                 return
+
+            # 每日額度與熔斷計數 (換日或重啟後由 ledger 重建)
+            self.limits.roll_to(current_dt.strftime("%Y-%m-%d"))
 
             # 2. 依動能評估合格清單
             for row in qualified_rows:
@@ -93,6 +173,20 @@ class RunwayV2Runner:
                 )
 
                 if signal:
+                    # 每日買進額度 100 萬 (只計買進) 與已實現虧損 6,000 熔斷
+                    notional = planned_shares(current_price) * current_price
+                    block = self.limits.block_reason(notional)
+                    if block:
+                        if self.limits.first_block_today(symbol, block):
+                            print(
+                                f"[RUNWAY_V2_LIMIT] skip {symbol} {name} type={signal['signal_type']} "
+                                f"reason={block} buy_used={self.limits.buy_amount:,.0f} "
+                                f"new={notional:,.0f} buy_cap={self.limits.max_buy_amount:,.0f} "
+                                f"realized_net={self.limits.realized_net_pnl:,.0f} "
+                                f"loss_limit={-self.limits.max_loss:,.0f}"
+                            )
+                        continue
+
                     pos = self.manager.open_position(
                         symbol=symbol,
                         name=name,
@@ -104,6 +198,8 @@ class RunwayV2Runner:
                         stop_price=signal.get("stop_price"),
                     )
                     if pos:
+                        self.limits.refresh()
+                        self._persist_state(symbol, current_dt, force=True)
                         print(
                             f"[RUNWAY_V2_ENTRY] {symbol} {name} price={current_price} "
                             f"type={signal['signal_type']} score={signal['score']}"
@@ -128,19 +224,24 @@ class RunwayV2Runner:
         is_force_exit = time_str >= FORCE_EXIT_TIME
 
         with self.lock:
+            self._ensure_restored(current_dt)
+
             if symbol not in self.manager.positions and not is_force_exit:
                 return
 
             # 如果是強制出場時間，對所有現有持倉平倉
+            # 每檔以自己的最新成交價出場 (觸發檔用本筆 tick，其餘用 pos.current_price)，不可用盤中最高價
             if is_force_exit:
-                for sym in list(self.manager.positions.keys()):
+                for sym, pos in list(self.manager.positions.items()):
                     exit_event = self.manager.update_price(
                         symbol=sym,
-                        current_price=price if sym == symbol else self.manager.positions[sym].highest_price,
+                        current_price=price if sym == symbol else pos.current_price,
                         dt_str=current_dt.isoformat(),
                         force_exit=True,
                     )
                     if exit_event:
+                        self.limits.refresh()
+                        self._after_exit(exit_event, current_dt)
                         print(f"[RUNWAY_V2_EXIT] {exit_event}")
                         notify_exit(
                             symbol=exit_event["symbol"],
@@ -163,6 +264,8 @@ class RunwayV2Runner:
                 force_exit=False,
             )
             if exit_event:
+                self.limits.refresh()
+                self._after_exit(exit_event, current_dt)
                 print(f"[RUNWAY_V2_EXIT] {exit_event}")
                 notify_exit(
                     symbol=exit_event["symbol"],
@@ -175,6 +278,8 @@ class RunwayV2Runner:
                     reason=exit_event["reason"],
                 )
                 self.sync_to_firebase()
+            else:
+                self._persist_state(symbol, current_dt)
 
     def export_snapshot(self) -> dict:
         today_str = datetime.now().strftime("%Y-%m-%d")
