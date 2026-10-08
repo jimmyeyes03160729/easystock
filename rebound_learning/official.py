@@ -141,7 +141,8 @@ def audit(market, db, *, write: bool = True) -> dict:
     report['blinded_from'] = reserved
     report['dataset_schema_version'] = 2
     report['feature_schema_version'] = FEATURE_SCHEMA_VERSION
-    report['symbols_scanned'] = market.execute('SELECT COUNT(DISTINCT symbol) FROM bars').fetchone()[0]
+    report['symbols_scanned'] = market.execute('SELECT COUNT(DISTINCT symbol) FROM bars WHERE day<?',
+                                               (reserved,)).fetchone()[0]
     report['coverage']['adj_unknown_candidate_ratio'] = None
     unknown = db.execute("SELECT COUNT(*) FROM candidates WHERE json_extract(snapshot,'$.adj_unknown_events_252d')>0 AND signal_date<?",
                          (reserved,)).fetchone()[0]
