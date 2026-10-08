@@ -1,0 +1,45 @@
+# EasyStock OOS Consumption Ledger — REVENUE_DRIFT_V1 (preregistered, run once, plus two disclosed post-hoc stresses)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "PHASE2_HISTORICAL_REVENUE_DRIFT_V1_RUN"
+created_at: "2026-10-08T17:40:00+08:00"
+description: >
+  The single preregistered run of REVENUE_DRIFT_V1 (frozen in 78b4ebf) on official daily bars 2022-01..2026-10-02 and
+  MOPS monthly revenue 2020-01..2026-08, followed by two disclosed feasibility stresses on the same data. Reserved
+  future partitions and days > 2026-10-02 were not read.
+
+consumption_events:
+  - consumption_id: "CNS_REVENUE_DRIFT_V1_DAILY_2022_2026"
+    trial_id: "TRIAL_REVENUE_DRIFT_V1"
+    dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+    dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+    dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+    slice:
+      start_date: "2022-01-03"
+      end_date: "2026-10-02"
+      slice_definition: "REVENUE_DRIFT_V1: entry sessions 2022-02..2026-09, monthly top-decile portfolios, DT/H5/H20 exits, liquid common stocks"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "monthly top-decile, universe and bottom-decile net returns per signal and horizon"
+      - "per-calendar-year fold means"
+      - "limit-up-open exclusion and extra-slippage stresses (post-hoc, disclosed)"
+    consumed_at: "2026-10-08T17:08:03+08:00"
+    record_type: "PREREGISTERED_CONSUMPTION"
+    recorded_after_exposure: true
+    source_artifact: "VM:/home/ubuntu/easystock-research/revenue_v1/output/easystock_revenue_drift_v1_20261008.tar.gz (sha256 7fb9f83c6f44d27e7ca13b20d7bed129327d3b8326b01b3c2d6820b53562550d)"
+    source_commit: "78b4ebf"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Discovery-quality exposure of 2022-2026 daily bars for the revenue hypothesis; confirmation must use revenue months >= 2026-09."
