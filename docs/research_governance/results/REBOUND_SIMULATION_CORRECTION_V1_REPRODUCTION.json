@@ -1,0 +1,24 @@
+{
+  "holdout_read": false,
+  "source_labels_read": false,
+  "studies": {
+    "P2": {
+      "byte_identical": true,
+      "commit": "93649dd",
+      "original_sha256": "9b6bfbc9433dd2d49ca971facf6d5609baec1c4caa556cc3ad13259250e5b499",
+      "reproduced_sha256": "9b6bfbc9433dd2d49ca971facf6d5609baec1c4caa556cc3ad13259250e5b499"
+    },
+    "P3": {
+      "byte_identical": true,
+      "commit": "99c4d51",
+      "original_sha256": "a2f91c2f570fb5f228e276d73a5bbe8ceb6587d007957aec1b15ba5fba8e227d",
+      "reproduced_sha256": "a2f91c2f570fb5f228e276d73a5bbe8ceb6587d007957aec1b15ba5fba8e227d"
+    },
+    "P4": {
+      "byte_identical": true,
+      "commit": "1fef953",
+      "original_sha256": "8ebfb08d5374e13f799ba4798c38794a8364ee268574c512334c803f06530228",
+      "reproduced_sha256": "8ebfb08d5374e13f799ba4798c38794a8364ee268574c512334c803f06530228"
+    }
+  }
+}
