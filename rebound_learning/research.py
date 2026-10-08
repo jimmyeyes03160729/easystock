@@ -176,6 +176,22 @@ def bootstrap_delta(model: dict, base: dict, seed: int = 0) -> dict:
             'p90': round(values[int(0.90 * len(values))], 4), 'samples': len(values)}
 
 
+def bootstrap_mean(by_day: dict, seed: int = 0) -> dict:
+    """Date-block bootstrap of the pooled mean net return (used by later studies)."""
+    days = sorted(by_day)
+    rng = random.Random(seed)
+    values = []
+    for _ in range(BOOTSTRAP):
+        trades = [t for d in (rng.choice(days) for _ in days) for t in by_day[d]]
+        if trades:
+            values.append(sum(trades) / len(trades))
+    values.sort()
+    if not values:
+        return {'p10': float('-inf'), 'p50': None, 'p90': None, 'samples': 0}
+    return {'p10': round(values[int(0.10 * len(values))], 4), 'p50': round(values[len(values) // 2], 4),
+            'p90': round(values[int(0.90 * len(values))], 4), 'samples': len(values)}
+
+
 def criteria(folds: list[dict], pooled: dict, boot: dict) -> dict:
     deltas = [f['delta_mean_net_pct'] for f in folds]
     result = {

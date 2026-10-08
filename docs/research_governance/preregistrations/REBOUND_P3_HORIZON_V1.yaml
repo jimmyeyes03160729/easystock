@@ -1,0 +1,68 @@
+# EasyStock preregistration — REBOUND_P3_HORIZON_V1 (rebound exit horizon study)
+# Frozen in git BEFORE any 5- or 20-session outcome of these exits was computed or viewed.
+#
+# Disclosed prior exposure on the same data (REBOUND_V2_OFFICIAL_DAILY_HISTORICAL):
+#  - Phase 1.5 build: whole-period mean 10D return (D1 open -> D10 close) per candidate kind; PENDING +0.33% gross.
+#  - REBOUND_P2_RANKER_V1 (REJECTED): rule-order top 3 with the rule bracket and a 10-session limit averaged
+#    -0.55% net per trade (PF 0.81), negative in 4 of 5 folds; about two thirds of all candidates timed out at 10.
+# These results motivated testing longer holding and dropping the target. Every horizon-20 and horizon-5 outcome
+# of these picks is unseen. This study reuses discovery data; only REBOUND_V2_FUTURE_60D can confirm.
+
+preregistration_id: "REBOUND_P3_HORIZON_V1"
+created_at: "2026-10-08T09:00:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE"
+direction: "LONG"
+implementation: "rebound_learning/research_horizon.py (frozen with this file in the same commit)"
+
+data:
+  dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+  signals: "2023-01-03 <= signal_date < 2026-10-07"
+  horizon_rule: "a signal is loaded only if its 20 following sessions all fall before 2026-10-07"
+  forbidden: ["REBOUND_V2_FUTURE_CONFIRMATION_60D", "any signal or market bar on/after 2026-10-07"]
+  price_basis: "dividend/ex-rights adjusted with events up to each day (production feed is unadjusted; see P2)"
+
+picks:
+  rule: "rule-order top 3 per signal date among PENDING candidates (breakout first, rule score descending, symbol), i.e. the homepage picks"
+  suspension: "a pick without a bar for every session of its 20-session horizon keeps its slot but produces no trade, for every exit"
+
+trade_definition:
+  entry: "D1 open; no trade when the D1 open is not strictly inside (rule invalid, rule target), for every exit"
+  gaps: "from D2 an opening gap through an active level exits at that open"
+  intrabar: "stop has priority over target"
+  cost_pct_round_trip: 0.6
+
+exits:
+  BRACKET_H20: "rule stop and rule target active; otherwise exit at the D20 close"
+  STOP_ONLY_H20: "rule stop active, no target; exit at the D20 close"
+  TIME_H20: "no stop, no target; exit at the D20 close"
+  TIME_H5: "no stop, no target; exit at the D5 close"
+
+folds:
+  - ["2024-01-01", "2024-06-30"]
+  - ["2024-07-01", "2024-12-31"]
+  - ["2025-01-01", "2025-06-30"]
+  - ["2025-07-01", "2025-12-31"]
+  - ["2026-01-01", "2026-10-06"]
+folds_note: "no training; folds only partition evaluation dates"
+
+pass_criteria:
+  A: "pooled mean net return per trade > 0"
+  B: "pooled net profit factor >= 1.05"
+  C: "mean net return > 0 in >= 4 of 5 folds"
+  D: "date-block bootstrap (2,000 resamples, seed 0) 10th percentile of the pooled mean net return > 0"
+  E: ">= 100 trades in every fold"
+  selection: "among exits passing A-E, the largest pooled mean net return; ties go to the earlier exit in the list"
+  outcome: "a selected exit becomes CONFIRMATION_CANDIDATE only; none passing -> REJECTED"
+
+confirmation:
+  holdout_id: "REBOUND_V2_FUTURE_60D"
+  rule: "the selected exit, unchanged, evaluated ONE_SHOT on homepage picks of the first 60 eligible sessions from 2026-10-07 after their 20-session horizons mature"
+  confirmation_criteria: "A and B on the holdout"
+  if_no_exit_passes: "the holdout stays reserved"
+
+prohibited:
+  - "changing picks, exits, horizon, costs, folds or criteria after any result of this study is seen"
+  - "testing another horizon or stop/target variant on these dates under this preregistration"
+  - "reading any outcome-bearing data on or after 2026-10-07 before the holdout is formally unsealed"
