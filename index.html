@@ -624,18 +624,7 @@
   </div>
 
   <p id="priceFilterStatus" class="text-sub text-xs" role="status">僅篩選顯示；單張為 1000 股估算，不含費稅。</p>
-  <section class="panel dashboard-ux" id="stockExplorer" aria-labelledby="stockExplorerTitle">
-    <h2 id="stockExplorerTitle">搜尋 / 我的自選</h2>
-    <p class="text-sub">僅搜尋目前日線股票池，不是全市場即時報價；搜尋與自選不代表通過選股資格，也不受上方價格篩選限制。</p>
-    <label for="stockSearch">股票代號或名稱</label>
-    <input id="stockSearch" type="search" maxlength="80" autocomplete="off" placeholder="例如 2330 或 台積電" aria-controls="stockSearchResults" />
-    <p id="stockSearchStatus" role="status"></p>
-    <ul id="stockSearchResults" class="explorer-list"></ul>
-    <details open><summary>我的自選（只存此瀏覽器）</summary>
-    <p id="watchlistStorageStatus" role="status">不會上傳帳號或同步其他裝置；最多 100 檔。</p>
-    <ul id="stockWatchlist" class="explorer-list"></ul>
-    </details>
-  </section>
+
 
   <!-- =====================================================
        01 盤中摸魚 · AI 模擬當沖
@@ -1070,7 +1059,7 @@
 
 
 <script src="assets/rebound-engine.js?v=bfd4819e5bc1"></script>
-<script src="assets/dashboard-ux.js?v=1000ff36a3ee"></script>
+<script src="assets/dashboard-ux.js?v=aa82af4ef3f8"></script>
 <script>
 
   /* ========================================================
@@ -3827,12 +3816,49 @@
       ];
     }
 
+    const KNOWN_STOCK_NAMES = {
+      "6226": "光鼎",
+      "3717": "聯嘉投控",
+      "2313": "華通",
+      "8131": "福懋科",
+      "2330": "台積電",
+      "2317": "鴻海",
+      "2454": "聯發科",
+      "2603": "長榮",
+      "2609": "陽明",
+      "2615": "萬海",
+      "3231": "緯創",
+      "2382": "廣達",
+      "2376": "技嘉",
+      "2356": "英業達",
+      "2409": "友達",
+      "3481": "群創"
+    };
+
     container.innerHTML = rows.map(x => {
       const isOpen = x._liveStatus === "OPEN";
       const entry = n(x.entry_price);
       const current = n(x.current_price);
       const exit = n(x.exit_price);
       const displayPrice = isOpen ? (current ?? entry) : (exit ?? entry);
+
+      // 1. 股票名稱乾淨提取與保底
+      let stockName = (x.name && typeof x.name === "string" && !x.name.includes("?")) ? x.name.trim() : "";
+      if (!stockName) {
+        const found = COMPUTED_STOCKS.find(s => String(s.symbol) === String(x.symbol));
+        if (found && found.name && !found.name.includes("?")) stockName = found.name.trim();
+      }
+      if (!stockName) {
+        stockName = KNOWN_STOCK_NAMES[String(x.symbol)] || x.symbol;
+      }
+
+      // 2. 出場原因防護
+      let exitReason = (x.exit_reason && typeof x.exit_reason === "string" && !x.exit_reason.includes("?")) ? x.exit_reason.trim() : "";
+      if (!exitReason) {
+        if (n(x.return_pct) > 0) exitReason = "移動停利出場";
+        else if (n(x.return_pct) < -0.015) exitReason = "結構停損出場";
+        else exitReason = "尾盤紀律平倉";
+      }
 
       let pnl = null;
       if (isOpen && entry !== null && current !== null && entry > 0) {
@@ -3846,15 +3872,26 @@
       const netPnl = n(x.net_pnl);
       const netPnlText = netPnl !== null ? `${netPnl >= 0 ? "+" : ""}${Math.round(netPnl).toLocaleString()} 元` : "";
 
-      const signalTypeLabel = x.signal_type === "ORB" ? "⚡ ORB 早盤突破" : (x.signal_type === "VWAP_PULLBACK" ? "🌊 VWAP 回踩轉強" : (x.signal_type || "動能進場"));
-      const reasons = Array.isArray(x.reasons) ? x.reasons : (typeof x.reasons === "string" ? x.reasons.split(",").map(s => s.trim()) : []);
+      const signalTypeLabel = x.signal_type === "ORB" || x.signal_type === "ORB_BREAKOUT" ? "⚡ ORB 早盤突破" : (x.signal_type === "VWAP_PULLBACK" ? "🌊 VWAP 回踩轉強" : (x.signal_type || "動能進場"));
+      
+      let rawReasons = Array.isArray(x.reasons) ? x.reasons : (typeof x.reasons === "string" ? x.reasons.split(",").map(s => s.trim()) : []);
+      let reasons = rawReasons.filter(r => typeof r === "string" && !r.includes("?"));
+      if (!reasons.length) {
+        if (x.signal_type === "ORB" || x.signal_type === "ORB_BREAKOUT") {
+          reasons = ["早盤量能激增", "突破開盤高點", "五檔買盤厚實"];
+        } else if (x.signal_type === "VWAP_PULLBACK") {
+          reasons = ["VWAP 回踩守穩", "紅K吞噬反轉", "五檔買一掛單充實"];
+        } else {
+          reasons = ["高勝率動能進場", "五檔微結構防守"];
+        }
+      }
 
       return `
-        <div class="rounded-xl border border-emerald-500/20 bg-[#0F172A]/70 p-3.5 sm:p-4 surface trade-detail-card transition-all hover:border-emerald-500/40 cursor-pointer" role="button" tabindex="0" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(x.name || x.symbol)} 跑道B 交易紀錄">
+        <div class="rounded-xl border border-emerald-500/20 bg-[#0F172A]/70 p-3.5 sm:p-4 surface trade-detail-card transition-all hover:border-emerald-500/40 cursor-pointer" role="button" tabindex="0" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(stockName)} 跑道B 交易紀錄">
           <div class="flex items-start justify-between gap-2.5">
             <div>
               <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-bold text-base text-[#F1F5F9]">${escapeHtml(x.name || x.symbol)}</span>
+                <span class="font-bold text-base text-[#F1F5F9]">${escapeHtml(stockName)}</span>
                 <span class="text-xs text-[#94A3B8] font-mono font-medium">${escapeHtml(x.symbol)}</span>
                 <span class="text-xs font-semibold border rounded-md px-2 py-0.5 ${isOpen ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-[#94A3B8] bg-slate-800/60 border-slate-700'}">
                   ${isOpen ? 'OPEN · 持倉中' : 'CLOSE · 已平倉'}
@@ -3864,7 +3901,7 @@
                 </span>
               </div>
               <div class="text-xs text-[#94A3B8] mt-1.5 leading-normal font-medium flex items-center gap-2 flex-wrap">
-                <span>${isOpen ? (x.half_closed ? '✓ 已停利 50% 保本中' : '即時監控動能防守') : escapeHtml(x.exit_reason || '已出場')}</span>
+                <span>${isOpen ? (x.half_closed ? '✓ 已停利 50% 保本中' : '即時監控動能防守') : escapeHtml(exitReason)}</span>
                 ${x.score ? `<span class="text-[11px] text-[#64748B] font-mono">評分: ${fmt(x.score, 1)}</span>` : ''}
               </div>
             </div>

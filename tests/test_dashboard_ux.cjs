@@ -69,48 +69,19 @@ test('mobile fields remain visible, 1000-share budget/range affect display only,
   assert.equal(w.localStorage.getItem('MOHREN_BUDGET_MAX'),null);
 });
 
-test('search by name/code, watch add/remove/reload and unavailable symbols; no HTML execution or eligibility fallback',t=>{
-  const {w,ux}=setup(t,{stored:JSON.stringify({version:1,symbols:['OUT','OUT']})});
-  const opened=[],stocks=[stock('2330','台積電'),stock('T1','<img src=x onerror=evil()>')];
-  ux.update({stocks,meta:{updated_at:'2026-10-01'},openStock:s=>opened.push(s)});
-  search(w,'台積');assert.match(w.document.getElementById('stockSearchResults').textContent,/2330/);
-  click(w,'查看 2330');assert.deepEqual(opened,['2330']);
-  click(w,'加入自選 2330');assert.equal(w.document.activeElement.textContent,'移除自選 2330');
-  assert.deepEqual(JSON.parse(w.localStorage.getItem('EASYSTOCK_WATCHLIST_V1')).symbols,['OUT','2330']);
-  assert.match(w.document.getElementById('stockWatchlist').textContent,/OUT.*不在目前股票池/);
-  assert(![...w.document.querySelectorAll('#stockWatchlist button')].some(b=>b.textContent==='查看 OUT'));
-  search(w,'T1');assert.equal(w.document.querySelector('#stockSearchResults img'),null);
-  assert.match(w.document.getElementById('stockSearchResults').textContent,/<img/);
-  search(w,'not-found');assert.match(w.document.getElementById('stockSearchStatus').textContent,/不代表股票不存在/);
-  click(w,'移除自選 2330');assert.deepEqual(JSON.parse(w.localStorage.getItem('EASYSTOCK_WATCHLIST_V1')).symbols,['OUT']);
-  search(w,'');assert.equal(w.document.getElementById('stockSearchResults').children.length,0);
-  assert.equal(stocks.length,2);
+test('search and watchlist UI completely removed from layout for clean interface', t => {
+  const {w, ux} = setup(t);
+  assert.equal(w.document.getElementById('stockExplorer'), null);
+  assert.equal(w.document.getElementById('stockSearch'), null);
+  assert.equal(w.document.getElementById('stockSearchResults'), null);
+  assert.equal(w.document.getElementById('stockWatchlist'), null);
+  assert(!html.includes('搜尋 / 我的自選'));
+  assert(!html.includes('id="stockExplorer"'));
+  // DashboardUX still functions for status updates
+  ux.update({stocks:[], meta:{updated_at:'2026-10-01'}, live:{session:'closed'}, health:{current:true}});
+  assert.match(w.document.getElementById('overviewSession').textContent, /歷史快照/);
 });
 
-test('watchlist reloads persisted selection, caps search, preserves focus across periodic live updates',t=>{
-  const {w,ux}=setup(t,{stored:JSON.stringify({version:1,symbols:['T1']})});
-  const stocks=Array.from({length:25},(_,i)=>stock('T'+i));
-  ux.update({stocks,meta:{updated_at:'2026-10-01'}});search(w,'T');
-  assert.equal(w.document.getElementById('stockSearchResults').children.length,20);
-  assert.match(w.document.getElementById('stockSearchStatus').textContent,/25 檔.*前 20/);
-  const button=w.document.querySelector('#stockSearchResults button');button.focus();
-  ux.update({stocks,meta:{updated_at:'2026-10-01'},live:{session:'daytrade'},health:{current:true}});
-  assert.equal(w.document.activeElement,button);
-  assert.match(w.document.getElementById('stockWatchlist').textContent,/T1/);
-});
-
-test('100-symbol capacity is enforced; malformed/blocked/quota storage keeps memory-only fail-safe',t=>{
-  const full=setup(t,{stored:JSON.stringify({version:1,symbols:Array.from({length:100},(_,i)=>'T'+i)})});
-  full.ux.update({stocks:[stock('NEW')]});search(full.w,'NEW');click(full.w,'加入自選 NEW');
-  assert.match(full.w.document.getElementById('watchlistStorageStatus').textContent,/已達 100/);
-  assert.equal(JSON.parse(full.w.localStorage.getItem('EASYSTOCK_WATCHLIST_V1')).symbols.length,100);
-  for(const options of [{stored:'{bad'}, {blocked:true}, {writeBlocked:true}]) {
-    const {w,ux}=setup(t,options);ux.update({stocks:[stock('T')]});search(w,'T');click(w,'加入自選 T');
-    assert.match(w.document.getElementById('stockWatchlist').textContent,/T/);
-    assert.match(w.document.getElementById('watchlistStorageStatus').textContent,/記憶體/);
-    if(options.stored) assert.equal(w.localStorage.getItem('EASYSTOCK_WATCHLIST_V1'),'{bad');
-  }
-});
 
 test('production renderer integration retains offline historical warning, fresh-gate empty reason, no fake closed validity',async t=>{
   const {w,evalCode}=setup(t,{withMain:true});
