@@ -142,6 +142,7 @@ def record_exit(
 
 
 def get_open_trades(db_path: Path | str | None = None) -> list[dict]:
+    init_db(db_path)
     conn = get_connection(db_path)
     rows = conn.execute(
         "SELECT * FROM runway_v2_trades WHERE status = 'OPEN'"
@@ -151,6 +152,7 @@ def get_open_trades(db_path: Path | str | None = None) -> list[dict]:
 
 
 def get_daily_trades(day: str, db_path: Path | str | None = None) -> list[dict]:
+    init_db(db_path)
     conn = get_connection(db_path)
     rows = conn.execute(
         "SELECT * FROM runway_v2_trades WHERE entry_time LIKE ? ORDER BY id ASC",

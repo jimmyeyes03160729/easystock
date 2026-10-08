@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import sqlite3
+from contextlib import closing
 import sys
 import tempfile
 import unittest
@@ -18,7 +19,7 @@ class CashLedgerTests(unittest.TestCase):
         self.path=Path(self.tmp.name)/'state.sqlite'
         self.env=patch.dict(os.environ,{'EASYSTOCK_ADMIN_DB':str(self.path)});self.env.start()
         Store(initial={'min_price':1,'max_price':1000,'max_gain_pct':5})
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:
             ledger.init_schema(db)
             db.execute("INSERT INTO meta VALUES('paper_trade_period_current','fixture')")
             db.execute("INSERT INTO paper_trade_periods(id,created_at,starting_cash,archive_path) VALUES('fixture','2026-09-01',100000,'fixture')")
@@ -27,7 +28,7 @@ class CashLedgerTests(unittest.TestCase):
 
     def tearDown(self):self.env.stop();self.tmp.cleanup()
     def query(self,sql):
-        with sqlite3.connect(self.path) as db:return db.execute(sql).fetchall()
+        with closing(sqlite3.connect(self.path)) as db, db:return db.execute(sql).fetchall()
 
     def test_deployment_probe_leaves_source_database_unchanged(self):
         import subprocess
@@ -63,7 +64,7 @@ class CashLedgerTests(unittest.TestCase):
 
     def test_failed_sell_rolls_back_fills_cash_and_position(self):
         buy=account.buy('2330','fixture',100)
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:
             db.execute("CREATE TRIGGER fail_sell BEFORE INSERT ON paper_trade_fills WHEN NEW.side='SELL' BEGIN SELECT RAISE(ABORT,'fixture'); END")
         with self.assertRaises(sqlite3.IntegrityError):account.sell('2330',101,trade_id=buy['trade_id'])
         self.assertEqual(ledger.snapshot(self.path)['settings']['daily_buy_used'],100000)
@@ -74,23 +75,23 @@ class CashLedgerTests(unittest.TestCase):
     def test_missing_period_and_old_receipt_cannot_close_new_position(self):
         first=account.buy('2330','fixture',100)
         account.sell('2330',101,trade_id=first['trade_id'])
-        with sqlite3.connect(self.path) as db:db.execute('UPDATE paper_trade_settings SET daily_buy_limit=200000')
+        with closing(sqlite3.connect(self.path)) as db, db:db.execute('UPDATE paper_trade_settings SET daily_buy_limit=200000')
         second=account.buy('2330','fixture',100)
         account.sell('2330',105,trade_id=first['trade_id'])
         self.assertEqual(account.open_positions()[0]['trade_id'],second['trade_id'])
         with self.assertRaises(ValueError):account.sell('2330',101,trade_id='wrong')
-        with sqlite3.connect(self.path) as db:db.execute("DELETE FROM meta WHERE key='paper_trade_period_current'")
+        with closing(sqlite3.connect(self.path)) as db, db:db.execute("DELETE FROM meta WHERE key='paper_trade_period_current'")
         with self.assertRaises(RuntimeError):account.buy('2317','fixture',10)
 
     def test_existing_ledger_position_identity_recovered_from_fill(self):
         buy=account.buy('2330','fixture',100)
-        with sqlite3.connect(self.path) as db:db.execute("DELETE FROM meta WHERE key='paper-position:2330'")
+        with closing(sqlite3.connect(self.path)) as db, db:db.execute("DELETE FROM meta WHERE key='paper-position:2330'")
         self.assertEqual(account.open_positions()[0]['trade_id'],buy['trade_id'])
         self.assertEqual(account.sell('2330',101,trade_id=buy['trade_id'])['status'],'sold')
 
     def test_overnight_position_blocks_buy_and_sell(self):
         account.buy('2330','fixture',100)
-        with sqlite3.connect(self.path) as db:db.execute("UPDATE paper_trade_positions SET entry_date='2020-01-01'")
+        with closing(sqlite3.connect(self.path)) as db, db:db.execute("UPDATE paper_trade_positions SET entry_date='2020-01-01'")
         self.assertEqual(account.buy('2317','fixture',10)['status'],'skipped')
         with self.assertRaises(RuntimeError):account.sell('2330',101)
 

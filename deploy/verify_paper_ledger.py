@@ -27,7 +27,7 @@ def verify(database, runtime):
             kind = account.ledger_kind()
             if account.open_positions():
                 raise RuntimeError('open positions require reconciliation before deployment')
-            with sqlite3.connect(copy) as con:
+            with closing(sqlite3.connect(copy)) as con, con:
                 if con.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
                     raise RuntimeError('SQLite integrity check failed')
                 # Only the temporary copy is resumed. The source account is unchanged.
@@ -46,7 +46,7 @@ def verify(database, runtime):
             retry = account.sell('TEST',price*1.02,trade_id=buy['trade_id'])
             assert retry['already_settled'], 'settlement retry not idempotent'
             assert not account.open_positions(), 'temporary position remained'
-            with sqlite3.connect(copy) as con:
+            with closing(sqlite3.connect(copy)) as con, con:
                 con.row_factory=sqlite3.Row
                 after=paper_ledger.daily_metrics(con,paper_ledger.period(con),paper_ledger.now().date().isoformat())
                 assert abs(after['cumulative_net_pnl']-cum-sell['net_pnl']) < .011, 'cumulative pnl reconciliation failed'

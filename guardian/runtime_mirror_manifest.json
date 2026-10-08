@@ -35,6 +35,7 @@
     "history/collector_core.py",
     "history/daily_history.py",
     "history/history_status.py",
+    "history/test_daily_history.py",
     "history/train_history.py",
     "intraday_live.py",
     "learning_cycle.py",
@@ -47,7 +48,6 @@
     "paper_execution.py",
     "paper_ledger.py",
     "position_manager.py",
-    "premarket_ai.py",
     "public_feed.py",
     "strategy_engine.py",
     "strategy_rules.py",
@@ -59,7 +59,7 @@
     "requirements.txt": "Root research/dashboard dependencies versus runtime broker dependencies; not interchangeable.",
     "market_calendar.py": "VM wrapper delegates to the single root implementation rather than duplicate calendar logic.",
     "easystock_admin/test_admin.py": "Root suite adds daily-limit cases; retained runtime suite is a subset, not production implementation.",
-    "history/test_daily_history.py": "Root collector suite includes configurable schedule cases; runtime retained baseline suite differs."
+    "premarket_ai.py": "Root compatibility entry point loads the project env and delegates to vm_runtime/premarket_ai.py; routing is verified by tests/test_premarket_entry.py."
   },
   "runtime_only": {
     "daytrade_learning/test_champion.py": "VM-only baseline metadata or runtime safety tests.",
