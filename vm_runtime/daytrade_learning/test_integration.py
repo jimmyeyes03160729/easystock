@@ -148,7 +148,7 @@ class StateTests(unittest.TestCase):
                                          'max_price':float(os.environ.get('DAYTRADE_MAX_PRICE','200')),
                                          'max_gain_pct':float(os.environ.get('DAYTRADE_MAX_GAIN_PCT','5'))}}
         exec(compile(module,'<extracted>','exec'),ctx)
-        engine=SimpleNamespace(_previous_closes={'TEST':('2026-09-10',100)},_previous_close_retry={},
+        engine=SimpleNamespace(_previous_closes={'TEST':('2026-09-10',100)},_previous_close_retry={},_entry_reject=lambda *a,**k:None,
             _lock=threading.RLock(),radar_ticks={'TEST':[(now.timestamp(),1,1,106,1)]})
         with patch.dict(os.environ,{'DAYTRADE_MAX_GAIN_PCT':'5','DAYTRADE_MIN_PRICE':'1','DAYTRADE_MAX_PRICE':'200'}):
             self.assertIsNone(ctx['fresh_entry_quote'](engine,'TEST'))
