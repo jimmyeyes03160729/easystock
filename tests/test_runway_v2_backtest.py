@@ -69,3 +69,22 @@ def test_finalize_exit_partial_take_profit():
     assert trade.exit_price == 100.0
     # 總淨損益應大於 0 (因為先前鎖定獲利)
     assert trade.net_pnl > 0
+
+
+def test_custom_params_and_circuit_breaker():
+    tester = RunwayV2Backtester(
+        data_root=".",
+        daily_max_buy_amount=1000000.0,
+        daily_max_loss_circuit_breaker=6000.0,
+        stop_loss_pct=0.018,
+        take_profit_half_pct=0.020,
+        max_positions=2,
+        position_amount=480000.0,
+    )
+    assert tester.daily_max_buy_amount == 1000000.0
+    assert tester.daily_max_loss_circuit_breaker == 6000.0
+    assert tester.stop_loss_pct == 0.018
+    assert tester.take_profit_half_pct == 0.020
+    assert tester.max_positions == 2
+    assert tester.position_amount == 480000.0
+

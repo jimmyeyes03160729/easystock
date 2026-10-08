@@ -72,10 +72,24 @@ class RunwayV2Backtester:
         self,
         data_root: str = "/home/ubuntu/easystock-learning-data",
         daily_max_buy_amount: float | None = None,
+        daily_max_loss_circuit_breaker: float | None = None,
+        stop_loss_pct: float | None = None,
+        take_profit_half_pct: float | None = None,
+        trailing_trigger_pct: float | None = None,
+        trailing_pullback_pct: float | None = None,
+        max_positions: int | None = None,
+        position_amount: float | None = None,
     ):
         self.data_root = Path(data_root)
         self.bars_dir = self.data_root / "bars"
         self.daily_max_buy_amount = daily_max_buy_amount
+        self.daily_max_loss_circuit_breaker = daily_max_loss_circuit_breaker
+        self.stop_loss_pct = stop_loss_pct if stop_loss_pct is not None else STOP_LOSS_PCT
+        self.take_profit_half_pct = take_profit_half_pct if take_profit_half_pct is not None else TAKE_PROFIT_HALF_PCT
+        self.trailing_trigger_pct = trailing_trigger_pct if trailing_trigger_pct is not None else TRAILING_TRIGGER_PCT
+        self.trailing_pullback_pct = trailing_pullback_pct if trailing_pullback_pct is not None else TRAILING_PULLBACK_PCT
+        self.max_positions = max_positions if max_positions is not None else MAX_CONCURRENT_POSITIONS
+        self.position_amount = position_amount if position_amount is not None else DEFAULT_POSITION_AMOUNT
 
     def load_day_data(self, date_str: str) -> tuple[dict[str, dict], dict[tuple[str, str], dict], dict[str, str]]:
         """載入特定交易日的 bars 資料與 journal 雷達記錄。"""
@@ -159,6 +173,7 @@ class RunwayV2Backtester:
         open_positions: dict[str, BacktestTrade] = {}
         completed_trades: list[BacktestTrade] = []
         daily_buy_spent = 0.0
+        daily_realized_loss = 0.0
 
         # 依時間推進每一分鐘
         for current_hhmm in minutes:
@@ -187,39 +202,45 @@ class RunwayV2Backtester:
                 if current_hhmm >= "12:55":
                     exit_price = b_close * (1.0 - SLIPPAGE_RATE)
                     self._finalize_exit(trade, current_hhmm, exit_price, "收盤強制平倉")
+                    if trade.net_pnl < 0:
+                        daily_realized_loss += trade.net_pnl
                     completed_trades.append(trade)
                     symbols_to_close.append(sym)
                     continue
 
                 # B. 停損出場
-                # 若已出半趟，防守點為成本價 (保本)；否則為 -1.5% 結構停損
-                stop_threshold = trade.entry_price if trade.half_closed else (trade.entry_price * (1.0 - STOP_LOSS_PCT))
+                # 若已出半趟，防守點為成本價 (保本)；否則為結構停損
+                stop_threshold = trade.entry_price if trade.half_closed else (trade.entry_price * (1.0 - self.stop_loss_pct))
                 if b_low <= stop_threshold:
                     exit_price = min(b_close, stop_threshold) * (1.0 - SLIPPAGE_RATE)
                     reason = "保本出場" if trade.half_closed else "停損出場"
                     self._finalize_exit(trade, current_hhmm, exit_price, reason)
+                    if trade.net_pnl < 0:
+                        daily_realized_loss += trade.net_pnl
                     completed_trades.append(trade)
                     symbols_to_close.append(sym)
                     continue
 
-                # C. 分批停利 (+1.5% 先出 50%，剩餘保本)
-                if not trade.half_closed and b_high >= trade.entry_price * (1.0 + TAKE_PROFIT_HALF_PCT):
+                # C. 分批停利 (先出 50%，剩餘保本)
+                if not trade.half_closed and b_high >= trade.entry_price * (1.0 + self.take_profit_half_pct):
                     half_shares = trade.shares // 2
                     if half_shares >= 1000:
                         trade.half_closed = True
-                        half_exit_price = (trade.entry_price * (1.0 + TAKE_PROFIT_HALF_PCT)) * (1.0 - SLIPPAGE_RATE)
+                        half_exit_price = (trade.entry_price * (1.0 + self.take_profit_half_pct)) * (1.0 - SLIPPAGE_RATE)
                         h_gross = (half_exit_price - trade.entry_price) * half_shares
                         h_fee, h_tax = calculate_trade_costs(trade.entry_price, half_exit_price, half_shares)
                         trade.half_pnl = h_gross - (h_fee + h_tax)
                         trade.shares -= half_shares
 
-                # D. 移動停利 (+2.0% 啟動，自高點回檔 0.8% 出場)
+                # D. 移動停利 (啟動移動停利，自高點回檔出場)
                 max_return = (trade.highest_price / trade.entry_price - 1.0)
-                if max_return >= TRAILING_TRIGGER_PCT:
-                    pullback_trigger = trade.highest_price * (1.0 - TRAILING_PULLBACK_PCT)
+                if max_return >= self.trailing_trigger_pct:
+                    pullback_trigger = trade.highest_price * (1.0 - self.trailing_pullback_pct)
                     if b_low <= pullback_trigger:
                         exit_price = min(b_close, pullback_trigger) * (1.0 - SLIPPAGE_RATE)
                         self._finalize_exit(trade, current_hhmm, exit_price, "移動停利出場")
+                        if trade.net_pnl < 0:
+                            daily_realized_loss += trade.net_pnl
                         completed_trades.append(trade)
                         symbols_to_close.append(sym)
                         continue
@@ -233,10 +254,15 @@ class RunwayV2Backtester:
             if not ("09:05" <= current_hhmm <= "12:30"):
                 continue
 
+            # 每日總限額檢查
             if self.daily_max_buy_amount is not None and daily_buy_spent >= self.daily_max_buy_amount:
                 continue
 
-            available_slots = MAX_CONCURRENT_POSITIONS - len(open_positions)
+            # 當日虧損熔斷檢查 (若當日累計虧損達門檻，停止開新倉)
+            if self.daily_max_loss_circuit_breaker is not None and daily_realized_loss <= -self.daily_max_loss_circuit_breaker:
+                continue
+
+            available_slots = self.max_positions - len(open_positions)
             if available_slots <= 0:
                 continue
 
@@ -359,7 +385,7 @@ class RunwayV2Backtester:
             # 依分數排序，優先進場最高分者
             candidates.sort(key=lambda x: x["score"], reverse=True)
             for c in candidates:
-                if len(open_positions) >= MAX_CONCURRENT_POSITIONS:
+                if len(open_positions) >= self.max_positions:
                     break
                 sym = c["symbol"]
                 # 進場成交價計入滑價 (買貴 0.05%)
@@ -369,7 +395,7 @@ class RunwayV2Backtester:
                     rem_budget = self.daily_max_buy_amount - daily_buy_spent
                     if rem_budget < exec_price * 1000:
                         continue
-                    max_pos_budget = min(DEFAULT_POSITION_AMOUNT, rem_budget)
+                    max_pos_budget = min(self.position_amount, rem_budget)
                     shares = max(1000, int(max_pos_budget // (exec_price * 1000)) * 1000)
                     buy_total = exec_price * shares
                     if (daily_buy_spent + buy_total) > self.daily_max_buy_amount:
@@ -378,7 +404,7 @@ class RunwayV2Backtester:
                             continue
                         buy_total = exec_price * shares
                 else:
-                    shares = max(1000, int(DEFAULT_POSITION_AMOUNT // (exec_price * 1000)) * 1000)
+                    shares = max(1000, int(self.position_amount // (exec_price * 1000)) * 1000)
                     buy_total = exec_price * shares
 
                 daily_buy_spent += buy_total

@@ -18,11 +18,15 @@ MAX_PRICE = float(os.environ.get("RUNWAY_V2_MAX_PRICE", "600.0"))
 MIN_GAIN_PCT = float(os.environ.get("RUNWAY_V2_MIN_GAIN_PCT", "1.0"))  # 至少 1% 漲幅動能
 MAX_GAIN_PCT = float(os.environ.get("RUNWAY_V2_MAX_GAIN_PCT", "7.5"))  # 放寬至 7.5%，避開已漲停追不到的
 
-# 風控與部位
+# 每日額度與風控熔斷 (100萬版本優化)
+DAILY_MAX_BUY_AMOUNT = float(os.environ.get("RUNWAY_V2_DAILY_MAX_BUY", "1000000.0"))  # 每日買入成交額上限 100 萬
+DAILY_MAX_LOSS_CIRCUIT_BREAKER = float(os.environ.get("RUNWAY_V2_DAILY_MAX_LOSS", "6000.0"))  # 當日已實現虧損達 6,000 元熔斷停止開倉
+
+# 部位與出場風控
 MAX_CONCURRENT_POSITIONS = int(os.environ.get("RUNWAY_V2_MAX_POSITIONS", "3"))
-DEFAULT_POSITION_AMOUNT = float(os.environ.get("RUNWAY_V2_POS_AMOUNT", "300000.0"))  # 每檔約 30 萬
-STOP_LOSS_PCT = float(os.environ.get("RUNWAY_V2_STOP_LOSS_PCT", "0.015"))  # 1.5% 結構停損
-TAKE_PROFIT_HALF_PCT = float(os.environ.get("RUNWAY_V2_TP_HALF_PCT", "0.015"))  # +1.5% 先出 50% 鎖利保本
+DEFAULT_POSITION_AMOUNT = float(os.environ.get("RUNWAY_V2_POS_AMOUNT", "300000.0"))  # 預設每檔 30 萬
+STOP_LOSS_PCT = float(os.environ.get("RUNWAY_V2_STOP_LOSS_PCT", "0.015"))
+TAKE_PROFIT_HALF_PCT = float(os.environ.get("RUNWAY_V2_TP_HALF_PCT", "0.015"))
 TRAILING_TRIGGER_PCT = float(os.environ.get("RUNWAY_V2_TRAILING_TRIGGER_PCT", "0.020"))  # +2.0% 啟動移動停利
 TRAILING_PULLBACK_PCT = float(os.environ.get("RUNWAY_V2_TRAILING_PULLBACK_PCT", "0.008"))  # 回檔 0.8% 出場
 
