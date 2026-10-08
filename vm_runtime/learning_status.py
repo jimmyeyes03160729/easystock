@@ -9,6 +9,9 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import multiprocessing
+import sys
+import time
 
 TPE = timezone(timedelta(hours=8))
 ROOT = Path(__file__).resolve().parent
@@ -24,6 +27,141 @@ UNITS = (
     "easystock-learning.service",
     "easystock-learning-train.service",
 )
+
+# The installed oneshot has TimeoutStartSec=50. Do not change its deadline.
+TOTAL_DEADLINE = 40.0
+OPERATION_DEADLINE = 8.0
+CONNECT_TIMEOUT = 2.0
+READ_TIMEOUT = 4.0
+READ_ATTEMPTS = 2
+RETRY_BACKOFF = 0.25
+
+
+class StatusUnavailable(RuntimeError):
+    """Incomplete inspection: preserve the previous public status."""
+
+
+class StatusDeadline(StatusUnavailable):
+    pass
+
+
+def diagnostic(stage, status, started, *, error=None, attempt=None, count=None):
+    """No exception text, URLs, paths, credentials or inspected data in logs."""
+    row = {"component": "learning_status", "stage": stage, "status": status,
+           "elapsed_s": round(max(0, time.monotonic() - started), 3)}
+    if error is not None:
+        row["error_type"] = type(error).__name__
+    if attempt is not None:
+        row["attempt"] = attempt
+    if count is not None:
+        row["count"] = count
+    print(json.dumps(row, sort_keys=True), file=sys.stderr, flush=True)
+
+
+class Budget:
+    def __init__(self, deadline, connection=None):
+        self.deadline = deadline
+        self.connection = connection
+
+    def run(self, stage, operation, *, network=False, reserve=0):
+        started = time.monotonic()
+        stop = min(self.deadline - reserve,
+                   started + OPERATION_DEADLINE if network else self.deadline)
+        if stop <= started:
+            raise StatusDeadline()
+        if self.connection is not None:
+            self.connection.send(("stage", stage, stop, started))
+        diagnostic(stage, "STARTED", started)
+        try:
+            value = operation()
+            if time.monotonic() >= stop:
+                raise StatusDeadline()
+        except Exception as error:
+            diagnostic(stage, "UNAVAILABLE", started, error=error)
+            raise
+        diagnostic(stage, "OK", started)
+        return value
+
+
+def bounded_reference():
+    """Learning-only SDK app/transport; no mutation of FirebaseStore or other jobs.
+
+    Admin's public httpTimeout is a requests socket timeout, not a total deadline.
+    Replace only this app's HTTP session to bound OAuth as well as RTDB, disable
+    SDK transport retries, and use separate connect/read timeouts. The supervisor
+    additionally reaps the worker on DNS, slow trickles or compute stalls.
+    """
+    import firebase_admin
+    from firebase_admin import credentials, db
+    from google.auth.transport.requests import AuthorizedSession, Request
+    import requests
+    import firebase_store as settings
+
+    class TokenSession(requests.Session):
+        def request(self, method, url, **kwargs):
+            kwargs["timeout"] = (CONNECT_TIMEOUT, READ_TIMEOUT)
+            kwargs["allow_redirects"] = False
+            return super().request(method, url, **kwargs)
+
+    class DatabaseSession(AuthorizedSession):
+        def request(self, method, url, **kwargs):
+            kwargs["timeout"] = (CONNECT_TIMEOUT, READ_TIMEOUT)
+            kwargs["allow_redirects"] = False
+            return super().request(method, url, **kwargs)
+
+    if settings.SERVICE_ACCOUNT_FILE:
+        credential = credentials.Certificate(settings.SERVICE_ACCOUNT_FILE)
+    elif settings.SERVICE_ACCOUNT_JSON:
+        credential = credentials.Certificate(json.loads(settings.SERVICE_ACCOUNT_JSON))
+    else:
+        raise StatusUnavailable()
+    app = firebase_admin.initialize_app(credential, {
+        "databaseURL": settings.FIREBASE_DATABASE_URL,
+        "httpTimeout": READ_TIMEOUT,
+    }, name="learning-status-bounded")
+    reference = db.reference("/" + settings.FIREBASE_ROOT_PATH, app=app)
+    # SDK 7.5 (VM) and 7.7 (local) use this client/session integration point.
+    # An incompatible SDK must fail before publication, never silently ignore it.
+    client = reference._client
+    if not isinstance(client._session, AuthorizedSession):
+        raise StatusUnavailable()
+    token_session = TokenSession()
+    session = DatabaseSession(credential.get_credential(),
+        auth_request=Request(session=token_session), max_refresh_attempts=0,
+        refresh_timeout=READ_TIMEOUT)
+    for transport in (token_session, session):
+        for scheme in ("http://", "https://"):
+            transport.mount(scheme, requests.adapters.HTTPAdapter(max_retries=0))
+    client._session.close()
+    client._session = session
+    return reference
+
+
+def firebase_read(reference, budget, stage):
+    from firebase_admin import exceptions
+    import requests
+
+    def read_with_retry():
+        stop = min(budget.deadline, time.monotonic() + OPERATION_DEADLINE)
+        for attempt in range(1, READ_ATTEMPTS + 1):
+            started = time.monotonic()
+            try:
+                value = reference.get()
+                if value is None:  # A successful JSON null is not a failed read.
+                    return {}
+                if not isinstance(value, dict):
+                    raise StatusUnavailable()
+                return value
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout,
+                    exceptions.UnavailableError, exceptions.DeadlineExceededError) as error:
+                diagnostic(stage, "RETRYABLE_FAILURE", started, error=error, attempt=attempt)
+                delay = RETRY_BACKOFF * 2 ** (attempt - 1)
+                if attempt == READ_ATTEMPTS or time.monotonic() + delay >= stop:
+                    raise
+                time.sleep(delay)
+                if time.monotonic() >= stop:
+                    raise StatusDeadline() from None
+    return budget.run(stage, read_with_retry, network=True)
 
 
 def read(path, default, errors):
@@ -180,6 +318,7 @@ def compute(
     known_hashes,
     preferred_date=None,
     live=None,
+    timing=None,
 ):
     errors = []
     today = now.date().isoformat()
@@ -199,9 +338,12 @@ def compute(
     # -----------------------------------------------------
     # Reports
     # -----------------------------------------------------
+    scan_started = time.monotonic()
+    file_count = 0
     for p in sorted(
         (data / "reports").glob("*.json")
     ):
+        file_count += 1
         row = read(
             p,
             {},
@@ -215,12 +357,18 @@ def compute(
             reports.append(row)
             reports_by_date[row["date"]] = row
 
+    if timing:
+        timing("reports_scan", "OK", scan_started, count=file_count)
+
     # -----------------------------------------------------
     # Intraday learning journals
     # -----------------------------------------------------
+    scan_started = time.monotonic()
+    file_count = 0
     for p in sorted(
         data.glob("journal-*.jsonl")
     ):
+        file_count += 1
         file_day = (
             p.stem.removeprefix(
                 "journal-"
@@ -302,14 +450,20 @@ def compute(
         except OSError:
             errors.append(p.name)
 
+    if timing:
+        timing("journals_scan", "OK", scan_started, count=file_count)
+
     # -----------------------------------------------------
     # Labels
     # -----------------------------------------------------
     unique = {}
+    scan_started = time.monotonic()
+    file_count = 0
 
     for p in sorted(
         (data / "labels").glob("*.json")
     ):
+        file_count += 1
         rows = read(
             p,
             [],
@@ -346,6 +500,9 @@ def compute(
                     row["profile"],
                 )
             ] = row
+
+    if timing:
+        timing("labels_scan", "OK", scan_started, count=file_count)
 
     labels = list(
         unique.values()
@@ -848,22 +1005,13 @@ def recommendation_summary(
     }
 
 
-def main():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--publish",
-        action="store_true",
-    )
-
-    args = parser.parse_args()
-
-    known = read(
+def inspect_status(publish, budget, reference_factory=bounded_reference):
+    known = budget.run("local_metadata", lambda: read(
         ROOT
         / "learning_status_engine_hashes.json",
         [],
         [],
-    )
+    ))
 
     engine_hash = hashlib.sha256(
         (
@@ -872,37 +1020,20 @@ def main():
         ).read_bytes()
     ).hexdigest()
 
-    from firebase_store import FirebaseStore
+    reference = budget.run("firebase_init", reference_factory, network=True)
+    live = firebase_read(reference.child("intraday_live"), budget, "firebase_live_read")
+    overnight = firebase_read(reference.child("intraday_picks"), budget, "firebase_overnight_read")
 
-    store = FirebaseStore()
-
-    live = (
-        store.root
-        .child(
-            "intraday_live"
-        )
-        .get()
-        or {}
-    )
-
-    result = compute(
-        DATA,
-        datetime.now(TPE),
-        states(),
-        engine_hash,
-        known,
-        preferred_date=(
-            live.get(
-                "scan_date"
-            )
-            if isinstance(
-                live,
-                dict,
-            )
-            else None
-        ),
-        live=live,
-    )
+    def complete_compute():
+        result = compute(DATA, datetime.now(TPE), states(), engine_hash, known,
+                         preferred_date=live.get("scan_date"), live=live, timing=diagnostic)
+        if result.get("data_errors"):
+            # Missing optional files keep their old semantics, but failed/corrupt
+            # reads must not become a fresh, apparently complete snapshot.
+            raise StatusUnavailable()
+        return result
+    result = budget.run("compute", complete_compute,
+                        reserve=OPERATION_DEADLINE if publish else 0)
 
     result["session"].update(
         recommendation_summary(
@@ -914,69 +1045,27 @@ def main():
     # ---------------------------------------------------------
     # Runtime model application status
     # ---------------------------------------------------------
-    try:
-        from daytrade_learning.model_runtime import (
-            DaytradeModel,
-        )
+    def runtime_status():
+        try:
+            from daytrade_learning.model_runtime import DaytradeModel
+            runtime_model = DaytradeModel()
+            runtime_decision = runtime_model.evaluate({})
+            version = (runtime_decision.get("model_version")
+                       or getattr(runtime_model, "model_version", None))
+            mode = os.environ.get("LIVE_ENTRY_MODE", "model")
+            ready = bool(runtime_decision.get("active") and runtime_decision.get("approved"))
+            result["model_application"] = {
+                "status": "not_applied" if mode != "model" or not ready else "unknown",
+                "basis": "explicit_rules_mode" if mode == "rules" else
+                         "approved_model_configured_runtime_not_verified" if ready else runtime_decision.get("reason"),
+                "model_version": version, "entry_mode": mode, "configured": ready,
+            }
+        except Exception as error:
+            result.setdefault("model_application", {
+                "status": "unknown", "basis": "runtime_check_failed"})
+            result["model_application"]["runtime_error"] = type(error).__name__
 
-        runtime_model = (
-            DaytradeModel()
-        )
-
-        runtime_decision = (
-            runtime_model.evaluate(
-                {}
-            )
-        )
-
-        runtime_version = (
-            runtime_decision.get(
-                "model_version"
-            )
-            or getattr(
-                runtime_model,
-                "model_version",
-                None,
-            )
-        )
-
-        runtime_reason = (
-            runtime_decision.get(
-                "reason"
-            )
-        )
-
-        mode = os.environ.get('LIVE_ENTRY_MODE', 'model')
-        ready = bool(runtime_decision.get('active') and runtime_decision.get('approved'))
-        result['model_application'] = {
-            'status': 'not_applied' if mode != 'model' or not ready else 'unknown',
-            'basis': 'explicit_rules_mode' if mode == 'rules' else
-                     'approved_model_configured_runtime_not_verified' if ready else runtime_reason,
-            'model_version': runtime_version,
-            'entry_mode': mode,
-            'configured': ready,
-        }
-
-    except Exception as exc:
-        result.setdefault(
-            "model_application",
-            {
-                "status":
-                    "unknown",
-
-                "basis":
-                    "runtime_check_failed",
-            },
-        )
-
-        result[
-            "model_application"
-        ][
-            "runtime_error"
-        ] = (
-            f"{type(exc).__name__}: "
-            f"{exc}"
-        )
+    budget.run("model_status", runtime_status)
 
     config = live.get("config") if isinstance(live, dict) else {}
     closed = _rows(live.get("closed_trades")) if isinstance(live, dict) else []
@@ -988,15 +1077,6 @@ def main():
     # -----------------------------------------------------
     # Overnight
     # -----------------------------------------------------
-    overnight = (
-        store.root
-        .child(
-            "intraday_picks"
-        )
-        .get()
-        or {}
-    )
-
     result["overnight"] = {
         k:
             overnight.get(k)
@@ -1037,24 +1117,82 @@ def main():
         ),
     )
 
-    if args.publish:
-        (
-            store.root
-            .child(
-                "daytrade_learning_status"
-            )
-            .set(result)
-        )
+    if publish:
+        # One complete PUT only. Never retry an ambiguous write, clear the node,
+        # or publish a placeholder/renewed timestamp on any inspection failure.
+        budget.run("firebase_publish", lambda: reference.child(
+            "daytrade_learning_status").set(result), network=True)
+    return result
 
-    else:
-        print(
-            json.dumps(
-                result,
-                ensure_ascii=False,
-                indent=2,
-            )
-        )
+
+def _worker(connection, publish, deadline):
+    started = time.monotonic()
+    try:
+        result = inspect_status(publish, Budget(deadline, connection))
+        if not publish:
+            print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
+        connection.send(("done", 0))
+    except Exception as error:
+        diagnostic("inspection", "UNAVAILABLE", started, error=error)
+        connection.send(("done", 1))
+    finally:
+        connection.close()
+
+
+def supervise(publish, *, worker=_worker, timeout=TOTAL_DEADLINE):
+    """A process deadline, not a Future/thread timeout leaving I/O running.
+
+    Reap only our own inspection worker. Never stop a systemd service or signal
+    another job. A timed-out PUT has unknown server outcome and is not retried.
+    """
+    started = time.monotonic()
+    deadline = started + timeout
+    context = multiprocessing.get_context("spawn")
+    parent, child = context.Pipe(duplex=False)
+    process = context.Process(target=worker, args=(child, publish, deadline))
+    stage, stage_started, stop = "startup", started, deadline
+    process.start()
+    child.close()
+    code = 1
+    try:
+        while True:
+            remaining = min(deadline, stop) - time.monotonic()
+            if remaining <= 0:
+                diagnostic(stage, "UNAVAILABLE", stage_started, error=StatusDeadline())
+                break
+            if not parent.poll(remaining):
+                continue
+            try:
+                event = parent.recv()
+            except EOFError:
+                break
+            if event[0] == "stage":
+                _, stage, stop, stage_started = event
+            elif event[0] == "done":
+                code = event[1]
+                break
+    finally:
+        # No live worker, open socket or delayed publisher after returning.
+        if code != 0 and process.is_alive():
+            process.terminate()
+        process.join(0.5)
+        if process.is_alive():
+            process.kill()
+            process.join(0.5)
+            code = 1
+        if process.is_alive() or process.exitcode not in (0, None):
+            code = 1
+        parent.close()
+    diagnostic("total", "UNAVAILABLE" if code else "OK", started)
+    return code
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--publish", action="store_true")
+    args = parser.parse_args(argv)
+    return supervise(args.publish)
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
