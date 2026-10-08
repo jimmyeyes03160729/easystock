@@ -9,3 +9,31 @@
 .model-log-pages{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:20px}.model-log-pages span{min-width:70px;text-align:center;color:var(--sub);font-size:13px}.model-log-pages button{min-width:96px}.model-log-pages button:disabled{cursor:not-allowed}
 .live-table-wrap{overflow-x:auto;margin:16px 0}.live-table-wrap table{border-collapse:collapse;font-size:13px;width:100%;white-space:nowrap}.live-table-wrap th,.live-table-wrap td{padding:8px;text-align:left;border-bottom:1px solid var(--border)}#liveSellModal{width:min(600px,calc(100vw - 24px));max-height:calc(90dvh - env(safe-area-inset-bottom,0px));overflow:auto;color:var(--text);background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px}#liveSellModal::backdrop{background:#000a}#liveSellModal input:not([type=checkbox]),#liveMode{max-width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:10px}#liveSellModal label{margin-top:12px}#liveSellModal p{overflow-wrap:anywhere}
 .title{flex-wrap:wrap}.title-actions{width:100%;justify-content:space-between}.title-actions #logout{flex:none;white-space:nowrap}.admin-section-nav{max-width:calc(100% - 80px)}
+/* Scoped market diagnostics and manual order field alignment. */
+.market-context{margin:16px 0 24px;min-width:0}
+.market-context-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.market-context-metric{padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surface);min-width:0}
+.market-context-metric>span{display:block;font-size:12px;color:var(--sub);margin-bottom:6px}
+.market-context-metric>strong{display:block;font-size:17px;line-height:1.5;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.market-context-updated{font-size:12px;color:var(--sub);margin:12px 0 18px;overflow-wrap:anywhere}
+.market-sector-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.market-sector-card{padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface);min-width:0}
+.market-sector-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.market-sector-head h4{font-size:15px;margin:0;line-height:1.5}
+.market-context-badge{display:inline-block;font-size:11px;color:var(--sub);padding:3px 7px;border:1px solid var(--border);border-radius:999px;white-space:nowrap}
+.market-sector-return{display:block;font-size:28px;line-height:1.3;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin:12px 0 6px}
+.market-sector-detail{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;font-size:12px;margin-bottom:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+.market-sector-time{font-size:11px;color:var(--sub);margin:12px 0 0;overflow-wrap:anywhere}
+.market-context .context-up{color:#fca5a5}.market-context .context-down{color:#86efac}
+:root[data-theme=light] .market-context .context-up{color:#b91c1c}
+:root[data-theme=light] .market-context .context-down{color:#15803d}
+.manual-order-panel .order-entry-fields{align-items:start;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.manual-order-panel .order-entry-fields .field-group{min-width:0}
+.manual-order-panel .order-entry-fields .field-header{min-height:24px;margin-bottom:8px;flex-direction:row;align-items:center}
+.manual-order-panel .order-entry-fields input{height:48px;margin:0;width:100%;font-variant-numeric:tabular-nums}
+.manual-order-panel .order-entry-fields .quick-btns{margin-top:10px}
+.manual-order-panel .order-entry-fields .quick-btns button{min-width:52px;padding:8px 14px}
+@media(max-width:900px){.market-context-summary,.market-sector-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.market-sector-grid{grid-template-columns:1fr}.manual-order-panel .order-entry-fields{grid-template-columns:1fr;gap:16px}}
+@media(max-width:420px){.market-context-metric{padding:12px}.market-context-metric>strong{font-size:15px}}
+@media(max-width:340px){.market-context-summary{grid-template-columns:1fr}}
