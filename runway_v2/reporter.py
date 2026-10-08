@@ -10,7 +10,7 @@ import sqlite3
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from .config import DB_PATH
-from .ledger import get_daily_trades
+from .ledger import ORPHANED, PARTIAL_EXIT_REASON, get_daily_trades
 from .notifier import notify_channels
 
 TPE = timezone(timedelta(hours=8))
@@ -58,7 +58,11 @@ def generate_comparison_report(day: str | None = None, db_path: Path | str | Non
     runway_a = fetch_runway_a_summary(today_str)
 
     # 2. 跑道 B 數據
-    trades_b = get_daily_trades(today_str, db_path=db_path)
+    # 只有已平倉 (CLOSED) 的交易計入筆數與損益；OPEN / 重啟遺留 (ORPHANED) 另列，不當成 0 元交易
+    all_b = get_daily_trades(today_str, db_path=db_path)
+    trades_b = [t for t in all_b if t.get("status") == "CLOSED"]
+    open_b = [t for t in all_b if t.get("status") == "OPEN"]
+    orphaned_b = [t for t in all_b if t.get("status") == ORPHANED]
     count_b = len(trades_b)
     wins_b = sum(1 for t in trades_b if (t.get("net_pnl") or 0.0) > 0)
     losses_b = sum(1 for t in trades_b if (t.get("net_pnl") or 0.0) <= 0)
@@ -87,11 +91,21 @@ def generate_comparison_report(day: str | None = None, db_path: Path | str | Non
         for i, t in enumerate(trades_b, 1):
             pnl = t.get("net_pnl") or 0.0
             ret = t.get("return_pct") or 0.0
+            note = " (剩餘部位未平倉)" if t.get("exit_reason") == PARTIAL_EXIT_REASON else ""
             lines.append(
-                f"  {i}. {t['symbol']} {t['name']}: {pnl:+,.0f} 元 ({ret:+.2f}%) [{t.get('exit_reason', t.get('signal_type'))}]"
+                f"  {i}. {t['symbol']} {t['name']}: {pnl:+,.0f} 元 ({ret:+.2f}%) [{t.get('exit_reason', t.get('signal_type'))}]{note}"
             )
-    else:
+    elif not (open_b or orphaned_b):
         lines.append("• 今日無符合條件之高勝率訊號 (0 筆進場，嚴守紀律)")
+
+    if open_b:
+        lines.append(f"• 未平倉：{len(open_b)} 筆 (未計入損益)")
+        for t in open_b:
+            lines.append(f"  - {t['symbol']} {t['name']} 進場 {t['entry_price']} x {t['shares']} 股")
+    if orphaned_b:
+        lines.append(f"• 重啟遺留未平倉：{len(orphaned_b)} 筆 (無出場價，未計入損益)")
+        for t in orphaned_b:
+            lines.append(f"  - {t['symbol']} {t['name']} 進場 {t['entry_price']} x {t['shares']} 股")
 
     lines.extend([
         "══════════════════════",

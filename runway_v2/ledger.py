@@ -7,6 +7,9 @@ import time
 from pathlib import Path
 from .config import DB_DIR, DB_PATH
 
+# PositionManagerV2.update_price 分批停利那一腿的 exit_reason (manager.py 釘選，不可改)
+PARTIAL_EXIT_REASON = "分批停利 50%"
+
 
 def get_connection(db_path: Path | str | None = None) -> sqlite3.Connection:
     target = Path(db_path or DB_PATH)
@@ -163,3 +166,126 @@ def get_daily_trades(day: str, db_path: Path | str | None = None) -> list[dict]:
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# 盤中部位狀態 sidecar (重啟還原用)
+# runway_v2_trades 只存進場股數與出場結果；停損價、最高價、分批/移動停利旗標與剩餘股數
+# 由 runner 寫入此表，重啟後 runway_v2/restore.py 用來重建 PositionManagerV2.positions。
+# 全數平倉或遺留處理後刪除該列，因此表內只有「仍在盤中管理」的部位。
+# ---------------------------------------------------------------------------
+ORPHANED = "ORPHANED"
+
+
+def init_position_state(db_path: Path | str | None = None) -> None:
+    conn = get_connection(db_path)
+    with conn:
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS runway_v2_position_state (
+            trade_id TEXT PRIMARY KEY,
+            symbol TEXT NOT NULL,
+            shares INTEGER NOT NULL,
+            stop_price REAL NOT NULL,
+            highest_price REAL NOT NULL,
+            current_price REAL NOT NULL,
+            half_closed INTEGER NOT NULL DEFAULT 0,
+            trailing_active INTEGER NOT NULL DEFAULT 0,
+            price_time TEXT,
+            updated_at REAL NOT NULL
+        )
+        """)
+    conn.close()
+
+
+def save_position_state(
+    trade_id: str,
+    symbol: str,
+    shares: int,
+    stop_price: float,
+    highest_price: float,
+    current_price: float,
+    half_closed: bool,
+    trailing_active: bool,
+    price_time: str | None = None,
+    db_path: Path | str | None = None,
+) -> None:
+    conn = get_connection(db_path)
+    with conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO runway_v2_position_state (
+                trade_id, symbol, shares, stop_price, highest_price, current_price,
+                half_closed, trailing_active, price_time, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                trade_id,
+                symbol,
+                int(shares),
+                float(stop_price),
+                float(highest_price),
+                float(current_price),
+                1 if half_closed else 0,
+                1 if trailing_active else 0,
+                price_time,
+                time.time(),
+            ),
+        )
+    conn.close()
+
+
+def delete_position_state(trade_id: str, db_path: Path | str | None = None) -> None:
+    conn = get_connection(db_path)
+    with conn:
+        conn.execute("DELETE FROM runway_v2_position_state WHERE trade_id = ?", (trade_id,))
+    conn.close()
+
+
+def load_position_states(db_path: Path | str | None = None) -> dict[str, dict]:
+    init_position_state(db_path)
+    conn = get_connection(db_path)
+    rows = conn.execute("SELECT * FROM runway_v2_position_state").fetchall()
+    conn.close()
+    return {r["trade_id"]: dict(r) for r in rows}
+
+
+def get_unfinished_trades(db_path: Path | str | None = None) -> list[dict]:
+    """仍有股數在手的交易：OPEN，或最後一腿是分批停利 50% 的 CLOSED (剩餘一半尚未出場)。
+    剩餘部位出場時 record_exit 會覆寫 exit_reason，因此「最後一腿為分批停利」即代表剩餘部位未平倉。
+    """
+    init_db(db_path)
+    conn = get_connection(db_path)
+    rows = conn.execute(
+        "SELECT * FROM runway_v2_trades WHERE status = 'OPEN' "
+        "OR (status = 'CLOSED' AND exit_reason = ?) ORDER BY id ASC",
+        (PARTIAL_EXIT_REASON,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def mark_orphaned(
+    trade_id: str,
+    resolved_time: str,
+    note: str,
+    db_path: Path | str | None = None,
+) -> None:
+    """前一交易日遺留、沒有出場價的部位。
+    OPEN 列改為 status='ORPHANED' (無出場價、損益留空，不算成交筆數)；
+    已分批停利的列維持 CLOSED 與第一腿損益，只在 exit_reason 註明剩餘部位遺留。
+    exit_time 記處理當下，exit_price 不寫入，不捏造價格。
+    """
+    conn = get_connection(db_path)
+    with conn:
+        conn.execute(
+            "UPDATE runway_v2_trades SET status = ?, exit_time = ?, exit_reason = ? "
+            "WHERE trade_id = ? AND status = 'OPEN'",
+            (ORPHANED, resolved_time, note, trade_id),
+        )
+        conn.execute(
+            "UPDATE runway_v2_trades SET exit_reason = ? "
+            "WHERE trade_id = ? AND status = 'CLOSED' AND exit_reason = ?",
+            (f"{PARTIAL_EXIT_REASON}；{note}", trade_id, PARTIAL_EXIT_REASON),
+        )
+        conn.execute("DELETE FROM runway_v2_position_state WHERE trade_id = ?", (trade_id,))
+    conn.close()
