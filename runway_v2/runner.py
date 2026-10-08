@@ -12,6 +12,13 @@ from .config import (
     ENTRY_CUTOFF_TIME,
     FORCE_EXIT_TIME,
     DB_PATH,
+    MAX_CONCURRENT_POSITIONS,
+    DEFAULT_POSITION_AMOUNT,
+    STOP_LOSS_PCT,
+    TAKE_PROFIT_HALF_PCT,
+    TRAILING_TRIGGER_PCT,
+    TRAILING_PULLBACK_PCT,
+    MAX_GAIN_PCT,
 )
 from .strategy import evaluate_signal
 from .manager import PositionManagerV2
@@ -44,6 +51,13 @@ class RunwayV2Runner:
         init_position_state(self.db_path)
         self._restored_day: str | None = None
         self._persisted: dict[str, tuple[tuple, float, datetime]] = {}
+        print(
+            f"[RUNWAY_V2_INIT] buy_cap={self.limits.max_buy_amount:,.0f} "
+            f"loss_limit={self.limits.max_loss:,.0f} "
+            f"max_pos={MAX_CONCURRENT_POSITIONS} pos_amount={DEFAULT_POSITION_AMOUNT:,.0f} "
+            f"tp_half=+{TAKE_PROFIT_HALF_PCT*100:.1f}% trailing=+{TRAILING_TRIGGER_PCT*100:.1f}% "
+            f"pullback=-{TRAILING_PULLBACK_PCT*100:.1f}% sl=-{STOP_LOSS_PCT*100:.1f}% max_gain=+{MAX_GAIN_PCT:.1f}%"
+        )
 
     def _ensure_restored(self, current_dt: datetime) -> None:
         """每個交易日第一次事件 (含重啟後第一次) 由 ledger 還原今日仍在手的部位；呼叫端須持有 lock。"""

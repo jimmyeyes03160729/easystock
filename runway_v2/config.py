@@ -4,6 +4,21 @@
 import os
 from pathlib import Path
 
+# 可選環境變數載入 (支援 VM 生產環境與本地客製化)
+_ENV_FILE = Path(os.environ.get("RUNWAY_V2_ENV_FILE", "/home/ubuntu/easystock-ai-paper.env"))
+if _ENV_FILE.exists():
+    try:
+        with open(_ENV_FILE, "r", encoding="utf-8") as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _v = _line.split("=", 1)
+                    _k, _v = _k.strip(), _v.strip().strip("'\"")
+                    if _k not in os.environ:
+                        os.environ[_k] = _v
+    except Exception:
+        pass
+
 # 開關
 RUNWAY_V2_ENABLED = os.environ.get("RUNWAY_V2_ENABLED", "1").lower() in ("1", "true", "yes")
 
