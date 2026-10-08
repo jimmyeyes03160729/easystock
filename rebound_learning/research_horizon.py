@@ -53,15 +53,21 @@ def simulate_exit(bars: list[dict], target: float, invalid: float, *, stop: bool
     return (bars[horizon - 1]['close'] / entry - 1) * 100
 
 
-def load_picks(db, market, *, reserved_from: str = RESERVED_FROM) -> list[dict]:
-    """Rule-order top 3 per day among PENDING rows whose 20-session horizon is complete."""
+def load_picks(db, market, *, reserved_from: str = RESERVED_FROM, start: str | None = None,
+               end: str | None = None) -> list[dict]:
+    """Rule-order top 3 per day among PENDING rows whose 20-session horizon is complete.
+
+    start/end (signal dates, inclusive) default to the whole historical range.
+    """
     calendar = [r[0] for r in db.execute('SELECT day FROM trading_days WHERE day<? ORDER BY day', (reserved_from,))]
     position = {day: i for i, day in enumerate(calendar)}
     by_day = defaultdict(list)
     query = '''SELECT snapshot FROM candidates WHERE feature_schema_version=2 AND candidate_kind='PENDING'
                AND signal_date>=? AND signal_date<? ORDER BY signal_date,symbol'''
-    for (raw,) in db.execute(query, (HISTORICAL_START, reserved_from)):
+    for (raw,) in db.execute(query, (start or HISTORICAL_START, reserved_from)):
         snap = json.loads(raw)
+        if end and snap['signal_date'] > end:
+            continue
         i = position.get(snap['signal_date'])
         if i is None or i + MAX_HORIZON >= len(calendar):
             continue  # horizon would reach the reserved partition: not loaded
@@ -70,6 +76,7 @@ def load_picks(db, market, *, reserved_from: str = RESERVED_FROM) -> list[dict]:
             'date': snap['signal_date'], 'symbol': snap['symbol'],
             'breakout': evidence.get('confirmation') == 'breakout', 'score': evidence.get('rule_score') or 0,
             'target': evidence['target_price'], 'invalid': evidence['invalid_price'],
+            'taiex_bias_ma60_pct': snap['features'].get('taiex_bias_ma60_pct'),
             'sessions': calendar[i + 1:i + 1 + MAX_HORIZON]})
     picks = []
     for day in sorted(by_day):

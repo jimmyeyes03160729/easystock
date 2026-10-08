@@ -1,0 +1,59 @@
+# EasyStock preregistration — REBOUND_P4_MARKET_FILTER_V1 (market-trend filter on homepage rebound picks)
+# Frozen in git BEFORE any 2022 rebound signal existed and before any filtered result was computed.
+#
+# Disclosed influence: the filter was suggested by REBOUND_P3_HORIZON_V1, where every exit was strongly positive only
+# in 2024H1; BRACKET_H20 was the least negative exit there. Both choices used 2023-2026 results, so the 2023-2026
+# slice here is only a necessary condition. The decisive historical evidence is 2022-05..2022-12, whose rebound
+# signals had never been built (only whole-archive bar/session counts, which include 2022, were seen).
+
+preregistration_id: "REBOUND_P4_MARKET_FILTER_V1"
+created_at: "2026-10-08T10:00:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE"
+direction: "LONG"
+implementation: "rebound_learning/research_filter.py (frozen with this file in the same commit)"
+
+hypothesis: >
+  Homepage rebound picks (rule-order top 3 per day, range-rebound-0.3 PENDING), traded only when the D0 TAIEX close is
+  above its 60-session mean, with the rule stop and target held up to 20 sessions, earn a positive net return after
+  0.6% round-trip cost.
+
+data:
+  dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+  build_step: >
+    After this file is merged, Dataset v2 candidates for signals 2022-05-01..2022-12-31 are built with
+    `rebound_learning.official backfill --from 2022-05-01 --to 2022-12-31`, all output discarded unread; no labels,
+    audit or count of these rows is read before the single evaluation run.
+  unseen_slice: ["2022-05-01", "2022-12-31"]
+  exposed_slice: ["2023-01-03", "2026-10-06"]
+  forbidden: ["REBOUND_V2_FUTURE_CONFIRMATION_60D", "any signal or market bar on/after 2026-10-07"]
+
+trade_definition:
+  picks: "rule-order top 3 per signal date (breakout first, rule score descending, symbol); suspended picks keep the slot"
+  filter: "taiex_bias_ma60_pct > 0 at D0 (feature of the snapshot); unknown context means no trade"
+  entry: "D1 open; no trade when not strictly inside (rule invalid, rule target)"
+  exit: "BRACKET_H20: rule stop and target, gaps exit at the open, stop has intrabar priority, else D20 close"
+  cost_pct_round_trip: 0.6
+
+decision:
+  stage1_unseen_2022:
+    PASS: ">= 30 filtered trades, mean net > 0 and net profit factor >= 1.05"
+    INSUFFICIENT_TRADES: "< 30 filtered trades"
+    FAIL: "otherwise"
+  stage2_exposed_2023_2026: "pooled filtered mean net > 0 (necessary condition only)"
+  outcome:
+    CONFIRMATION_CANDIDATE: "stage1 PASS and stage2 true"
+    INCONCLUSIVE_HOLDOUT_DECIDES: "stage1 INSUFFICIENT_TRADES and stage2 true"
+    REJECTED: "anything else"
+  descriptive_only: ["unfiltered 2022 result", "per-fold 2023-2026 filtered and unfiltered results", "bootstrap intervals"]
+
+confirmation:
+  holdout_id: "REBOUND_V2_FUTURE_60D"
+  rule: "for CONFIRMATION_CANDIDATE or INCONCLUSIVE_HOLDOUT_DECIDES: the same rule, unchanged, evaluated ONE_SHOT on the first 60 eligible sessions from 2026-10-07 after their 20-session horizons mature"
+  confirmation_criteria: "filtered mean net > 0 and net profit factor >= 1.05; fewer than 20 filtered trades -> INCONCLUSIVE"
+
+prohibited:
+  - "changing filter, threshold, picks, exit, cost or criteria after any result of this study is seen"
+  - "reading any count, label or outcome of 2022 rebound signals before the single run"
+  - "reading any outcome-bearing data on or after 2026-10-07 before the holdout is formally unsealed"
