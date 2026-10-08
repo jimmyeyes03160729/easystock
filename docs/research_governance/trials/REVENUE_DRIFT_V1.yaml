@@ -1,0 +1,73 @@
+# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any revenue-conditioned return is read)
+
+trial_id: "TRIAL_REVENUE_DRIFT_V1"
+parent_trial_id: "TRIAL_EA_PASSIVE_FILL_V1"
+created_at: "2026-10-08T18:00:00+08:00"
+study_name: "REVENUE_DRIFT_V1 monthly revenue surprise, post-deadline LONG drift (2 signals x 3 horizons)"
+research_stage: "EXPLORATORY"
+ledger_record_type: "PREREGISTERED_TRIAL"
+recorded_after_experiment: false
+
+provenance:
+  source_classification: "EXPLORATORY_HEURISTIC"
+  source_refs:
+    - "docs/research_governance/preregistrations/REVENUE_DRIFT_V1.yaml"
+    - "docs/research_governance/trials/EA_PASSIVE_FILL_V1.yaml"
+
+hypothesis:
+  statement: "Stocks in the top decile of monthly revenue surprise (YoY growth or SUR) earn a positive net and market-excess return from the opening auction after the reporting deadline, held to the same close, 5 or 20 sessions."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "monthly_top_decile_net_and_excess_return"
+  direction: "PASS_FAIL"
+  baseline: "EQUAL_WEIGHT_ELIGIBLE_UNIVERSE"
+  frozen_before_search: true
+
+data:
+  dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+  dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+  dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+  start_date: "2022-01-03"
+  end_date: "2026-10-02"
+  dataset_end: "2026-10-06"
+  universe: "ALL_LISTED_AND_OTC_COMMON_STOCKS_LIQUID_50M"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: false
+  future_holdout_seen: false
+  exposed_dimensions: []
+  exposures: []
+
+search:
+  parameters_searched:
+    - "none: two literature signals (YoY growth, SUR) x three fixed horizons, fixed decile and filters"
+  search_space:
+    signals: "S1_YOY, S2_SUR"
+    horizons: "DT (open->close of E), H5, H20"
+  trial_count: 6
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/REVENUE_DRIFT_V1.yaml"
+  registry_hash: "NOT_YET_RUN"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "IN_PROGRESS"
+  decision: "FROZEN_NOT_RUN"
+  sealed_commit: ""
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    Revenue data: MOPS_MONTHLY_REVENUE_2020_01_2026_08. Runs on the VM from research/revenue_v1 after this record is
+    merged and the fetch has completed.

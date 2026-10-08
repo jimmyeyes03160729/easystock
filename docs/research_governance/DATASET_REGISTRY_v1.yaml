@@ -175,3 +175,20 @@ datasets:
     parent_dataset_ids: []
     derivation_description: "Reserved pristine confirmation partition for rebound models: rebound signals in the first 60 eligible sessions from 2026-10-07, plus the market bars needed for their 10-session horizons."
     canonical_status: "RESERVED_UNTOUCHED"
+
+  - dataset_id: "MOPS_MONTHLY_REVENUE_2020_01_2026_08"
+    dataset_family_id: "TWSE_TPEX_MONTHLY_REVENUE"
+    dataset_lineage_id: "LINEAGE_MOPS_T21SC03_V1"
+    source: "MOPS_T21SC03_MONTHLY_REVENUE_SUMMARY"
+    frequency: "MONTHLY"
+    market: "TWSE_AND_TPEX"
+    timezone: "Asia/Taipei"
+    start_date: "2020-01-01"
+    end_date: "2026-08-31"
+    universe_definition: "ALL_LISTED_AND_OTC_ISSUERS_DOMESTIC_AND_FOREIGN"
+    point_in_time_universe: false
+    survivorship_bias: "TABLES_COMPILED_2026_10_03_INCLUDE_LATER_CORRECTIONS"
+    mutable: false
+    parent_dataset_ids: []
+    derivation_description: "MOPS t21sc03 summary pages (sii/otc, kinds 0/1) for revenue months 2020-01..2026-08, fetched 2026-10-08 by research/revenue_v1/fetch_revenue.py; raw pages kept gzipped on the VM. Revenue months >= 2026-09 are published after the 2026-10-02 hard cutoff and are not part of it."
+    canonical_status: "CANONICAL_PARTITION"
