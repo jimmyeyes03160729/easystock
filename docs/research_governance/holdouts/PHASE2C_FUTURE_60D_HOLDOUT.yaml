@@ -30,6 +30,11 @@ partition_definition:
       outcome_dependent: false
       amendment: "AMENDMENT_1_20261007"
       dataset_id: "LIVE_LEARNING_20261006_EXCLUDED_DAY"
+    - date: "2026-10-05"
+      reason: "AGGREGATE_ACTIVITY_STATISTICS_INCIDENT"
+      outcome_dependent: false
+      amendment: "AMENDMENT_2_20261008"
+      dataset_id: "LIVE_LEARNING_20261005_EXCLUDED_DAY"
   target_eligible_days: 60
   eligible_days_collected: 0
   collected_eligible_trading_days: []

@@ -3,7 +3,9 @@
 - Holdout: `PHASE2C_FUTURE_60D` (dataset `PHASE2C_FUTURE_CONFIRMATION_60D`, first 60 eligible trading days from
   2026-10-05; 2026-10-06 already excluded by Amendment 1)
 - Recorded: 2026-10-08 (append-only; holdout, registry and reservation records are intentionally unchanged)
-- Decision status: **PENDING — owner to choose**; recommendation below
+- Decision status: **RESOLVED — owner chose option 1 (carve-out of 2026-10-05) on 2026-10-08**; see
+  `holdouts/PHASE2C_FUTURE_60D_AMENDMENT_2.md`, the registry dataset `LIVE_LEARNING_20261005_EXCLUDED_DAY` and
+  `oos_consumption/PHASE2C_FUTURE_PARTITION_EXCLUDED_DAY_20261005.yaml`
 
 ## What happened
 
