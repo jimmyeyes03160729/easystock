@@ -144,11 +144,11 @@ def test_restart_keeps_todays_buy_quota(tmp_path, monkeypatch, capsys):
     db = tmp_path / "ledger.sqlite"
     first = make_runner(db, monkeypatch)
     radar(first, [row("1101", 100.0), row("1102", 100.0), row("1103", 100.0)], at(9, 10))
+    first.on_tick("1101", 98.5, at(9, 20))  # stop-out frees a slot, not the buy quota
 
-    restarted = make_runner(db, monkeypatch)  # in-memory positions and counters are gone
-    assert restarted.manager.positions == {}
+    restarted = make_runner(db, monkeypatch)  # in-memory counters are gone; open positions are restored
     radar(restarted, [row("1104", 100.0)], at(9, 30))
-    assert restarted.manager.positions == {}
+    assert set(restarted.manager.positions) == {"1102", "1103"}
     assert restarted.limits.buy_amount == 900_000
     assert f"reason={BUY_CAP}" in capsys.readouterr().out
 
