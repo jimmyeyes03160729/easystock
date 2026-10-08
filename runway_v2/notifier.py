@@ -73,7 +73,7 @@ def notify_channels(text: str) -> dict[str, str]:
 
 def notify_entry(symbol: str, name: str, price: float, shares: int, signal_type: str, score: float, reasons: list[str]) -> dict[str, str]:
     msg = (
-        f"🚀【跑道 B：高勝率動能當沖】進場通知\n"
+        f"🚀【跑道 B：實驗動能規則（回測為負）】進場通知\n"
         f"━━━━━━━━━━━━━━\n"
         f"標的：{symbol} {name}\n"
         f"時間：進場建立\n"
@@ -91,7 +91,7 @@ def notify_entry(symbol: str, name: str, price: float, shares: int, signal_type:
 def notify_exit(symbol: str, name: str, entry_price: float, exit_price: float, shares: int, net_pnl: float, return_pct: float, reason: str) -> dict[str, str]:
     emoji = "🎉" if net_pnl > 0 else "🛑"
     msg = (
-        f"{emoji}【跑道 B：高勝率動能當沖】平倉通知\n"
+        f"{emoji}【跑道 B：實驗動能規則（回測為負）】平倉通知\n"
         f"━━━━━━━━━━━━━━\n"
         f"標的：{symbol} {name}\n"
         f"進場價：{entry_price:.2f} 元\n"

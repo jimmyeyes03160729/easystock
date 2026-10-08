@@ -680,12 +680,12 @@
           </div>
         </div>
 
-        <!-- 右欄：跑道 B · 高勝率動能跑道 V2 -->
+        <!-- 右欄：跑道 B · 實驗動能規則 V2 -->
         <div class="rounded-xl bg-[#0D131F]/80 border border-emerald-500/30 p-3.5 sm:p-4 flex flex-col min-w-0 shadow-[0_0_15px_rgba(16,185,129,0.04)]">
           <div class="flex items-center justify-between border-b border-[#232F42]/80 pb-2.5 mb-2.5 flex-wrap gap-2">
             <div class="flex items-center gap-2">
               <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span class="font-bold text-sm text-[#F1F5F9]">跑道 B · 高勝率動能 V2</span>
+              <span class="font-bold text-sm text-[#F1F5F9]">跑道 B · 實驗動能規則 V2</span>
               <span id="runwayV2Badge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">09:05 開盤搶跑</span>
             </div>
             <div class="flex items-center gap-2">
@@ -693,6 +693,7 @@
             </div>
           </div>
 
+          <p id="runwayV2Disclosure" class="mb-2.5 px-3 py-1.5 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 text-xs font-semibold leading-relaxed">實驗跑道 · 非買進訊號 · 事先登記的歷史回測（2023-09～2026-08）扣成本後每筆平均約 −0.43%、5 段期間皆為負，每 100 萬買進約 −4,250 元</p>
           <div id="runwayV2PickList" class="space-y-3">
             <div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-mono">☕ 國慶連假休市待命中 · 下週一 09:05 自動掃描進場…</div>
           </div>
@@ -3711,7 +3712,7 @@
 
 
   /* ========================================================
-     RUNWAY V2 · 高勝率動能跑道渲染
+     RUNWAY V2 · 實驗動能跑道渲染（只顯示後端實際紀錄）
      ======================================================== */
 
   function renderRunwayV2Live() {
@@ -3746,74 +3747,9 @@
     } else if (isShowingPreviousDay) {
       if (stamp) stamp.textContent = "保留上一交易日戰報";
     } else {
-      // 非交易時段/休市 fallback：展示最新一期 (10/08) 跑道 B 實盤驗證戰報
-      if (stamp) stamp.textContent = "保留上一交易日 (10/08) 戰報";
-      rows = [
-        {
-          _liveStatus: "CLOSED",
-          trade_id: "V2-6226-1008",
-          symbol: "6226",
-          name: "光鼎",
-          entry_time: "2026-10-08T09:05:00+08:00",
-          entry_price: 43.97,
-          exit_time: "2026-10-08T09:06:00+08:00",
-          exit_price: 44.57,
-          exit_reason: "移動停利出場",
-          return_pct: 1.42,
-          net_pnl: 6245,
-          signal_type: "ORB_BREAKOUT",
-          score: 82.5,
-          reasons: ["早盤量能激增 4.2x", "強勢突破開盤高點", "五檔買盤厚度充足"]
-        },
-        {
-          _liveStatus: "CLOSED",
-          trade_id: "V2-3717-1008",
-          symbol: "3717",
-          name: "聯嘉投控",
-          entry_time: "2026-10-08T09:10:00+08:00",
-          entry_price: 28.36,
-          exit_time: "2026-10-08T09:41:00+08:00",
-          exit_price: 28.75,
-          exit_reason: "移動停利出場",
-          return_pct: 1.14,
-          net_pnl: 324,
-          signal_type: "VWAP_PULLBACK",
-          score: 78.0,
-          reasons: ["VWAP 回踩守穩出量", "紅K吞噬反轉", "五檔買一掛單充實"]
-        },
-        {
-          _liveStatus: "CLOSED",
-          trade_id: "V2-2313-1008",
-          symbol: "2313",
-          name: "華通",
-          entry_time: "2026-10-08T09:05:00+08:00",
-          entry_price: 250.13,
-          exit_time: "2026-10-08T12:55:00+08:00",
-          exit_price: 248.88,
-          exit_reason: "收盤強制平倉",
-          return_pct: -0.73,
-          net_pnl: -1821,
-          signal_type: "ORB_BREAKOUT",
-          score: 75.0,
-          reasons: ["開盤動能爆發", "站上開盤高", "尾盤 12:55 紀律平倉"]
-        },
-        {
-          _liveStatus: "CLOSED",
-          trade_id: "V2-8131-1008",
-          symbol: "8131",
-          name: "福懋科",
-          entry_time: "2026-10-08T09:06:00+08:00",
-          entry_price: 70.44,
-          exit_time: "2026-10-08T09:10:00+08:00",
-          exit_price: 68.77,
-          exit_reason: "結構停損出場",
-          return_pct: -2.60,
-          net_pnl: -7311,
-          signal_type: "ORB_BREAKOUT",
-          score: 72.0,
-          reasons: ["跌破 -1.8% 結構防守", "紀律嚴格止血停損"]
-        }
-      ];
+      if (stamp) stamp.textContent = lastUpdate ? `今日尚無交易 · ${formatTaiwanDateTime(lastUpdate)}` : "尚無跑道 B 快照";
+      container.innerHTML = `<div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-medium">尚無跑道 B 模擬交易紀錄；不以範例或回測資料代替實盤紀錄。</div>`;
+      return;
     }
 
     const KNOWN_STOCK_NAMES = {
@@ -3854,11 +3790,7 @@
 
       // 2. 出場原因防護
       let exitReason = (x.exit_reason && typeof x.exit_reason === "string" && !x.exit_reason.includes("?")) ? x.exit_reason.trim() : "";
-      if (!exitReason) {
-        if (n(x.return_pct) > 0) exitReason = "移動停利出場";
-        else if (n(x.return_pct) < -0.015) exitReason = "結構停損出場";
-        else exitReason = "尾盤紀律平倉";
-      }
+      if (!exitReason) exitReason = "出場原因未提供";
 
       let pnl = null;
       if (isOpen && entry !== null && current !== null && entry > 0) {
@@ -3876,15 +3808,7 @@
       
       let rawReasons = Array.isArray(x.reasons) ? x.reasons : (typeof x.reasons === "string" ? x.reasons.split(",").map(s => s.trim()) : []);
       let reasons = rawReasons.filter(r => typeof r === "string" && !r.includes("?"));
-      if (!reasons.length) {
-        if (x.signal_type === "ORB" || x.signal_type === "ORB_BREAKOUT") {
-          reasons = ["早盤量能激增", "突破開盤高點", "五檔買盤厚實"];
-        } else if (x.signal_type === "VWAP_PULLBACK") {
-          reasons = ["VWAP 回踩守穩", "紅K吞噬反轉", "五檔買一掛單充實"];
-        } else {
-          reasons = ["高勝率動能進場", "五檔微結構防守"];
-        }
-      }
+      if (!reasons.length) reasons = ["進場理由未提供"];
 
       return `
         <div class="rounded-xl border border-emerald-500/20 bg-[#0F172A]/70 p-3.5 sm:p-4 surface trade-detail-card transition-all hover:border-emerald-500/40 cursor-pointer" role="button" tabindex="0" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(stockName)} 跑道B 交易紀錄">

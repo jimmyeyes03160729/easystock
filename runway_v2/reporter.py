@@ -1,6 +1,6 @@
 """Runway V2: 雙跑道對照日報產出與推播
  Side-by-Side 比較：
- 【跑道 A：現有 AI 模型體系】 vs 【跑道 B：新獨立高勝率動能跑道】
+ 【跑道 A：現有 AI 模型體系】 vs 【跑道 B：實驗動能規則】
 並自動推播至 LINE 與 TELEGRAM。
 """
 from __future__ import annotations
@@ -96,7 +96,7 @@ def generate_comparison_report(day: str | None = None, db_path: Path | str | Non
                 f"  {i}. {t['symbol']} {t['name']}: {pnl:+,.0f} 元 ({ret:+.2f}%) [{t.get('exit_reason', t.get('signal_type'))}]{note}"
             )
     elif not (open_b or orphaned_b):
-        lines.append("• 今日無符合條件之高勝率訊號 (0 筆進場，嚴守紀律)")
+        lines.append("• 今日無符合條件之跑道 B 訊號 (0 筆進場，嚴守紀律)")
 
     if open_b:
         lines.append(f"• 未平倉：{len(open_b)} 筆 (未計入損益)")
