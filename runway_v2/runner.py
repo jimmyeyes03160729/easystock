@@ -16,6 +16,7 @@ from .strategy import evaluate_signal
 from .manager import PositionManagerV2
 from .notifier import notify_entry, notify_exit
 from .ledger import get_daily_trades
+from .limits import DailyLimits, planned_shares
 from .orderbook import OrderBookTracker
 
 
@@ -24,6 +25,7 @@ class RunwayV2Runner:
         self.enabled = RUNWAY_V2_ENABLED
         self.db_path = db_path or DB_PATH
         self.manager = PositionManagerV2(db_path=self.db_path)
+        self.limits = DailyLimits(db_path=self.db_path)
         self.orderbook_tracker = OrderBookTracker()
         self.subscribe_bidask_fn: Any = None
         self.subscribed_bidask_symbols: set[str] = set()
@@ -50,6 +52,9 @@ class RunwayV2Runner:
 
             if not self.manager.can_open_new():
                 return
+
+            # 每日額度與熔斷計數 (換日或重啟後由 ledger 重建)
+            self.limits.roll_to(current_dt.strftime("%Y-%m-%d"))
 
             # 2. 依動能評估合格清單
             for row in qualified_rows:
@@ -93,6 +98,20 @@ class RunwayV2Runner:
                 )
 
                 if signal:
+                    # 每日買進額度 100 萬 (只計買進) 與已實現虧損 6,000 熔斷
+                    notional = planned_shares(current_price) * current_price
+                    block = self.limits.block_reason(notional)
+                    if block:
+                        if self.limits.first_block_today(symbol, block):
+                            print(
+                                f"[RUNWAY_V2_LIMIT] skip {symbol} {name} type={signal['signal_type']} "
+                                f"reason={block} buy_used={self.limits.buy_amount:,.0f} "
+                                f"new={notional:,.0f} buy_cap={self.limits.max_buy_amount:,.0f} "
+                                f"realized_net={self.limits.realized_net_pnl:,.0f} "
+                                f"loss_limit={-self.limits.max_loss:,.0f}"
+                            )
+                        continue
+
                     pos = self.manager.open_position(
                         symbol=symbol,
                         name=name,
@@ -104,6 +123,7 @@ class RunwayV2Runner:
                         stop_price=signal.get("stop_price"),
                     )
                     if pos:
+                        self.limits.refresh()
                         print(
                             f"[RUNWAY_V2_ENTRY] {symbol} {name} price={current_price} "
                             f"type={signal['signal_type']} score={signal['score']}"
@@ -132,15 +152,17 @@ class RunwayV2Runner:
                 return
 
             # 如果是強制出場時間，對所有現有持倉平倉
+            # 每檔以自己的最新成交價出場 (觸發檔用本筆 tick，其餘用 pos.current_price)，不可用盤中最高價
             if is_force_exit:
-                for sym in list(self.manager.positions.keys()):
+                for sym, pos in list(self.manager.positions.items()):
                     exit_event = self.manager.update_price(
                         symbol=sym,
-                        current_price=price if sym == symbol else self.manager.positions[sym].highest_price,
+                        current_price=price if sym == symbol else pos.current_price,
                         dt_str=current_dt.isoformat(),
                         force_exit=True,
                     )
                     if exit_event:
+                        self.limits.refresh()
                         print(f"[RUNWAY_V2_EXIT] {exit_event}")
                         notify_exit(
                             symbol=exit_event["symbol"],
@@ -163,6 +185,7 @@ class RunwayV2Runner:
                 force_exit=False,
             )
             if exit_event:
+                self.limits.refresh()
                 print(f"[RUNWAY_V2_EXIT] {exit_event}")
                 notify_exit(
                     symbol=exit_event["symbol"],

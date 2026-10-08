@@ -110,6 +110,9 @@ def record_exit(
     return_pct: float,
     db_path: Path | str | None = None,
 ) -> None:
+    """每一腿出場呼叫一次 (分批停利 50% 與剩餘部位各一次)。
+    gross_pnl / fee / tax / net_pnl 逐腿累加，exit_time / exit_price / exit_reason / return_pct 為最後一腿。
+    """
     conn = get_connection(db_path)
     with conn:
         conn.execute(
@@ -118,10 +121,10 @@ def record_exit(
                 exit_time = ?,
                 exit_price = ?,
                 exit_reason = ?,
-                gross_pnl = ?,
-                fee = ?,
-                tax = ?,
-                net_pnl = ?,
+                gross_pnl = COALESCE(gross_pnl, 0) + ?,
+                fee = COALESCE(fee, 0) + ?,
+                tax = COALESCE(tax, 0) + ?,
+                net_pnl = COALESCE(net_pnl, 0) + ?,
                 return_pct = ?,
                 status = 'CLOSED'
             WHERE trade_id = ?
