@@ -50,7 +50,7 @@ function renderHealth(data){
 function renderProviderHealth(data){
   const target=el('providerHealthDetails');if(!target)return;target.replaceChildren();
   el('providerHealthSummary').textContent=data?`市場：${data.market_state==='OPEN'?'盤中':data.market_state==='CLOSED'?'休市／盤後':'待確認'} · 即時市場資料${data.market_data?.usable?'可用':'尚未確認可用'}`:'尚未收到資料來源證據。';
-  const labels={shioaji:'永豐行情',esun:'玉山行情',fugle:'Fugle',firebase:'Firebase',gemini:'Gemini',openai:'OpenAI'};
+  const labels={shioaji:'永豐行情',esun:'玉山行情',fugle:'Fugle',firebase:'Firebase'};
   const statuses={ONLINE:'正常',DEGRADED:'延遲／部分異常',OFFLINE:'離線',UNKNOWN:'未知／待命',MARKET_CLOSED:'休市／盤後'};
   const metrics={latency_ms:'延遲 ms',age_seconds:'資料秒數',heartbeat_age_seconds:'心跳秒數',consecutive_failures:'連續失敗',reconnect_count:'重連次數',subscription_count:'訂閱數',provider_version:'版本'};
   for(const [key,label] of Object.entries(labels)){

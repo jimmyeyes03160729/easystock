@@ -28,9 +28,9 @@
   <h3>API／資料來源診斷</h3>
   <p id="providerHealthSummary" class="hint" role="status">等待資料來源檢查。</p>
   <div id="providerHealthDetails" class="health-signals"></div>
-  <h3>玉山市場情境（只讀診斷）</h3>
+  <h3 id="marketContextTitle">玉山市場情境（只讀診斷）</h3>
   <p class="hint">價格輪動代理，不是真實資金流；不參與正式進出場。全市場快照範圍可能包含 ETF，覆蓋率不足不視為完整市場。</p>
-  <div id="marketContext" class="health-signals" role="status">待 Owner 登入後讀取。</div>
+  <div id="marketContext" class="market-context" role="region" aria-labelledby="marketContextTitle" aria-live="polite">待 Owner 登入後讀取。</div>
   <p class="hint health-note">綠燈：可用或完成；黃燈：等待條件、時段或額度；紅燈：需要處理；灰燈：尚未開始或未啟用。</p>
   <section class="panel health-panel" id="runtimeModelPanel" aria-labelledby="runtimeModelTitle">
      <div class="health-heading"><div><p class="eyebrow">盤中模型狀態</p><h2 id="runtimeModelTitle">盤中模型一致性</h2><p class="hint">確認盤中實際載入的模型，是否就是目前核准、供下一次啟動使用的模型。注意：模型晉升後，現有 process 不會自動換模型。</p></div></div>
@@ -257,23 +257,23 @@
         <button type="button" id="btnUnitShare" class="unit-btn active">股 (零股)</button>
         <button type="button" id="btnUnitSheet" class="unit-btn">張 (整張)</button>
       </div>
-      <div class="order-row">
+      <div class="order-row order-entry-fields">
         <div class="field-group">
           <div class="field-header">
-            <label>委託限價 (元)</label>
+            <label for="orderPrice">委託限價 (元)</label>
           </div>
           <input id="orderPrice" type="number" min="0.01" step="0.01" placeholder="價格" style="width:100%;">
         </div>
         <div class="field-group">
           <div class="field-header">
-            <label id="orderQtyLabel">委託數量 (股)</label>
-            <div id="quickQtyBtns" class="quick-btns">
-              <button type="button" data-qty="1">1</button>
-              <button type="button" data-qty="10">10</button>
-              <button type="button" data-qty="100">100</button>
-            </div>
+            <label id="orderQtyLabel" for="orderQty">委託數量 (股)</label>
           </div>
           <input id="orderQty" type="number" value="1" min="1" max="999" step="1" style="width:100%;">
+          <div id="quickQtyBtns" class="quick-btns" role="group" aria-label="快捷委託數量">
+            <button type="button" data-qty="1">1</button>
+            <button type="button" data-qty="10">10</button>
+            <button type="button" data-qty="100">100</button>
+          </div>
         </div>
       </div>
       <div id="orderTotalEst" class="order-total-est">預估交割金額：約 0 元</div>
