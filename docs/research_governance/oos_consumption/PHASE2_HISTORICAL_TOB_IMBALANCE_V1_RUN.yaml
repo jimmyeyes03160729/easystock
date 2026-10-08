@@ -1,0 +1,42 @@
+# EasyStock OOS Consumption Ledger — TOB_IMBALANCE_V1 (preregistered, run once)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "PHASE2_HISTORICAL_TOB_IMBALANCE_V1_RUN"
+created_at: "2026-10-08T18:20:00+08:00"
+description: >
+  The single preregistered run of TOB_IMBALANCE_V1 (frozen in e5e3708) over the five test windows for the 100-stock
+  pool. Reserved future partitions and days > 2026-10-02 were not read.
+
+consumption_events:
+  - consumption_id: "CNS_EA_TOB_IMBALANCE_V1_TEST_WINDOWS"
+    trial_id: "TRIAL_EA_TOB_IMBALANCE_V1"
+    dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      slice_definition: "TOB_IMBALANCE_V1: 5-minute grid 09:30-12:25, 1m/5m/15m horizons, 100-stock pool, five test windows"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "forward mid and taker-cost net returns per imbalance bucket, horizon, group and fold"
+    consumed_at: "2026-10-08T18:10:00+08:00"
+    record_type: "PREREGISTERED_CONSUMPTION"
+    recorded_after_exposure: true
+    source_artifact: "VM:/home/ubuntu/easystock-research/tob_imbalance_v1/output/easystock_tob_imbalance_v1_20261008.tar.gz (sha256 bf034cd39dd53543834e04eee16ab544903fdb88a40253179be198a941f6d509)"
+    source_commit: "e5e3708"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Level-1 imbalance only; five-level rules remain untested."
