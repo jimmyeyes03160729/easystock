@@ -1,4 +1,4 @@
-# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any return of the V2 day set is computed)
+# EasyStock Research Trial Ledger — PREREGISTERED trial, sealed after its single run (2026-10-10)
 
 trial_id: "TRIAL_EA_OPEN_FADE_V2"
 parent_trial_id: "TRIAL_EA_OPEN_FADE_V1"
@@ -40,10 +40,23 @@ data:
 exposure_state:
   train_seen: false
   validation_seen: false
-  oos_seen: false
+  oos_seen: true
   future_holdout_seen: false
-  exposed_dimensions: []
-  exposures: []
+  exposed_dimensions:
+    - "GAP and RUN top-decile short net, baseline, excess and quota-3 lines on the 256 days with 30-49 valid symbols, groups ALL and CORE42, per window"
+  exposures:
+    - exposure_id: "EXP_EA_OPEN_FADE_V2_TEST_WINDOWS"
+      dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+      dataset_family_id: "TWSE_EQUITY_INTRADAY"
+      dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "gap/run top-decile short results on days with 30-49 valid symbols"
+      source_trial_id: "TRIAL_EA_OPEN_FADE_V2"
+      first_seen_at: "2026-10-10T10:30:00+08:00"
 
 search:
   parameters_searched:
@@ -55,17 +68,26 @@ search:
 
 governance:
   plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/OPEN_FADE_V2.yaml"
-  registry_hash: "NOT_YET_RUN"
+  registry_hash: "d0ea46bbc975c03718ca73cb783d248957570c55d1f61cabeb8b7f7592919f5d"
   no_oos_tuning: true
   production_effect: "NONE"
 
 result:
-  status: "IN_PROGRESS"
-  decision: "FROZEN_NOT_RUN"
-  sealed_commit: ""
+  status: "SEALED"
+  decision: "RELATIVE_ONLY_BOTH_SIGNALS"
+  sealed_commit: "479ed82"
   PRODUCTION_READY: false
   DISCOVERY_DATA_REUSED: true
   INDEPENDENT_CONFIRMATION: false
   FUTURE_CONFIRMATION_UNTOUCHED: true
   notes: >
-    Disjoint from the V1-consumed days by construction (number of valid symbols per day only).
+    Frozen rule: GAP and RUN are RELATIVE_ONLY (A false, B false, C true, D true, G true) on 256 days (windows 1-5:
+    62, 67, 63, 56, 8), mean top-decile size 4.8 names. The relative effect replicates on days V1 did not use: the
+    top decile falls further than the same-day baseline by +28.3 / +27.6 bps (t 4.64 /
+    4.83) with positive excess in every window. The absolute short is net negative after quote-stress costs:
+    top-decile net -11.2 / -11.9 bps (-1,115 / -1,192 TWD per 1M of short sales per name-day), baseline -39.5 bps;
+    the quota top-3 line is -12.1 / -2.7 bps (-1,211 / -268 TWD per day on 1M). It improves strongly with time:
+    GAP top-decile net by window -46.9, -33.4, +1.7, +25.0 bps (excess -0.3, +16.5, +42.8, +51.4), and V1's last-window
+    days gave +30.8 / +55.9 bps, so the net edge is positive only in the recent, more volatile period (regime,
+    not proven). CORE42 group (192 days, windows 1-2 under 40 days) INSUFFICIENT: RUN +5.0 bps (+499 TWD/1M).
+    Not shown: shortability of the pool stocks and how the 1M quota counts sell-first trades. Bundle sha256 d0ea46bb.
