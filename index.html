@@ -711,6 +711,13 @@
           <div id="runwayV2PickList" class="space-y-3">
             <div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-mono">B1 等待當日行情與五檔資料</div>
           </div>
+          <details id="bReplayPanel" class="mt-4 text-xs">
+            <summary class="cursor-pointer font-semibold text-[#F1F5F9]">B1／B2／B3 回測、成交壓力與資料品質</summary>
+            <p id="bReplayStatus" class="text-sub mt-3" role="status">等待歷史資料盤點與回放報告</p>
+            <p class="text-sub mt-2">共用目前跑道規則，按當時接受的五檔、逐筆、股票池、大盤與五分K順序回放；只計完整且可核對的日期。每條各100萬元限額，費用與稅已計入，不混用舊B結果。</p>
+            <p class="text-sub mt-2">每日13:20／21:20更新。基準是可見報價模擬，尚未模擬排隊與市場衝擊；延遲0.5／1秒會重跑規則，雙邊各多1檔只是固定交易的額外成本試算。各情境有效日期可能不同，須一併查看天數。回撤只計已實現損益，合成測試資料不列正式績效。</p>
+            <div id="bReplayRows" class="mt-3">缺完整五檔或當時股票池的日期不會捏造勝率。</div>
+          </details>
         </div>
       </div>
     </div>
@@ -5376,5 +5383,6 @@
 </nav>
 <script src="assets/mobile-nav.js?v=ed9c7d1d0f6c"></script>
 <script src="assets/revenue-observation.js?v=2c059febec26"></script>
+<script src="assets/b-lanes-replay.js?v=0b75632c9dc4"></script>
 </body>
 </html>

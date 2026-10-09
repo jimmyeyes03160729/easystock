@@ -75,7 +75,7 @@ def default_sender(text, event_key):
 
 
 class LaneSuite:
-    def __init__(self, db_path=None, sender=None, publisher=None):
+    def __init__(self, db_path=None, sender=None, publisher=None, recorder=None, offline=False):
         self.path = Path(db_path or os.environ.get("RUNWAY_B_LANES_DB", str(DB_DIR / "lanes.sqlite")))
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with database(self.path) as db:
@@ -90,11 +90,25 @@ class LaneSuite:
         self.subscribed = set()
         self.sender = sender or default_sender
         self.publisher = publisher
+        self.recorder, self.offline = recorder, offline
         self.worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="b-lanes-report")
         self.jobs = set()
         self._last_save = self._last_publish = 0.0
         self.last_feed_at = None
         self.enabled = os.environ.get("RUNWAY_B_LANES_ENABLED", "1").lower() in ("1", "true", "yes")
+
+    def _capture(self, kind, data):
+        if self.recorder and not self.offline:
+            try:
+                self.recorder.record(kind, data)
+            except Exception:
+                # Recording failure cannot block the quote callback or change trades.
+                self.recorder.errors += 1
+
+    def close_recording(self):
+        with self.lock:
+            if self.recorder:
+                self.recorder.close(self.state)
 
     def register_bidask_subscriber(self, fn):
         self.subscribe = fn
@@ -106,6 +120,7 @@ class LaneSuite:
     def release_symbol(self, symbol):
         with self.lock:
             if not self.has_open(symbol):
+                self._capture('release', {'symbol':symbol})
                 self.subscribed.discard(symbol)
                 self.rows.pop(symbol, None)
                 self.books.pop(symbol, None)
@@ -131,8 +146,11 @@ class LaneSuite:
         self.rows.clear()
         self.bars.clear()
         self.last_feed_at = None
+        self._capture('seed', {'day':self.day,'state':self.state,'prior_unresolved':self.prior_unresolved})
 
     def _save(self, now, force=False):
+        if self.offline:
+            return
         if force or now.timestamp() - self._last_save >= 5:
             with database(self.path) as db:
                 db.execute("INSERT OR REPLACE INTO sessions VALUES(?,?)", (self.day, json.dumps(self.state, ensure_ascii=False)))
@@ -164,6 +182,8 @@ class LaneSuite:
             history = self.books.setdefault(symbol, deque(maxlen=300))
             if history and dt <= history[-1]["dt"]:
                 return
+            self._capture('bidask', {'symbol':symbol,'quote':{'datetime':dt.isoformat(),
+                'bid_price':bp,'ask_price':ap,'bid_volume':bv,'ask_volume':av}})
             total = sum(bv + av)
             book = {"dt": dt, "bid": bp[0], "ask": ap[0], "bv": bv[0], "av": av[0],
                     "obi": (sum(bv) - sum(av)) / total if total else 0}
@@ -186,6 +206,8 @@ class LaneSuite:
             if tape and dt < tape[-1][0]:
                 return
             tape.append((dt, price, int(tick_type or 0), volume))
+            self._capture('tick', {'symbol':symbol,'price':price,'datetime':dt.isoformat(),
+                                   'tick_type':int(tick_type or 0),'volume':volume})
             self.last_feed_at = dt if not self.last_feed_at or dt > self.last_feed_at else self.last_feed_at
 
     def on_radar_update(self, rows, cache, previous_closes, now, market=None):
@@ -208,6 +230,8 @@ class LaneSuite:
                         self.subscribed.add(symbol)
                     except Exception:
                         pass
+            self._capture('radar', {'now':now.isoformat(),'rows':rows,'market':self.market,
+                'previous_closes':previous_closes,'bars':{str(r['symbol']):self.bars.get(str(r['symbol']),[]) for r in rows if r.get('symbol')}})
 
     def _book(self, symbol, now):
         h = self.books.get(symbol, [])
@@ -343,6 +367,8 @@ class LaneSuite:
         return "\n".join(lines)
 
     def _queue_report(self, now, phase):
+        if self.offline:
+            return
         key = f"b-lanes:v1:{self.day}:{phase}"
         if key in self.jobs:
             return
@@ -369,18 +395,25 @@ class LaneSuite:
             changed = False
             for lane, spec in SPECS.items():
                 state = self.state[lane]
+                checks = state.setdefault('execution_checks', {})
+                def count(key):
+                    checks[key] = checks.get(key,0)+1
                 for symbol, pos in list(state["positions"].items()):
                     book = self._book(symbol, now)
+                    count('exit_quote_checks')
                     if not book:
+                        count('stale_exit_checks')
                         continue
                     exit_price = book["bid"] if pos["direction"] == 1 else book["ask"]
                     stop = pos["direction"] * (exit_price - pos["stop_price"]) <= 0
                     profit = pos["direction"] * (exit_price - pos["target"]) >= 0
                     if time_str >= spec["end"] or stop or profit:
+                        count('exit_fill_checks')
                         lots = int((book["bv"] if pos["direction"] == 1 else book["av"]))
                         # A thin quote cannot claim all shares filled. Keep pending until
                         # enough visible depth exists; final report honestly shows pending.
                         if lots * 1000 < pos["shares"]:
+                            count('thin_exit_checks')
                             continue
                         net = self._net(pos, exit_price)
                         state["trades"].append({**pos, "exit_price": exit_price, "exit_time": now.isoformat(),
@@ -412,10 +445,15 @@ class LaneSuite:
                         state["rejects"]["未確認先賣後買資格"] = state["rejects"].get("未確認先賣後買資格", 0) + 1
                         continue
                     price = signal["entry_price"]
+                    count('entry_fill_checks')
                     shares = int(min(200000, 1000000 - state["used"]) // (price * 1000)) * 1000
                     book = self._book(symbol, now)
                     depth = (book["av"] if signal["direction"] == 1 else book["bv"]) if book else 0
-                    if shares < 1000 or depth * 1000 < shares:
+                    if shares < 1000:
+                        count('entry_limit_checks')
+                        continue
+                    if depth * 1000 < shares:
+                        count('thin_entry_checks')
                         continue
                     if not 100 <= price <= 149:
                         continue
@@ -438,6 +476,10 @@ class LaneSuite:
                 snapshot = self.export_snapshot(now)
                 self._last_publish = now.timestamp()
                 self._submit(self.publisher, snapshot)
+            if self.recorder and not self.offline:
+                import hashlib
+                state_hash=hashlib.sha256(json.dumps(self.state,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
+                self._capture('clock', {'now':now.isoformat(),'state_hash':state_hash})
 
     def export_snapshot(self, now=None):
         now = taiwan(now or datetime.now(TPE))

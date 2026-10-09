@@ -2636,7 +2636,15 @@ class IntradayLiveEngine:
               f"threshold={self.daytrade_model.threshold} learning={self.learning.enabled}")
         try:
             from runway_v2.lanes import LaneSuite, firebase_publish
-            self.runway_v2 = LaneSuite(publisher=firebase_publish)
+            from runway_v2.replay_journal import InputRecorder
+            from runway_v2.config import DB_DIR
+            journal = None
+            if os.environ.get('RUNWAY_B_REPLAY_RECORDING','1') == '1':
+                try:
+                    journal = InputRecorder(Path(os.environ.get('RUNWAY_B_REPLAY_DIR', str(DB_DIR/'recordings'))))
+                except Exception as exc:
+                    print(f"[B_INPUT_JOURNAL_WARN] {type(exc).__name__}")
+            self.runway_v2 = LaneSuite(publisher=firebase_publish, recorder=journal)
             self.runway_v2.advance(now_tpe())
             print(f"[RUNWAY_V2_BOOT] enabled={self.runway_v2.enabled}")
             if self.runway_v2 and self.runway_v2.enabled:
@@ -4962,6 +4970,8 @@ class IntradayLiveEngine:
             pass
 
         self.learning.close()
+        if getattr(self, 'runway_v2', None) is not None:
+            self.runway_v2.close_recording()
         print("✅ Intraday Live stopped")
 
     def run(self) -> None:
@@ -4998,6 +5008,8 @@ class IntradayLiveEngine:
             )
 
             self.learning.close()
+            if getattr(self, 'runway_v2', None) is not None:
+                self.runway_v2.close_recording()
             return
 
         self.init_firebase()

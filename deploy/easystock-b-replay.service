@@ -1,0 +1,16 @@
+[Unit]
+Description=EasyStock B1 B2 B3 exact-input replay and quality audit
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+ExecStart=/home/ubuntu/easystock/.venv/bin/python -m runway_v2.replay --history-root /home/ubuntu/easystock-history-data --history-root /home/ubuntu/easystock-history-expanded-data --publish
+TimeoutStartSec=7200
+Nice=10
+IOSchedulingClass=idle
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
