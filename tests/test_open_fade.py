@@ -64,3 +64,31 @@ def test_criteria_and_classification():
     assert FZ.classify(c) == 'NO_EDGE'
     c, _ = FZ.criteria(events(10.0, 5.0, per_fold=50))
     assert FZ.classify(c) == 'INSUFFICIENT'
+
+
+def test_v2_uses_only_days_below_the_v1_symbol_threshold_and_decides_on_folds_1_to_4(tmp_path, monkeypatch):
+    import json
+    import ofd_finalize_v2 as V2
+    work = tmp_path / 'work'
+    work.mkdir()
+
+    def day(date, fold, n, shift):
+        rows = [{'sym': '%04d' % (1000 + i), 'gap': float(i), 'run': float(i), 'short_net': -30.0 + ((60.0 + shift) if i >= n - 4 else 0.0),
+                 'long_net': -40.0, 'mid': -10.0, 'hv': 0, 'core': int(i < 20)} for i in range(n)]
+        (work / (date + '.json')).write_text(json.dumps({'date': date, 'fold': fold, 'failed': 0, 'rows': rows}))
+
+    k = 0
+    for fold in (1, 2, 3, 4):
+        for _ in range(45):
+            day('2025-01-%03d-%d' % (k, fold), fold, 40, float(k % 7 - 3))
+            k += 1
+    day('2026-06-01', 5, 70, 0.0)          # consumed by V1 (>= 50 valid symbols)
+    day('2025-02-01', 1, 20, 0.0)          # too few symbols
+    monkeypatch.setattr(V2, 'WORK', work)
+    monkeypatch.setattr(V2, 'OUT', tmp_path / 'out')
+    V2.main()
+    d = json.loads((tmp_path / 'out' / 'OPEN_FADE_V2_DECISION.json').read_text())
+    assert d['counts'] == {'DAYS_CONSUMED_BY_V1': 1, 'DAYS_TOO_FEW_SYMBOLS': 1, 'DAYS_USED': 180}
+    r = d['results']['gap|ALL']
+    assert r['stats']['events'] == 180 and r['stats']['mean_top_size'] == 4 and r['classification'] == 'STRONG'
+    assert d['family'] == 'STRONG_CANDIDATE'

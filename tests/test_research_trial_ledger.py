@@ -138,7 +138,7 @@ def test_event_audit_trials_form_a_rejected_chain(trials_dir):
              "TRIAL_EA_H4_SOURCE_NATIVE_ORB", "TRIAL_EA_SOURCE_PRIMITIVE_BATCH_V1",
              "TRIAL_EA_BASE_RATE_MATCHED_CONTROL_V1", "TRIAL_EA_BOOK_RULES_V1",
              "TRIAL_EA_COST_FEASIBILITY_V1", "TRIAL_EA_HV60_V1", "TRIAL_EA_PASSIVE_FILL_V1", "TRIAL_EA_TOB_IMBALANCE_V1",
-             "TRIAL_EA_META_B_FILTER_V1", "TRIAL_EA_OPEN_FADE_V1"]
+             "TRIAL_EA_META_B_FILTER_V1", "TRIAL_EA_OPEN_FADE_V1", "TRIAL_EA_OPEN_FADE_V2"]
     assert set(chain) == set(trials)
     assert trials[chain[0]]["parent_trial_id"] is None
     for parent, child in zip(chain, chain[1:]):

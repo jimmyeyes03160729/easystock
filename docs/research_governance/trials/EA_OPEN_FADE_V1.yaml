@@ -1,4 +1,4 @@
-# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any gap- or run-conditioned return is read)
+# EasyStock Research Trial Ledger — PREREGISTERED trial, sealed after its single run (2026-10-10): INSUFFICIENT
 
 trial_id: "TRIAL_EA_OPEN_FADE_V1"
 parent_trial_id: "TRIAL_EA_META_B_FILTER_V1"
@@ -37,13 +37,28 @@ data:
   discovery_data_reused: true
   independent_confirmation: false
 
+
 exposure_state:
   train_seen: false
   validation_seen: false
-  oos_seen: false
+  oos_seen: true
   future_holdout_seen: false
-  exposed_dimensions: []
-  exposures: []
+  exposed_dimensions:
+    - "GAP and RUN top-decile short net, baseline, excess and quota-3 lines on the 76 days with >= 50 valid symbols (59 in the last window), groups ALL and HV_TIER"
+    - "descriptive open-to-close decomposition on the exploration sample (every 6th archive day, core 42)"
+  exposures:
+    - exposure_id: "EXP_EA_OPEN_FADE_V1_TEST_WINDOWS"
+      dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+      dataset_family_id: "TWSE_EQUITY_INTRADAY"
+      dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "gap/run top-decile short results on days with >= 50 valid symbols"
+      source_trial_id: "TRIAL_EA_OPEN_FADE_V1"
+      first_seen_at: "2026-10-10T09:00:00+08:00"
 
 search:
   parameters_searched:
@@ -55,18 +70,23 @@ search:
 
 governance:
   plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/OPEN_FADE_V1.yaml"
-  registry_hash: "NOT_YET_RUN"
+  registry_hash: "53483a24f26ad21892ac5643246b4698ca98adb071e79708a75ec3f379c6ff3a"
   no_oos_tuning: true
   production_effect: "NONE"
 
 result:
-  status: "IN_PROGRESS"
-  decision: "FROZEN_NOT_RUN"
-  sealed_commit: ""
+  status: "SEALED"
+  decision: "INSUFFICIENT_DATA"
+  sealed_commit: "03b0702"
   PRODUCTION_READY: false
   DISCOVERY_DATA_REUSED: true
   INDEPENDENT_CONFIRMATION: false
   FUTURE_CONFIRMATION_UNTOUCHED: true
   notes: >
-    The unconditional open-to-close drift motivating the study was seen in the daily DB (all days) and on an
-    exploration sample of archive days (every 6th day), which this study excludes.
+    Frozen rule G (>= 100 days in every window) failed: the day filter of >= 50 valid symbols qualified only 76 of
+    334 days (windows 1-5: 3, 0, 3, 11, 59), because before 2026-05 the archive holds about 55 pool symbols per day
+    (design flaw: the threshold ignored archive coverage). Not rescued. For the record, GAP / RUN on those 76 days:
+    top-decile short net +30.8 / +55.9 bps (+3,080 / +5,591 TWD per 1M of short sales per name-day), baseline
+    -13.2 bps, excess +44.0 / +69.1 bps (t 3.3 / 5.4), quota top-3 +60.2 / +68.3 bps (+6,019 / +6,825 TWD per day),
+    mostly from the last window (59 days), a single regime. HV_TIER (46 days, last window only) +49.1 / +79.2 bps.
+    The follow-up OPEN_FADE_V2 tests the same hypotheses on the disjoint 30-49-symbol days. Bundle sha256 53483a24.

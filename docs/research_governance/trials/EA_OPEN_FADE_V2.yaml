@@ -1,0 +1,71 @@
+# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any return of the V2 day set is computed)
+
+trial_id: "TRIAL_EA_OPEN_FADE_V2"
+parent_trial_id: "TRIAL_EA_OPEN_FADE_V1"
+created_at: "2026-10-10T10:00:00+08:00"
+study_name: "OPEN_FADE_V2 the V1 gap/run short hypotheses on the disjoint days with 30-49 valid symbols"
+research_stage: "EXPLORATORY"
+ledger_record_type: "PREREGISTERED_TRIAL"
+recorded_after_experiment: false
+
+provenance:
+  source_classification: "EXPLORATORY_HEURISTIC"
+  source_refs:
+    - "docs/research_governance/preregistrations/OPEN_FADE_V2.yaml"
+    - "docs/research_governance/trials/EA_OPEN_FADE_V1.yaml"
+
+hypothesis:
+  statement: "On days not consumed by OPEN_FADE_V1, the top decile of opening gap or 09:00-09:30 run falls further from 09:30 to 12:55 than the unconditional short, enough to pay quote-stress short day-trade costs."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "daily_top_decile_short_net_bps"
+  direction: "PASS_FAIL"
+  baseline: "UNCONDITIONAL_SHORT_SAME_DAY"
+  frozen_before_search: true
+
+data:
+  dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2024-12-25"
+  end_date: "2026-08-27"
+  dataset_end: "2026-10-02"
+  universe: "100_STOCK_LIQUIDITY_POOL"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: false
+  future_holdout_seen: false
+  exposed_dimensions: []
+  exposures: []
+
+search:
+  parameters_searched:
+    - "none: the V1 signals and rules unchanged; only the day set and the symbol threshold differ"
+  search_space:
+    signals: "GAP, RUN"
+  trial_count: 2
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/OPEN_FADE_V2.yaml"
+  registry_hash: "NOT_YET_RUN"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "IN_PROGRESS"
+  decision: "FROZEN_NOT_RUN"
+  sealed_commit: ""
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    Disjoint from the V1-consumed days by construction (number of valid symbols per day only).

@@ -1,0 +1,47 @@
+# EasyStock preregistration — OPEN_FADE_V2 (the OPEN_FADE_V1 hypotheses on the days V1 did not consume)
+# Frozen in git BEFORE any return of the V2 day set is computed.
+# Why: OPEN_FADE_V1 (sealed INSUFFICIENT) required >= 50 valid pool symbols per day, but before 2026-05 the archive holds
+#   about 55 pool symbols per day and fewer than 50 pass the freshness rules, so only 76 days (59 of them in the last
+#   window) qualified. V1's frozen rule classified it INSUFFICIENT; it is not rescued. The aggregate V1 figures are
+#   disclosed in the V1 trial. V2 tests the same two frozen hypotheses on a DISJOINT day set chosen only by the number of
+#   valid symbols per day, never by returns.
+
+preregistration_id: "OPEN_FADE_V2"
+created_at: "2026-10-10T10:00:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE"
+direction: "SHORT (sell first, buy back the same day)"
+parent: "OPEN_FADE_V1"
+code: "research/open_fade_v1/ofd_finalize_v2.py on the per-day rows already written by ofd_run.py (tests/test_open_fade.py)"
+
+unchanged_from_v1:
+  - "hypotheses GAP and RUN (opening gap, 09:00-09:30 run, both versus the reference), top ceil(10%) shorted"
+  - "09:30 bid entry, 12:55 ask exit, fee + 0.15% day-trade tax, 1000 shares, baseline = unconditional short of the valid symbols that day"
+  - "exploration days (every 6th archive day) excluded, universe = frozen 100-stock pool, primary group ALL"
+
+day_set:
+  rule: "non-exploration archive days in the five test windows with at least 30 and fewer than 50 valid symbols; days with 50 or more were consumed by V1 and are not used; days with fewer than 30 are dropped"
+  counted_before_any_return: "days per window with 30-49 valid symbols: 62, 67, 63, 56, 8 (metadata counts only)"
+  deciding_windows: "windows 1-4; window 5 keeps only 8 leftover days and is reported, not decisive"
+  top_decile_size: "ceil(10%) of 30-49 symbols = 3-5 names per day (noisy; the day-clustered t statistic accounts for it)"
+
+pass_criteria:
+  A: "mean top-decile short net > 0"
+  B: "top-decile short net > 0 in >= 3 of the 4 deciding windows"
+  C: "mean daily excess > 0 with t >= 2.0"
+  D: "excess > 0 in >= 3 of the 4 deciding windows"
+  G: ">= 40 days in every deciding window"
+  classification: "G false -> INSUFFICIENT; A-D true -> STRONG; C and D true -> RELATIVE_ONLY; A false and C false -> NO_EDGE; otherwise WEAK"
+  tests: "2 (GAP, RUN on group ALL); CORE42 reported descriptively"
+  family_rule: "STRONG -> candidate for a separately preregistered forward paper test (and a check of shortability and quota counting); never production"
+
+prohibited:
+  - "changing the day rule, thresholds, signals, decile, times, costs or criteria after seeing results"
+  - "re-using the V1 days or the exploration days"
+  - "reading any day after 2026-10-02 or any reserved partition"
+
+known_limitations:
+  - "V1's favourable aggregate (concentrated in the last window) shaped the decision to run V2; V2's days are disjoint but come from the same pool and archive"
+  - "the older archive covers about 55 pool symbols per day, so V2 ranks among 30-49 names"
+  - "shorting eligibility and quota counting of sell amounts remain unverified"
