@@ -80,10 +80,11 @@ def test_checksum_and_unsealed_sources_are_excluded(tmp_path):
 
 
 def test_missing_five_level_history_is_not_a_zero_profit_day(tmp_path):
-    p=tmp_path/'history/raw/2026-10-08';p.mkdir(parents=True)
-    (p/'2330.json.gz').write_bytes(gzip.compress(b'{}'))
+    for day in ('2026-10-08','2026-10-09'):
+        p=tmp_path/'history/raw'/day;p.mkdir(parents=True)
+        (p/'2330.json.gz').write_bytes(gzip.compress(b'{}'))
     report=build_report(tmp_path/'recordings',[tmp_path/'history'],since='2026-10-01',until='2026-10-09')
-    assert len(report['daily'])==1
+    assert report['since']=='2026-10-09' and [d['day'] for d in report['daily']]==['2026-10-09']
     for s in report['summary'].values():
         assert s['valid_days']==0 and s['scenarios']['baseline']['win_rate'] is None
         assert s['scenarios']['baseline']['net_pnl'] is None

@@ -230,9 +230,13 @@ def cache_key(folder, db_path, day):
     except (OSError,ValueError,KeyError,TypeError): return None
 
 
+# 新版完整輸入錄製自此日起才有；更早日期一律缺資料，不列入回測也不顯示。
+REPLAY_EPOCH='2026-10-09'
+
+
 def build_report(record_root, history_roots=(), learning_root='', book_root='', db_path=None, since=None, until=None):
     until=until or datetime.now(TPE).date().isoformat()
-    since=since or (date.fromisoformat(until)-timedelta(days=183)).isoformat()
+    since=max(since or REPLAY_EPOCH,REPLAY_EPOCH)
     catalog,sources=inventory(history_roots,learning_root,book_root,since,until)
     for folder in Path(record_root).glob('*'):
         if folder.is_dir() and since<=folder.name<=until: catalog.setdefault(folder.name,{})
