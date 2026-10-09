@@ -83,6 +83,7 @@ from market_data.shioaji import taiex_contract
 from market_data.diagnostics import save_gate
 from market_data.context import esun_index_snapshot
 from market_data.health import observe as observe_provider
+from market_data.bidask_archive import recorder as bidask_recorder
 from daytrade_learning.model_runtime import DaytradeModel, live_features, write_runtime_model_status, refresh_runtime_model_status
 from easystock_admin.store import read_live_settings
 from strategy_engine import evaluate_daytrade, clamp, MAX_ROUNDTRIP_COST_PCT
@@ -3097,6 +3098,9 @@ class IntradayLiveEngine:
             quote = args[1] if len(args) > 1 else (args[0] if args else None)
             if quote:
                 symbol = getattr(quote, "code", "")
+                archive = bidask_recorder()
+                if archive is not None and symbol:
+                    archive.record(symbol, quote)
                 if getattr(self, "runway_v2", None) and symbol:
                     self.runway_v2.on_bidask(symbol, quote)
         except Exception:

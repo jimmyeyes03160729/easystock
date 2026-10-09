@@ -7,3 +7,4 @@ NAS_CONFIG=/config/nas.env
 # /etc/cron.d entries require the user field and a final newline.
 30 14 * * * root /bin/bash /opt/easystock/ops/nas/sync_from_vm.sh >> /data/backup/vm/sync.log 2>&1
 45 14 * * * root /bin/bash /opt/easystock/ops/nas/healthcheck.sh >> /data/backup/vm/healthcheck.log 2>&1
+15 15 * * * root /bin/bash /opt/easystock/ops/nas/sync_orderbook.sh >> /data/backup/orderbook/sync.log 2>&1

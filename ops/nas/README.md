@@ -124,3 +124,16 @@ docker compose -p easystock-nas -f compose.example.yaml run --rm easystock-nas-b
 ```
 
 定期輪替兩份日誌。更新程式後重新 build 並 `up -d --no-deps easystock-scheduler`。此部署不使用 GitHub Actions，也不操作 Oracle VM 正式交易服務；同步仍僅依原腳本產生、拉回及清理本次備份 snapshot。
+
+## 五檔委託簿（BidAsk）封存搬移
+
+VM 實盤引擎每收到一筆五檔報價，就由 `market_data/bidask_archive.py` 以背景執行緒寫入
+`/home/ubuntu/easystock-orderbook/raw/<日期>/bidask-<pid>.jsonl.gz`（不阻塞行情回呼；佇列滿時丟棄並計數）。
+涵蓋範圍是跑道 B 訂閱五檔的股票（雷達前 30 名中被評估過的標的），不是全市場。
+
+- VM 每天 06:30 執行 `python -m market_data.bidask_archive seal`：替前一個交易日以前的資料寫 `MANIFEST.json`（每檔 sha256、筆數、丟棄數）與 `COMPLETE`。
+- NAS 每天 15:15 執行 `sync_orderbook.sh`：只拉回已封存的日期到 `/data/backup/orderbook/raw/<日期>/`，在 NAS 重新驗證每個檔案的 sha256，成功才寫 `.verified`，再請 VM 執行 `prune`。
+- VM 的 `prune` 只刪除「已封存、manifest 雜湊與 NAS 一致、且至少 5 天前」的日期目錄；任何不符就保留。因此 VM 上最多保留約 5 天，其餘只在 NAS。
+- 研究要模擬時，從 NAS 的 `/data/backup/orderbook/raw/` 讀取；需要在 VM 上跑時，用 rsync 把指定日期暫時推回 VM 的研究目錄，用完即刪。
+
+部署：NAS 端重新 build `easystock-scheduler`（Dockerfile 已加入 `sync_orderbook.sh`，compose 多掛 `/data/backup/orderbook`）。
