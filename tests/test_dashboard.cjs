@@ -84,7 +84,7 @@ run(main);w.onload=null;
       paper_skipped:1,paper_skipped_insufficient_cash:1,wins:1,losses:1,net_pnl_pct:.2,gross_pnl_pct:.5,
       avg_pnl_pct:.25,avg_mfe_pct:1.5,avg_mae_pct:-.4,exit_reasons:{'固定停損':1,'固定停利':1}}}
   }:null});
-  for(const file of ['learning-status.js','rebound-engine.js','rebound-ui.js','dashboard-layout.js'])
+  for(const file of ['learning-status.js','dashboard-layout.js','short-term.js'])
     run(fs.readFileSync(path.join(__dirname,'../assets',file),'utf8'));
   await new Promise(resolve=>setImmediate(resolve));
    assert(w.document.getElementById('learnModel').textContent.includes('UNKNOWN'));
@@ -98,14 +98,15 @@ run(main);w.onload=null;
   assert(w.document.getElementById('intradayModelBadge').textContent.includes('規則模式'));
   assert.equal(run('renderLinePickList'),renderer);
   assert(!w.document.getElementById('overnightModule'));
-  assert(w.document.getElementById('reboundLayout').contains(w.document.getElementById('reboundModule')));
+  assert(w.document.getElementById('shortTermModule'));
+  assert(!w.document.getElementById('reboundModule'));
   assert(!w.document.getElementById('topPicksModule'));
   assert(!w.document.getElementById('topPickList'));
   assert(!w.document.querySelector('a[href="#daily-strategies"]'));
-  assert(w.document.querySelector('a[href="#bottom-rebound"]'));
+  assert(w.document.querySelector('a[href="#short-term"]'));
+  assert(!w.document.querySelector('a[href="#bottom-rebound"]'));
   run('renderAllSections()'); // no null access after removing the daily module
-  const watchDetails=w.document.querySelector('#reboundWatchSection>details');
-  assert(watchDetails&&!watchDetails.open,'technical watchlist collapsed by default');
+  assert(w.document.getElementById('shortTermStatus').textContent.includes('尚未發布'),'missing feed shows a plain status');
   assert(!w.document.getElementById('simpleHomeStyle').textContent.includes('height:100%'),'panels must not stretch to the taller sibling');
   run('renderIntradayPicks()');
   const ids=[...w.document.querySelectorAll('[id]')].map(n=>n.id);

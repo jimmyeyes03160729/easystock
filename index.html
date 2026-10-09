@@ -130,7 +130,6 @@
     ::-webkit-scrollbar { width:6px; height:6px; }
     ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
     @media(max-width:1100px) { .system-stats { grid-template-columns:repeat(4,minmax(0,1fr)); } .overview-grid { grid-template-columns:1fr; } #marketSignalCard { gap:12px; } }
-    @media(max-width:900px) { .rebound-grid { grid-template-columns:1fr!important; } }
     @media(max-width:640px) {
       html,body { overflow-x:hidden; }
       .workspace { padding:70px 16px 24px; }
@@ -158,9 +157,9 @@
       #themeToggleLabel { display:none; }
 
       /* Data supplied at runtime can contain long names, model IDs and timestamps. */
-      #intradayPickList > *, #runwayV2PickList > *, #overnightPickList > *, #reboundLayout, #learningSection,
+      #intradayPickList > *, #runwayV2PickList > *, #overnightPickList > *, #shortTermModule, #learningSection,
       .system-stats > *, .filter-panel > * { min-width:0; }
-      #intradayPickList, #runwayV2PickList, #overnightPickList, #reboundLayout, #learningSection { overflow-wrap:anywhere; }
+      #intradayPickList, #runwayV2PickList, #overnightPickList, #shortTermModule, #learningSection { overflow-wrap:anywhere; }
     }
     @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } * { transition:none!important; } }
 
@@ -219,19 +218,19 @@
   /* Panels and cards in light mode */
   html[data-theme="light"] .panel,
   html[data-theme="light"] #daytradeModule,
-  html[data-theme="light"] #reboundModule,
+  html[data-theme="light"] #shortTermModule,
   html[data-theme="light"] #learningSection,
   html[data-theme="light"] .system-stats > div,
   html[data-theme="light"] .filter-panel,
   html.light .panel,
   html.light #daytradeModule,
-  html.light #reboundModule,
+  html.light #shortTermModule,
   html.light #learningSection,
   html.light .system-stats > div,
   html.light .filter-panel,
   html:not(.dark) .panel,
   html:not(.dark) #daytradeModule,
-  html:not(.dark) #reboundModule,
+  html:not(.dark) #shortTermModule,
   html:not(.dark) #learningSection,
   html:not(.dark) .system-stats > div,
   html:not(.dark) .filter-panel {
@@ -241,30 +240,20 @@
   }
 
   /* Sub tiles & details */
-  html[data-theme="light"] .rebound-card,
   html[data-theme="light"] .learning-numbers > div,
   html[data-theme="light"] .learning-bottom > div,
   html[data-theme="light"] #learningSection details,
-  html[data-theme="light"] details.rebound-method,
-  html.light .rebound-card,
+  html[data-theme="light"] details.short-method,
   html.light .learning-numbers > div,
   html.light .learning-bottom > div,
   html.light #learningSection details,
-  html.light details.rebound-method,
-  html:not(.dark) .rebound-card,
+  html.light details.short-method,
   html:not(.dark) .learning-numbers > div,
   html:not(.dark) .learning-bottom > div,
   html:not(.dark) #learningSection details,
-  html:not(.dark) details.rebound-method {
+  html:not(.dark) details.short-method {
     background-color: #F8FAFC !important;
     border-color: #E2E8F0 !important;
-  }
-
-  html[data-theme="light"] .rebound-card:hover,
-  html.light .rebound-card:hover,
-  html:not(.dark) .rebound-card:hover {
-    border-color: #CBD5E1 !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
   }
 
   html[data-theme="light"] input#priceMin,
@@ -380,33 +369,21 @@
 .recommendation-section{margin-bottom:30px}
 .ranked-heading{padding-top:18px;border-top:1px solid var(--border)}
 .section-number{font-size:12px!important;letter-spacing:.08em!important;margin-right:8px;padding:2px 7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:"JetBrains Mono",monospace;}
-.rebound-module{padding:22px;margin-bottom:30px;background:var(--panel);border:1px solid var(--border);border-radius:12px;}
-.rebound-module-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
-.rebound-module h2{font-size:22px;font-weight:800}
-.rebound-module p{font-size:12px;line-height:1.7;margin:6px 0}
-.rebound-rule-note{display:inline-block;border:1px solid var(--border-bright);background:var(--surface);padding:4px 10px;font-size:11px;border-radius:6px;color:var(--accent);font-family:"JetBrains Mono",monospace;}
-.rebound-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}
-.rebound-card{border:1px solid var(--border);background:var(--surface);padding:16px;border-radius:10px;min-width:0;transition:border-color .15s;}
-.rebound-card:hover{border-color:var(--border-bright);}
-.rebound-card-head{display:flex;justify-content:space-between;gap:10px;font-size:11px}
-.rebound-rank{font-weight:800}
-.rebound-card h3{font-size:17px;margin:12px 0 6px;font-weight:750}
-.rebound-price{font-size:24px;font-family:"JetBrains Mono",monospace;}
-.rebound-levels{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;padding:12px 0;border-top:1px dashed var(--border);border-bottom:1px dashed var(--border);margin:12px 0}
-.rebound-levels dt{color:var(--muted)}
-.rebound-levels dd{text-align:right;font-variant-numeric:tabular-nums;font-family:"JetBrains Mono",monospace;}
-.rebound-warning,.rebound-pass{padding:7px;border:1px solid var(--border);border-radius:6px;}
-.rebound-card details,.rebound-method{font-size:12px;line-height:1.7;margin:12px 0}
-.rebound-card summary,.rebound-method summary{cursor:pointer}
-.rebound-method{border-top:1px solid var(--border);padding-top:14px}
-#reboundWatchSection{margin-top:24px}
-#reboundWatchSection>h3{font-weight:800}
+.short-module{padding:22px;margin-bottom:30px;background:var(--panel);border:1px solid var(--border);border-radius:12px;}
+.short-module-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.short-module h2{font-size:14px;font-weight:700;line-height:1.5}
+.short-module p{font-size:12px;line-height:1.7;margin:6px 0}
+.short-module table th{color:var(--muted);font-weight:600;white-space:nowrap}
+.short-module table td{font-variant-numeric:tabular-nums}
+.short-rule-note{display:inline-block;border:1px solid var(--border-bright);background:var(--surface);padding:4px 10px;font-size:11px;border-radius:6px;color:var(--accent);font-family:"JetBrains Mono",monospace;}
+.short-method{font-size:12px;line-height:1.7;margin:12px 0;border-top:1px solid var(--border);padding-top:14px}
+.short-method summary{cursor:pointer}
 .market-context{margin-bottom:24px}
 .recommendation-section .panel{padding:20px;border-radius:12px;}
 #intradayPickList,#runwayV2PickList{display:flex;flex-direction:column;gap:12px}
 #overnightPickList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 #overnightPickList>div:only-child{grid-column:1/-1}
-@media(max-width:800px){.rebound-grid,#overnightPickList{grid-template-columns:1fr;}.rebound-module-head{flex-direction:column;}}
+@media(max-width:800px){#overnightPickList{grid-template-columns:1fr;}.short-module-head{flex-direction:column;}}
 </style>
 <link rel="icon" type="image/png" sizes="128x128" href="chrome-extension/assets/icon128.png">
 </head>
@@ -434,7 +411,7 @@
 
       <nav class="hidden lg:flex min-w-0 flex-1 items-center justify-center gap-0.5 bg-[#131A26] p-1 rounded-xl border border-[#232F42] text-xs font-semibold section-nav overflow-hidden" style="border-bottom:none; margin-bottom:0; padding:4px;" aria-label="首頁區域">
         <a href="#intraday-strategies" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#F1F5F9] hover:bg-[#1C2B3C] transition-colors whitespace-nowrap">01 盤中摸魚</a>
-        <a href="#bottom-rebound" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">02 底部反彈</a>
+        <a href="#short-term" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">02 短期持股</a>
         <a href="#learningSection" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">03 牛馬 AI 加班進修</a>
         <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">社畜後台 ↗</a>
       </nav>
@@ -487,7 +464,7 @@
 
   <nav class="section-nav lg:hidden" aria-label="首頁行動區域">
     <a href="#intraday-strategies">01 盤中摸魚</a>
-    <a href="#bottom-rebound">02 底部反彈</a>
+    <a href="#short-term">02 短期持股</a>
     <a href="#learningSection">03 牛馬 AI 加班進修</a>
     <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener">社畜後台 ↗</a>
   </nav>
@@ -765,48 +742,41 @@
   </section>
 
   <!-- =====================================================
-       02 底部反彈觀察名單
+       02 短期持股（持有 15 天內）
        ===================================================== -->
-  <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]" id="bottom-rebound">
+  <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]" id="short-term">
     <div class="flex items-center gap-2">
       <span class="h-6 w-6 rounded-md bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#06B6D4] font-mono text-xs font-bold">02</span>
-      <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9]">底部反彈觀察名單 · 接近支撐・等待止跌</h2>
+      <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9]">短期持股 · 持有 15 天內</h2>
     </div>
-    <span class="text-xs text-[#64748B]">波段觀察 · 多次回測支撐確認</span>
+    <span class="text-xs text-[#64748B]">月營收驚喜 · 每月一批 · 持有 10 個交易日</span>
   </div>
 
-  <section id="reboundModule" class="panel rebound-module bg-[#131A26] border border-[#232F42] rounded-2xl p-4 shadow-sm mb-8" aria-labelledby="reboundTitle">
-    <div class="rebound-module-head flex items-start justify-between gap-4 border-b border-[#232F42] pb-3">
+  <section id="shortTermModule" class="panel short-module bg-[#131A26] border border-[#232F42] rounded-2xl p-4 shadow-sm mb-8" aria-labelledby="shortTermTitle">
+    <div class="short-module-head flex items-start justify-between gap-4 border-b border-[#232F42] pb-3">
       <div>
-        <h2 id="reboundTitle" class="text-sm font-bold text-[#F1F5F9] m-0">底部反彈觀察標的 · 有支撐，也要等站穩</h2>
-        <p class="text-xs text-[#64748B] mt-1">多次回測支撐與壓力，確認止跌後再檢查基本面。可能持有數日，不是當沖訊號。</p>
+        <h2 id="shortTermTitle" class="text-sm font-bold text-[#F1F5F9] m-0">本月短期名單 · 營收驚喜前 10 名</h2>
+        <p class="text-xs text-[#64748B] mt-1">每月營收公布截止日晚上選出 10 檔，隔天開盤各買約 10 萬，持有 10 個交易日（約兩週）後收盤賣出。不是當沖。</p>
       </div>
-      <button class="btn share-btn flex items-center gap-1 px-2.5 py-1 rounded bg-[#1C2B3C] hover:bg-[#273647] text-[#F1F5F9] text-xs flex-shrink-0" type="button" data-share-ignore onclick="prepareModuleShare('reboundModule','底部反彈觀察名單')">
+      <button class="btn share-btn flex items-center gap-1 px-2.5 py-1 rounded bg-[#1C2B3C] hover:bg-[#273647] text-[#F1F5F9] text-xs flex-shrink-0" type="button" data-share-ignore onclick="prepareModuleShare('shortTermModule','短期持股')">
         <span class="material-symbols-outlined text-[13px]">share</span> 分享圖片 ↗
       </button>
     </div>
-    <div class="flex items-center justify-between flex-wrap gap-2 my-2.5 font-mono text-xs sm:text-[13px]">
-      <p id="activeFilterLabel" class="text-[#64748B] font-medium">全部價格</p>
-      <div class="rebound-rule-note px-3 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 text-xs font-semibold">觀察名單 · 非買進訊號 · 歷史回測扣成本後為負</div>
+    <div class="flex items-center justify-end flex-wrap gap-2 my-2.5 font-mono text-xs sm:text-[13px]">
+      <div class="short-rule-note px-3 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 text-xs font-semibold">紙上追蹤 · 不下單 · 回測扣成本後為正，前瞻驗證中</div>
     </div>
-    <p id="reboundStatus" role="status" aria-live="polite" class="text-xs text-[#64748B] font-mono font-medium">等待日線資料…</p>
-    <p id="reboundProgress" class="text-xs text-[#64748B] font-mono font-medium"></p>
-    <div id="reboundPicks" class="rebound-grid mt-3"></div>
-    <div id="reboundWatchSection" hidden class="mt-4 pt-3 border-t border-[#232F42]">
-      <h3 class="text-sm sm:text-base font-bold text-[#F1F5F9] mb-1">型態符合，基本面待確認</h3>
-      <p class="text-xs text-[#64748B] mb-2 font-medium">以下型態相同，但基本面資料不完整，排在觀察名單之後。</p>
-      <div id="reboundWatch" class="rebound-grid"></div>
-    </div>
-    <details class="rebound-method mt-3 p-3.5 rounded-xl bg-[#0D1C2D] border border-[#232F42]/60 text-xs sm:text-[13px] text-[#64748B] leading-relaxed">
+    <p id="shortTermStatus" role="status" aria-live="polite" class="text-xs text-[#64748B] font-medium">等待短期名單資料…</p>
+    <div id="shortTermPicks" class="mt-3"></div>
+    <div id="shortTermHistory" class="mt-4 pt-3 border-t border-[#232F42]"></div>
+    <details class="short-method mt-3 p-3.5 rounded-xl bg-[#0D1C2D] border border-[#232F42]/60 text-xs sm:text-[13px] text-[#64748B] leading-relaxed">
       <summary class="cursor-pointer font-bold text-[#F1F5F9] hover:text-[#06B6D4] flex items-center gap-1.5">
         <span class="material-symbols-outlined text-[18px] text-[#F59E0B]">analytics</span>
-        <span>篩選方式與本次檢查結果</span>
+        <span>選股方式與歷史回測</span>
       </summary>
-      <p class="mt-2.5">使用 Firebase 同一版本最近 90～252 根日 K，支撐與壓力至少觸及兩次、相隔至少 7 個交易日、首末跨度至少 14 日。區間至少 10%，價格位於底部 35% 且距支撐不超過 10%，近 8 日需回測支撐。近 3 日突破昨高並守穩者優先；連兩日收高、收紅且收在當日上緣者列為「初步止跌」。今日不可明顯破近期低點。</p>
-      <p class="mt-2.5">2026-10 歷史研究：依此規則每天前 3 檔、隔日開盤買進、規則停損／目標出場、最多持有 10 個交易日，2024–2026 扣 0.6% 交易成本後平均每筆約 −0.55%，5 段期間中 4 段為負；AI 重新排序也沒有改善。因此本區只作觀察名單，不是買進建議。</p>
-      <p class="mt-1.5">扣除假設來回成本 0.6% 後，價格空間／失效風險至少 1.5 倍。基本面初篩：單月營收年增不低於 −20%、EPS 與營業利益率為正、負債比低於 70%。</p>
-      <p id="reboundDiagnostics" class="mt-2 text-[#06B6D4] font-mono font-medium">等待檢查結果。</p>
-      <button id="reboundRetry" class="btn mt-2 px-3 py-1.5 rounded-lg bg-[#1C2B3C] text-xs font-semibold text-[#F1F5F9]" type="button">重新檢查</button>
+      <p class="mt-2.5"><strong>選股：</strong>每月 10 日（遇假日順延到下一個交易日）上市櫃公司營收公布截止，當晚計算每檔的「營收驚喜分數」＝本月營收年增率，跟它自己過去 12 個月年增率比，高出幾個標準差。只看普通股、近 20 日平均成交額 ≥ 5,000 萬、股價 ≥ 10 元。名單在截止日晚上凍結，之後不再更改。</p>
+      <p class="mt-1.5"><strong>買賣：</strong>取分數最高 10 檔，隔天開盤各買約 10 萬（100 萬資金），開盤就漲停的買不到、那 10 萬留現金；持有 10 個交易日，第 10 天收盤賣出。損益扣手續費（0.1425% × 2.8 折、最低 20 元）與 0.3% 證交稅。</p>
+      <p class="mt-1.5"><strong>歷史回測（2022-02～2026-09，共 56 批，每月一批）：</strong>前 10 名每批平均 +1.28%，約每 100 萬 +12,834 元；56 批中 35 批賺錢，最差一批 −8.24%，2022 空頭年平均 −1.47%。同期全市場平均 +0.71%，前 10 名只多 0.57%，統計上還不夠穩（t 1.24）；若改買全部前 10%（約 60～90 檔，需用零股），每批 +1.62%、多 0.90%（t 4.17），比較穩。持有 5 天與 20 天的版本也通過檢驗。</p>
+      <p class="mt-1.5"><strong>限制：</strong>這批歷史資料已經用來研究過，不算獨立證明；2026 年 9 月營收（10/13 進場）起的前瞻紀錄才是真正的驗證，會列在上方。資金一個月約只用兩週；名單在營收截止日才產生，其餘日子沒有新名單。</p>
     </details>
   </section>
 
@@ -890,7 +860,7 @@
       <span>社畜看盤免責條款 & 量化隔離說明</span>
     </div>
     本頁為量化資料整理與研究工具，不構成投資建議。
-    首頁「底部反彈」是試行規則排序，不代表保證獲利；
+    首頁「短期持股」是紙上追蹤的規則選股，回測為正不代表未來獲利；
     遇到紅燈市場可直接選擇觀望。
     資料核心為 TWSE / TPEx 官方公開資料；
     永豐 Shioaji 負責即時當沖行情，
@@ -1102,7 +1072,6 @@
 </div>
 
 
-<script src="assets/rebound-engine.js?v=bfd4819e5bc1"></script>
 <script src="assets/dashboard-ux.js?v=45e47442de37"></script>
 <script>
 
@@ -2531,12 +2500,7 @@
       button.setAttribute('aria-pressed', String((PRICE_MIN === null || PRICE_MIN === 0) && PRICE_MAX === value));
     });
 
-
-    const pool =
-      priceFilteredStocks();
-
     renderMarketSignal(COMPUTED_STOCKS.filter(validSelection));
-    if (window.RangeReboundUI) window.RangeReboundUI.refresh(pool, META);
 
 
     renderIntradayPicks();
@@ -2629,12 +2593,8 @@
     }
 
 
-    document.getElementById(
-      "activeFilterLabel"
-    ).textContent =
-      bits.length
-        ? bits.join(" · ")
-        : "全部價格";
+    const filterLabel = document.getElementById("activeFilterLabel");
+    if (filterLabel) filterLabel.textContent = bits.length ? bits.join(" · ") : "全部價格";
 
   }
 
@@ -4074,7 +4034,6 @@
 
 
     renderStockBacktest(stock);
-    if(strategyType === "RANGE_REBOUND" && window.RangeReboundUI) window.RangeReboundUI.detail(stock);
 
 
     document.getElementById(
@@ -4447,7 +4406,6 @@
 
 
     series.setData(data);
-    if(CURRENT_MODAL_STRATEGY === "RANGE_REBOUND" && window.RangeReboundUI) window.RangeReboundUI.chart(stock,series);
 
 
     currentChart
@@ -5375,19 +5333,19 @@
 <script src="assets/vendor/html2canvas.min.js"></script>
 <script src="assets/module-share.js?v=d047d833f8a3"></script>
 <script src="assets/learning-status.js?v=7abe6c98e7b4"></script>
-<script src="assets/rebound-ui.js?v=16bb35854edb"></script>
-<script src="assets/dashboard-layout.js?v=ab06770c6379"></script>
+<script src="assets/dashboard-layout.js?v=7c969a513b7d"></script>
 <script src="assets/intraday-chart.js?v=17c577fb8eaa"></script>
 <script src="assets/provider-health.js?v=e8f08c578597"></script>
 <nav class="mobile-bottom-nav" aria-label="手機主導覽">
   <a href="#intraday-strategies" aria-label="盤中摸魚" aria-current="location"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span><span>盤中摸魚</span></a>
-  <a href="#bottom-rebound" aria-label="底部反彈"><span class="material-symbols-outlined" aria-hidden="true">trending_up</span><span>底部反彈</span></a>
+  <a href="#short-term" aria-label="短期持股"><span class="material-symbols-outlined" aria-hidden="true">trending_up</span><span>短期持股</span></a>
   <a href="#learningSection" aria-label="牛馬 AI"><span class="material-symbols-outlined" aria-hidden="true">psychology</span><span>牛馬 AI</span></a>
   <a href="#chrome-tools" aria-label="小工具"><span class="material-symbols-outlined" aria-hidden="true">extension</span><span>小工具</span></a>
   <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" aria-label="社畜後台" target="_blank" rel="noopener"><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span><span>社畜後台</span></a>
 </nav>
 <script src="assets/mobile-nav.js?v=ed9c7d1d0f6c"></script>
 <script src="assets/revenue-observation.js?v=2c059febec26"></script>
+<script src="assets/short-term.js?v=ba6782f0298d"></script>
 <script src="assets/b-lanes-replay.js?v=ea6b415dae32"></script>
 </body>
 </html>
