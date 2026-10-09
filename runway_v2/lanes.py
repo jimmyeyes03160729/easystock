@@ -264,9 +264,8 @@ class LaneSuite:
             return None, "五檔／逐筆不足或延遲"
         tape, book, books, buy = obs
         price, prev = tape[-1][1], row["previous_close"]
-        # Latest requested price band is retained, identical for all three controls.
-        if not 100 <= price <= 149 or prev <= 0:
-            return None, "價位或昨收資料不符"
+        if price <= 0 or prev <= 0:
+            return None, "價格或昨收資料不符"
         if abs(price / prev - 1) >= .07:
             return None, "接近漲跌停風險"
         direction = 1 if buy >= .65 and sum(b["obi"] >= .1 for b in books[-3:]) == 3 else (
@@ -454,8 +453,6 @@ class LaneSuite:
                         continue
                     if depth * 1000 < shares:
                         count('thin_entry_checks')
-                        continue
-                    if not 100 <= price <= 149:
                         continue
                     state["positions"][symbol] = {**signal, "symbol": symbol, "name": row.get("name") or symbol,
                         "entry_time": now.isoformat(), "shares": shares, "current_price": price,
