@@ -1,0 +1,72 @@
+# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any gap- or run-conditioned return is read)
+
+trial_id: "TRIAL_EA_OPEN_FADE_V1"
+parent_trial_id: "TRIAL_EA_META_B_FILTER_V1"
+created_at: "2026-10-10T08:00:00+08:00"
+study_name: "OPEN_FADE_V1 short the top decile of opening gap or morning run at 09:30, cover at 12:55"
+research_stage: "EXPLORATORY"
+ledger_record_type: "PREREGISTERED_TRIAL"
+recorded_after_experiment: false
+
+provenance:
+  source_classification: "EXPLORATORY_HEURISTIC"
+  source_refs:
+    - "docs/research_governance/preregistrations/OPEN_FADE_V1.yaml"
+    - "docs/research_governance/trials/INST_FLOW_V1.yaml"
+
+hypothesis:
+  statement: "Stocks with the largest opening gap or the largest 09:00-09:30 run versus the reference fall further, enough from 09:30 to 12:55 to pay a short day trade's quote-stress costs and to beat the unconditional short."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "daily_top_decile_short_net_bps"
+  direction: "PASS_FAIL"
+  baseline: "UNCONDITIONAL_SHORT_SAME_DAY"
+  frozen_before_search: true
+
+data:
+  dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+  dataset_family_id: "TWSE_EQUITY_INTRADAY"
+  dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+  start_date: "2024-12-25"
+  end_date: "2026-08-27"
+  dataset_end: "2026-10-02"
+  universe: "100_STOCK_LIQUIDITY_POOL"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: false
+  future_holdout_seen: false
+  exposed_dimensions: []
+  exposures: []
+
+search:
+  parameters_searched:
+    - "none: two fixed signals (opening gap, morning run), decile, 09:30 entry and 12:55 exit"
+  search_space:
+    signals: "GAP, RUN"
+  trial_count: 2
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/OPEN_FADE_V1.yaml"
+  registry_hash: "NOT_YET_RUN"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "IN_PROGRESS"
+  decision: "FROZEN_NOT_RUN"
+  sealed_commit: ""
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    The unconditional open-to-close drift motivating the study was seen in the daily DB (all days) and on an
+    exploration sample of archive days (every 6th day), which this study excludes.
