@@ -8,7 +8,7 @@ assert(png.length>0 && png.length<250000,'Optimized logo should remain a reasona
 assert(html.includes('src="icon/BANNER-376.png?v=20261003"'),'HTML must cache-bust the optimized logo');
 assert(/<img[^>]+BANNER-376\.png[^>]+width="188"[^>]+height="62"[^>]+fetchpriority="high"[^>]+decoding="async"/.test(html),'Logo must reserve layout and decode asynchronously');
 assert(!/<img[^>]+BANNER-376\.png[^>]+loading="lazy"/.test(html),'Header logo must not lazy load');
-for(const file of ['rebound-engine.js','module-share.js','learning-status.js','rebound-ui.js','dashboard-layout.js','intraday-chart.js','provider-health.js','mobile-nav.js','dashboard-ux.js','revenue-observation.js','b-lanes-replay.js']){
+for(const file of ['module-share.js','learning-status.js','dashboard-layout.js','intraday-chart.js','provider-health.js','mobile-nav.js','dashboard-ux.js','revenue-observation.js','short-term.js','b-lanes-replay.js']){
  const hash=crypto.createHash('sha256').update(fs.readFileSync('assets/'+file,'utf8').replace(/\r\n/g,'\n')).digest('hex').slice(0,12);
  assert(html.includes(`src="assets/${file}?v=${hash}"`), `【請將 ${file} 改為】?v=${hash}`);
 }

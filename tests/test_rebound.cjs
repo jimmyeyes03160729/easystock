@@ -1,6 +1,9 @@
 const assert=require('node:assert/strict');
 const {test}=require('node:test');
-const R=require('../assets/rebound-engine.js');
+// The homepage no longer shows rebounds; the Chrome extension (an ES module package) still ships this engine.
+const engine={exports:{}};
+new Function('module','window',require('node:fs').readFileSync(require('node:path').join(__dirname,'../chrome-extension/rebound-engine.js'),'utf8'))(engine,undefined);
+const R=engine.exports;
 function fixture(){return Array.from({length:162},(_,i)=>{
  let c=10+5*(1-Math.abs((i%40)-20)/20),o=c;
  if(i===161){c=10.5;o=10.05;}

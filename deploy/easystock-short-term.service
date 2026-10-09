@@ -1,0 +1,15 @@
+[Unit]
+Description=EasyStock short-term (<=15 days) revenue-surprise paper tracking feed for the homepage
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+Environment=SHORT_TERM_OUT_DIR=/home/ubuntu/easystock-short-term
+ExecStart=/home/ubuntu/easystock/.venv/bin/python -m short_term.feed
+TimeoutStartSec=300
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true

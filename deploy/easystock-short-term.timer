@@ -1,0 +1,12 @@
+[Unit]
+Description=EasyStock short-term feed: after picks freeze (21:00) and after the nightly daily-bar update
+
+[Timer]
+OnCalendar=*-*-* 08,21,23:20:00 Asia/Taipei
+OnCalendar=*-*-* 01:40:00 Asia/Taipei
+Persistent=true
+RandomizedDelaySec=30
+Unit=easystock-short-term.service
+
+[Install]
+WantedBy=timers.target
