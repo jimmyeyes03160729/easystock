@@ -7,9 +7,11 @@
     const ms = Date.parse(at);
     return Number.isFinite(ms) ? new Date(ms).toLocaleString('zh-TW', {timeZone:'Asia/Taipei', hour12:false}) + '（台北）' : '尚未取得有效時間';
   }
+  const MODEL_PAUSED = '跑道 A 暫停進場：模型未就緒（已過期或未載入），正在改版為「跑道 B 的過濾器」並以歷史與前瞻資料驗證；不切換策略或放寬條件。';
   function emptyReason({live = {}, health = {}, filtered = false, now = Date.now()} = {}) {
     if (!health.current) return health.message || '尚無有效快照，無法確認訊號原因。';
     if (filtered) return '目前紀錄被股價 / 單張預算篩選隱藏；請清除篩選。篩選不會改變交易設定。';
+    if (live.config?.entry_mode === 'model' && live.config.model_ready === false) return MODEL_PAUSED;
     if (live.session === 'closed') return '當沖已結束；目前為收盤 / 歷史快照，不代表今日有新訊號。';
     if (live.session === 'preopen') return '開盤前待命；尚未進入盤中訊號時段。';
     if (live.session === 'no_new_entry') return '已停止新進場；現有模擬部位仍依原規則監控。';
@@ -23,7 +25,6 @@
       if (gate.gate_reason === 'market_data_unavailable') return '市場資料不可用：後端目前阻擋新進場，等待有效行情。';
       return '後端風控目前阻擋新進場；具體原因待確認。';
     }
-    if (live.config?.entry_mode === 'model' && live.config.model_ready === false) return '模型未就緒，禁止新進場；不切換策略或放寬條件。';
     return '目前沒有 OPEN 部位或今日完成交易。尚無可顯示紀錄；是否未符合條件或被其他門檻阻擋，需等待後端證據，不能由空清單推定。';
   }
   function requestFinished(ms, success) {

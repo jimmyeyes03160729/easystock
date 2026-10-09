@@ -1,0 +1,81 @@
+# EasyStock preregistration — REVENUE_EARLY_V1 (enter after each company's own revenue announcement)
+# Frozen in git BEFORE any return of an announcement-timed entry is computed.
+# Parent: TRIAL_REVENUE_DRIFT_V1 (deadline entry; S2_SUR H20 +1.88%/month excess net, t 5.5).
+# Motivation (no return read): TEJ TRAIL/TASALE 2025 announcement dates (annd_s) of 23,683 company-months that match
+#   our MOPS revenue exactly: 11% announce by day 5 of the following month, 19% on days 6-7, 38% on days 8-9, 28% on
+#   day 10, 5% later. The deadline rule therefore enters 1-9 days after most companies' news is public.
+# Feasibility (no value read): on 2026-10-09 the MOPS t21sc03 table for revenue month 2026-09 already held 794 sii and
+#   727 otc rows compiled 2026-10-08, so the table grows daily during the filing window and daily snapshots date
+#   each company's first appearance.
+
+preregistration_id: "REVENUE_EARLY_V1"
+created_at: "2026-10-09T01:30:00+08:00"
+status: "FROZEN_AWAITING_COLLECTOR"
+research_only: true
+production_effect: "NONE (paper tracking only; no orders)"
+code: "research/revenue_early_v1/ (not yet written; collector must be deployed and tested before 2026-11-01)"
+
+question: >
+  For companies whose monthly revenue surprise is already in the top tier when they announce, does buying at the
+  open after their own announcement (instead of after the statutory deadline) improve the 20-session net return?
+
+signal:
+  sur: "identical to REVENUE_DRIFT_V1 (rev_study.sur on the previous 12 monthly log YoY growths, population std)"
+  point_in_time_threshold: >
+    The top-decile cutoff of a month is unknown until every company has reported, so an early pick uses the
+    previous month's cutoff: c(M-1) = the smallest S2_SUR inside the top decile (ceil 10%, symbol tie-break) of month
+    M-1 over the same universe, computed from the complete table of M-1. A company is an EARLY pick for month M when
+    S2_SUR(M) >= c(M-1).
+  deadline_reference: "REVENUE_DRIFT_V1 top decile of month M with entry E(M) (first session after the first session on or after the 10th of M+1)"
+
+entry_and_exit:
+  announcement_date: "A(s, M) = the compile date (出表日期) of the first daily MOPS snapshot that contains the company's month-M row (Part B); TEJ annd_s (Part A)"
+  early_entry: "official open of the first TWSE session strictly after A(s, M)"
+  late_filers: "if A(s, M) is on or after the deadline session D(M), the entry is E(M), as in the deadline rule"
+  hold: "20 sessions; exit at the official close of the 20th session counted from the entry session"
+  fillability: "entries opening >= 1.09 x reference are excluded (as REVENUE_FORWARD_V1)"
+  costs: "paper_execution fee both legs and ordinary 0.3% tax (cost_pct same_day=False); ex-rights/dividend factors added back, as in REVENUE_DRIFT_V1"
+
+metrics:
+  timing_gain: "per EARLY pick that is also in the deadline top decile: net(early entry, H20) minus net(E(M) entry, H20); event value = mean over those picks"
+  early_excess: "per EARLY pick: net(early, H20) minus the equal-weight universe net over the same 20-session window; event value = mean over picks"
+  descriptive: ["pick counts by announcement bucket (<= day 5, 6-7, 8-9, >= 10)", "EARLY picks that fall outside the deadline top decile and their excess", "H5 versions of both metrics"]
+
+part_A_historical_descriptive:
+  role: "DESCRIPTIVE ONLY; decides nothing; Part B runs whatever it shows"
+  data: "revenue months 2025-01 .. 2025-12 (TEJ TRAIL/TASALE announcement dates, which cover only calendar 2025); our MOPS revenue for SUR; official daily DB rows <= 2026-10-02"
+  universe: "REVENUE_DRIFT_V1 liquidity rule evaluated before each event (20-session mean amount >= 50,000,000 TWD, last close >= 10, 4-digit code not starting with 0)"
+  disclosure: "2025 prices of the deadline rule were already used by REVENUE_DRIFT_V1 (fold 2025) and its robustness runs; any Part A number is in-sample and is reported as such"
+
+part_B_forward_confirmation:
+  events: "revenue months 2026-10 .. 2027-02 (five events; filings 2026-11-01 .. 2027-03-10)"
+  collector: "VM cron 21:10 Taiwan time on calendar days 1-15 of each month: fetch MOPS t21sc03 sii/otc kind 0/1 for revenue month M-1, keep the raw page (gzip, fetch time, compile date) and record each company's first-seen compile date; reads no price"
+  missing_snapshot_rule: "if a day's snapshot fails, a company first seen on the next successful snapshot gets that later compile date (conservative: later entry); missed days are listed in the result"
+  universe: "REVENUE_FORWARD_V1 frozen universe (forward/universe_frozen.json, liquid common stocks as of 2026-10-02)"
+  threshold: "c(M-1) from the complete month-M-1 table over the frozen universe; for M = 2026-10 the month-2026-09 table fetched by REVENUE_FORWARD_V1"
+  picks_freeze: "after each deadline evening the EARLY picks of month M with their A(s, M), and the deadline top decile, are written to a picks file whose sha256 is committed in git before any price of that event is read"
+  price_reads: >
+    entries from 2026-11-02 and exits up to about 2027-04-09, all inside the span 2026-10-13 .. 2027-04-16 that
+    REBOUND_V2_FUTURE_60D Amendment 1 already carved out for revenue forward price reads; an OOS consumption record
+    for this trial is added before the first evaluation
+  decision_rule:
+    complete_when: "all five events have a completed H20 exit"
+    SUPPORTED_WITHIN_PREREGISTERED_SCOPE: "mean timing_gain over the five events > 0, timing_gain > 0 in >= 3 of 5 events, and mean early_excess > 0"
+    NOT_SUPPORTED: "otherwise"
+    INCONCLUSIVE: "fewer than 30 EARLY picks in total, or a collector gap that dates more than 20% of picks only by a later snapshot"
+    consequence: "SUPPORTED -> candidate to replace deadline entry in the revenue paper portfolio after an owner review; never automatic"
+
+relationship_to_revenue_forward_v1: >
+  Both trials use the same forward revenue months, universe and SUR definition; they test different entry rules and
+  their results are correlated. Neither result may be used to change the other trial's primary signal or horizon.
+
+prohibited:
+  - "changing the threshold rule, entry, horizon, universe, costs or decision rule after the first EARLY pick is frozen"
+  - "reading any price of an event before its picks file sha256 is in git"
+  - "using Part A results to alter Part B"
+  - "stopping early or skipping events"
+
+known_limitations:
+  - "the compile date is a daily upper bound of the filing time; filings during a trading day are entered one session late at most"
+  - "five events give low power; the result is evidence for a paper review, not for production"
+  - "TEJ history before 2025 is not available in the trial, so Part A covers one year only"

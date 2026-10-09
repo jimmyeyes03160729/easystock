@@ -49,7 +49,10 @@ test('empty reasons use fresh backend evidence; unknown, stale, session, filters
   market_risk.gate_reason='<script>untrusted</script>';assert.match(ux.emptyReason({...base,live:{...base.live,market_risk}}),/具體原因待確認/);
   for(const checked_at of ['bad',new Date(now-91000).toISOString(),new Date(now+61000).toISOString()])
     assert.match(ux.emptyReason({...base,live:{...base.live,market_risk:{...market_risk,checked_at,gate_reason:'market_risk_red'}}}),/不能由空清單推定/);
-  assert.match(ux.emptyReason({...base,live:{session:'daytrade',config:{entry_mode:'model',model_ready:false}}}),/模型未就緒/);
+  for(const session of ['daytrade','preopen','closed'])
+    assert.match(ux.emptyReason({...base,live:{session,config:{entry_mode:'model',model_ready:false}}}),/跑道 A 暫停進場：模型未就緒.*不切換策略或放寬條件/);
+  assert.match(ux.emptyReason({...base,live:{session:'daytrade',config:{entry_mode:'model',model_ready:true}}}),/不能由空清單推定/);
+  assert.match(ux.emptyReason({...base,filtered:true,live:{session:'daytrade',config:{entry_mode:'model',model_ready:false}}}),/篩選隱藏/);
 });
 
 test('mobile fields remain visible, 1000-share budget/range affect display only, clear restores all',t=>{
@@ -97,4 +100,19 @@ test('production renderer integration retains offline historical warning, fresh-
   assert.match(w.document.getElementById('requestTiming').textContent,/\d+ ms/);
   w.fetch=async()=>{throw Error('offline');};await assert.rejects(evalCode("fetchJson('https://synthetic.invalid/summary')"));
   assert.match(w.document.getElementById('requestTiming').textContent,/失敗/);
+});
+
+test('runway B shows only backend records, an honest label and the preregistered backtest disclosure',t=>{
+  assert(!html.includes('高勝率'));
+  assert(!html.includes('V2-6226-1008') && !html.includes('實盤驗證戰報'));
+  assert.match(html,/跑道 B · 實驗動能規則 V2/);
+  const {w,evalCode}=setup(t,{withMain:true});
+  assert.match(w.document.getElementById('runwayV2Disclosure').textContent,/非買進訊號.*−0\.43%.*−4,250/);
+  evalCode('INTRADAY_LIVE = {runway_v2:{}}; renderRunwayV2Live();');
+  const list=w.document.getElementById('runwayV2PickList').textContent;
+  assert.match(list,/尚無跑道 B 模擬交易紀錄/);
+  assert(!/光鼎|聯嘉投控|華通|福懋科/.test(list));
+  evalCode(`INTRADAY_LIVE = {runway_v2:{closed_trades:{a:{symbol:'2330',name:'台積電',entry_time:new Date().toISOString(),exit_time:new Date().toISOString(),entry_price:100,exit_price:101,return_pct:1,signal_type:'ORB_BREAKOUT'}}}}; renderRunwayV2Live();`);
+  const card=w.document.getElementById('runwayV2PickList').textContent;
+  assert.match(card,/出場原因未提供/);assert.match(card,/進場理由未提供/);
 });

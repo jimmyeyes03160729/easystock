@@ -35,7 +35,7 @@ run(main);w.onload=null;
   assert.equal(run(`liveDataState(Date.parse(taiwanDay()+'T20:00:00+08:00')).label`),'當沖已結束');
 
   // Runway V2: independent rendering and standby
-  assert(w.document.getElementById('runwayV2PickList').textContent.includes('待命中') || w.document.getElementById('runwayV2PickList').textContent.includes('09:05'));
+  assert(w.document.getElementById('runwayV2PickList').textContent.includes('尚無跑道 B 模擬交易紀錄'));
   run(`
     INTRADAY_LIVE.runway_v2 = {
       last_update_at: new Date().toISOString(),
