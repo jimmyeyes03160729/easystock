@@ -1,4 +1,4 @@
-# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any institutional-flow-conditioned return is read)
+# EasyStock Research Trial Ledger — PREREGISTERED trial, sealed after its single run (2026-10-10)
 
 trial_id: "TRIAL_INST_FLOW_V1"
 parent_trial_id: "TRIAL_REVENUE_DRIFT_V1"
@@ -37,13 +37,27 @@ data:
   discovery_data_reused: true
   independent_confirmation: false
 
+
 exposure_state:
   train_seen: false
   validation_seen: false
-  oos_seen: false
+  oos_seen: true
   future_holdout_seen: false
-  exposed_dimensions: []
-  exposures: []
+  exposed_dimensions:
+    - "per-event top-decile, bottom-decile and universe net returns for FI5 and IT5 at DT/H5/H20, per calendar-year fold, plus the descriptive top-3 DT quota line"
+  exposures:
+    - exposure_id: "EXP_INST_FLOW_V1_2022_2026"
+      dataset_id: "TWSE_TPEX_INSTITUTIONAL_FLOW_2022_01_2026_10_02"
+      dataset_family_id: "TWSE_TPEX_INSTITUTIONAL_FLOW"
+      dataset_lineage_id: "LINEAGE_TWSE_TPEX_T86_V1"
+      start_date: "2022-01-03"
+      end_date: "2026-10-02"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "institutional net-buy ratio portfolios vs next-open entry returns by horizon and year"
+      source_trial_id: "TRIAL_INST_FLOW_V1"
+      first_seen_at: "2026-10-10T03:02:59+08:00"
 
 search:
   parameters_searched:
@@ -56,18 +70,24 @@ search:
 
 governance:
   plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/INST_FLOW_V1.yaml"
-  registry_hash: "NOT_YET_RUN"
+  registry_hash: "194973ebd42abc42a3b1433d5b13231b3617d118987e32c7980eae1d2862c8e1"
   no_oos_tuning: true
   production_effect: "NONE"
 
 result:
-  status: "IN_PROGRESS"
-  decision: "FROZEN_NOT_RUN"
-  sealed_commit: ""
+  status: "SEALED"
+  decision: "NO_STRONG_RELATIVE_ONLY_DT"
+  sealed_commit: "622f75f"
   PRODUCTION_READY: false
   DISCOVERY_DATA_REUSED: true
   INDEPENDENT_CONFIRMATION: false
   FUTURE_CONFIRMATION_UNTOUCHED: true
   notes: >
-    Data fetch (about 2,300 pages at 5 s spacing) runs on the VM before the study; the study runs once after the fetch
-    is complete and consistent.
+    Frozen rule: no STRONG. DT is RELATIVE_ONLY for both signals: stocks with heavy foreign (FI5) or trust (IT5)
+    buying lose slightly less open-to-close than the liquid universe (excess +0.079% / +0.123%, t 5.4 / 7.2, positive
+    in all five years) but the absolute net is -0.422% / -0.378% = -4,223 / -3,779 TWD per 1M of buys per day; the
+    quota-sized top-3 variant is -2,926 / -3,028 TWD per day. H5 is NO_EDGE (excess +0.065% / +0.051%, t 0.8 / 0.6).
+    H20 is WEAK: top-decile net +0.53% / +0.50% (+5,278 / +5,016 TWD per 1M per 20 sessions) but excess +0.23% /
+    +0.20% with t 0.7 / 0.5 and negative in 2022. Side finding (descriptive, unconditional): the equal-weight liquid
+    universe loses 0.50% net buying the official open and selling the close (gross about -0.2% to -0.27%; cost 0.23%), every
+    year. Bundle sha256 194973eb. 2,302 pages (1,958,261 stock-days), 0 failed pages, 0 row-sum mismatches.
