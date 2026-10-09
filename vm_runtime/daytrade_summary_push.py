@@ -174,14 +174,8 @@ def main():
         if not args.send:
             return
     send_daily_summary(text, day=day, store=Store())
-    try:
-        from runway_v2.reporter import generate_comparison_report
-        from runway_v2.notifier import notify_channels
-        comparison_text = generate_comparison_report(day=day)
-        if comparison_text:
-            notify_channels(comparison_text)
-    except Exception as exc:
-        print("[SUMMARY] runway_v2 report push skipped:", type(exc).__name__)
+    # B1/B2/B3 reports are independently emitted by the runtime at 09:10 and
+    # session end. Do not resend the historical B ledger as a new lane result.
 
 
 if __name__ == '__main__':

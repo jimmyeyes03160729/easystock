@@ -2635,8 +2635,9 @@ class IntradayLiveEngine:
               f"version={self.daytrade_model.model_version} sha256={self.daytrade_model.artifact_sha256} "
               f"threshold={self.daytrade_model.threshold} learning={self.learning.enabled}")
         try:
-            from runway_v2.runner import get_runway_v2
-            self.runway_v2 = get_runway_v2()
+            from runway_v2.lanes import LaneSuite, firebase_publish
+            self.runway_v2 = LaneSuite(publisher=firebase_publish)
+            self.runway_v2.advance(now_tpe())
             print(f"[RUNWAY_V2_BOOT] enabled={self.runway_v2.enabled}")
             if self.runway_v2 and self.runway_v2.enabled:
                 def _sub_bidask(symbol: str) -> None:
@@ -2645,8 +2646,10 @@ class IntradayLiveEngine:
                         try:
                             self.api.subscribe(c, quote_type=sj.QuoteType.BidAsk)
                             print(f"[RUNWAY_V2_BIDASK_SUB] {symbol}")
-                        except Exception as e:
-                            print(f"[RUNWAY_V2_BIDASK_SUB_FAIL] {symbol}: {e}")
+                        except Exception:
+                            raise
+                    else:
+                        raise ValueError("contract unavailable")
                 self.runway_v2.register_bidask_subscriber(_sub_bidask)
         except Exception as exc:
             self.runway_v2 = None
@@ -3224,6 +3227,9 @@ class IntradayLiveEngine:
         # OPEN position 即使掉出雷達池仍保留 Tick。
         if self._is_open_position(symbol):
             return
+        lanes = getattr(self, "runway_v2", None)
+        if lanes is not None and lanes.has_open(symbol):
+            return
 
         contract = self.contracts.get(
             symbol
@@ -3235,6 +3241,9 @@ class IntradayLiveEngine:
                     contract,
                     quote_type=sj.QuoteType.Tick,
                 )
+                if lanes is not None and symbol in lanes.subscribed:
+                    self.api.unsubscribe(contract, quote_type=sj.QuoteType.BidAsk)
+                    lanes.release_symbol(symbol)
             except Exception:
                 pass
 
@@ -3575,6 +3584,7 @@ class IntradayLiveEngine:
         self._last_radar_refresh = now_mono
         now_ts = current.timestamp()
         qualified = []
+        lane_rows = []
 
         with self._lock:
             symbols = list(
@@ -3615,6 +3625,12 @@ class IntradayLiveEngine:
                 continue
 
             self.radar_metrics[symbol] = metrics
+
+            contract = self.contracts.get(symbol)
+            lane_rows.append({**stock, **metrics, "symbol": symbol,
+                "previous_close": num(getattr(contract, "reference", None)),
+                "daytrade_short_allowed": str(getattr(contract, "day_trade", "")).split(".")[-1] == "Yes",
+                "sector": str(getattr(contract, "category", "") or stock.get("industry") or "")})
 
             if not qualifies_volume_surge(
                 metrics
@@ -3671,10 +3687,10 @@ class IntradayLiveEngine:
 
             self.scanner_top_symbols = new_top
 
-            if getattr(self, "runway_v2", None) is not None and top_rows:
+            if getattr(self, "runway_v2", None) is not None:
                 try:
-                    prev_map = {str(r.get("symbol")): self._previous_closes.get(str(r.get("symbol")), (None, None))[1] for r in top_rows}
-                    self.runway_v2.on_radar_update(top_rows, self.bars, prev_map, current)
+                    prev_map = {str(r["symbol"]): r.get("previous_close") or self._previous_closes.get(str(r["symbol"]), (None, None))[1] for r in lane_rows}
+                    self.runway_v2.on_radar_update(lane_rows, self.bars, prev_map, current, market=self.market_risk)
                 except Exception as exc:
                     print(f"[RUNWAY_V2_RADAR_WARN] {exc}")
 
@@ -4658,7 +4674,7 @@ class IntradayLiveEngine:
 
             if getattr(self, "runway_v2", None) is not None:
                 try:
-                    self.runway_v2.on_tick(symbol, price, dt)
+                    self.runway_v2.on_tick(symbol, price, dt, current_tick_type, volume)
                 except Exception:
                     pass
 
@@ -5046,6 +5062,11 @@ class IntradayLiveEngine:
                 if dtime(9, 0) <= tt < ENTRY_CUTOFF:
                     self.refresh_market_risk()
                 self.heartbeat_if_due()
+                if getattr(self, "runway_v2", None) is not None:
+                    try:
+                        self.runway_v2.advance(current)
+                    except Exception as exc:
+                        print(f"[B_LANES_WARN] {type(exc).__name__}")
 
                 if (
                     dtime(9, 0)

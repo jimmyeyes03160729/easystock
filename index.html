@@ -653,7 +653,7 @@
 
       <!-- 四步節奏條 (Execution Rhythm Bar) -->
       <div class="my-3.5 py-2.5 px-4 rounded-xl bg-[#0D1C2D] border border-[#232F42]/60 flex flex-wrap items-center justify-between gap-3 font-mono text-xs sm:text-[13px] text-[#64748B]">
-        <div class="flex items-center gap-1.5"><span class="text-[#10B981] font-bold">09:05</span><span class="font-medium">跑道 B 搶跑 (ORB/突破)</span></div>
+        <div class="flex items-center gap-1.5"><span class="text-[#10B981] font-bold">09:00–09:10</span><span class="font-medium">B1 五檔觀察 · 09:10 狀態通知</span></div>
         <span class="text-[#232F42]">➔</span>
         <div class="flex items-center gap-1.5"><span class="text-[#06B6D4] font-bold">09:30</span><span class="font-medium">跑道 A 開工摸魚</span></div>
         <span class="text-[#232F42]">➔</span>
@@ -680,22 +680,36 @@
           </div>
         </div>
 
-        <!-- 右欄：跑道 B · 實驗動能規則 V2 -->
+        <!-- 主跑道 B1；B2/B3 獨立背景模擬 -->
         <div class="rounded-xl bg-[#0D131F]/80 border border-emerald-500/30 p-3.5 sm:p-4 flex flex-col min-w-0 shadow-[0_0_15px_rgba(16,185,129,0.04)]">
           <div class="flex items-center justify-between border-b border-[#232F42]/80 pb-2.5 mb-2.5 flex-wrap gap-2">
             <div class="flex items-center gap-2">
               <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span class="font-bold text-sm text-[#F1F5F9]">跑道 B · 實驗動能規則 V2</span>
-              <span id="runwayV2Badge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">09:05 開盤搶跑</span>
+              <span class="font-bold text-sm text-[#F1F5F9]">B1 · 五檔順勢拉回</span>
+              <span id="runwayV2Badge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">09:00–09:10 · 模擬</span>
             </div>
             <div class="flex items-center gap-2">
               <span id="runwayV2Stamp" class="text-[11px] text-emerald-400/90 font-mono font-medium">限額 100 萬 · 熔斷防守</span>
             </div>
           </div>
 
-          <p id="runwayV2Disclosure" class="mb-2.5 px-3 py-1.5 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 text-xs font-semibold leading-relaxed">實驗跑道 · 非買進訊號 · 事先登記的歷史回測（2023-09～2026-08）扣成本後每筆平均約 −0.43%、5 段期間皆為負，每 100 萬買進約 −4,250 元</p>
+          <p id="runwayV2Disclosure" class="mb-2.5 px-3 py-1.5 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 text-xs font-semibold leading-relaxed">新規則前向模擬 · 非下單建議 · 尚未驗證勝率。依新鮮五檔及逐筆成交觀察；資料不足不進場。成交價為可見買賣一檔的模擬估計，非券商成交。</p>
+          <p id="runwayBackgroundStatus" class="text-xs text-[#94A3B8] mb-3" role="status">B2 布林轉折／B3 五分K趨勢突破：等待背景狀態</p>
+          <details class="mb-3 rounded-lg border border-[#232F42] p-3 text-xs text-[#CBD5E1] leading-relaxed">
+            <summary class="cursor-pointer font-semibold text-[#F1F5F9]">查看 B1／B2／B3 完整條件與通知時間</summary>
+            <div class="mt-3 space-y-3">
+              <p><strong>共用條件：</strong>目前訂閱行情池內，股價100～149元；每條跑道獨立每日累計進場額100萬元，單筆最多20萬元、最多3檔同時持倉。同一股票每條每天最多進場一次，扣成本已實現虧損達6,000元停止新進場。三條是獨立模擬比較，額度不代表實盤可共用300萬元。</p>
+              <p><strong>行情與成交：</strong>五檔及最後成交需在3秒內；15秒內至少3筆五檔、時間跨度至少5秒；買賣價差最多1檔。10秒內成交量至少80%可辨識內外盤。做多需主動買量≥65%，連續3筆五檔委買賣失衡≥0.10；做空需主動買量≤35%、失衡≤−0.10。委買賣失衡＝（五檔買量−五檔賣量）÷總掛單量。資料不足、大盤風險未通過，或距昨收漲跌≥7%時不進場；做空另須確認先賣後買資格。</p>
+              <p><strong>B1｜09:00～09:10：</strong>至少2檔同產業股票有有效資料，其中≥60%與交易方向一致。前60秒扣除最近10秒的高低差需≥2檔；做多須在昨收以上，最近10秒回落至少1檔且未破先前低點，再出現回升；做空須在昨收以下，最近10秒反彈至少1檔且未過先前高點，再轉跌。搭配上述五檔力道後評估；停損2檔、停利3檔。09:10停止進場並處理剩餘部位。</p>
+              <p><strong>B2｜背景布林轉折：</strong>只用當日20根已完成五分K，20期平均±2倍母體標準差；最早約10:40資料才足夠。前60秒價格曾超出下軌後返回軌內、買盤確認時做多；超出上軌後返回、賣盤確認時做空。停損2檔，目標中軌且距離至少3檔。12:30停止新進場，12:55結束。</p>
+              <p><strong>B3｜背景五分K突破：</strong>至少3根當日完整五分K；最新收盤突破前2根高點且收紅，或跌破前2根低點且收黑；成交量大於前2根均量，並符合五檔力道。最新K低點外1檔／高點外1檔停損，距模擬進場價不得超過1.5%；停利至少3檔或1.5倍價格風險。12:30停止新進場，12:55結束。</p>
+              <p><strong>費用與限額：</strong>手續費28折，買賣各計；股票當沖交易稅0.15%計於賣出。做多以賣一估進場、買一估出場；做空反向。可見第一檔掛單量不足不宣稱整筆成交。實際排隊、延遲與滑價可能更差，固定2檔／3檔不是淨賺賠比保證。</p>
+              <p><strong>LINE＋Telegram：</strong>09:10先彙整三條當時狀態，B2／B3標示繼續觀察；12:55結束後再彙整日結。若剩餘部位缺新鮮報價或深度不足，標示待處理，不虛報已平倉；完成後再發結束結果。通知沿用個人頻道及摘要開關，休市／未收到當日行情不捏造零交易日報。</p>
+              <p>上述數值是本版本明確登記的研究條件，並非作者未公開的原版SOP。族群分類採行情合約產業分類，尚非即時題材關聯。B1即時資料不以五分K代替；舊B跑道績效不混入新帳本。</p>
+            </div>
+          </details>
           <div id="runwayV2PickList" class="space-y-3">
-            <div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-mono">☕ 國慶連假休市待命中 · 下週一 09:05 自動掃描進場…</div>
+            <div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-mono">B1 等待當日行情與五檔資料</div>
           </div>
         </div>
       </div>
@@ -3720,8 +3734,22 @@
     if (!container) return;
 
     const stamp = document.getElementById("runwayV2Stamp");
-    const v2Data = INTRADAY_LIVE?.runway_v2;
+    const suite = INTRADAY_LIVE?.runway_b_lanes;
+    const v2Data = suite?.lanes?.B1;
+    const background = document.getElementById("runwayBackgroundStatus");
+    if (background) background.textContent = ["B2", "B3"].map(lane => {
+      const data = suite?.lanes?.[lane];
+      if (!data) return `${lane}：尚無新跑道快照`;
+      const count = Object.keys(data.closed_trades || {}).length;
+      const open = Object.keys(data.open_positions || {}).length;
+      const age = Date.now() - Date.parse(data.last_update_at || "");
+      const fresh = Number.isFinite(age) && age >= -5000 && age <= 90000;
+      const status = data.session === "closed" ? "已結束" : !fresh ? "資料延遲" : data.session === "pending_exit" ? "待報價處理" : "背景觀察";
+      return `${lane} ${status} · 已平倉${count}／持倉${open} · ${data.day || "日期未提供"}`;
+    }).join(" ｜ ");
     const lastUpdate = v2Data?.last_update_at;
+    const laneAge = Date.now() - Date.parse(lastUpdate || "");
+    const laneFresh = Number.isFinite(laneAge) && laneAge >= -5000 && laneAge <= 90000;
 
     const openPositions = Object.values(v2Data?.open_positions || {})
       .filter(Boolean)
@@ -3747,8 +3775,9 @@
     } else if (isShowingPreviousDay) {
       if (stamp) stamp.textContent = "保留上一交易日戰報";
     } else {
-      if (stamp) stamp.textContent = lastUpdate ? `今日尚無交易 · ${formatTaiwanDateTime(lastUpdate)}` : "尚無跑道 B 快照";
-      container.innerHTML = `<div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-medium">尚無跑道 B 模擬交易紀錄；不以範例或回測資料代替實盤紀錄。</div>`;
+      if (stamp) stamp.textContent = lastUpdate ? `B1 ${v2Data?.session === "closed" ? "已結束" : "觀察中"} · ${formatTaiwanDateTime(lastUpdate)}` : "尚無 B1 新跑道快照";
+      const rejects = Object.entries(v2Data?.rejects || {}).sort((a, b) => b[1] - a[1]);
+      container.innerHTML = `<div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-medium">B1 尚無模擬交易。${escapeHtml(rejects[0]?.[0] || "等待新鮮五檔與符合條件的訊號")}。</div>`;
       return;
     }
 
@@ -3774,9 +3803,9 @@
     container.innerHTML = rows.map(x => {
       const isOpen = x._liveStatus === "OPEN";
       const entry = n(x.entry_price);
-      const current = n(x.current_price);
+      const current = laneFresh && !x.quote_stale ? n(x.current_price) : null;
       const exit = n(x.exit_price);
-      const displayPrice = isOpen ? (current ?? entry) : (exit ?? entry);
+      const displayPrice = isOpen ? current : exit;
 
       // 1. 股票名稱乾淨提取與保底
       let stockName = (x.name && typeof x.name === "string" && !x.name.includes("?")) ? x.name.trim() : "";
@@ -3794,7 +3823,7 @@
 
       let pnl = null;
       if (isOpen && entry !== null && current !== null && entry > 0) {
-        pnl = ((current / entry) - 1) * 100;
+        pnl = ((current / entry) - 1) * 100 * (x.direction === -1 ? -1 : 1);
       } else if (!isOpen) {
         pnl = n(x.return_pct);
       }
@@ -3804,14 +3833,14 @@
       const netPnl = n(x.net_pnl);
       const netPnlText = netPnl !== null ? `${netPnl >= 0 ? "+" : ""}${Math.round(netPnl).toLocaleString()} 元` : "";
 
-      const signalTypeLabel = x.signal_type === "ORB" || x.signal_type === "ORB_BREAKOUT" ? "⚡ ORB 早盤突破" : (x.signal_type === "VWAP_PULLBACK" ? "🌊 VWAP 回踩轉強" : (x.signal_type || "動能進場"));
+      const signalTypeLabel = `B1 五檔${x.direction === -1 ? "反彈做空" : "拉回做多"}`;
       
       let rawReasons = Array.isArray(x.reasons) ? x.reasons : (typeof x.reasons === "string" ? x.reasons.split(",").map(s => s.trim()) : []);
       let reasons = rawReasons.filter(r => typeof r === "string" && !r.includes("?"));
       if (!reasons.length) reasons = ["進場理由未提供"];
 
       return `
-        <div class="rounded-xl border border-emerald-500/20 bg-[#0F172A]/70 p-3.5 sm:p-4 surface trade-detail-card transition-all hover:border-emerald-500/40 cursor-pointer" role="button" tabindex="0" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(stockName)} 跑道B 交易紀錄">
+        <div class="rounded-xl border border-emerald-500/20 bg-[#0F172A]/70 p-3.5 sm:p-4 surface trade-detail-card transition-all hover:border-emerald-500/40 cursor-pointer" role="button" tabindex="0" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(stockName)} B1 模擬交易紀錄">
           <div class="flex items-start justify-between gap-2.5">
             <div>
               <div class="flex items-center gap-2 flex-wrap">
@@ -3825,7 +3854,7 @@
                 </span>
               </div>
               <div class="text-xs text-[#94A3B8] mt-1.5 leading-normal font-medium flex items-center gap-2 flex-wrap">
-                <span>${isOpen ? (x.half_closed ? '✓ 已停利 50% 保本中' : '即時監控動能防守') : escapeHtml(exitReason)}</span>
+                <span>${isOpen ? (x.quote_stale || !laneFresh ? '報價延遲 · 等待新鮮五檔' : '五檔監控 · 停損2檔／停利3檔') : escapeHtml(exitReason)}</span>
                 ${x.score ? `<span class="text-[11px] text-[#64748B] font-mono">評分: ${fmt(x.score, 1)}</span>` : ''}
               </div>
             </div>
@@ -3849,9 +3878,9 @@
             </div>
 
             <div class="rounded-lg border border-[#232F42] bg-[#090D14]/60 p-2.5">
-              <div class="text-[#64748B] font-medium">${isOpen ? "現價 / 最高" : "出場點位"}</div>
+              <div class="text-[#64748B] font-medium">${isOpen ? "現價 / 目標" : "出場點位"}</div>
               <div class="text-sm font-bold text-[#F1F5F9] font-mono mt-1">
-                ${isOpen ? `${current !== null ? fmt(current, 2) : "--"} / ${n(x.highest_price) !== null ? fmt(x.highest_price, 2) : "--"}` : (exit !== null ? fmt(exit, 2) : "--")}
+                ${isOpen ? `${current !== null ? fmt(current, 2) : "--"} / ${n(x.target) !== null ? fmt(x.target, 2) : "--"}` : (exit !== null ? fmt(exit, 2) : "--")}
               </div>
               <div class="text-xs text-[#94A3B8] font-mono mt-1">
                 ${isOpen ? (x.stop_price != null ? `防守 ${fmt(x.stop_price, 2)}` : "--") : (x.exit_time ? formatTaiwanDateTime(x.exit_time) : "--")}
