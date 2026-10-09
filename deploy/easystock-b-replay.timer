@@ -1,0 +1,12 @@
+[Unit]
+Description=EasyStock after-session B lane replay
+
+[Timer]
+OnCalendar=*-*-* 13:20:00 Asia/Taipei
+OnCalendar=*-*-* 21:20:00 Asia/Taipei
+Persistent=true
+RandomizedDelaySec=30
+Unit=easystock-b-replay.service
+
+[Install]
+WantedBy=timers.target
