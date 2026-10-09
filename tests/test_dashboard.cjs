@@ -34,10 +34,10 @@ run(main);w.onload=null;
   run(`INTRADAY_LIVE={last_update_at:taiwanDay()+'T13:00:00+08:00',session:'closed'};`);
   assert.equal(run(`liveDataState(Date.parse(taiwanDay()+'T20:00:00+08:00')).label`),'當沖已結束');
 
-  // Runway V2: independent rendering and standby
-  assert(w.document.getElementById('runwayV2PickList').textContent.includes('尚無跑道 B 模擬交易紀錄'));
+  // New B1 never presents the old runway_v2 ledger as current evidence.
+  assert(w.document.getElementById('runwayV2PickList').textContent.includes('B1 尚無模擬交易'));
   run(`
-    INTRADAY_LIVE.runway_v2 = {
+    INTRADAY_LIVE.runway_b_lanes = {lanes: {B1: {
       last_update_at: new Date().toISOString(),
       open_positions: {
         '2330': {
@@ -48,11 +48,11 @@ run(main);w.onload=null;
           reasons: ['早盤突破', '量比>1.5']
         }
       }
-    };
+    }}};
     renderLiveIntraday();
   `);
   assert(w.document.getElementById('runwayV2PickList').textContent.includes('台積電'));
-  assert(w.document.getElementById('runwayV2PickList').textContent.includes('ORB 早盤突破'));
+  assert(w.document.getElementById('runwayV2PickList').textContent.includes('B1 五檔拉回做多'));
   assert(w.document.getElementById('runwayV2PickList').textContent.includes('+1.50%'));
 
 
