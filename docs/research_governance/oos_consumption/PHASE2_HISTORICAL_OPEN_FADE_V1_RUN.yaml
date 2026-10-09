@@ -1,0 +1,78 @@
+# EasyStock OOS Consumption Ledger — OPEN_FADE_V1 (preregistered, run once, sealed INSUFFICIENT)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "PHASE2_HISTORICAL_OPEN_FADE_V1_RUN"
+created_at: "2026-10-10T10:00:00+08:00"
+description: >
+  The single preregistered run of OPEN_FADE_V1 (frozen in 03b0702) on pool tick archives in the five test windows,
+  excluding the exploration days (every 6th archive day). Only the 76 days with at least 50 valid symbols entered the
+  frozen aggregate. The exploration sample (121 days, core 42, unconditional decomposition) was read descriptively
+  before the study. Reserved future partitions and days > 2026-10-02 were not read.
+
+consumption_events:
+  - consumption_id: "CNS_OPEN_FADE_V1_TEST_WINDOWS"
+    trial_id: "TRIAL_EA_OPEN_FADE_V1"
+    dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2024-12-25"
+      end_date: "2026-08-27"
+      slice_definition: "OPEN_FADE_V1: 09:30 short of the top decile of opening gap or morning run, 12:55 cover; 76 days with >= 50 valid symbols entered the aggregate"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "top-decile short net, baseline and excess per signal and group on the 76 qualifying days"
+      - "per-window means for those days (3, 0, 3, 11, 59 days)"
+    consumed_at: "2026-10-10T09:00:00+08:00"
+    record_type: "PREREGISTERED_CONSUMPTION"
+    recorded_after_exposure: true
+    source_artifact: "VM:/home/ubuntu/easystock-research/open_fade_v1/output/easystock_open_fade_v1_20261010.tar.gz (sha256 53483a24f26ad21892ac5643246b4698ca98adb071e79708a75ec3f379c6ff3a)"
+    source_commit: "03b0702"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "The 76 qualifying days are consumed; OPEN_FADE_V2 uses only the disjoint days with 30-49 valid symbols."
+
+  - consumption_id: "CNS_OPEN_FADE_EXPLORATION_SAMPLE"
+    trial_id: "TRIAL_EA_OPEN_FADE_V1"
+    dataset_id: "PHASE2_HISTORICAL_2023_2026_10_02"
+    dataset_family_id: "TWSE_EQUITY_INTRADAY"
+    dataset_lineage_id: "LINEAGE_SHIOAJI_TICKS_CANONICAL_V1"
+    slice:
+      start_date: "2023-09-27"
+      end_date: "2026-09-23"
+      slice_definition: "Exploration sample: archive days whose index in the sorted archive-day list is a multiple of 6 (121 days), 42 core stocks, unconditional open-to-09:05-to-09:30-to-close decomposition"
+    role: "DESCRIPTIVE"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "unconditional mean and median returns of three intraday segments, overall and by year"
+    consumed_at: "2026-10-10T08:20:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "docs/research_governance/preregistrations/OPEN_FADE_V1.yaml"
+    source_commit: "03b0702"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Excluded from every confirmatory test of the open-fade hypotheses; no conditioning variable was examined."
