@@ -1,7 +1,8 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),crypto=require('node:crypto');
 const ui=require('../assets/b-lanes-replay.js');
 const scenarios={baseline:{days:0,trades:0,net_pnl:null,win_rate:null,max_realized_drawdown:null},delay500:{days:0,net_pnl:null},delay1000:{days:0,net_pnl:null},extra1tick:{days:0,net_pnl:null}};
-const html=ui.render({summary:{B1:{valid_days:0,excluded_days:10,pending_days:0,scenarios}},daily:[{day:'2026-10-08',lanes:{B1:{status:'excluded',reasons:['缺完整五檔<script>bad</script>']}}}]});
+const html=ui.render({summary:{B1:{valid_days:0,excluded_days:10,pending_days:0,scenarios}},daily:[{day:'2026-10-08',lanes:{B1:{status:'excluded',reasons:['舊日期']}}},{day:'2026-10-09',lanes:{B1:{status:'excluded',reasons:['缺完整五檔<script>bad</script>']}}}]});
+assert(!html.includes('2026-10-08')&&!html.includes('舊日期'));
 assert(!html.includes('<script>'));
 assert(html.includes('— 元')&&!html.includes('0.00%'));
 assert(html.includes('缺完整五檔&lt;script&gt;'));

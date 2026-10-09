@@ -29,7 +29,7 @@
 
 基準每個clock均比對錄製時state hash，結束比對manifest final_state；若當日live SQLite存在，另比對其持倉、交易、累計金額和進場數。錄製hash一致只能證明回放一致，不能證明模擬等同實際成交。
 
-每日13:20／21:20執行資料盤點與回放，結果存 `replay-latest.json` 並發布 `/market_data/public_feed/b_lanes_replay`，首頁顯示三條績效、壓力情境、資料品質與日別排除理由。盤點預設近183個日曆日，CLI可指定 `--since`／`--until`。未有有效日的績效欄位為null，不能以0元或0%冒充回測結果。
+每日13:20／21:20執行資料盤點與回放，結果存 `replay-latest.json` 並發布 `/market_data/public_feed/b_lanes_replay`，首頁顯示三條績效、壓力情境、資料品質與日別排除理由。盤點自2026-10-09（新版完整輸入錄製開始日）起，更早日期不列出，CLI可指定 `--since`／`--until`。未有有效日的績效欄位為null，不能以0元或0%冒充回測結果。
 
 離線：`python -m runway_v2.replay --record-root <recordings> --history-root <archive> --output <report.json>`。只有明確帶 `--publish` 才寫Firebase；任何模式均不發LINE、Telegram。
 
