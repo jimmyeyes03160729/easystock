@@ -96,7 +96,7 @@ def test_parse_calendar():
     delta = rows[0]
     assert (delta['start_date'], delta['end_date'], delta['time']) == ('2026-10-05', '2026-10-13', '21:00')
     assert delta['slides_zh'] == '230820260730M001.pdf' and delta['slides_en'] == '230820260730E001.pdf'
-    assert delta['website'].startswith('https://www.deltaww.com')
+    assert delta['website'] == 'https://www.deltaww.com/zh-TW/investors/analyst-meeting'
     assert rows[1]['slides_zh'] is None and rows[1]['video_urls'] == ['https://www.zucast.com/webcast/FHFR0R3a']
 
 
@@ -156,11 +156,11 @@ def test_sync_records_per_source_errors_and_continues():
     db = make_db()
 
     def fetch(url, data=None, as_json=False):
-        if 'openapi.twse' in url:
+        if url == t.TWSE_ANNOUNCE_URL:
             return TWSE_ROWS
-        if 'tpex' in url:
+        if url == t.TPEX_ANNOUNCE_URL:
             raise RuntimeError('tpex down')
-        if 't05sr01_1' in url:
+        if url == t.MOPS_REALTIME_URL:
             return REALTIME_HTML
         return CALENDAR_HTML if data['TYPEK'] == 'sii' and data['month'] == '10' else '<table></table>'
 
