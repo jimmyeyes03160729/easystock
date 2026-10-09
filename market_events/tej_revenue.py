@@ -39,16 +39,10 @@ def normalize(row, observed_at, table):
         return None
     if announced[:7] < period[:7] or announced > observed_at[:10]:
         return None
-    # Verified TASALE labels: consolidated-preferred fields must be kept together.
-    preferred = [number(row.get(k)) for k in ('t8100m', 'mfr2', 'mfr3')]
-    if all(v is not None for v in preferred):
-        revenue, yoy, mom = preferred
-        basis = 'consolidated_preferred'
-    elif any(v is not None for v in preferred):
-        return None
-    else:
-        revenue, yoy, mom = [number(row.get(k)) for k in ('d0001', 'd0003', 'd0004')]
-        basis = 'reported'
+    # Metadata confirms these are consolidated-preferred since 2013. Trial SDK
+    # responses have misaligned later columns; never infer their mapping by position.
+    revenue, yoy, mom = [number(row.get(k)) for k in ('d0001', 'd0003', 'd0004')]
+    basis = 'reported_consolidated_preferred_since_2013'
     if any(v is None for v in (revenue, yoy, mom)) or revenue < 0:
         return None
     return dict(symbol=symbol, revenue_period=period[:7].replace('-', ''),

@@ -21,11 +21,11 @@ def row(**updates):
 
 
 class RevenueTests(unittest.TestCase):
-    def test_mapping_and_consolidated_preference(self):
-        result = normalize(row(t8100m=200, mfr2=30, mfr3=15), NOW.isoformat(), 'TRAIL/TASALE')
-        self.assertEqual((result['rev_yoy'], result['rev_mom']), (30, 15))
+    def test_verified_mapping_ignores_misaligned_trial_tail_columns(self):
+        result = normalize(row(t8100m='', mfr2=100, mfr3=20, t8104m=10), NOW.isoformat(), 'TRAIL/TASALE')
+        self.assertEqual((result['rev_yoy'], result['rev_mom']), (20, 10))
         self.assertEqual(result['revenue_announcement_day'], '2026-10-08')
-        self.assertEqual(result['revenue_thousand_twd'], 200)
+        self.assertEqual(result['revenue_thousand_twd'], 100)
 
     def test_reject_missing_date_invalid_growth_and_future_announcement(self):
         for changes in [dict(annd_s=None), dict(d0003=float('nan')),
