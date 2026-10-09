@@ -1,0 +1,12 @@
+[Unit]
+Description=Collect TEJ revenue twice daily
+
+[Timer]
+OnCalendar=*-*-* 09:20:00 Asia/Taipei
+OnCalendar=*-*-* 21:10:00 Asia/Taipei
+Persistent=true
+RandomizedDelaySec=60
+Unit=easystock-tej-revenue.service
+
+[Install]
+WantedBy=timers.target

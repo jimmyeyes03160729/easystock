@@ -1,0 +1,16 @@
+[Unit]
+Description=EasyStock licensed TEJ revenue and announcement dates
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+Environment=EASYSTOCK_MARKET_EVENTS_DIR=/home/ubuntu/easystock-market-events
+ExecStart=/home/ubuntu/easystock-research/tej/venv/bin/python -m market_events.tej_revenue
+TimeoutStartSec=600
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
