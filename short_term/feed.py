@@ -3,6 +3,8 @@
 選股不在這裡做：REVENUE_FORWARD_V1（research/revenue_v1/rev_fwd.py）在每月營收截止日晚上凍結名單。
 本模組只讀凍結名單、日線與營收，算進場價、目前損益與已結束批次，發布到 /market_data/public_feed/short_term。
 不下單。持有天數與顯示檔數依 REVENUE_SHORT_V1 事先凍結的首頁規則決定。
+另外把當月有營收資料的所有上市櫃公司（不設成交額、股價門檻）凍結成 full_YYYY-MM.json，從同一個進場日追蹤，
+發布到 /market_data/public_feed/short_term_full，只收集資料、不改變上面的組合規則。
 """
 import json
 import math
@@ -121,11 +123,54 @@ def build_batch(picks, revenue, names, sessions, bars, ex, is_closed, hold=HOLD_
     return batch
 
 
+def full_snapshot(month, revenue, names, markets):
+    """Every listed and OTC company with a month-M revenue row, ranked by SUR; no amount, liquidity or price filter."""
+    sur = R.signals_for(revenue, month)['S2_SUR']
+    syms = sorted((s for s, by in revenue.items() if month in by and R.COMMON.match(s)),
+                  key=lambda s: (sur.get(s) is None, -(sur.get(s) or 0), s))
+    rows = []
+    for i, s in enumerate(syms):
+        y = R.yoy(*revenue[s][month])
+        rows.append({'rank': i + 1 if sur.get(s) is not None else None, 'symbol': s, 'name': names.get(s, ''),
+                     'market': {'sii': '上市', 'otc': '上櫃'}.get(markets.get(s), markets.get(s, '')),
+                     'sur': None if sur.get(s) is None else round(sur[s], 2),
+                     'rev_yoy_pct': None if y is None else round(y * 100, 1)})
+    return {'month': month, 'n_companies': len(rows), 'n_scored': sum(1 for r in rows if r['sur'] is not None), 'rows': rows}
+
+
+def full_batch(snap, deadline, sessions, bars, ex, is_closed, hold=HOLD_SESSIONS):
+    """Track every company of the frozen snapshot from the entry open; summary by score group (data only, no portfolio rule)."""
+    E = next_session(sessions, deadline, is_closed)
+    X = add_sessions(sessions, E, hold, is_closed)
+    last = sessions[-1] if sessions else ''
+    out = {'month': snap['month'], 'deadline_session': deadline, 'entry_day': E, 'exit_day': X,
+           'n_companies': snap['n_companies'], 'n_scored': snap['n_scored']}
+    rows = [dict(r, deadline_close=last_close(bars.get(r['symbol'], {}), deadline)) for r in snap['rows']]
+    if last < E:
+        return dict(out, status='waiting_entry', summary=None, rows=rows)
+    mark_day = min(last, X)
+    rets, _ = position_returns([r['symbol'] for r in rows], bars, ex, E, mark_day)
+    for r in rows:
+        p = rets.get(r['symbol'])
+        bar = bars.get(r['symbol'], {}).get(E)
+        r.update(entry=p and p['entry'], mark=p and p['mark'], net_pct=None if p is None else round(p['net_pct'], 2),
+                 fill='filled' if p else ('limit_up' if bar else 'no_trade'))
+    scored = [r for r in rows if r['sur'] is not None]
+    k = math.ceil(len(scored) * 0.1)
+
+    def group(rs):
+        vals = [r['net_pct'] for r in rs if r['net_pct'] is not None]
+        return {'n': len(rs), 'n_filled': len(vals), 'net_pct': round(sum(vals) / len(vals), 2) if vals else None}
+    summary = {'all': group(rows), 'top10': group(scored[:TOP_N]), 'top_decile': group(scored[:k]),
+               'bottom_decile': group(scored[-k:] if k else []), 'no_score': group([r for r in rows if r['sur'] is None])}
+    return dict(out, status='closed' if last >= X else 'holding', mark_day=mark_day, summary=summary, rows=rows)
+
+
 def build_feed(batches, today, next_deadline, next_entry, generated_at):
     ordered = sorted(batches, key=lambda b: b['month'], reverse=True)
     current = next((b for b in ordered if b['status'] != 'closed'), None)
     closed = [b for b in ordered if b['status'] == 'closed']
-    keys = ('month', 'entry_day', 'exit_day', 'n_filled', 'net_pct', 'universe_net_pct', 'excess_pct', 'twd_per_1m')
+    keys = ('month', 'entry_day', 'exit_day', 'n_filled', 'net_pct', 'universe_net_pct', 'excess_pct', 'twd_per_1m', 'full_summary')
     return {'schema_version': 1, 'rules_version': RULES_VERSION, 'generated_at': generated_at, 'as_of': today,
             'strategy': {'hold_sessions': HOLD_SESSIONS, 'list_mode': LIST_MODE, 'top_n': TOP_N, 'capital': CAPITAL,
                          'limit_up_ratio': LIMIT_UP, 'backtest': BACKTEST},
@@ -147,17 +192,19 @@ def load_inputs(months):
         if ref and ref > 0 and pc and pc > 0:
             ex.setdefault(s, []).append((d, pc / ref))
     daily.close()
-    revenue, names = {}, {}
+    revenue, names, markets = {}, {}, {}
     db_path = PICKS_DIR / 'revenue.sqlite'
     if db_path.exists() and months:
         db = sqlite3.connect('file:%s?mode=ro' % db_path, uri=True)
-        for s, m, r, ly, name in db.execute('SELECT symbol, month, revenue, last_year, name FROM revenue WHERE month >= ? ORDER BY month',
-                                            (R.add_months(min(months), -13),)):
+        for s, m, r, ly, name, market in db.execute(
+                'SELECT symbol, month, revenue, last_year, name, market FROM revenue WHERE month >= ? ORDER BY month',
+                (R.add_months(min(months), -13),)):
             revenue.setdefault(s, {})[m] = (r, ly)
             if name:
                 names[s] = name
+            markets[s] = market
         db.close()
-    return sessions, bars, ex, revenue, names
+    return sessions, bars, ex, revenue, names, markets
 
 
 def calendar_closed():
@@ -182,23 +229,41 @@ def upcoming(today, months_frozen, sessions, is_closed):
     return D, next_session(sessions, D, is_closed)
 
 
+def write_json(path, data):
+    tmp = path.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding='utf-8')
+    tmp.replace(path)
+
+
 def main(publish=True):
     now = datetime.now(TPE)
     today = now.date().isoformat()
     is_closed = calendar_closed()
     picks = [json.loads(p.read_text()) for p in sorted(PICKS_DIR.glob('picks_*.json'))]
-    sessions, bars, ex, revenue, names = load_inputs([p['month'] for p in picks])
+    sessions, bars, ex, revenue, names, markets = load_inputs([p['month'] for p in picks])
     batches = [build_batch(p, revenue, names, sessions, bars, ex, is_closed) for p in picks]
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    fulls = []
+    for p, b in zip(picks, batches):
+        snap = OUT_DIR / ('full_%s.json' % p['month'])          # frozen the first time the month's table is available
+        if not snap.exists():
+            write_json(snap, dict(full_snapshot(p['month'], revenue, names, markets), created_at=now.isoformat(timespec='seconds')))
+        full = full_batch(json.loads(snap.read_text(encoding='utf-8')), p['deadline_session'], sessions, bars, ex, is_closed)
+        b['full_summary'] = dict(full['summary'] or {}, n_companies=full['n_companies'], n_scored=full['n_scored'])
+        fulls.append(full)
     D, E = upcoming(today, {p['month'] for p in picks}, sessions, is_closed)
     feed = build_feed(batches, today, D, E, now.isoformat(timespec='seconds'))
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = OUT_DIR / 'short-term-latest.tmp'
-    tmp.write_text(json.dumps(feed, ensure_ascii=False, indent=1), encoding='utf-8')
-    tmp.replace(OUT_DIR / 'short-term-latest.json')
+    latest_full = max(fulls, key=lambda f: f['month']) if fulls else None
+    write_json(OUT_DIR / 'short-term-latest.json', feed)
+    if latest_full:
+        write_json(OUT_DIR / 'short-term-full-latest.json', latest_full)
     if publish:
         sys.path.insert(0, str(REPO))
         from firebase_store import FirebaseStore
-        FirebaseStore().root.child('public_feed').child('short_term').set(feed)
+        node = FirebaseStore().root.child('public_feed')
+        node.child('short_term').set(feed)
+        if latest_full:
+            node.child('short_term_full').set(dict(latest_full, generated_at=feed['generated_at']))
     print(json.dumps({'batches': len(batches), 'current': feed['current'] and feed['current']['status'], 'next': feed['next']}))
 
 
