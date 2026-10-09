@@ -68,3 +68,6 @@ result:
   DISCOVERY_DATA_REUSED: false
   INDEPENDENT_CONFIRMATION: true
   FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    2015-2021 prices and revenue were never fetched before this preregistration. The study re-runs the parent's
+    frozen code once; results are reported per 1,000,000 TWD of buys.
