@@ -1,0 +1,43 @@
+# EasyStock OOS Consumption Ledger — INST_FLOW_V1 (preregistered, run once)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "PHASE2_HISTORICAL_INST_FLOW_V1_RUN"
+created_at: "2026-10-10T03:30:00+08:00"
+description: >
+  The single preregistered run of INST_FLOW_V1 (frozen in 622f75f) on official daily bars and per-stock institutional
+  net buy/sell, 2022-01-03..2026-10-02. Reserved future partitions and days > 2026-10-02 were not read.
+
+consumption_events:
+  - consumption_id: "CNS_INST_FLOW_V1_2022_2026"
+    trial_id: "TRIAL_INST_FLOW_V1"
+    dataset_id: "TWSE_TPEX_INSTITUTIONAL_FLOW_2022_01_2026_10_02"
+    dataset_family_id: "TWSE_TPEX_INSTITUTIONAL_FLOW"
+    dataset_lineage_id: "LINEAGE_TWSE_TPEX_T86_V1"
+    slice:
+      start_date: "2022-01-03"
+      end_date: "2026-10-02"
+      slice_definition: "INST_FLOW_V1: events 2022-01-31..2026-10-01, FI5/IT5 top decile vs liquid universe, DT/H5/H20"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "top-decile, bottom-decile and universe net returns per signal, horizon and year"
+      - "unconditional open-to-close drift of the liquid universe by year (descriptive side finding)"
+    consumed_at: "2026-10-10T03:02:59+08:00"
+    record_type: "PREREGISTERED_CONSUMPTION"
+    recorded_after_exposure: true
+    source_artifact: "VM:/home/ubuntu/easystock-research/inst_flow_v1/output/easystock_inst_flow_v1_20261010.tar.gz (sha256 194973ebd42abc42a3b1433d5b13231b3617d118987e32c7980eae1d2862c8e1)"
+    source_commit: "622f75f"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Discovery-quality exposure of 2022-2026 daily bars and flows; any confirmation must use sessions after 2026-10-02."
