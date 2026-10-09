@@ -1,0 +1,49 @@
+# EasyStock preregistration — REVENUE_HIST_V1 (REVENUE_DRIFT_V1 replicated on 2015-2021, never-seen history)
+# Frozen in git BEFORE the 2014-2022 daily prices or the 2014-2021 revenue tables are fetched.
+# Motivation: REVENUE_DRIFT_V1 (sealed, PRs #44/#47) is the only family that passed, but its data start in 2022.
+#   2015-2021 adds the 2015 China crash, the 2018 Q4 sell-off and the 2020 COVID crash/rebound. This study re-runs
+#   the frozen REVENUE_DRIFT_V1 code unchanged on that period as an out-of-sample replication.
+
+preregistration_id: "REVENUE_HIST_V1"
+parent: "REVENUE_DRIFT_V1"
+created_at: "2026-10-09T23:00:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE"
+direction: "LONG (top decile); bottom decile is descriptive only"
+code: "research/revenue_hist_v1/{hist_fetch.sh,hist_fetch_revenue.py,hist_study.py,run.sh}; the study imports research/revenue_v1/rev_study.py unchanged and only rebinds its constants"
+
+data:
+  revenue: "MOPS t21sc03 summary tables (sii + otc, kind 0/1), revenue months 2014-01..2021-12, fetched by the unchanged REVENUE_DRIFT_V1 parser into a NEW database (VM /home/ubuntu/easystock-research/revenue_hist_v1/data/revenue.sqlite)"
+  prices: "official TWSE/TPEx daily quotes + TWSE ex-rights fetched by rebound_learning.market_daily into a NEW database (VM /home/ubuntu/easystock-research/revenue_hist_v1/daily/market-daily.sqlite), days 2014-11-03..2022-03-31; the production daily DB is not touched"
+  forbidden: ["any day > 2022-03-31 in this study", "the production daily DB", "PHASE2C_FUTURE_CONFIRMATION_60D", "REBOUND_V2_FUTURE_CONFIRMATION_60D"]
+  overlap_disclosure: "events of 2022-01..2022-02 exits overlap the sealed REVENUE_DRIFT_V1 window by at most a few weeks of prices; event months stop at 2021-12 so no REVENUE_DRIFT_V1 event month is re-scored"
+
+timing_universe_signals_horizons_costs: "identical to REVENUE_DRIFT_V1 (same code): deadline D(M) = first TWSE session on/after the 10th of M+1, entry at the official open of the next session, 4-digit common stocks, >= 20 prior sessions, 20-session mean amount >= 50,000,000 TWD, prior close >= 10 TWD; S1_YOY and S2_SUR; top decile equal weight; DT/H5/H20; fee 0.1425% x 0.28 (min 20) both legs + tax"
+event_months: "2015-01..2021-12 (SUR needs 12 prior monthly growths from 2014-01); price CUTOFF 2022-03-31"
+
+statistics:
+  unit: "one portfolio return per event month"
+  excess: "top-decile net minus equal-weight net of the eligible universe"
+  folds: "calendar year of E: 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 (2022 holds only the 2021-12 event)"
+
+pass_criteria:
+  primary: "S2_SUR H20 (the parent's best line)"
+  A: "mean monthly top-decile net > 0"
+  B: "top-decile net > 0 in >= 5 of the 7 full folds 2015-2021"
+  C: "mean monthly excess > 0 with t >= 2.0"
+  D: "excess > 0 in >= 5 of the 7 full folds 2015-2021"
+  G: ">= 40 event months and mean top-decile size >= 20 names"
+  classification: "same rule as the parent: G false -> INSUFFICIENT; A-D -> STRONG; C and D -> RELATIVE_ONLY; not A and not C -> NO_EDGE; else WEAK"
+  replication_verdict: "REPLICATED if the primary is STRONG; PARTIAL if RELATIVE_ONLY; otherwise NOT_REPLICATED. The other 5 lines are reported but cannot rescue the verdict."
+  money: "report TWD per 1,000,000 of buys = mean top net % x 10,000 per holding period"
+
+known_limitations:
+  - "day-trade tax was 0.3% before 2017-04-28; the frozen cost model always uses 0.15% for DT, so DT is optimistic in 2015-2017 (H5/H20 use ordinary tax and are unaffected)"
+  - "the 50,000,000 TWD liquidity floor is fixed in TWD, so the 2015-2016 universe is smaller"
+  - "the parent parser drops the YoY% cell (shifts later columns); the study uses revenue and last_year only, which are parsed correctly"
+  - "fee discount 0.28 is an assumption; the owner's actual discount is not yet known"
+
+prohibited:
+  - "changing any rule after the fetch starts; re-running with changes"
+  - "using 2015-2021 results to tune the forward confirmation REVENUE_FORWARD_V1"
