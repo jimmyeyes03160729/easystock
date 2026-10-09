@@ -83,3 +83,19 @@ def test_period_parsing():
     assert period_date('11509').isoformat()=='2026-09-01'
     assert period_date('2026/09').isoformat()=='2026-09-01'
     assert period_date('11513') is None
+
+
+def test_newer_month_in_announcement_waits_for_official_revenue(tmp_path):
+    event,rev=fixtures(); w=Watch(tmp_path/'watch.sqlite')
+    event['subject']='本公司115年9月份自結合併營收創歷史新高'
+    rev['2330']['revenue_period']='11508'
+    stats=w.capture([event],rev,NOW,is_open)
+    assert stats['added']==0 and stats['newer_revenue_pending']==1
+    rev['2330']['revenue_period']='11509'
+    assert w.capture([event],rev,NOW,is_open)['added']==1
+    # Previously captured records with mismatched months never enter statistics.
+    payload=w.snapshot(NOW)['rows'][0]
+    payload['revenue_period']='11508'
+    import json
+    w.db.execute('UPDATE signals SET payload=?',(json.dumps(payload),))
+    assert w.snapshot(NOW)['summary']['total']==0

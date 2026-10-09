@@ -57,6 +57,21 @@ def trading_date(day, direction, is_open, include=False):
     raise RuntimeError('Trading calendar unavailable')
 
 
+def announced_revenue_period(subject, body, event_day):
+    text = re.sub(r'\s+', '', str(subject or '') + '\n' + str(body or ''))
+    matches = re.findall(r'(?:(\d{3,4})年)?(\d{1,2})月(?:份)?(?:之)?(?:自結)?(?:合併)?營收', text)
+    periods = []
+    for year, month in matches:
+        y, m = int(year) if year else event_day.year, int(month)
+        if year and y < 1911:
+            y += 1911
+        if not year and m > event_day.month:
+            y -= 1
+        if 1 <= m <= 12:
+            periods.append(date(y,m,1))
+    return max(periods) if periods else None
+
+
 class Watch:
     def __init__(self, path):
         self.db = sqlite3.connect(path)
@@ -68,7 +83,7 @@ class Watch:
         ''')
 
     def capture(self, announcements, revenues, now, is_open):
-        stats = dict(events=0, growth=0, positive=0, added=0)
+        stats = dict(events=0, growth=0, positive=0, added=0, newer_revenue_pending=0)
         for event in announcements:
             stats['events'] += 1
             rev = revenues.get(event['symbol']) or {}
@@ -78,6 +93,13 @@ class Watch:
                 continue
             age = (now.year-period.year)*12 + now.month-period.month
             if not 0 <= age <= 2:
+                continue
+            try:
+                announced = announced_revenue_period(event.get('subject'),event.get('body'),date.fromisoformat(event['spoke_date']))
+            except ValueError:
+                continue
+            if announced and announced > period:
+                stats['newer_revenue_pending'] += 1
                 continue
             stats['growth'] += 1
             evidence = positive_evidence(event.get('subject'), event.get('body'))
@@ -131,6 +153,11 @@ class Watch:
         rows = []
         for stored in self.db.execute('SELECT payload FROM signals'):
             row = json.loads(stored[0])
+            # Old captures with a later announced month remain in SQLite for audit,
+            # but do not enter the active observations or aggregate performance.
+            announced = announced_revenue_period(row.get('subject'),row.get('evidence'),date.fromisoformat(row['announcement_day']))
+            if announced and announced > period_date(row['revenue_period']):
+                continue
             def bar(day):
                 r = self.db.execute('SELECT payload FROM bars WHERE symbol=? AND day=?', (row['symbol'], day)).fetchone()
                 return json.loads(r[0]) if r else None
