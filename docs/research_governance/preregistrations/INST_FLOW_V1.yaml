@@ -1,0 +1,77 @@
+# EasyStock preregistration — INST_FLOW_V1 (per-stock institutional net buying, next-session entry)
+# Frozen in git BEFORE any institutional-flow-conditioned return is computed.
+# Motivation: the owner wants individual stocks, not the index. The NCTU 2021 thesis (LSTM on TAIEX) names institutional
+#   net buy/sell as its strongest input but compares only against other feature sets (no persistence baseline, no
+#   trading test). This study tests that hypothesis at the stock level with the project's cost model and baselines.
+#   The data (TWSE T86 and TPEx daily institutional trades per stock, 2022-01-03..2026-10-02) was fetched before any
+#   return was computed; only row-sum consistency of the pages was checked.
+
+preregistration_id: "INST_FLOW_V1"
+created_at: "2026-10-09T18:00:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE"
+code: "research/inst_flow_v1/{fetch_inst.py,ifl_study.py} (tests/test_inst_flow.py)"
+
+data:
+  flows: "TWSE T86 + TPEx 3itrade_hedge, per stock and day: foreign net (foreign investors incl. foreign dealers), investment trust (投信) net, dealer net, in shares; stored in inst.sqlite, raw pages kept"
+  prices: "official daily DB /home/ubuntu/easystock-learning-data/rebound/market-daily.sqlite (open, close, volume, amount, reference, ex_rights), days <= 2026-10-02, read-only"
+  forbidden: ["any day > 2026-10-02", "PHASE2C_FUTURE_CONFIRMATION_60D", "REBOUND_V2_FUTURE_CONFIRMATION_60D and its carved-out span"]
+  availability: "T86/TPEx pages are published after the close of day t; the decision is taken the evening of t"
+
+signals:
+  FI5: "(sum over t-4..t of foreign net shares) / (sum over t-4..t of volume shares); NaN unless all 5 days exist and volume > 0"
+  IT5: "same with investment-trust net shares"
+  dealers: "excluded a priori (mix of hedging and market making)"
+  note: "ratio normalises by volume so that large and small stocks are comparable; the 5-day window and the ratio form are fixed here and not searched"
+
+universe_at_t:
+  - "4-digit symbol not starting with 0 with a bar and flow data on t"
+  - "mean amount over the 20 sessions t-19..t >= 50,000,000 TWD and close(t) >= 10"
+  - "entry session E = next session; official open exists; open < 1.09 x reference (limit-up opens are unbuyable and excluded from top decile and baseline alike)"
+  - "at least 100 eligible scored stocks on the event day, otherwise the event is dropped (counted)"
+
+portfolios:
+  top_decile: "ceil(10%) of the eligible ranked by signal (ties by symbol), equal weight, LONG"
+  baseline: "equal-weight eligible universe of the same event and horizon"
+  excess: "top-decile net minus baseline net"
+  descriptive: ["bottom decile", "top 3 by signal for DT (what the 1,000,000 TWD daily buy quota can hold, about 333k each)"]
+
+horizons:
+  DT: "buy at the official open of E, sell at the official close of E; day-trade tax 0.15%; rebalanced every session"
+  H5: "buy at the open of E, sell at the close of the 5th session E..E+4; ordinary tax 0.3%; rebalanced every 5 sessions"
+  H20: "sell at the close of the 20th session E..E+19; ordinary tax 0.3%; rebalanced every 20 sessions"
+  event_days: "t = session index 19, 19+n, 19+2n ... counted from 2022-01-03 so that every event has 20 sessions of liquidity history and events of one horizon do not overlap"
+  ex_rights: "multi-day returns add back ex-rights/dividend drops (product of previous_close / reference over ex days in (E, exit]); a missing exit bar uses the last close before it (counted)"
+
+costs:
+  shares: 1000
+  model: "paper_execution fee (0.1425% x 0.28, min 20 TWD) on both legs + tax on the sale (same-day 0.15% for DT, 0.3% otherwise), vectorised and unit-tested against paper_execution; auction prices, no spread"
+  quota_note: "at quota size (up to 1,000,000 TWD per day) the 20 TWD minimum fee does not bind, so the 1,000-share assumption slightly overstates cost for stocks under about 50 TWD"
+
+statistics:
+  unit: "one portfolio return per event"
+  t_stat: "mean excess / (std / sqrt(events))"
+  folds: "calendar year of E: 2022, 2023, 2024, 2025, 2026"
+  reporting: "every result also states net TWD per 1,000,000 TWD of buys (1% = 10,000 TWD); DT per-day figures assume the quota is used once"
+
+pass_criteria:
+  A: "mean top-decile net > 0"
+  B: "top-decile net > 0 in >= 4/5 folds"
+  C: "mean excess > 0 with t >= 2.0"
+  D: "excess > 0 in >= 4/5 folds"
+  G: ">= 40 events and mean top-decile size >= 20 names"
+  classification: "G false -> INSUFFICIENT; A-D true -> STRONG; C and D true -> RELATIVE_ONLY; A false and C false -> NO_EDGE; otherwise WEAK (rev_study.classify)"
+  tests: "2 signals x 3 horizons = 6; together with the 6 tests of REVENUE_DRIFT_V1 the family has 12, disclosed; a STRONG here is read against a family-wise t of about 2.9"
+  family_rule: "STRONG -> candidate for a separately preregistered forward paper test on sessions after 2026-10-02 (needs its own handling of the reserved partitions); never production"
+
+prohibited:
+  - "changing windows, ratio form, deciles, filters, horizons or costs after seeing results"
+  - "adding the dealer series, 1-day or 20-day windows, or combining FI5 and IT5 on this data"
+  - "reading any day after 2026-10-02"
+
+known_limitations:
+  - "foreign investors are not one actor (index arbitrage, ETF creation and passive flows mix with discretionary flows)"
+  - "investment-trust and foreign flows are correlated with price momentum; a positive result may only reflect momentum"
+  - "official open and close auction fills for about 80 names per event are assumed; no impact"
+  - "survivorship: the daily DB includes later delistings; a delisted symbol with a missing exit uses its last close"
