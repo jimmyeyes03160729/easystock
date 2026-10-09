@@ -1,0 +1,63 @@
+# EasyStock preregistration — OPEN_FADE_V1 (short the strongest morning movers at 09:30, cover at 12:55)
+# Frozen in git BEFORE any gap- or run-conditioned return is computed on the confirmatory days.
+# Motivation (descriptive, unconditional, disclosed): INST_FLOW_V1 showed that the equal-weight liquid universe loses
+#   about 0.2% gross buying the official open and selling the close, every year 2022-2026 (daily DB, all liquid stocks).
+#   A tick decomposition on an exploration sample (121 archive days = every 6th archive day, 42 core stocks, close proxy =
+#   last trade before 13:20) put the decline AFTER 09:30: open->09:05 -0.6 bps, 09:05->09:30 -0.7 bps, 09:30->close
+#   -17.6 bps (median -14.1). That unconditional short drift (+18 bps) is far below the ~47-52 bps taker round-trip cost,
+#   so only a selection that adds roughly 30 bps can pay. This study tests two fixed selections. All long entry
+#   studies of this project fought that headwind.
+
+preregistration_id: "OPEN_FADE_V1"
+created_at: "2026-10-10T08:00:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE"
+direction: "SHORT (sell first, buy back the same day)"
+code: "research/open_fade_v1/{ofd_run.py,ofd_finalize.py} (tests/test_open_fade.py)"
+
+data:
+  archive: "easystock-history-expanded-data + easystock-history-data, days in the five frozen test windows (<= 2026-08-27)"
+  universe: "frozen 100-stock pool (research/hv60_v1/hv60_common.pool)"
+  exploration_days_excluded: "archive days whose index in the sorted archive-day list is a multiple of 6 (121 days up to 2026-10-02); they carry the descriptive decomposition and are never used here"
+  reference: "hv60_common.Daily.reference (TWSE reference, TPEx next-session reference), the previous adjusted close"
+  forbidden: ["PHASE2C_FUTURE_CONFIRMATION_60D", "REBOUND_V2 future partition and its carved-out span", "any day > 2026-10-02"]
+
+signals:
+  decision_time: "09:30:00; uses only ticks at or before it"
+  GAP: "opening gap = first trade price of the day / reference - 1 (the opening tick must be within the first 60 s after 09:00)"
+  RUN: "run = latest trade price at or before 09:30 (age <= 30 s) / reference - 1"
+  portfolios: "each day, rank all valid pool symbols by the signal (ties by symbol); the top ceil(10%) are shorted; at least 50 valid symbols are required that day"
+  valid_symbol: "opening tick, a fresh trade at 09:30 and fresh two-sided touch quotes at 09:30 and at 12:55 (age <= 30 s)"
+
+execution_and_costs:
+  entry: "sell at the bid of the touch quote at 09:30"
+  exit: "buy at the ask of the touch quote at 12:55 (project force-exit time)"
+  costs: "paper_execution fee on both legs (0.1425% x 0.28, min 20 TWD) + day-trade tax 0.15% on the sale, 1000 shares; quote-stress prices already contain the spread"
+  baseline: "unconditional short of all valid symbols the same day, same prices and costs"
+  excess: "top-decile net minus baseline net, per day"
+
+metrics:
+  event: "one value per day: mean top-decile net (bps), mean baseline net, excess"
+  per_1m_twd: "net bps x 100 = TWD per 1,000,000 TWD of short sales per name-day; the descriptive quota line shorts the top 3 names per day (about 333k each)"
+  descriptive: ["top-decile mid-to-mid return", "bottom decile LONG net (mirror)", "groups ALL (primary), CORE42, HV_TIER"]
+
+pass_criteria:
+  hypotheses: "GAP and RUN on group ALL (2 tests)"
+  A: "mean top-decile short net > 0"
+  B: "top-decile short net > 0 in >= 4/5 test windows"
+  C: "mean daily excess > 0 with t >= 2.0"
+  D: "excess > 0 in >= 4/5 test windows"
+  G: ">= 100 days in every test window"
+  classification: "G false -> INSUFFICIENT; A-D true -> STRONG; C and D true -> RELATIVE_ONLY; A false and C false -> NO_EDGE; otherwise WEAK"
+  family_rule: "STRONG -> only a separately preregistered forward paper test (and a check that the stocks are shortable at the open and how the 1M quota counts sells); never production"
+
+prohibited:
+  - "changing the decision time, exit time, decile, signals, universe or costs after seeing results"
+  - "adding signals or combining GAP and RUN on this data"
+  - "using the exploration days, or reading any day after 2026-10-02"
+
+known_limitations:
+  - "shorting needs a day-trade short-eligible stock and, in practice, margin; unshortable or limit-up stocks cannot be sold; the 100 pool stocks are not checked for eligibility here"
+  - "it is not known whether the 1,000,000 TWD daily quota counts sell amounts for sell-first trades"
+  - "touch-quote fills at 09:30 and 12:55 for 1000 shares ignore queue position and impact"
