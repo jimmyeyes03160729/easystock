@@ -7,6 +7,7 @@ services:
       NAS_CONFIG: /config/nas.env
     volumes:
       - /data/backup/vm:/data/backup/vm
+      - /data/backup/orderbook:/data/backup/orderbook
       - /workspace/.ssh:/workspace/.ssh:ro
       - ./nas.env:/config/nas.env:ro
     command: ["/opt/easystock/ops/nas/sync_from_vm.sh"]
@@ -22,6 +23,7 @@ services:
       NAS_CONFIG: /config/nas.env
     volumes:
       - /data/backup/vm:/data/backup/vm
+      - /data/backup/orderbook:/data/backup/orderbook
       - /workspace/.ssh:/workspace/.ssh:ro
       - ./nas.env:/config/nas.env:ro
     command: ["/usr/sbin/cron", "-f"]
