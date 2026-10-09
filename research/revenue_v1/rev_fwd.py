@@ -5,6 +5,10 @@ picks     freeze the decile portfolios on the deadline evening D(M); reads NO pr
           (liquidity universe frozen as of 2026-10-02) and only trading-calendar membership after it.
 evaluate  compute entry/exit returns; reads prices after 2026-10-02 and therefore refuses to run without the
           owner-created file EVAL_AUTHORIZED next to this script (see the preregistration).
+
+The daily DB gains the current session only after the 22:30 collector, so the 21:00 trigger passes --open-today
+when the production trading calendar (market_calendar.py --check-today) says today is a session. H10/H15 and the
+S2_SUR TOP10 portfolio are descriptive additions. Both changes are recorded in REVENUE_SHORT_V1.yaml.
 """
 import argparse, json, math, re, sqlite3, sys
 from datetime import datetime
@@ -22,6 +26,8 @@ UNIVERSE_FILE = FWD / 'universe_frozen.json'
 LOOKBACK, MIN_AMOUNT, MIN_PRICE = R.LOOKBACK, R.MIN_AMOUNT, R.MIN_PRICE
 SIGNALS = ('S2_SUR', 'S1_YOY')
 LIMIT_UP = 1.09
+HORIZONS = (('H5', 5), ('H10', 10), ('H15', 15), ('H20', 20))
+TOP_N = 10
 
 
 def is_deadline_evening(open_sessions, today):
@@ -30,6 +36,15 @@ def is_deadline_evening(open_sessions, today):
         return False
     first = today[:8] + '10'
     return not any(first <= d < today for d in open_sessions)
+
+
+def open_sessions_through(daily, today, open_today):
+    """TWSE sessions of today's month up to today; today is added when the trading calendar says it is open."""
+    days = [d for (d,) in daily.execute(
+        "SELECT day FROM sessions WHERE exchange='TWSE' AND status='open' AND day >= ? AND day <= ?", (today[:8] + '01', today))]
+    if open_today and today not in days:
+        days.append(today)
+    return days
 
 
 def revenue_month_for(today):
@@ -66,8 +81,7 @@ def cmd_picks(args):
     FWD.mkdir(exist_ok=True)
     daily = sqlite3.connect('file:%s?mode=ro' % DAILY_DB, uri=True)
     today = args.today or datetime.now().strftime('%Y-%m-%d')
-    open_sessions = [d for (d,) in daily.execute(
-        "SELECT day FROM sessions WHERE exchange='TWSE' AND status='open' AND day >= ? AND day <= ?", (today[:8] + '01', today))]
+    open_sessions = open_sessions_through(daily, today, getattr(args, 'open_today', False))
     if not args.force and not is_deadline_evening(open_sessions, today):
         print('not a deadline evening:', today)
         return 0
@@ -107,7 +121,7 @@ def cmd_evaluate(args):
     D = picks['deadline_session']
     E = next((d for d in sessions if d > D), None)
     out = {'month': picks['month'], 'entry': E, 'results': {}}
-    for h, n in (('H5', 5), ('H20', 20)):
+    for h, n in HORIZONS:
         iE = sessions.index(E) if E in sessions else None
         if iE is None or iE + n - 1 >= len(sessions):
             out['results'][h] = 'NOT_YET_COMPLETE'
@@ -138,6 +152,11 @@ def cmd_evaluate(args):
                 continue
             u, t = sum(ret[s] for s in ok) / len(ok), sum(ret[s] for s in top) / len(top)
             res[name] = {'n_top': len(top), 'n_universe': len(ok), 'top_net_pct': t, 'universe_net_pct': u, 'excess_pct': t - u}
+            if name == 'S2_SUR':
+                ten = v['top'][:TOP_N]   # the decile list is ranked by score; an unfillable name leaves its slot in cash
+                t10 = sum(ret[s] for s in ten if s in ret) / TOP_N
+                res['S2_SUR_TOP10'] = {'names': ten, 'n_filled': sum(1 for s in ten if s in ret), 'net_pct': t10,
+                                       'excess_pct': t10 - u, 'twd_per_1m': round(t10 * 10000)}
         out['results'][h] = res
     print(json.dumps(out, indent=1))
     (FWD / ('result_%s.json' % args.month)).write_text(json.dumps(out, indent=1))
@@ -148,8 +167,7 @@ def cmd_due(args):
     """Print the revenue month to freeze when today is a deadline evening without frozen picks; exit 0, else exit 1."""
     daily = sqlite3.connect('file:%s?mode=ro' % DAILY_DB, uri=True)
     today = args.today or datetime.now().strftime('%Y-%m-%d')
-    open_sessions = [d for (d,) in daily.execute(
-        "SELECT day FROM sessions WHERE exchange='TWSE' AND status='open' AND day >= ? AND day <= ?", (today[:8] + '01', today))]
+    open_sessions = open_sessions_through(daily, today, getattr(args, 'open_today', False))
     month = revenue_month_for(today)
     if is_deadline_evening(open_sessions, today) and not (FWD / ('picks_%s.json' % month)).exists():
         print(month)
@@ -165,8 +183,10 @@ def main():
     p.add_argument('--today')
     p.add_argument('--month')
     p.add_argument('--force', action='store_true')
+    p.add_argument('--open-today', action='store_true')
     d = sub.add_parser('due')
     d.add_argument('--today')
+    d.add_argument('--open-today', action='store_true')
     e = sub.add_parser('evaluate')
     e.add_argument('--month', required=True)
     args = ap.parse_args()
