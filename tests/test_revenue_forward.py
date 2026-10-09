@@ -77,3 +77,27 @@ def test_evaluate_is_locked_without_authorization(tmp_path, monkeypatch, capsys)
     monkeypatch.setattr(W, 'ROOT', tmp_path)
     assert W.cmd_evaluate(Namespace(month='2026-09')) == 3
     assert 'EVAL_AUTHORIZED missing' in capsys.readouterr().out
+
+
+def test_open_today_lets_the_21h_trigger_see_a_session_the_daily_db_does_not_have_yet(tmp_path, monkeypatch):
+    daily_db = tmp_path / 'daily.sqlite'
+    c = sqlite3.connect(daily_db)
+    c.execute('CREATE TABLE sessions (day TEXT, exchange TEXT, status TEXT)')
+    for d in ('2026-10-07', '2026-10-08'):
+        c.execute("INSERT INTO sessions VALUES (?, 'TWSE', 'open')", (d,))
+    c.commit()
+    c.close()
+    monkeypatch.setattr(W, 'DAILY_DB', str(daily_db))
+    monkeypatch.setattr(W, 'FWD', tmp_path / 'forward')
+    assert W.cmd_due(Namespace(today='2026-10-12', open_today=False)) == 1     # the 22:30 collector has not run yet
+    assert W.cmd_due(Namespace(today='2026-10-12', open_today=True)) == 0
+    db = sqlite3.connect(daily_db)
+    assert W.open_sessions_through(db, '2026-10-12', True) == ['2026-10-07', '2026-10-08', '2026-10-12']
+    db.execute("INSERT INTO sessions VALUES ('2026-10-12', 'TWSE', 'open')")  # written by the 22:30 collector
+    db.commit()
+    assert W.cmd_due(Namespace(today='2026-10-13', open_today=True)) == 1
+    assert W.open_sessions_through(db, '2026-10-08', True) == ['2026-10-07', '2026-10-08']
+
+
+def test_evaluation_horizons_include_the_short_holds():
+    assert [h for h, _ in W.HORIZONS] == ['H5', 'H10', 'H15', 'H20'] and W.TOP_N == 10

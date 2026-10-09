@@ -1,0 +1,86 @@
+# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any H10/H15 or 10-name return is read)
+
+trial_id: "TRIAL_REVENUE_SHORT_V1"
+parent_trial_id: "TRIAL_REVENUE_DRIFT_V1"
+created_at: "2026-10-09T22:00:00+08:00"
+study_name: "REVENUE_SHORT_V1 monthly revenue surprise (S2_SUR) held 10 or 15 sessions, decile and 10-name portfolios"
+research_stage: "EXPLORATORY"
+ledger_record_type: "PREREGISTERED_TRIAL"
+recorded_after_experiment: false
+
+provenance:
+  source_classification: "EXPLORATORY_HEURISTIC"
+  source_refs:
+    - "docs/research_governance/preregistrations/REVENUE_SHORT_V1.yaml"
+    - "docs/research_governance/trials/REVENUE_DRIFT_V1.yaml"
+
+hypothesis:
+  statement: "The top decile and the 10 highest names of monthly revenue surprise (SUR), bought at the open after the reporting deadline (limit-up opens unfillable) and held 10 sessions, earn a positive net and market-excess return."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "monthly_top_decile_net_and_excess_return_h10"
+  direction: "PASS_FAIL"
+  baseline: "EQUAL_WEIGHT_ELIGIBLE_UNIVERSE"
+  frozen_before_search: true
+
+data:
+  dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+  dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+  dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+  start_date: "2022-01-03"
+  end_date: "2026-10-02"
+  dataset_end: "2026-10-06"
+  universe: "ALL_LISTED_AND_OTC_COMMON_STOCKS_LIQUID_50M"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "inherited from TRIAL_REVENUE_DRIFT_V1: monthly S2_SUR/S1_YOY decile net and excess returns at DT, H5 and H20 by calendar year"
+  exposures:
+    - exposure_id: "EXP_REVENUE_DRIFT_V1_DAILY_2022_2026"
+      dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+      dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+      dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+      start_date: "2022-01-03"
+      end_date: "2026-10-02"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "monthly revenue-sorted portfolio net and excess returns by horizon and calendar year"
+      source_trial_id: "TRIAL_REVENUE_DRIFT_V1"
+      first_seen_at: "2026-10-08T17:08:03+08:00"
+
+search:
+  parameters_searched:
+    - "none: S2_SUR fixed by the parent; two fixed horizons (H10, H15) and two fixed portfolio sizes (decile, 10 names)"
+  search_space:
+    portfolios: "DEC, TOP10"
+    horizons: "H10 (primary), H15"
+  trial_count: 4
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/REVENUE_SHORT_V1.yaml"
+  registry_hash: "NOT_YET_RUN"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "IN_PROGRESS"
+  decision: "FROZEN_NOT_RUN"
+  sealed_commit: ""
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    Runs once on the VM from research/revenue_v1 (git archive of the merge commit) against the sealed revenue database.
+    Also records an operational fix and descriptive additions to REVENUE_FORWARD_V1 made before its first picks.

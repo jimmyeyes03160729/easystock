@@ -1,0 +1,73 @@
+# EasyStock preregistration — REVENUE_SHORT_V1 (monthly revenue surprise held 15 days or less)
+# Frozen in git BEFORE any H10/H15 or 10-name return is computed.
+# Motivation: the owner wants a short-term holding block (hold <= 15 days) to replace the homepage rebound block (the
+#   rebound rule was rejected four times). The only family that survived costs is REVENUE_DRIFT_V1 (S2_SUR STRONG at
+#   H5 and H20). Its H20 hold (~28 calendar days) is too long for the block; H10 (~14 calendar days) has not been
+#   computed. A 1,000,000 TWD account cannot hold the whole decile (60-90 names) in round lots, so a 10-name version
+#   is tested as well.
+# DATA REUSE (disclosed): the events, universe, signal and prices are those of REVENUE_DRIFT_V1, whose H5 and H20
+#   results are known. H10 lies between two STRONG horizons, so a positive result here is weak new evidence; the
+#   forward months (REVENUE_FORWARD_V1) remain the confirmation.
+
+preregistration_id: "REVENUE_SHORT_V1"
+created_at: "2026-10-09T22:00:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE for the study; the frozen homepage rule below only chooses how the paper picks are displayed"
+code: "research/revenue_v1/rev_short.py (tests/test_revenue_short.py); reuses the frozen rev_study.py helpers"
+
+data:
+  revenue: "MOPS t21sc03 revenue months 2020-01..2026-08 (the REVENUE_DRIFT_V1 database, unchanged)"
+  prices: "official daily DB /home/ubuntu/easystock-learning-data/rebound/market-daily.sqlite, days <= 2026-10-02, read-only"
+  forbidden: ["any day > 2026-10-02", "revenue months >= 2026-09", "PHASE2C_FUTURE_CONFIRMATION_60D", "REBOUND_V2_FUTURE_CONFIRMATION_60D"]
+
+unchanged_from_REVENUE_DRIFT_V1:
+  - "events: revenue months 2022-01..2026-08; entry E = session after the first session on or after the 10th of M+1; official open"
+  - "universe at E: 4-digit common stocks, >= 20 sessions, 20-session mean amount >= 50,000,000 TWD, previous close >= 10"
+  - "signal: S2_SUR only (rev_study.signals_for); S1_YOY is not used"
+  - "costs: paper_execution fee both legs + 0.3% ordinary tax, 1,000 shares; ex-rights/dividend drops added back; missing exit bar -> last close"
+
+changes:
+  horizons:
+    H10: "sell at the official close of the 10th session E..E+9 (about 14 calendar days) — PRIMARY"
+    H15: "sell at the close of the 15th session E..E+14 (about 21 calendar days) — secondary, for the reading '15 trading days'"
+  fillability: "a name whose official open is >= 1.09 x reference cannot be bought at the open; it is removed from the decile and from the baseline (as in REVENUE_FORWARD_V1)"
+  portfolios:
+    DEC: "top decile (ceil 10%) of all scored eligible names ranked before the open, minus unfillable names, equal weight"
+    TOP10: "the 10 highest SUR among scored eligible names, 1/10 of the capital each (100,000 TWD per 1,000,000); an unfillable name leaves its tenth in cash at 0%"
+  baseline: "equal-weight net of every fillable scored name, same event and horizon"
+
+statistics:
+  unit: "one portfolio return per event month"
+  criteria: "A-D as REVENUE_DRIFT_V1 (mean net > 0; net > 0 in >= 4/5 calendar-year folds; mean excess > 0 with t >= 2.0; excess > 0 in >= 4/5 folds)"
+  G: ">= 40 event months and mean filled size >= 20 names (DEC) or >= 8 names (TOP10)"
+  classification: "rev_study.classify"
+  descriptive: ["winning months, worst month, 10th percentile and median month", "mean net minus an extra 20 bps per leg", "net TWD per 1,000,000 TWD invested per event (1% = 10,000 TWD)"]
+  tests: "2 portfolios x 2 horizons = 4 (disclosed; the revenue family now has 10 historical tests plus INST_FLOW_V1's 6)"
+
+homepage_rule:
+  note: "frozen here so that the display is not chosen after seeing the numbers"
+  horizon: "H10 if DEC H10 is STRONG; otherwise H5 (STRONG in REVENUE_DRIFT_V1)"
+  list: "TOP10 if the horizon is H10 and TOP10 H10 has A true, B true and mean excess > 0; otherwise the whole decile (odd lots)"
+  label: "paper tracking only, no orders; historical figures shown next to the forward record"
+
+forward_amendment_REVENUE_FORWARD_V1:
+  recorded_before: "the first forward picks (deadline evening 2026-10-12, entry 2026-10-13); no forward picks or prices have been read"
+  trigger_fix: >
+    run_fwd.sh runs at 21:00 but the daily DB records the day's session only after the 22:30 collector (finished
+    between 22:50 and 01:16 in the last week), so rev_fwd.py could never see the deadline session and would have
+    frozen no picks. The trigger now asks the production trading calendar (market_calendar.py --check-today, exit 0 =
+    open) and passes --open-today, which adds today to the DB's sessions of the month. Signals, universe, deciles and
+    timing are unchanged.
+  descriptive_additions: "evaluate also reports H10, H15 and S2_SUR TOP10 (first 10 names of the frozen decile list, slot-weighted); the PASS rule (S2_SUR decile H20) is unchanged"
+
+prohibited:
+  - "changing horizons, the 10-name size, the limit-up rule, filters or costs after seeing results"
+  - "adding stop-loss, take-profit, S1_YOY or other signals on this data"
+  - "choosing the homepage horizon or list by anything other than homepage_rule"
+  - "reading any day after 2026-10-02"
+
+known_limitations:
+  - "all REVENUE_DRIFT_V1 limitations (tables compiled after the fact, no announcement time, auction fills for 1,000 shares, survivorship)"
+  - "TOP10 concentrates on extreme SUR values, often small revenue bases; its month-to-month spread is larger than the decile's"
+  - "the capital is invested about half of each month (entry around the 11th-13th, exit about two weeks later)"
