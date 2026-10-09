@@ -23,9 +23,9 @@ if _ENV_FILE.exists() and "pytest" not in sys.modules:
 # 開關
 RUNWAY_V2_ENABLED = os.environ.get("RUNWAY_V2_ENABLED", "1").lower() in ("1", "true", "yes")
 
-# 時間時窗（解鎖早盤黃金動能時段）
+# 時間時窗（解鎖早盤黃金動能時段 09:05 ~ 09:30）
 ENTRY_START_TIME = os.environ.get("RUNWAY_V2_ENTRY_START", "09:05:00")
-ENTRY_CUTOFF_TIME = os.environ.get("RUNWAY_V2_ENTRY_CUTOFF", "12:30:00")
+ENTRY_CUTOFF_TIME = os.environ.get("RUNWAY_V2_ENTRY_CUTOFF", "09:30:00")  # 黃金進場窗限制 (避開盤中誘多)
 FORCE_EXIT_TIME = os.environ.get("RUNWAY_V2_FORCE_EXIT", "12:55:00")
 
 # 篩選條件

@@ -55,6 +55,7 @@ class RunwayV2Runner:
             f"[RUNWAY_V2_INIT] buy_cap={self.limits.max_buy_amount:,.0f} "
             f"loss_limit={self.limits.max_loss:,.0f} "
             f"max_pos={MAX_CONCURRENT_POSITIONS} pos_amount={DEFAULT_POSITION_AMOUNT:,.0f} "
+            f"window={ENTRY_START_TIME}~{ENTRY_CUTOFF_TIME} "
             f"tp_half=+{TAKE_PROFIT_HALF_PCT*100:.1f}% trailing=+{TRAILING_TRIGGER_PCT*100:.1f}% "
             f"pullback=-{TRAILING_PULLBACK_PCT*100:.1f}% sl=-{STOP_LOSS_PCT*100:.1f}% max_gain=+{MAX_GAIN_PCT:.1f}%"
         )
