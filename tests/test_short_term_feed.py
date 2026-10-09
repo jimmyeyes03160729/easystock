@@ -77,3 +77,27 @@ def test_ex_rights_drop_is_added_back():
     rets, unfilled = F.position_returns(symbols[:1], bars, {symbols[0]: [('2026-10-14', 50.0 / 48.0)]}, '2026-10-13', '2026-10-14')
     assert not unfilled
     assert rets[symbols[0]]['net_pct'] == pytest.approx(-F.R.cost_pct(50.0, 48.0, same_day=False))
+
+
+def test_full_universe_keeps_every_company_and_groups_returns_by_score():
+    symbols, revenue, names, picks, bars = fixture()
+    revenue['9999'] = {'2026-09': (500.0, 400.0)}                       # new listing: no 12-month history, still listed
+    revenue['0050'] = {'2026-09': (1.0, 1.0)}                           # not a common stock
+    markets = {s: 'sii' for s in symbols}
+    markets['9999'] = 'otc'
+    snap = F.full_snapshot('2026-09', revenue, names, markets)
+    assert snap['n_companies'] == 13 and snap['n_scored'] == 12
+    assert snap['rows'][0]['symbol'] == symbols[0] and snap['rows'][0]['market'] == '上市'
+    assert snap['rows'][-1] == {'rank': None, 'symbol': '9999', 'name': '', 'market': '上櫃', 'sur': None, 'rev_yoy_pct': 25.0}
+    waiting = F.full_batch(snap, '2026-10-12', SESSIONS, bars, {}, is_closed)
+    assert waiting['status'] == 'waiting_entry' and waiting['summary'] is None and waiting['rows'][0]['deadline_close'] == 50.0
+    for s in symbols:
+        bars[s]['2026-10-13'] = {'open': 50.0, 'close': 55.0, 'reference': 50.0}
+    bars[symbols[1]]['2026-10-13'] = {'open': 55.0, 'close': 55.0, 'reference': 50.0}
+    b = F.full_batch(snap, '2026-10-12', SESSIONS + ['2026-10-13'], bars, {}, is_closed)
+    fills = {r['symbol']: r['fill'] for r in b['rows']}
+    assert fills[symbols[0]] == 'filled' and fills[symbols[1]] == 'limit_up' and fills['9999'] == 'no_trade'
+    one = round((55 / 50 - 1) * 100 - F.R.cost_pct(50.0, 55.0, same_day=False), 2)
+    assert b['summary']['all'] == {'n': 13, 'n_filled': 11, 'net_pct': one}
+    assert b['summary']['top10']['n'] == 10 and b['summary']['top10']['n_filled'] == 9
+    assert b['summary']['top_decile']['n'] == 2 and b['summary']['no_score'] == {'n': 1, 'n_filled': 0, 'net_pct': None}

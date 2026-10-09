@@ -60,14 +60,59 @@
         `<td style="padding:6px 8px">${pct(b.excess_pct)}</td><td style="padding:6px 8px">${twd(b.twd_per_1m)}</td></tr>`).join('') + '</tbody></table></div>';
   }
 
+  function fullLine(feed) {
+    const b = feed?.current || feed?.last_closed, f = b?.full_summary;
+    if (!f || !num(f.n_companies)) return '';
+    if (!f.all) return `全部上市櫃公司：已收錄 ${f.n_companies.toLocaleString('en-US')} 家（${f.n_scored} 家有驚喜分數），進場日開盤後開始追蹤。`;
+    const g = (label, x) => `${label} ${pct(x?.net_pct)}`;
+    return `全部上市櫃公司（不設成交額門檻，${f.n_companies.toLocaleString('en-US')} 家）：` +
+      [g('全部平均', f.all), g('分數前 10 名', f.top10), g('分數前 10%', f.top_decile), g('分數後 10%', f.bottom_decile), g('無分數', f.no_score)].join('｜');
+  }
+
+  const FILL = {filled: '已計入', limit_up: '開盤漲停', no_trade: '當日無成交'};
+  function fullTable(full, query) {
+    const rows = (Array.isArray(full?.rows) ? full.rows : []).filter(r => !query || `${r.symbol} ${r.name}`.includes(query));
+    if (!rows.length) return '<p class="text-xs text-[#64748B] py-2">沒有符合的公司。</p>';
+    const entered = full.status !== 'waiting_entry';
+    const head = ['排名','股票','市場','營收年增','驚喜分數', entered ? '進場價' : '截止日收盤', entered ? '最新收盤' : '', entered ? '損益（扣成本）' : ''].filter(Boolean);
+    return '<div style="overflow:auto;max-height:480px"><table class="text-xs w-full" style="min-width:620px;text-align:left"><thead><tr>' +
+      head.map(t => `<th style="padding:6px 8px;position:sticky;top:0;background:var(--panel,#131A26)">${t}</th>`).join('') + '</tr></thead><tbody>' +
+      rows.map(r => {
+        const tail = entered
+          ? [r.fill === 'filled' ? price(r.entry) : escape(FILL[r.fill] || '—'), price(r.mark), `<span style="${tone(r.net_pct)}">${pct(r.net_pct)}</span>`]
+          : [price(r.deadline_close)];
+        return `<tr style="border-top:1px solid var(--border,#232F42)"><td style="padding:4px 8px">${r.rank ?? '—'}</td>` +
+          `<td style="padding:4px 8px;white-space:nowrap">${escape(r.symbol)} ${escape(r.name)}</td><td style="padding:4px 8px">${escape(r.market)}</td>` +
+          `<td style="padding:4px 8px">${pct(r.rev_yoy_pct)}</td><td style="padding:4px 8px">${num(r.sur) ? r.sur.toFixed(2) : '—'}</td>` +
+          tail.map(c => `<td style="padding:4px 8px">${c}</td>`).join('') + '</tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
   function stale(feed, now) {
     const age = now - Date.parse(feed?.generated_at);
     return !Number.isFinite(age) || age > 36 * 3600000;
   }
 
-  if (typeof module !== 'undefined' && module.exports) module.exports = {summary, positions, history, stale, day, pct, twd};
+  if (typeof module !== 'undefined' && module.exports) module.exports = {summary, positions, history, stale, fullLine, fullTable, day, pct, twd};
   if (!global.document) return;
-  let busy = false;
+  let busy = false, FULL = null;
+  async function loadFull() {
+    const box = global.document.getElementById('shortTermFullRows');
+    if (!box) return;
+    try {
+      if (!FULL) {
+        const root = typeof FIREBASE_ROOT !== 'undefined' ? FIREBASE_ROOT : global.FIREBASE_ROOT;
+        const response = await global.fetch(`${root}/public_feed/short_term_full.json`, {cache:'no-store'});
+        FULL = response && response.ok ? await response.json() : null;
+      }
+      const query = (global.document.getElementById('shortTermFullSearch')?.value || '').trim();
+      box.innerHTML = FULL ? fullTable(FULL, query) : '<p class="text-xs text-[#64748B] py-2">全部公司資料在第一批營收截止日晚上產生。</p>';
+    } catch (_) {
+      box.innerHTML = '<p class="text-xs text-[#64748B] py-2">全部公司資料暫時無法取得。</p>';
+    }
+  }
+  global.document.getElementById('shortTermFull')?.addEventListener('toggle', e => { if (e.target.open) loadFull(); });
+  global.document.getElementById('shortTermFullSearch')?.addEventListener('input', () => loadFull());
   async function refresh() {
     const get = id => global.document.getElementById(id);
     const status = get('shortTermStatus');
@@ -83,6 +128,10 @@
         return;
       }
       status.textContent = summary(feed) + (stale(feed, Date.now()) ? '（資料更新已延遲）' : '');
+      const line = get('shortTermFullLine');
+      if (line) line.textContent = fullLine(feed);
+      FULL = null;
+      if (get('shortTermFull')?.open) loadFull();
       get('shortTermPicks').innerHTML = positions(feed);
       get('shortTermHistory').innerHTML = history(feed);
     } catch (_) {

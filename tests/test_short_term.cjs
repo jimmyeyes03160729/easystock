@@ -40,3 +40,18 @@ test('stale feed is flagged after 36 hours',()=>{
   assert.equal(S.stale(waiting,at+37*3600000),true);
   assert.equal(S.stale({},at),true);
 });
+
+test('full-universe line and table list every company with fill reasons and search',()=>{
+  assert.equal(S.fullLine(waiting),'');
+  const pending={...waiting,current:{...waiting.current,full_summary:{n_companies:1979,n_scored:1850}}};
+  assert.match(S.fullLine(pending),/已收錄 1,979 家（1850 家有驚喜分數）/);
+  const held={...waiting,current:{...waiting.current,full_summary:{n_companies:1979,n_scored:1850,all:{net_pct:.5},top10:{net_pct:2},top_decile:{net_pct:1.2},bottom_decile:{net_pct:-.8},no_score:{net_pct:null}}}};
+  assert.match(S.fullLine(held),/不設成交額門檻，1,979 家.*全部平均 \+0\.50%｜分數前 10 名 \+2\.00%｜分數前 10%.*後 10% -0\.80%｜無分數 —/);
+  const full={status:'holding',rows:[{rank:1,symbol:'1234',name:'甲',market:'上市',sur:2.1,rev_yoy_pct:30,fill:'filled',entry:10,mark:11,net_pct:9.6},
+    {rank:2,symbol:'5678',name:'乙',market:'上櫃',sur:1.9,rev_yoy_pct:20,fill:'limit_up'},{rank:null,symbol:'9999',name:'丙',market:'上櫃',sur:null,rev_yoy_pct:null,fill:'no_trade'}]};
+  const html=S.fullTable(full,'');
+  assert.match(html,/1234 甲/);assert.match(html,/開盤漲停/);assert.match(html,/當日無成交/);assert.match(html,/上櫃/);
+  assert(!S.fullTable(full,'乙').includes('1234'));
+  assert.match(S.fullTable(full,'沒有這檔'),/沒有符合/);
+  assert.match(S.fullTable({status:'waiting_entry',rows:[{rank:1,symbol:'1234',name:'甲',market:'上市',sur:2,rev_yoy_pct:1,deadline_close:12.3}]},''),/截止日收盤.*12\.30/s);
+});
