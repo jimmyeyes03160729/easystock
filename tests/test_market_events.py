@@ -82,6 +82,10 @@ def test_classify():
     assert t.classify('公告本公司115年9月份自結合併營收情形') == 'self_reported_revenue'
     assert t.classify('公告本公司股票面額變更') == 'other'
     assert t.board_meeting_date('公告本公司董事會訂於115年10月30日召開') == '2026-10-30'
+    subject = '公告決議民國113年度第四季合併財務報告 之董事會預計召開日期為114年02月12日'
+    assert t.classify(subject) == 'board_meeting_scheduled' and t.board_meeting_date(subject) == '2025-02-12'
+    assert t.classify('本公司民國114年度第一季合併財務報告業經董事會決議通過') == 'financial_report_approved'
+    assert t.classify('台積公司2024年第四季每股盈餘新台幣14.45元') == 'self_reported_earnings'
 
 
 def test_parse_conference_body_range():

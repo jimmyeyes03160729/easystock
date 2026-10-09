@@ -122,6 +122,9 @@ def classify(subject: str, clause: str = '', body: str = '') -> str:
         return 'financial_report_approved'
     if '董事會' in s and re.search(r'訂於|召開日期|預計召開|召開董事會|董事會召開', s):
         return 'board_meeting_scheduled'
+    # Quarterly EPS releases without 自結 wording, e.g. 台積公司2024年第四季每股盈餘新台幣14.45元
+    if re.search(r'第[一二三四1-4]季|年度|上半年', s) and re.search(r'每股盈餘|EPS', s, re.I) and '董事會' not in s:
+        return 'self_reported_earnings'
     if re.search(r'自結|自行結算', s):
         if re.search(r'損益|盈餘|淨利|EPS|每股|獲利|稅後|稅前', s, re.I):
             return 'self_reported_earnings'
@@ -133,7 +136,7 @@ def classify(subject: str, clause: str = '', body: str = '') -> str:
 def board_meeting_date(subject: str, body: str = '') -> str | None:
     """Best-effort date the board convenes, from '董事會訂於115年11月10日召開' style text."""
     for text in (norm_subject(subject), norm_subject(body)):
-        m = re.search(r'(?:董事會.{0,12}?(?:訂於|日期[:：]?|於))(\d{2,3}年\d{1,2}月\d{1,2}日|\d{2,3}/\d{1,2}/\d{1,2})', text)
+        m = re.search(r'(?:董事會.{0,12}?(?:訂於|日期(?:為|[:：])?|於))(\d{2,3}年\d{1,2}月\d{1,2}日|\d{2,3}/\d{1,2}/\d{1,2})', text)
         if m:
             return roc_to_iso(m.group(1))
     return None
