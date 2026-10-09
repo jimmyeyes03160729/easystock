@@ -2,11 +2,12 @@
 完全獨立於生產環境與既有 AI 模型訓練，零干擾。
 """
 import os
+import sys
 from pathlib import Path
 
-# 可選環境變數載入 (支援 VM 生產環境與本地客製化)
+# 可選環境變數載入 (支援 VM 生產環境與本地客製化，但在執行 pytest 測試時不載入生產 env 檔，維持測試基準不變)
 _ENV_FILE = Path(os.environ.get("RUNWAY_V2_ENV_FILE", "/home/ubuntu/easystock-ai-paper.env"))
-if _ENV_FILE.exists():
+if _ENV_FILE.exists() and "pytest" not in sys.modules:
     try:
         with open(_ENV_FILE, "r", encoding="utf-8") as _f:
             for _line in _f:
