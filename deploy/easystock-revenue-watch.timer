@@ -1,0 +1,11 @@
+[Unit]
+Description=EasyStock hourly next-session revenue observation
+
+[Timer]
+OnCalendar=*-*-* *:15:00 Asia/Taipei
+Persistent=true
+RandomizedDelaySec=30
+Unit=easystock-revenue-watch.service
+
+[Install]
+WantedBy=timers.target

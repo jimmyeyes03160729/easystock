@@ -1,0 +1,15 @@
+[Unit]
+Description=EasyStock revenue growth and positive announcement next-session observation
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+Environment=EASYSTOCK_MARKET_EVENTS_DIR=/home/ubuntu/easystock-market-events
+ExecStart=/home/ubuntu/easystock/.venv/bin/python -m market_events.revenue_watch
+TimeoutStartSec=600
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true

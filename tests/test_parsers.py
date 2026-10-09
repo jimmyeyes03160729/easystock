@@ -102,6 +102,15 @@ def test_kline_merge_dedupes_today():
     assert k[0]["close"] == 102
 
 
+def test_monthly_revenue_growth_fields():
+    rows = [{"公司代號":"2330", "資料年月":"11509", "營業收入-去年同月增減(%)":"12.3",
+             "營業收入-上月比較增減(%)":"5.2"},
+            {"公司代號":"2317", "資料年月":"11509", "營業收入-去年同月增減(%)":"2", "營業收入-上月比較增減(%)":"--"}]
+    revenue=m.parse_revenue(rows)
+    assert revenue['2330']['rev_yoy']==12.3 and revenue['2330']['rev_mom']==5.2
+    assert revenue['2317']['rev_mom'] is None
+
+
 if __name__ == "__main__":
     tests = [v for k, v in globals().copy().items() if k.startswith("test_") and callable(v)]
     for test in tests:

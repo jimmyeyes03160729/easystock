@@ -453,7 +453,9 @@ def parse_revenue(rows: list[dict]) -> dict[str, dict]:
             )
         )
         month = first_value(row, ["資料年月", "年月", "YearMonth"])
-        out[sym] = {"rev_yoy": yoy, "revenue_period": str(month or "").strip() or None}
+        mom = safe_float(first_value(row, ["營業收入-上月比較增減(%)", "營業收入-上月比較增減％",
+                                          "營業收入-上月增減(%)", "上月比較增減(%)", "上月增減(%)"]))
+        out[sym] = {"rev_yoy": yoy, "rev_mom": mom, "revenue_period": str(month or "").strip() or None}
     return out
 
 
