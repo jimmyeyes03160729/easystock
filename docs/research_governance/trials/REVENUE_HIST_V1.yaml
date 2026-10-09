@@ -1,0 +1,70 @@
+# EasyStock Research Trial Ledger — PREREGISTERED (frozen before the 2014-2022 data are fetched)
+
+trial_id: "TRIAL_REVENUE_HIST_V1"
+parent_trial_id: "TRIAL_REVENUE_DRIFT_V1"
+created_at: "2026-10-09T23:00:00+08:00"
+study_name: "REVENUE_HIST_V1 replication of REVENUE_DRIFT_V1 on event months 2015-01..2021-12"
+research_stage: "EXPLORATORY"
+ledger_record_type: "PREREGISTERED_TRIAL"
+recorded_after_experiment: false
+
+provenance:
+  source_classification: "CANONICAL_INTERNAL_PRIMITIVE"
+  source_refs:
+    - "docs/research_governance/preregistrations/REVENUE_HIST_V1.yaml"
+    - "docs/research_governance/trials/REVENUE_DRIFT_V1.yaml"
+    - "research/revenue_v1/rev_study.py"
+
+hypothesis:
+  statement: "The frozen REVENUE_DRIFT_V1 S2_SUR top decile, held 20 sessions after the reporting deadline, beats the liquid universe after costs on never-seen 2015-2021 history."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "mean_monthly_excess_net_h20"
+  direction: "PASS_FAIL"
+  baseline: "EQUAL_WEIGHT_LIQUID_UNIVERSE"
+  frozen_before_search: true
+
+data:
+  dataset_id: "TWSE_TPEX_DAILY_AND_MOPS_REVENUE_2014_2022"
+  dataset_family_id: "TWSE_TPEX_MONTHLY_REVENUE"
+  dataset_lineage_id: "LINEAGE_MOPS_T21SC03_V1"
+  start_date: "2014-11-03"
+  end_date: "2022-03-31"
+  dataset_end: "2022-03-31"
+  universe: "LIQUID_COMMON_STOCKS_AT_ENTRY"
+  discovery_data_reused: false
+  independent_confirmation: true
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: false
+  future_holdout_seen: false
+  exposed_dimensions: []
+  exposures: []
+
+search:
+  parameters_searched:
+    - "none: every rule is the parent's frozen code"
+  search_space:
+    primary: "S2_SUR top decile, H20"
+  trial_count: 6
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/REVENUE_HIST_V1.yaml"
+  registry_hash: "NOT_YET_RUN"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "IN_PROGRESS"
+  decision: "FROZEN_AWAITING_FETCH"
+  sealed_commit: ""
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: false
+  INDEPENDENT_CONFIRMATION: true
+  FUTURE_CONFIRMATION_UNTOUCHED: true
