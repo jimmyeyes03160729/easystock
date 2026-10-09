@@ -69,18 +69,25 @@ search:
 
 governance:
   plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/REVENUE_SHORT_V1.yaml"
-  registry_hash: "NOT_YET_RUN"
+  registry_hash: "ac1841b70b660c96b4e574f65bbb07ee87800662092827a93f689cb255c769d0"
   no_oos_tuning: true
   production_effect: "NONE"
 
 result:
-  status: "IN_PROGRESS"
-  decision: "FROZEN_NOT_RUN"
-  sealed_commit: ""
+  status: "SEALED"
+  decision: "DEC_H10_STRONG_DEC_H15_STRONG_TOP10_WEAK__HOMEPAGE_H10_TOP10"
+  sealed_commit: "46595dc"
   PRODUCTION_READY: false
   DISCOVERY_DATA_REUSED: true
   INDEPENDENT_CONFIRMATION: false
   FUTURE_CONFIRMATION_UNTOUCHED: true
   notes: >
-    Runs once on the VM from research/revenue_v1 (git archive of the merge commit) against the sealed revenue database.
-    Also records an operational fix and descriptive additions to REVENUE_FORWARD_V1 made before its first picks.
+    Run once 2026-10-09 from merge 46595dc (bundle sha256 8369eac3...). Per event month, net of costs, limit-up opens
+    unfillable: DEC H10 STRONG +1.62% net / +0.71% universe / +0.90% excess (t 4.17, win 38/56, worst -9.19%, 2022
+    -1.30%), = +16,170 TWD per 1,000,000 invested per event; DEC H15 STRONG +2.45% / excess +1.45% (t 5.82);
+    TOP10 H10 WEAK +1.28% net / excess +0.57% (t 1.24; A, B, D true; 2026 excess -1.74%), = +12,834 TWD per 1M per
+    event, win 35/56, worst -8.24%, p10 -5.11%; TOP10 H15 WEAK +2.16% / excess +1.16% (t 1.88). +20 bps/leg stress
+    keeps every mean positive. Frozen homepage rule -> H10 with the 10-name list (TOP10 passes A, B and excess > 0),
+    while its relative edge is not significant on its own; the decile is the statistically supported version. Four
+    tests (disclosed), same events as REVENUE_DRIFT_V1, so this is not independent evidence; forward confirmation
+    stays with REVENUE_FORWARD_V1 (revenue months 2026-09..2027-02), which now also reports H10/H15/TOP10.

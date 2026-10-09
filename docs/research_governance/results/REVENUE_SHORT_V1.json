@@ -1,0 +1,221 @@
+{
+ "study": "REVENUE_SHORT_V1",
+ "generated_at": "2026-10-09T21:35:03",
+ "code_commit": "46595dc9ca646aae08ba52f40fca4e561337d00e",
+ "homepage": {
+  "horizon": "H10",
+  "list": "TOP10"
+ },
+ "counts": {
+  "LIMITUP_OPEN_IN_DECILE:H10": 12,
+  "LIMITUP_OPEN_IN_TOP10:H10": 6,
+  "LIMITUP_OPEN_IN_DECILE:H15": 12,
+  "LIMITUP_OPEN_IN_TOP10:H15": 6,
+  "EVENT_MONTHS": 56,
+  "MISSING_EXIT:H10": 16,
+  "MISSING_EXIT:H15": 21,
+  "DROP_EXIT_AFTER_CUTOFF:H15": 1
+ },
+ "results": {
+  "DEC|H10": {
+   "classification": "STRONG",
+   "criteria": {
+    "A": true,
+    "B": true,
+    "C": true,
+    "D": true,
+    "G": true
+   },
+   "stats": {
+    "months": 56,
+    "mean_top_net_pct": 1.6170412592343897,
+    "mean_excess_pct": 0.9029478473201015,
+    "t_excess": 4.167010550301411,
+    "win_months": 38,
+    "worst_month_pct": -9.189206057270688,
+    "p10_month_pct": -4.522668757298297,
+    "median_month_pct": 2.3416955672208135,
+    "mean_top_net_slip_pct": 1.2170412592343895,
+    "twd_per_1m_per_event": 16170,
+    "folds": {
+     "2022": {
+      "months": 11,
+      "top": -1.302874760896993,
+      "excess": 0.6695275280268826
+     },
+     "2023": {
+      "months": 12,
+      "top": 1.393838684272272,
+      "excess": 0.36711632518242504
+     },
+     "2024": {
+      "months": 12,
+      "top": 2.0707443906727963,
+      "excess": 0.9240023273376058
+     },
+     "2025": {
+      "months": 12,
+      "top": 2.403777718289555,
+      "excess": 1.341775237354046
+     },
+     "2026": {
+      "months": 9,
+      "top": 3.8295114853530277,
+      "excess": 1.2895055514601168
+     }
+    },
+    "mean_universe_net_pct": 0.7140934119142879
+   }
+  },
+  "DEC|H15": {
+   "classification": "STRONG",
+   "criteria": {
+    "A": true,
+    "B": true,
+    "C": true,
+    "D": true,
+    "G": true
+   },
+   "stats": {
+    "months": 55,
+    "mean_top_net_pct": 2.451354055495452,
+    "mean_excess_pct": 1.4505947024461698,
+    "t_excess": 5.818223273264779,
+    "win_months": 38,
+    "worst_month_pct": -12.956447872582842,
+    "p10_month_pct": -3.9113638919230893,
+    "median_month_pct": 2.66621158547538,
+    "mean_top_net_slip_pct": 2.051354055495452,
+    "twd_per_1m_per_event": 24514,
+    "folds": {
+     "2022": {
+      "months": 11,
+      "top": -0.19991937900922743,
+      "excess": 1.1503758525094636
+     },
+     "2023": {
+      "months": 12,
+      "top": 2.9629429399585807,
+      "excess": 0.7934394369811953
+     },
+     "2024": {
+      "months": 12,
+      "top": 2.191653916893278,
+      "excess": 1.389998081198822
+     },
+     "2025": {
+      "months": 12,
+      "top": 3.227530203139313,
+      "excess": 2.118595951275573
+     },
+     "2026": {
+      "months": 8,
+      "top": 4.554757687682164,
+      "excess": 1.9380215779335206
+     }
+    },
+    "mean_universe_net_pct": 1.0007593530492824
+   }
+  },
+  "TOP10|H10": {
+   "classification": "WEAK",
+   "criteria": {
+    "A": true,
+    "B": true,
+    "C": false,
+    "D": true,
+    "G": true
+   },
+   "stats": {
+    "months": 56,
+    "mean_top_net_pct": 1.2834201588288134,
+    "mean_excess_pct": 0.5693267469145259,
+    "t_excess": 1.2364985151150676,
+    "win_months": 35,
+    "worst_month_pct": -8.243044915074996,
+    "p10_month_pct": -5.11143444029109,
+    "median_month_pct": 1.646685903410949,
+    "mean_top_net_slip_pct": 0.8834201588288134,
+    "twd_per_1m_per_event": 12834,
+    "folds": {
+     "2022": {
+      "months": 11,
+      "top": -1.4692410395664697,
+      "excess": 0.5031612493574061
+     },
+     "2023": {
+      "months": 12,
+      "top": 1.9831125292787106,
+      "excess": 0.9563901701888634
+     },
+     "2024": {
+      "months": 12,
+      "top": 2.5434565269703984,
+      "excess": 1.3967144636352078
+     },
+     "2025": {
+      "months": 12,
+      "top": 2.211860112689769,
+      "excess": 1.1498576317542595
+     },
+     "2026": {
+      "months": 9,
+      "top": 0.7968922558198004,
+      "excess": -1.7431136780731102
+     }
+    },
+    "mean_universe_net_pct": 0.7140934119142879
+   }
+  },
+  "TOP10|H15": {
+   "classification": "WEAK",
+   "criteria": {
+    "A": true,
+    "B": true,
+    "C": false,
+    "D": true,
+    "G": true
+   },
+   "stats": {
+    "months": 55,
+    "mean_top_net_pct": 2.159384613310394,
+    "mean_excess_pct": 1.1586252602611116,
+    "t_excess": 1.883722840086311,
+    "win_months": 37,
+    "worst_month_pct": -11.895154091392666,
+    "p10_month_pct": -5.527871536634159,
+    "median_month_pct": 1.781531175383734,
+    "mean_top_net_slip_pct": 1.7593846133103943,
+    "twd_per_1m_per_event": 21594,
+    "folds": {
+     "2022": {
+      "months": 11,
+      "top": -0.07442831296670556,
+      "excess": 1.2758669185519853
+     },
+     "2023": {
+      "months": 12,
+      "top": 2.9455846647929724,
+      "excess": 0.7760811618155872
+     },
+     "2024": {
+      "months": 12,
+      "top": 2.8351794891819875,
+      "excess": 2.033523653487532
+     },
+     "2025": {
+      "months": 12,
+      "top": 2.6727867586524585,
+      "excess": 1.5638525067887177
+     },
+     "2026": {
+      "months": 8,
+      "top": 2.267781777897053,
+      "excess": -0.34895433185159086
+     }
+    },
+    "mean_universe_net_pct": 1.0007593530492824
+   }
+  }
+ }
+}

@@ -1,0 +1,44 @@
+# EasyStock OOS Consumption Ledger — REVENUE_SHORT_V1 (preregistered, run once)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "PHASE2_HISTORICAL_REVENUE_SHORT_V1_RUN"
+created_at: "2026-10-09T22:20:00+08:00"
+description: >
+  The single preregistered run of REVENUE_SHORT_V1 (merge 46595dc) on official daily bars 2022-01..2026-10-02 and MOPS
+  monthly revenue 2020-01..2026-08: S2_SUR held 10 and 15 sessions, decile and 10-name portfolios, limit-up opens
+  unfillable. Same events as REVENUE_DRIFT_V1 (already exposed). Reserved partitions and days > 2026-10-02 were not read.
+
+consumption_events:
+  - consumption_id: "CNS_REVENUE_SHORT_V1_DAILY_2022_2026"
+    trial_id: "TRIAL_REVENUE_SHORT_V1"
+    dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+    dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+    dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+    slice:
+      start_date: "2022-01-03"
+      end_date: "2026-10-02"
+      slice_definition: "REVENUE_SHORT_V1: entry sessions 2022-02..2026-09, S2_SUR decile and top-10 portfolios, H10/H15 exits, liquid common stocks"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "monthly decile, top-10 and universe net returns at H10 and H15"
+      - "per-calendar-year fold means, win months, worst and 10th-percentile months, +20 bps/leg stress"
+    consumed_at: "2026-10-09T21:37:00+08:00"
+    record_type: "PREREGISTERED_CONSUMPTION"
+    recorded_after_exposure: true
+    source_artifact: "VM:/home/ubuntu/easystock-research/revenue_v1/output_short/easystock_revenue_short_v1_20261009.tar.gz (sha256 8369eac3065a4b379a1c369b0459addab25aba8abf5a76621ab8cce4be885afb)"
+    source_commit: "46595dc"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Re-use of the REVENUE_DRIFT_V1 exposure for two new horizons and a 10-name size; confirmation stays with revenue months >= 2026-09 (REVENUE_FORWARD_V1)."
