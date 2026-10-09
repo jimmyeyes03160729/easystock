@@ -3,6 +3,8 @@
   const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const num=x=>typeof x==='number'&&Number.isFinite(x)?x.toLocaleString('zh-TW',{maximumFractionDigits:2}):'—';
   const pct=x=>typeof x==='number'&&Number.isFinite(x)?`${x.toFixed(2)}%`:'—';
+  // 新版完整輸入錄製開始日；更早日期都是缺資料，不列出。
+  const EPOCH='2026-10-09';
   function render(data){
     const summary=data?.summary||{};
     let html='<div style="overflow-x:auto"><table class="w-full text-xs" style="min-width:860px;text-align:left"><thead><tr>'+['跑道','有效／排除／待平倉日','交易筆數','費後勝率','費後淨損益','已實現最大回撤','延遲0.5秒','延遲1秒','雙邊各多1檔'].map(x=>`<th style="padding:8px">${x}</th>`).join('')+'</tr></thead><tbody>';
@@ -17,8 +19,8 @@
       const s=summary[lane]||{},r=s.execution_rates||{};
       html+=`<p class="mt-2">${lane}：出場報價過期 ${pct(r.stale_exit_pct)}；出場深度不足 ${pct(r.thin_exit_pct)}；進場深度不足 ${pct(r.thin_entry_pct)}。檢查涵蓋 ${num(s.execution_days)} 日，包含待平倉日；比例依判斷時鐘的檢查／重試次數計算，並非獨立委託比例。</p>`;
     }
-    const rows=Array.isArray(data?.daily)?data.daily:Object.values(data?.daily||{});
-    if(!rows.length) html+='<p class="mt-2">尚未發現可盤點的日期。</p>';
+    const rows=(Array.isArray(data?.daily)?data.daily:Object.values(data?.daily||{})).filter(day=>String(day?.day||'')>=EPOCH);
+    if(!rows.length) html+='<p class="mt-2">2026-10-09 起尚無可盤點的日期。</p>';
     html+='<ul class="mt-3">'+rows.slice().reverse().slice(0,20).map(day=>{
       const status=Object.entries(day.lanes||{}).map(([lane,s])=>`${lane}：${s.status==='complete'?'完成':s.status==='pending'?'待平倉':'排除'}${s.reasons?.length?'（'+s.reasons.join('、')+'）':''}`).join('；');
       const c=day.comparison;
