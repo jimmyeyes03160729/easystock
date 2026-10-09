@@ -142,7 +142,7 @@ def backfill_conferences(db, start, end, *, fetch=t.http_fetch, pacer: Pacer) ->
 
     def fetch_item(market, roc_year, month):
         page = fetch(t.MOPS_CONFERENCE_URL, {'encodeURIComponent': '1', 'step': '1', 'firstin': '1', 'off': '1',
-                                             'TYPEK': market, 'year': str(roc_year), 'month': str(month), 'co_id': ''})
+                                             'TYPEK': market, 'year': str(roc_year), 'month': '%02d' % month, 'co_id': ''})
         if 'myTable' not in page and EMPTY_MARK not in page:
             raise RuntimeError('unexpected page (%d bytes)' % len(page))
         return t.parse_conference_calendar(page, market)

@@ -377,7 +377,7 @@ def sync(db: sqlite3.Connection, *, today: date | None = None, realtime_only: bo
 
     def calendar(market, roc_year, month):
         page = fetch(MOPS_CONFERENCE_URL, {'encodeURIComponent': '1', 'step': '1', 'firstin': '1', 'off': '1',
-                                           'TYPEK': market, 'year': str(roc_year), 'month': str(month), 'co_id': ''})
+                                           'TYPEK': market, 'year': str(roc_year), 'month': '%02d' % month, 'co_id': ''})
         rows = parse_conference_calendar(page, market)
         return len(rows), store_conferences(db, rows, seen_at)
 

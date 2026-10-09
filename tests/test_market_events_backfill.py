@@ -94,3 +94,21 @@ def test_conference_backfill():
     stats = b.backfill_conferences(db, '2026-10', '2026-11', fetch=fetch, pacer=quiet_pacer())
     assert stats == {'total': 4, 'skipped_done': 0, 'ok': 4, 'failed': 0, 'rows': 4}
     assert db.execute('SELECT COUNT(*) FROM conferences').fetchone()[0] == 2
+
+
+def test_conference_month_is_zero_padded():
+    # MOPS silently returns 查無資料 for month '9'; only '09' works.
+    db = make_db()
+    sent = []
+
+    def fetch(url, data):
+        sent.append(data['month'])
+        return CALENDAR_HTML if len(data['month']) == 2 else EMPTY_HTML
+
+    stats = b.backfill_conferences(db, '2026-09', '2026-10', fetch=fetch, pacer=quiet_pacer())
+    assert sent == ['09', '09', '10', '10'] and stats['rows'] == 8
+    tracker_sent = []
+    t.sync(make_db(), today=__import__('datetime').date(2026, 1, 5),
+           fetch=lambda url, data=None, as_json=False: [] if as_json else (tracker_sent.append(data['month']) or '') if data else '',
+           pause=lambda s: None)
+    assert tracker_sent == ['01', '01', '02', '02', '03', '03']
