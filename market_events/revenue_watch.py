@@ -128,6 +128,8 @@ class Watch:
                           source=event.get('sources'), source_url='https://mops.twse.com.tw/mops/#/web/t05st01',
                           rev_yoy=yoy, rev_mom=mom, revenue_period=rev['revenue_period'],
                           revenue_observed_at=now.isoformat(), rules_version=VERSION,
+                          revenue_source=rev.get('revenue_source', 'TWSE/TPEx'),
+                          revenue_announcement_day=rev.get('revenue_announcement_day'),
                           reference_day=trading_date(now.date(), -1, is_open, include=True),
                           target_day=target_day)
             self.db.execute('INSERT INTO signals VALUES(?,?,?)', (key, event['symbol'], json.dumps(signal, ensure_ascii=False)))
@@ -206,6 +208,11 @@ def main():
             quotes.update(fetcher())
         except Exception:
             errors.append(market+' daily quotes unavailable')
+    try:
+        from market_events.tej_revenue import merge_recent
+        revenues = merge_recent(revenues, folder/'tej-revenue.sqlite', now)
+    except Exception:
+        errors.append('TEJ cache unavailable; using official revenue')
     event_path = folder/'events.sqlite'
     events = []
     if event_path.exists():
