@@ -1,0 +1,9 @@
+[Unit]
+Description=EasyStock market events realtime poll every 30 minutes on weekdays
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 07..21:10,40:00 Asia/Taipei
+Unit=easystock-market-events-realtime.service
+
+[Install]
+WantedBy=timers.target

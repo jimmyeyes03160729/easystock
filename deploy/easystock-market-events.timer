@@ -1,0 +1,12 @@
+[Unit]
+Description=EasyStock market events full sync (OpenAPI daily snapshot + MOPS conference calendar)
+
+[Timer]
+OnCalendar=*-*-* 07:35:00 Asia/Taipei
+OnCalendar=*-*-* 21:05:00 Asia/Taipei
+Persistent=true
+RandomizedDelaySec=120
+Unit=easystock-market-events.service
+
+[Install]
+WantedBy=timers.target
