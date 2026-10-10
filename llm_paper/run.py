@@ -12,6 +12,7 @@
   LLM 組要贏 hot10 與 random5 才算有東西；只贏大盤不算。
 - 第二份提示詞 p200（2026-10-10 第一批之前加入，使用者本金 20 萬）：只收前一日收盤 <= 200 元的股票，
   超過的回答記為 invalid；組別加上 p200_ 前綴，hot10 / random5 也只從 <= 200 元的股票挑。
+  同日使用者決定只跑 p200（LLM_PAPER_VARIANTS 預設 p200；一般版要加回就設 main,p200）。
 不下單，只做紙上記錄。
 """
 import argparse
@@ -44,7 +45,8 @@ LATEST_FREEZE = '08:55'
 MODELS = tuple(m for m in os.environ.get('LLM_PAPER_PROVIDERS', 'openai,claude').split(',') if m in PROVIDERS)
 BASE_GROUPS = MODELS + ('consensus',) + (('majority2',) if len(MODELS) > 2 else ()) + ('hot10', 'random5')
 # (group prefix, prompt file, max previous close)
-VARIANTS = (('', PROMPT_FILE, None), ('p200_', Path(__file__).with_name('prompt_p200.txt'), 200.0))
+ALL_VARIANTS = {'main': ('', PROMPT_FILE, None), 'p200': ('p200_', Path(__file__).with_name('prompt_p200.txt'), 200.0)}
+VARIANTS = tuple(ALL_VARIANTS[v] for v in os.environ.get('LLM_PAPER_VARIANTS', 'p200').split(',') if v in ALL_VARIANTS)
 GROUPS = tuple(v + g for v, _, _ in VARIANTS for g in BASE_GROUPS)
 
 

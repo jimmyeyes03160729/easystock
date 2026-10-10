@@ -34,8 +34,7 @@ def test_groups_consensus_majority_and_baselines():
 
 def test_default_providers_are_chatgpt_and_claude():
     assert L.MODELS == ('openai', 'claude')
-    assert L.GROUPS == ('openai', 'claude', 'consensus', 'hot10', 'random5',
-                        'p200_openai', 'p200_claude', 'p200_consensus', 'p200_hot10', 'p200_random5')
+    assert L.GROUPS == ('p200_openai', 'p200_claude', 'p200_consensus', 'p200_hot10', 'p200_random5')
 
 
 def bar(o, c, ref=None):
@@ -46,11 +45,11 @@ def test_evaluate_holds_five_sessions_and_unfilled_limit_up_stays_cash():
     days = ['2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-19']
     bars = {'2001': {d: bar(100, 100 + 2 * i) for i, d in enumerate(days)},
             '2002': {days[0]: bar(110, 110, ref=100)}}                  # opens at the 10% limit: not fillable
-    batch = {'day': days[0], 'groups': {'openai': ['2001', '2002']}}
+    batch = {'day': days[0], 'groups': {'p200_openai': ['2001', '2002']}}
     closed = lambda d: False  # noqa: E731
     e = L.evaluate(batch, days, bars, {}, closed)
     assert e['status'] == 'closed' and e['exit_day'] == '2026-10-19'
-    g = e['groups']['openai']
+    g = e['groups']['p200_openai']
     assert g['unfilled'] == ['2002'] and g['n_filled'] == 1
     assert 3.3 < g['net_pct'] < 3.8            # (+8% - costs) / 2 names
     assert g['day1_net_pct'] < 0               # flat day: only costs
@@ -58,8 +57,8 @@ def test_evaluate_holds_five_sessions_and_unfilled_limit_up_stays_cash():
     assert L.evaluate(batch, ['2026-10-08'], bars, {}, closed)['status'] == 'waiting_entry'
     assert L.evaluate(dict(batch, late=True), days, bars, {}, closed)['status'] == 'void_late'
     s = L.summarize([e])
-    assert s['closed_batches'] == 1 and s['groups']['openai']['wins'] == 1
-    assert s['groups']['claude']['batches'] == 0
+    assert s['closed_batches'] == 1 and s['groups']['p200_openai']['wins'] == 1
+    assert s['groups']['p200_claude']['batches'] == 0
 
 
 def test_pick_freezes_once_and_records_failures(tmp_path, monkeypatch):
@@ -73,6 +72,7 @@ def test_pick_freezes_once_and_records_failures(tmp_path, monkeypatch):
     con.commit()
     con.close()
     monkeypatch.setattr(L, 'OUT_DIR', tmp_path)
+    monkeypatch.setattr(L, 'VARIANTS', tuple(L.ALL_VARIANTS.values()))           # both prompts
     monkeypatch.setattr(L, 'DAILY_DB', str(db))
     reply = '{"picks": [{"symbol": "2001"}, {"symbol": "2002"}]}'
     calls = []

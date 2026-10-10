@@ -14,7 +14,8 @@
 - 組別：`openai`、`claude`、`consensus`（啟用的 AI 都選）、`majority2`（啟用三家以上才有）、
   對照組 `hot10`（前一日成交金額前 10）、`random5`（成交額 ≥ 5000 萬、股價 ≥ 10 元中固定亂數抽 5 檔）。
 - 第二份提示詞 `p200`（`llm_paper/prompt_p200.txt`，本金 20 萬）：只收前一日收盤 ≤ 200 元的股票，超過的記為 invalid；
-  組別加 `p200_` 前綴，`p200_hot10`、`p200_random5` 也只從 ≤ 200 元的股票挑。兩份提示詞同時跑，每天共 4 次 API 呼叫。
+  組別加 `p200_` 前綴，`p200_hot10`、`p200_random5` 也只從 ≤ 200 元的股票挑。同日使用者決定**只跑 p200**（`LLM_PAPER_VARIANTS` 預設 `p200`，要加回一般版設 `main,p200`），每天 2 次 API 呼叫。
+  模型：ChatGPT `gpt-6.1-sol`、Claude `claude-sonnet-5-5`（VM `.env` 的 `LLM_PAPER_OPENAI_MODEL`、`LLM_PAPER_ANTHROPIC_MODEL`）。
 - 判讀：至少 40 個已結束批次後再看。`consensus` 要同時贏過 `hot10` 和 `random5`，而且每百萬平均損益扣成本後為正，才算有東西。
 
 ## 部署（VM）
