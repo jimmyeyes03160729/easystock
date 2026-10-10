@@ -1,4 +1,4 @@
-# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any buyback-conditioned return is read)
+# EasyStock Research Trial Ledger — PREREGISTERED trial, sealed after its single run (2026-10-10)
 
 trial_id: "TRIAL_BUYBACK_V1"
 parent_trial_id: "TRIAL_INST_FLOW_V1"
@@ -40,10 +40,23 @@ data:
 exposure_state:
   train_seen: false
   validation_seen: false
-  oos_seen: false
+  oos_seen: true
   future_holdout_seen: false
-  exposed_dimensions: []
-  exposures: []
+  exposed_dimensions:
+    - "buyback event net and market-excess returns for purposes 1 and 3, two liquidity floors and holds of 5/20/60 sessions, per year"
+  exposures:
+    - exposure_id: "EXP_BUYBACK_V1_DAILY_2022_2026"
+      dataset_id: "MOPS_BUYBACK_PROGRAMS_2000_2026_10_10"
+      dataset_family_id: "TWSE_TPEX_BUYBACK_PROGRAMS"
+      dataset_lineage_id: "LINEAGE_MOPS_T35SC09_V1"
+      start_date: "2022-01-01"
+      end_date: "2026-10-02"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "buyback-program event returns by purpose, floor, horizon and year"
+      source_trial_id: "TRIAL_BUYBACK_V1"
+      first_seen_at: "2026-10-10T09:33:00+08:00"
 
 search:
   parameters_searched:
@@ -55,18 +68,25 @@ search:
 
 governance:
   plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/BUYBACK_V1.yaml"
-  registry_hash: "NOT_YET_RUN"
+  registry_hash: "de654b8afa44bab64fe3ad042a1185441595a90b5b083523b2a9fdb23cb54160"
   no_oos_tuning: true
   production_effect: "NONE"
 
 result:
-  status: "IN_PROGRESS"
-  decision: "FROZEN_NOT_RUN"
-  sealed_commit: ""
+  status: "SEALED"
+  decision: "WEAK_NO_MARKET_EXCESS"
+  sealed_commit: "77f5d26"
   PRODUCTION_READY: false
   DISCOVERY_DATA_REUSED: true
   INDEPENDENT_CONFIRMATION: false
   FUTURE_CONFIRMATION_UNTOUCHED: true
   notes: >
-    Only the announcement-time columns of the MOPS table are used. Purpose-3 program counts by year of board date
-    (metadata, no returns): 2022: 40, 2023: 11, 2024: 19, 2025: 107, 2026 to September: 55.
+    Primary (purpose 3, LIQ50, hold 20, 68 events in 33 entry months): WEAK. Net +3.65% per event
+    (+36,497 TWD per 1M invested; median +1.58%, win rate 57%) but excess over the same-window liquid market only
+    +0.42% (+4,186 TWD per 1M), month-clustered t 0.37; criteria A true, B true, C false, D true, G true. The buyback
+    stocks rose with the market (2025 +6.3% net, +0.8% excess) and showed no robust abnormal return. Descriptive cells
+    (12 in all, not part of the frozen decision): purpose 3 hold 60 net +9.5% excess +1.2% (t 0.4); purpose 3 hold 5
+    excess +0.34% (t 0.7); purpose 1 (employee transfer) LIQ50 hold 20 net +6.5% excess +1.5% (t 1.4). One of the
+    twelve, purpose 1 / LIQ20 / hold 5 (238 events, net +1.6%, excess +0.66%, t 2.19), meets the STRONG rule; with
+    twelve looks this is within chance and is not a finding. The blog's 2007-2026 claim could not be checked (our
+    prices start in 2022); 2025 holds 30 of the 68 primary events (post sell-off announcements).
