@@ -10,6 +10,8 @@
 - 組別：各家各自、consensus（所有啟用的 AI 都成功且都選）、majority2（啟用三家以上時才有：至少兩家選）、
   hot10（前一交易日成交金額前 10 名）、random5（前一日成交額 >= 5000 萬、股價 >= 10 元中依日期固定亂數抽 5 檔）。
   LLM 組要贏 hot10 與 random5 才算有東西；只贏大盤不算。
+- p200 候選名單（2026-10-11 第一批之前改）：程式從 VM 日線算出前一日收盤 <= 200、20 日均成交額 >= 5000 萬、
+  非處置股的普通股，連同均線與 5 日漲跌放進提示詞；AI 只能從名單選，hot10 / random5 也從同一份名單挑。
 - 第二份提示詞 p200（2026-10-10 第一批之前加入，使用者本金 20 萬）：只收前一日收盤 <= 200 元的股票，
   超過的回答記為 invalid；組別加上 p200_ 前綴，hot10 / random5 也只從 <= 200 元的股票挑。
   同日使用者決定只跑 p200（LLM_PAPER_VARIANTS 預設 p200；一般版要加回就設 main,p200）。
@@ -31,6 +33,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 from short_term import feed as F  # noqa: E402  (same fill, ex-rights and session helpers as the short-term block)
 from short_term.feed import R  # noqa: E402
+from llm_paper import candidates as C  # noqa: E402
 from llm_paper.providers import PROVIDERS, env  # noqa: E402
 
 TPE = timezone(timedelta(hours=8))
@@ -113,7 +116,13 @@ def pick(now, force=False, clock=lambda: datetime.now(TPE)):
         print('too late to freeze before the open:', now.isoformat())
         return 1
     prev, universe = previous_universe(DAILY_DB, today)
-    prompts = {v: f.read_text(encoding='utf-8').format(date=today, time=now.strftime('%H:%M'), prev_session=prev)
+    checked_at = clock().isoformat(timespec='minutes')
+    disposed = C.disposition_symbols(today) if any(mp for _, _, mp in VARIANTS) else set()
+    names = C.load_names(F.PICKS_DIR / 'revenue.sqlite')
+    cands = {v: C.build(DAILY_DB, prev, today, mp, names, disposed, checked_at) for v, _, mp in VARIANTS if mp}
+    fields = {'date': today, 'time': now.strftime('%H:%M'), 'prev_session': prev, 'entry_session': today,
+              'cutoff_time': now.strftime('%Y-%m-%d %H:%M')}
+    prompts = {v: f.read_text(encoding='utf-8').format(**fields, candidates_json=C.as_prompt_json(cands.get(v, [])))
                for v, f, _ in VARIANTS}
     jobs = [(v, m) for v, _, _ in VARIANTS for m in MODELS if env(*PROVIDERS[m][1])]
 
@@ -128,7 +137,8 @@ def pick(now, force=False, clock=lambda: datetime.now(TPE)):
         replies = dict(pool.map(ask, jobs))
     groups, invalid = {}, {}
     for v, _, max_price in VARIANTS:
-        uni = {s: ca for s, ca in universe.items() if max_price is None or ca[0] <= max_price}
+        # the price-capped prompt may only pick from (and is benchmarked against) its VM candidate list
+        uni = universe if max_price is None else {r['symbol']: (r['close'], r['amount']) for r in cands[v]}
         model_picks = {}
         for m in MODELS:
             r = replies.setdefault(v + m, {'ok': False, 'error': 'no API key configured'})
@@ -141,10 +151,13 @@ def pick(now, force=False, clock=lambda: datetime.now(TPE)):
             'prompt_sha256': {v.rstrip('_') or 'main': hashlib.sha256(p.encode('utf-8')).hexdigest() for v, p in prompts.items()},
             'prompts': {v.rstrip('_') or 'main': p for v, p in prompts.items()},
             'groups': groups, 'invalid': invalid,
+            'candidates': {v.rstrip('_'): rows for v, rows in cands.items()},
+            'status_source_ok': disposed is not None,
             'replies': replies}
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write_frozen(path, data)
-    print(json.dumps({'day': today, 'groups': data['groups'], 'invalid': invalid,
+    print(json.dumps({'day': today, 'candidates': {v: len(rows) for v, rows in data['candidates'].items()},
+                      'status_source_ok': disposed is not None, 'groups': data['groups'], 'invalid': invalid,
                       'errors': {m: r['error'] for m, r in replies.items() if not r['ok']}}, ensure_ascii=False))
     return 0
 
@@ -246,13 +259,24 @@ def main():
     except ImportError:
         pass
     ap = argparse.ArgumentParser()
-    ap.add_argument('cmd', choices=('pick', 'feed', 'report'))
+    ap.add_argument('cmd', choices=('pick', 'feed', 'report', 'candidates'))
     ap.add_argument('--force', action='store_true', help='pick: freeze even after 08:55 (marked late, never scored if after 09:00)')
     ap.add_argument('--no-publish', action='store_true')
     a = ap.parse_args()
     now = datetime.now(TPE)
     if a.cmd == 'pick':
         return pick(now, a.force)
+    if a.cmd == 'candidates':                    # dry run: no API calls, nothing written
+        today = now.date().isoformat()
+        prev, _ = previous_universe(DAILY_DB, today)
+        disposed = C.disposition_symbols(today)
+        rows = C.build(DAILY_DB, prev, today, 200.0, C.load_names(F.PICKS_DIR / 'revenue.sqlite'), disposed,
+                       now.isoformat(timespec='minutes'))
+        print('prev_session', prev, 'candidates', len(rows), 'prompt_chars', len(C.as_prompt_json(rows)),
+              'disposed', 'unavailable' if disposed is None else len(disposed))
+        for r in rows[:5]:
+            print(json.dumps(r, ensure_ascii=False))
+        return 0
     if a.cmd == 'feed':
         return feed(now, publish=not a.no_publish)
     print_report(json.loads((OUT_DIR / 'llm-paper-latest.json').read_text(encoding='utf-8')))
