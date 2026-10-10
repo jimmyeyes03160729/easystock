@@ -1,0 +1,64 @@
+# EasyStock preregistration — DEALER_HEDGE_V1 (per-stock dealer hedging / proprietary flow, plus a TX-futures foreign gate)
+# Frozen in git BEFORE any dealer- or futures-conditioned return is computed.
+# Motivation: the owner asked whether FinMind gives more complete data (2026-10-10). The free tier adds the TX futures
+#   institutional open interest; the per-stock dealer split (自行買賣 / 避險) turned out to be already stored in the raw
+#   T86/TPEx pages of INST_FLOW_V1, which excluded dealers a priori. Neither series has been related to returns.
+# Data reuse (disclosed): the price data 2022-01-03..2026-10-02 was already used by INST_FLOW_V1, REVENUE_DRIFT_V1,
+#   REVENUE_SHORT_V1, OPEN_FADE and the rebound studies. INST_FLOW_V1's prohibition "adding the dealer series on this
+#   data" applied inside that trial; this is a new, separately counted trial and the family-wise threshold below says so.
+
+preregistration_id: "DEALER_HEDGE_V1"
+created_at: "2026-10-10T16:00:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE"
+code: "research/dealer_hedge_v1/{extract_dealer.py,fetch_futures.py,dh_study.py} (tests/test_dealer_hedge.py); reuses the frozen helpers of research/inst_flow_v1/ifl_study.py and research/revenue_v1/rev_study.py"
+
+data:
+  dealer: "TWSE_TPEX_DEALER_SPLIT_2022_01_2026_10_02: per stock and day, dealer proprietary net shares and dealer hedging net shares; a row is used only when proprietary + hedging equals the published dealer total"
+  futures: "FINMIND_TX_INSTITUTIONAL_OI_2021_12_2026_10_02: foreign long and short open interest in TX (contracts)"
+  prices: "official daily DB /home/ubuntu/easystock-learning-data/rebound/market-daily.sqlite, days <= 2026-10-02, read-only (identical loader to INST_FLOW_V1)"
+  forbidden: ["any day > 2026-10-02", "PHASE2C_FUTURE_CONFIRMATION_60D", "REBOUND_V2_FUTURE_CONFIRMATION_60D and its carved-out span"]
+  availability: "T86/TPEx pages and the TAIFEX institutional statistics are published after the close of day t; the decision is taken the evening of t"
+  checks_allowed_before_run: "page counts, row counts, layout and row-sum consistency of the dealer split; FinMind row and day counts. No price is read."
+
+signals:
+  DH5: "(sum over t-4..t of dealer hedging net shares) / (sum over t-4..t of volume shares); NaN unless all 5 days exist and volume > 0"
+  DS5: "same with dealer proprietary net shares"
+  rationale: "hedging flow mirrors warrant issuance and buying (retail call-warrant demand); proprietary flow is the dealers' own trading. Direction is not assumed: the LONG top decile is tested and the bottom decile is reported (descriptive)"
+  FX5: "foreign TX net open interest (long OI - short OI) at t minus the same at t-5 sessions; gate ON when FX5 > 0"
+  note: "window, ratio form, gate lag and threshold copied from INST_FLOW_V1 conventions and fixed here; nothing is searched"
+
+universe_at_t: "identical to INST_FLOW_V1 (liquidity >= 50M TWD 20-day mean amount, close >= 10, next open below 1.09 x reference, >= 100 eligible scored stocks)"
+
+portfolios:
+  DH5_DS5: "top decile LONG vs equal-weight eligible universe, as in INST_FLOW_V1; bottom decile and top-3 DT quota line descriptive"
+  FX5_GATE: "equal-weight eligible universe (no signal requirement) on each event; ON events vs OFF events"
+
+horizons: "DT, H5, H20 with the INST_FLOW_V1 event schedule, entry at the official open of the next session, exits, ex-rights handling and costs (paper_execution fee 0.28 discount, tax 0.15% DT / 0.3% otherwise)"
+
+statistics:
+  folds: "calendar year of E: 2022..2026"
+  reporting: "every result also states net TWD per 1,000,000 TWD of buys"
+
+pass_criteria:
+  DH5_DS5: "rev_study.criteria/classify exactly as INST_FLOW_V1 (A top net > 0, B >= 4/5 folds top > 0, C excess t >= 2, D >= 4/5 folds excess > 0, G >= 40 events and >= 20 names)"
+  FX5_GATE:
+    GA: "mean universe net on ON events > 0"
+    GC: "mean(ON) - mean(OFF) > 0 with Welch t >= 2.0"
+    GD: "ON - OFF > 0 in >= 4/5 folds"
+    GG: ">= 15 ON and >= 15 OFF events"
+    classification: "GG false -> INSUFFICIENT; GA, GC, GD -> STRONG; GC and GD -> RELATIVE_ONLY; GA false and GC false -> NO_EDGE; otherwise WEAK"
+  tests: "2 signals x 3 horizons + 1 gate x 3 horizons = 9; the family (REVENUE_DRIFT_V1 6, INST_FLOW_V1 6, this 9) has 21 tests; a STRONG is read against a family-wise t of about 3.0"
+  family_rule: "STRONG -> candidate for a separately preregistered forward paper test on sessions after 2026-10-02; never production"
+
+prohibited:
+  - "changing windows, ratio form, gate lag or threshold, deciles, filters, horizons or costs after seeing results"
+  - "testing SHORT on the bottom decile, other futures contracts (MTX, options), trust/dealer futures OI, or combining signals on this data"
+  - "reading any day after 2026-10-02"
+
+known_limitations:
+  - "hedging flow is mechanically tied to warrant issuance; issuers rebalance deltas, so it partly follows price (momentum overlap)"
+  - "FinMind is a redistribution of TAIFEX data; it is not cross-checked against TAIFEX pages here"
+  - "TX foreign net OI includes hedges of spot holdings, so a falling net OI is not necessarily a bearish bet"
+  - "same price data as earlier studies (see header); survivorship as in INST_FLOW_V1"

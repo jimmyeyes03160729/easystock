@@ -1,0 +1,74 @@
+# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any dealer- or futures-conditioned return is read)
+
+trial_id: "TRIAL_DEALER_HEDGE_V1"
+parent_trial_id: "TRIAL_INST_FLOW_V1"
+created_at: "2026-10-10T16:00:00+08:00"
+study_name: "DEALER_HEDGE_V1 per-stock dealer hedging / proprietary net-buy ratio and a TX-futures foreign open-interest gate, next-open entry, DT/H5/H20"
+research_stage: "EXPLORATORY"
+ledger_record_type: "PREREGISTERED_TRIAL"
+recorded_after_experiment: false
+
+provenance:
+  source_classification: "EXPLORATORY_HEURISTIC"
+  source_refs:
+    - "docs/research_governance/preregistrations/DEALER_HEDGE_V1.yaml"
+    - "FinMind (github.com/FinMind/FinMind) free dataset list, reviewed 2026-10-10 (data source only)"
+
+hypothesis:
+  statement: "Stocks in the top decile of the 5-day dealer hedging (DH5) or proprietary (DS5) net-buy ratio earn a positive net and universe-excess return from the next open (DT/H5/H20); and the liquid universe earns more after a 5-day rise in foreign TX net open interest than after a fall."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "event_top_decile_net_and_excess_return; gate_on_minus_off_universe_net"
+  direction: "PASS_FAIL"
+  baseline: "EQUAL_WEIGHT_ELIGIBLE_UNIVERSE"
+  frozen_before_search: true
+
+data:
+  dataset_id: "TWSE_TPEX_DEALER_SPLIT_2022_01_2026_10_02"
+  dataset_family_id: "TWSE_TPEX_INSTITUTIONAL_FLOW"
+  dataset_lineage_id: "LINEAGE_TWSE_TPEX_T86_V1"
+  start_date: "2022-01-03"
+  end_date: "2026-10-02"
+  dataset_end: "2026-10-02"
+  universe: "LIQUID_COMMON_STOCKS_50M"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: false
+  future_holdout_seen: false
+  exposed_dimensions: []
+  exposures: []
+
+search:
+  parameters_searched:
+    - "none: two dealer signals x three fixed horizons and one fixed futures gate x three horizons, fixed decile and filters"
+  search_space:
+    signals: "DH5, DS5, FX5_GATE"
+    horizons: "DT, H5, H20"
+  trial_count: 9
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/DEALER_HEDGE_V1.yaml"
+  registry_hash: "NOT_YET_RUN"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "IN_PROGRESS"
+  decision: "FROZEN_NOT_RUN"
+  sealed_commit: ""
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    The dealer split is extracted from the INST_FLOW_V1 raw pages and the TX data is fetched from FinMind (five
+    requests) on the VM before the study; only counts and consistency are checked. The study runs once from the
+    merge commit.
