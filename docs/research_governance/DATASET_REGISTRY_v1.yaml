@@ -418,6 +418,22 @@ datasets:
     derivation_description: "REVENUE_HIST_V1 fetch on 2026-10-09/10: MOPS t21sc03 pages for revenue months 2014-01..2021-12 (research/revenue_hist_v1/hist_fetch_revenue.py) and official TWSE/TPEx daily quotes plus TWSE ex-rights for 2014-11-03..2022-03-31 (rebound_learning.market_daily into a separate database); 1,803 sessions, 1,871 symbols. The production daily DB was not touched."
     canonical_status: "CANONICAL_PARTITION"
 
+  - dataset_id: "MOPS_BUYBACK_PROGRAMS_2000_2026_10_10"
+    dataset_family_id: "TWSE_TPEX_BUYBACK_PROGRAMS"
+    dataset_lineage_id: "LINEAGE_MOPS_T35SC09_V1"
+    source: "MOPS_T35SC09_BUYBACK_SUMMARY"
+    frequency: "EVENT"
+    market: "TWSE_AND_TPEX"
+    timezone: "Asia/Taipei"
+    start_date: "2000-08-09"
+    end_date: "2026-10-06"
+    universe_definition: "ALL_LISTED_AND_OTC_COMPANIES_WITH_BUYBACK_PROGRAMS"
+    point_in_time_universe: false
+    survivorship_bias: "TABLE_COMPILED_2026_10_10_INCLUDES_EX_POST_EXECUTION_FIELDS"
+    mutable: false
+    parent_dataset_ids: []
+    derivation_description: "Buyback program summary tables (sii and otc) fetched 2026-10-10 by research/buyback_v1/fetch_buyback.py; only the announcement-time columns (board date, purpose, amount cap, planned shares, price range, planned period) are used by BUYBACK_V1; the study uses programs with board date <= 2026-09-30 and prices <= 2026-10-02."
+
   - dataset_id: "TWSE_TPEX_DEALER_SPLIT_2022_01_2026_10_02"
     dataset_family_id: "TWSE_TPEX_INSTITUTIONAL_FLOW"
     dataset_lineage_id: "LINEAGE_TWSE_TPEX_T86_V1"

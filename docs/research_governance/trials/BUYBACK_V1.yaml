@@ -1,0 +1,72 @@
+# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any buyback-conditioned return is read)
+
+trial_id: "TRIAL_BUYBACK_V1"
+parent_trial_id: "TRIAL_INST_FLOW_V1"
+created_at: "2026-10-10T20:00:00+08:00"
+study_name: "BUYBACK_V1 buy the open after the planned buyback period starts (purpose 3, hold 20 sessions)"
+research_stage: "EXPLORATORY"
+ledger_record_type: "PREREGISTERED_TRIAL"
+recorded_after_experiment: false
+
+provenance:
+  source_classification: "EXPLORATORY_HEURISTIC"
+  source_refs:
+    - "docs/research_governance/preregistrations/BUYBACK_V1.yaml"
+    - "docs/external_research/FINLAB_BLOG_DIGEST_2026-10-10.md"
+
+hypothesis:
+  statement: "Buying the open after the planned buyback period starts (purpose: protect credit and shareholder interests) in liquid stocks and holding 20 sessions earns a positive net and market-excess return."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "event_net_and_excess_return_h20"
+  direction: "PASS_FAIL"
+  baseline: "EQUAL_WEIGHT_LIQ50_UNIVERSE_SAME_WINDOW"
+  frozen_before_search: true
+
+data:
+  dataset_id: "MOPS_BUYBACK_PROGRAMS_2000_2026_10_10"
+  dataset_family_id: "TWSE_TPEX_BUYBACK_PROGRAMS"
+  dataset_lineage_id: "LINEAGE_MOPS_T35SC09_V1"
+  start_date: "2022-01-01"
+  end_date: "2026-10-02"
+  dataset_end: "2026-10-02"
+  universe: "LIQUID_COMMON_STOCKS_50M"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: false
+  future_holdout_seen: false
+  exposed_dimensions: []
+  exposures: []
+
+search:
+  parameters_searched:
+    - "none: one primary test (purpose 3, LIQ50, hold 20); the other horizons, floors and purposes are descriptive"
+  search_space:
+    primary: "purpose 3, LIQ50, H20"
+  trial_count: 1
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/BUYBACK_V1.yaml"
+  registry_hash: "NOT_YET_RUN"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "IN_PROGRESS"
+  decision: "FROZEN_NOT_RUN"
+  sealed_commit: ""
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    Only the announcement-time columns of the MOPS table are used. Purpose-3 program counts by year of board date
+    (metadata, no returns): 2022: 40, 2023: 11, 2024: 19, 2025: 107, 2026 to September: 55.
