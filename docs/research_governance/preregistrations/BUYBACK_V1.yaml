@@ -1,0 +1,66 @@
+# EasyStock preregistration — BUYBACK_V1 (listed and OTC buyback programs, buy after the planned period starts)
+# Frozen in git BEFORE any buyback-conditioned return is computed.
+# Source of the idea: FinLab blog article on buyback announcements (claim: next-open buy after the start date, hold 20
+#   sessions, 2007-2026 CAGR 25.2% vs 0050 13.0%, but behind 0050 over the last three years; no out-of-sample test).
+#   Digest: docs/external_research/FINLAB_BLOG_DIGEST_2026-10-10.md. This study tests the idea with our PIT timing,
+#   cost model and a same-day market baseline, on the window where our official daily prices exist (2022-2026).
+
+preregistration_id: "BUYBACK_V1"
+created_at: "2026-10-10T20:00:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE"
+direction: "LONG"
+code: "research/buyback_v1/{fetch_buyback.py,bb_study.py} (tests/test_buyback.py)"
+
+data:
+  programs: "MOPS ajax_t35sc09 summary table, TWSE-listed (sii) and OTC (otc), fetched 2026-10-10: board resolution date, purpose, amount cap, planned shares, price range, planned period start and end. Execution columns are ex-post and are NOT used."
+  prices: "official daily DB (open, close, amount, reference, ex_rights) 2022-01-03..2026-10-02, read-only; loaders and vectorised paper_execution costs from research/inst_flow_v1/ifl_study.py"
+  events: "programs with board date 2022-01-01..2026-09-30"
+  forbidden: ["any day > 2026-10-02", "REBOUND_V2 future partition and its carved-out span", "PHASE2C_FUTURE_CONFIRMATION_60D"]
+  purpose_codes: "1 = transfer shares to employees, 2 = warrants / convertible securities, 3 = protect company credit and shareholder interests with cancellation of the bought shares"
+
+event_definition:
+  announcement_timing: "the buyback may only start after the public announcement, so the planned period start date S is a point-in-time safe anchor (S falls 0-5 days after the board date for 703 of 713 programs since 2022)"
+  entry: "official open of E = the first session strictly after S"
+  duplicates: "one event per (symbol, board date, start date) row as published"
+
+universe_filters:
+  LIQ50: "mean amount over the 20 sessions before E >= 50,000,000 TWD, close of the session before E >= 10, open exists and < 1.09 x reference (limit-up opens excluded) -- primary"
+  LIQ20: "same with 20,000,000 TWD -- descriptive"
+  baseline: "equal-weight mean net of all LIQ50 (respectively LIQ20) stocks over the same E..X, at least 100 stocks"
+
+portfolios_and_horizons:
+  primary: "purpose 3, LIQ50, hold 20 sessions (sell at the close of E+19) -- ONE test"
+  descriptive: ["hold 5 and 60 sessions", "LIQ20", "purpose 1 (employee transfer) and purpose 2"]
+  ex_rights: "ex-rights / dividend drops added back (product of previous_close / reference over ex days in (E, exit]); a missing exit bar uses the last close before it"
+
+costs:
+  shares: 1000
+  model: "paper_execution fee (0.1425% x 0.28, min 20 TWD) on both legs + ordinary tax 0.3% on the sale (not a day trade); auction prices, no spread"
+  reporting: "every result also states TWD per 1,000,000 TWD invested per event (1% = 10,000 TWD); a position held 20 sessions occupies capital, it does not use the day-trade quota"
+
+statistics:
+  event_value: "net return of the stock minus the baseline net return over the same E..X (excess)"
+  t_stat: "mean excess / standard error clustered by entry month (events cluster after sell-offs)"
+  years: "calendar year of E, 2022-2026; a year is counted when it has at least 8 events"
+
+pass_criteria:
+  A: "mean event net > 0"
+  B: "net > 0 in at least 75% (rounded up) of the counted years"
+  C: "mean excess > 0 with month-clustered t >= 2.0"
+  D: "excess > 0 in at least 75% of the counted years"
+  G: ">= 3 counted years and >= 60 events"
+  classification: "G false -> INSUFFICIENT; A-D true -> STRONG; C and D true -> RELATIVE_ONLY; A false and C false -> NO_EDGE; otherwise WEAK"
+  family_rule: "STRONG -> candidate for a separately preregistered forward test on announcements after 2026-10-02 (reserved-partition handling needed); never production"
+
+prohibited:
+  - "changing the anchor date, purposes, horizons, liquidity floors, baseline or criteria after seeing results"
+  - "using the ex-post execution columns (shares actually bought, completion flag) as a signal"
+  - "reading any day after 2026-10-02"
+
+known_limitations:
+  - "the table gives the board date, not the exact announcement minute; anchoring on the period start is conservative"
+  - "only 2022-2026 prices are available, so the blog's 2007-2026 claim cannot be checked; 2022-2024 have few purpose-3 events (40, 11, 19)"
+  - "announcements cluster after market sell-offs (2025-04), so the baseline and month clustering matter; results can still be one regime"
+  - "small and mid caps: a 20-day hold of a few hundred thousand TWD is feasible at the LIQ50 floor, not at lower liquidity"
