@@ -18,15 +18,23 @@ def test_parse_reads_json_drops_unknown_and_caps_at_five():
 
 
 def test_groups_consensus_majority_and_baselines():
+    three = ('openai', 'claude', 'gemini')
     picks = {'openai': ['2001', '2002', '2003'], 'claude': ['2002', '2001', '2004'], 'gemini': ['2002', '2005']}
-    g = L.build_groups(picks, UNIVERSE, '2026-10-13')
-    assert g['consensus3'] == ['2002']
+    g = L.build_groups(picks, UNIVERSE, '2026-10-13', three)
+    assert g['consensus'] == ['2002']
     assert g['majority2'] == ['2001', '2002']
     assert g['hot10'] == ['%04d' % (2019 - i) for i in range(10)]
     assert len(g['random5']) == 5 and all(UNIVERSE[s][1] >= L.MIN_AMOUNT for s in g['random5'])
-    assert g['random5'] == L.build_groups(picks, UNIVERSE, '2026-10-13')['random5']     # fixed per day
-    two = L.build_groups({'openai': ['2002'], 'claude': ['2002']}, UNIVERSE, '2026-10-13')
-    assert two['consensus3'] == [] and two['majority2'] == ['2002'] and two['gemini'] == []
+    assert g['random5'] == L.build_groups(picks, UNIVERSE, '2026-10-13', three)['random5']     # fixed per day
+    failed = L.build_groups({'openai': ['2002'], 'claude': ['2002']}, UNIVERSE, '2026-10-13', three)
+    assert failed['consensus'] == [] and failed['majority2'] == ['2002'] and failed['gemini'] == []
+    two = L.build_groups({'openai': ['2001', '2002'], 'claude': ['2002', '2003']}, UNIVERSE, '2026-10-13', ('openai', 'claude'))
+    assert two['consensus'] == ['2002'] and 'majority2' not in two and 'gemini' not in two
+
+
+def test_default_providers_are_chatgpt_and_claude():
+    assert L.MODELS == ('openai', 'claude')
+    assert L.GROUPS == ('openai', 'claude', 'consensus', 'hot10', 'random5')
 
 
 def bar(o, c, ref=None):
@@ -73,8 +81,7 @@ def test_pick_freezes_once_and_records_failures(tmp_path, monkeypatch):
     assert L.pick(now, clock=lambda: now.replace(minute=6)) == 0
     data = json.loads((tmp_path / 'picks_2026-10-13.json').read_text(encoding='utf-8'))
     assert data['prev_session'] == '2026-10-12' and not data['late']
-    assert data['groups']['majority2'] == ['2001', '2002'] and data['groups']['consensus3'] == []
-    assert data['replies']['gemini']['ok'] is False
+    assert data['groups']['consensus'] == ['2001', '2002'] and 'gemini' not in data['replies']
     assert (tmp_path / 'picks.sha256').read_text().count('picks_2026-10-13.json') == 1
     assert L.pick(now) == 0                                                           # already frozen: untouched
     assert L.pick(datetime(2026, 10, 14, 9, 30, tzinfo=L.TPE)) == 1                   # too late

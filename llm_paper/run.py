@@ -1,12 +1,13 @@
 """LLM_CONSENSUS_PAPER_V1：每天開盤前問 ChatGPT、Claude、Gemini 短線選股，比較各家、交集與對照組的紙上損益。
 
 規則（2026-10-10 凍結，之後不改；要改就換新版本名）：
-- 開盤日 08:00 前後由 `pick` 對三家送同一份提示詞（prompt.txt），各取最多 5 檔有效的上市櫃普通股；
+- 開盤日 08:00 前後由 `pick` 對啟用的 AI（預設 ChatGPT、Claude；2026-10-10 第一批之前決定不用 Gemini）
+  送同一份提示詞（prompt.txt），各取最多 5 檔有效的上市櫃普通股；
   09:00 之後不再凍結名單。名單、原始回覆與 sha256 存在 picks_YYYY-MM-DD.json，之後不再修改。
 - 進場：當天（T）開盤價；開盤 >= 參考價 x1.09 視為漲停買不到，該份資金留現金。
 - 出場：T 起第 5 個交易日收盤（持有 5 個交易日）。另記錄 T 當天收盤賣出的一日報酬（次要數據）。
 - 成本：手續費雙邊 + 證交稅（與營收研究相同的 cost_pct），每組 100 萬平均分配。
-- 組別：openai / claude / gemini 各自、consensus3（三家都選）、majority2（至少兩家選）、
+- 組別：各家各自、consensus（所有啟用的 AI 都成功且都選）、majority2（啟用三家以上時才有：至少兩家選）、
   hot10（前一交易日成交金額前 10 名）、random5（前一日成交額 >= 5000 萬、股價 >= 10 元中依日期固定亂數抽 5 檔）。
   LLM 組要贏 hot10 與 random5 才算有東西；只贏大盤不算。
 不下單，只做紙上記錄。
@@ -38,8 +39,8 @@ PER_MODEL, HOLD, HOT_N, RANDOM_N = 5, 5, 10, 5
 MIN_AMOUNT, MIN_PRICE = 50_000_000, 10.0
 CAPITAL = 1_000_000
 LATEST_FREEZE = '08:55'
-MODELS = ('openai', 'claude', 'gemini')
-GROUPS = MODELS + ('consensus3', 'majority2', 'hot10', 'random5')
+MODELS = tuple(m for m in os.environ.get('LLM_PAPER_PROVIDERS', 'openai,claude').split(',') if m in PROVIDERS)
+GROUPS = MODELS + ('consensus',) + (('majority2',) if len(MODELS) > 2 else ()) + ('hot10', 'random5')
 
 
 def parse_symbols(text, universe):
@@ -58,19 +59,21 @@ def parse_symbols(text, universe):
     return valid[:PER_MODEL], invalid
 
 
-def build_groups(model_picks, universe, day):
+def build_groups(model_picks, universe, day, models=MODELS):
     """model_picks: {model: [symbols]} (missing model = failed). universe: {symbol: (close, amount)} of the previous session."""
     votes = {}
     for syms in model_picks.values():
         for s in syms:
             votes[s] = votes.get(s, 0) + 1
-    order = [s for m in MODELS for s in model_picks.get(m, [])]
+    order = [s for m in models for s in model_picks.get(m, [])]
     ranked = sorted(universe, key=lambda s: (-universe[s][1], s))
     liquid = sorted(s for s, (c, a) in universe.items() if a >= MIN_AMOUNT and c >= MIN_PRICE)
     rng = random.Random(int(day.replace('-', '')))
-    groups = {m: list(model_picks.get(m, [])) for m in MODELS}
-    groups['consensus3'] = list(dict.fromkeys(s for s in order if votes[s] == 3)) if len(model_picks) == 3 else []
-    groups['majority2'] = list(dict.fromkeys(s for s in order if votes[s] >= 2))
+    groups = {m: list(model_picks.get(m, [])) for m in models}
+    everyone = all(m in model_picks for m in models)
+    groups['consensus'] = list(dict.fromkeys(s for s in order if votes[s] == len(models))) if everyone else []
+    if len(models) > 2:
+        groups['majority2'] = list(dict.fromkeys(s for s in order if votes[s] >= 2))
     groups['hot10'] = ranked[:HOT_N]
     groups['random5'] = sorted(rng.sample(liquid, min(RANDOM_N, len(liquid))))
     return groups
@@ -104,7 +107,7 @@ def pick(now, force=False, clock=lambda: datetime.now(TPE)):
         return 1
     prev, universe = previous_universe(DAILY_DB, today)
     prompt = PROMPT_FILE.read_text(encoding='utf-8').format(date=today, time=now.strftime('%H:%M'), prev_session=prev)
-    active = {m: fn for m, (fn, keys) in PROVIDERS.items() if env(*keys)}
+    active = {m: PROVIDERS[m][0] for m in MODELS if env(*PROVIDERS[m][1])}
 
     def ask(item):
         m, fn = item
