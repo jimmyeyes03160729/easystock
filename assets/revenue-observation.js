@@ -3,16 +3,30 @@
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const pct = value => typeof value === 'number' && Number.isFinite(value) ? `${value > 0 ? '+' : ''}${value.toFixed(2)}%` : '—';
   const price = value => typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) : '—';
+  const tone = value => typeof value === 'number' && Number.isFinite(value) ? (value > 0 ? 'color:#EF4444' : value < 0 ? 'color:#10B981' : '') : '';
+  const sub = text => `<div style="color:var(--sub,#64748B);font-size:11px;margin-top:2px">${text}</div>`;
+  const TD = 'padding:6px 8px;vertical-align:top';
+  const NUM = TD + ';text-align:right;white-space:nowrap';
   function table(payload) {
     const rows = Array.isArray(payload?.rows) ? payload.rows : Object.values(payload?.rows || {});
     if (!rows.length) return '<p class="text-sub text-sm py-4">目前尚無符合條件的觀察紀錄；不代表沒有利多，可能尚缺公告文字或月增資料。</p>';
-    return '<div style="overflow-x:auto"><table class="text-xs w-full" style="min-width:950px;text-align:left"><thead><tr>' +
-      ['個股／訊號日','營收年增／月增','正向文字依據','觀察日／狀態','基準收盤','開盤','最高','最低','收盤','開盤→收盤'].map(t=>`<th style="padding:8px">${t}</th>`).join('') + '</tr></thead><tbody>' +
+    const head = [['股票',0],['營收年增／月增',0],['正向消息',0],['觀察日',0],['基準收盤',1],['開盤',1],['最高',1],['最低',1],['收盤',1],['開→收',1]];
+    return '<div style="overflow-x:auto"><table class="text-xs w-full" style="min-width:900px;text-align:left;border-collapse:collapse"><thead><tr>' +
+      head.map(([t, n]) => `<th style="padding:6px 8px;white-space:nowrap;${n ? 'text-align:right' : ''}">${t}</th>`).join('') + '</tr></thead><tbody>' +
       rows.map(r=>{
         const o = r.status === 'complete' ? r.outcome : null;
         const status = r.status === 'complete' ? '已完成' : r.status === 'missing_data' ? '缺行情待補' : '等待收盤';
-        const cell = key => o ? `${price(o[key])}<br>${pct(o[key+'_pct'])}` : '—';
-        return `<tr style="border-top:1px solid var(--border,#334155)"><td style="padding:8px">${escape(r.symbol)} ${escape(r.name)}<br>${escape(String(r.signal_at || '').slice(0,10))}</td><td>${pct(r.rev_yoy)}<br>${pct(r.rev_mom)}<br>${escape(r.revenue_period)}</td><td style="max-width:280px;padding:8px"><details><summary>${escape(r.subject)}</summary><p>${escape(r.evidence)}</p><p>首次取得：${escape(r.event_first_seen_at)}<br>來源：${escape(r.source)}</p><a href="https://mops.twse.com.tw/mops/#/web/t05st01" target="_blank" rel="noopener">公開資訊觀測站（依代號／公告日查詢）</a><p>公告日：${escape(r.announcement_day)}</p></details></td><td>${escape(r.target_day)}<br>${status}</td><td>${price(r.reference_close)}<br>${escape(r.reference_day)}</td><td>${cell('open')}</td><td>${cell('high')}</td><td>${cell('low')}</td><td>${cell('close')}</td><td>${o ? pct(o.open_to_close_pct) : '—'}</td></tr>`;
+        const cell = key => o ? `${price(o[key])}${sub(`<span style="${tone(o[key+'_pct'])}">${pct(o[key+'_pct'])}</span>`)}` : '—';
+        return `<tr style="border-top:1px solid var(--border,#334155)">` +
+          `<td style="${TD};white-space:nowrap"><strong>${escape(r.symbol)} ${escape(r.name)}</strong>${sub(`訊號 ${escape(String(r.signal_at || '').slice(0,10))}`)}</td>` +
+          `<td style="${TD};white-space:nowrap"><span style="${tone(r.rev_yoy)}">${pct(r.rev_yoy)}</span> ／ <span style="${tone(r.rev_mom)}">${pct(r.rev_mom)}</span>${sub(escape(r.revenue_period))}</td>` +
+          `<td style="${TD};max-width:320px"><details><summary style="cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escape(r.subject)}</summary>` +
+          `<p>${escape(r.evidence)}</p><p>首次取得：${escape(r.event_first_seen_at)}<br>來源：${escape(r.source)}</p>` +
+          `<a href="https://mops.twse.com.tw/mops/#/web/t05st01" target="_blank" rel="noopener">公開資訊觀測站（依代號／公告日查詢）</a><p>公告日：${escape(r.announcement_day)}</p></details></td>` +
+          `<td style="${TD};white-space:nowrap">${escape(r.target_day)}${sub(status)}</td>` +
+          `<td style="${NUM}">${price(r.reference_close)}${sub(escape(r.reference_day))}</td>` +
+          ['open','high','low','close'].map(k => `<td style="${NUM}">${cell(k)}</td>`).join('') +
+          `<td style="${NUM};${tone(o?.open_to_close_pct)}">${o ? pct(o.open_to_close_pct) : '—'}</td></tr>`;
       }).join('') + '</tbody></table></div>';
   }
   function summary(payload) {

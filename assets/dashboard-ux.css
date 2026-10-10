@@ -1,9 +1,16 @@
 .dashboard-ux { color:var(--main); font-size:14px; padding:16px; margin-bottom:20px; }
+#dashboardOverview { padding:12px 16px; }
+#dashboardOverview h2 { font-size:14px; margin:0 0 8px; }
+.ux-overview-grid>div>p { margin:2px 0 0; font-size:13px; line-height:1.45; }
+.ux-overview-grid>div>span { font-size:12px; }
+.ux-overview-grid>div>small { display:block; font-size:11px; line-height:1.4; margin-top:2px; }
+#overviewNotice { margin:8px 0 0; font-size:12px; color:var(--sub); }
+#overviewNotice:empty { display:none; }
 .dashboard-ux h2 { font-size:16px; margin:0 0 12px; }
 .dashboard-ux h3 { font-size:14px; margin:20px 0 8px; }
 .dashboard-ux p { overflow-wrap:anywhere; margin:8px 0; }
 .dashboard-ux small,.ux-overview-grid>div>span { color:var(--sub); }
-.ux-overview-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.ux-overview-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px 16px; }
 .dashboard-data-details { margin-bottom:20px; }
 .dashboard-data-details>summary,.dashboard-ux summary { cursor:pointer; min-height:44px; padding:10px 0; font-weight:600; }
 .dashboard-ux input { box-sizing:border-box; display:block; width:min(100%,440px); min-height:44px; margin-top:6px; border:1px solid var(--border); border-radius:8px; padding:8px 12px; background:var(--surface); color:var(--main); font-size:16px; }
@@ -18,4 +25,4 @@
   .mobile-filter-inputs input { font-size:16px; min-height:36px; }
   .filter-panel button,.filter-panel select { min-height:44px; }
 }
-@media(max-width:380px) { .ux-overview-grid { grid-template-columns:1fr; } }
+@media(max-width:768px) { .ux-overview-grid>div>small { display:none; } .ux-overview-grid>div>p { font-size:12px; } }

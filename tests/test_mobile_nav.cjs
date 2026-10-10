@@ -16,7 +16,7 @@ test('M1-M7: real anchors, five labels, desktop/mobile safe-area, active and gua
   const html=fs.readFileSync('index.html','utf8'),{w,run}=createDOM(html);
   const nav=w.document.querySelector('.mobile-bottom-nav'),links=[...nav.querySelectorAll('a')];
   assert.equal(links.length,5);
-  assert.deepEqual(links.map(a=>a.getAttribute('aria-label')),['盤中摸魚','短期持股','牛馬 AI','小工具','社畜後台']);
+  assert.deepEqual(links.map(a=>a.getAttribute('aria-label')),['盤中摸魚','短期持股','AI 選股','牛馬 AI','社畜後台']);
   assert.match(html,/\.mobile-bottom-nav\s*\{ display:none;/);
   assert.match(html,/@media\(max-width:768px\)/);
   assert.match(html,/body\s*\{ padding-bottom:calc\(68px \+ env\(safe-area-inset-bottom/);
@@ -29,7 +29,8 @@ test('M1-M7: real anchors, five labels, desktop/mobile safe-area, active and gua
   const ids=[...w.document.querySelectorAll('[id]')].map(n=>n.id);assert.equal(new Set(ids).size,ids.length);
   run('assets/mobile-nav.js');links[1].dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true}));
   assert.equal(links[1].getAttribute('aria-current'),'location');assert(!links[0].hasAttribute('aria-current'));
-  w.location.hash='#learningSection';w.dispatchEvent(new w.Event('hashchange'));assert.equal(links[2].getAttribute('aria-current'),'location');
+  w.location.hash='#learningSection';w.dispatchEvent(new w.Event('hashchange'));assert.equal(links[3].getAttribute('aria-current'),'location');
+  w.location.hash='#ai-picks';w.dispatchEvent(new w.Event('hashchange'));assert.equal(links[2].getAttribute('aria-current'),'location');
   w.close();
 });
 
@@ -41,6 +42,8 @@ function navigationFixture(t,{productionLayout=false}={}){
   const links=[...nav.querySelectorAll('a[href^="#"]')];
   const positions={'#intraday-strategies':100,'#short-term':900,'#learningSection':1700,'#chrome-tools':-2000};
   for(const [href,top] of Object.entries(positions))w.document.querySelector(href).getBoundingClientRect=()=>({top:positions[href]});
+  // AI picks sits just above the learning section on the page.
+  w.document.querySelector('#ai-picks').getBoundingClientRect=()=>({top:positions['#learningSection']-300});
   w.document.querySelector('header.fixed').getBoundingClientRect=()=>({bottom:64});
   Object.defineProperty(w.document.documentElement,'scrollHeight',{value:10000});
   w.innerHeight=600;w.scrollY=1000;
