@@ -98,3 +98,9 @@ def test_pick_freezes_once_and_records_failures(tmp_path, monkeypatch):
     assert (tmp_path / 'picks.sha256').read_text().count('picks_2026-10-13.json') == 1
     assert L.pick(now) == 0                                                           # already frozen: untouched
     assert L.pick(datetime(2026, 10, 14, 9, 30, tzinfo=L.TPE)) == 1                   # too late
+
+
+def test_prompt_files_render():
+    for _, path, _ in L.ALL_VARIANTS.values():
+        text = path.read_text(encoding='utf-8').format(date='2026-10-12', time='08:00', prev_session='2026-10-08')
+        assert '2026-10-12' in text and '2026-10-08' in text and '{"picks"' in text and '{date}' not in text and '{{' not in text
