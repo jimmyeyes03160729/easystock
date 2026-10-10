@@ -52,13 +52,13 @@ GROUPS = tuple(v + g for v, _, _ in VARIANTS for g in BASE_GROUPS)
 
 def parse_symbols(text, universe):
     """Ordered unique 4-digit symbols from the reply's JSON (falls back to bare codes); split into valid / invalid."""
-    found = []
+    found = None
     m = re.search(r'\{.*\}', text or '', re.S)
     try:
-        found = [str(p.get('symbol', '')).strip() for p in json.loads(m.group(0))['picks']] if m else []
+        found = [str(p.get('symbol', '')).strip() for p in json.loads(m.group(0))['picks']] if m else None
     except (ValueError, KeyError, TypeError, AttributeError):
-        found = []
-    if not found:
+        found = None
+    if found is None:                     # no readable JSON; an explicit empty list (e.g. market closed) stays empty
         found = re.findall(r'(?<!\d)([1-9]\d{3})(?!\d)', text or '')
     valid, invalid = [], []
     for s in dict.fromkeys(found):

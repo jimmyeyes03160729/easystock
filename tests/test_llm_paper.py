@@ -15,6 +15,8 @@ def test_parse_reads_json_drops_unknown_and_caps_at_five():
     assert invalid == ['9999']
     assert L.parse_symbols('看好 2010 與 2011，還有 123456', UNIVERSE) == (['2010', '2011'], [])
     assert L.parse_symbols('', UNIVERSE) == ([], [])
+    closed = '{"picks": [], "reason": "2026-10-10 是國慶日，休市"}'
+    assert L.parse_symbols(closed, UNIVERSE | {'2026': (30.0, 1e8)}) == ([], [])     # a year is not a pick
 
 
 def test_groups_consensus_majority_and_baselines():
