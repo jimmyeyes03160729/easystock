@@ -1,0 +1,70 @@
+# EasyStock Research Trial Ledger — PREREGISTERED trial (frozen before any event-conditioned return was computed)
+
+trial_id: "TRIAL_EVENT_RISK_V1"
+parent_trial_id: "TRIAL_EA_META_B_FILTER_V1"
+created_at: "2026-10-10T09:00:00+08:00"
+study_name: "EVENT_RISK_V1 abnormal long-at-open day-trade outcome on 法說會 / 財報 days"
+research_stage: "EXPLORATORY"
+ledger_record_type: "PREREGISTERED_TRIAL"
+recorded_after_experiment: false
+
+provenance:
+  source_classification: "EXPLORATORY_HEURISTIC"
+  source_refs:
+    - "docs/research_governance/preregistrations/EVENT_RISK_V1.yaml"
+
+hypothesis:
+  statement: "On days right after a financial-report / earnings filing, on investor-conference days, the session after a conference, and board-meeting days, liquid stocks show a worse or riskier open-to-close long outcome than on other days."
+  preregistered: true
+  exploratory: false
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "event_minus_control_open_to_close_bps"
+  direction: "PASS_FAIL"
+  baseline: "CONTROL_STOCK_DAYS_WITHOUT_EVENTS"
+  frozen_before_search: true
+
+data:
+  dataset_id: "REBOUND_V2_OFFICIAL_DAILY_HISTORICAL"
+  dataset_family_id: "TWSE_EQUITY_DAILY_OFFICIAL"
+  dataset_lineage_id: "LINEAGE_TWSE_TPEX_OFFICIAL_DAILY_V1"
+  start_date: "2025-01-06"
+  end_date: "2026-10-02"
+  dataset_end: "2026-10-06"
+  universe: "COMMON_STOCKS_PREVIOUS_SESSION_AMOUNT_RANK_TOP_15PCT"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "inherited: daily bars 2022-2026-10-02 already used by rebound, revenue and inst-flow studies; no event-conditioned outcome seen before"
+  exposures: []
+
+search:
+  parameters_searched:
+    - "none: four fixed event definitions, one universe, fixed thresholds"
+  search_space:
+    events: "POST_REPORT, CONF_START, POST_CONF, BOARD_DAY"
+  trial_count: 4
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/EVENT_RISK_V1.yaml"
+  registry_hash: ""
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "IN_PROGRESS"
+  decision: "PENDING"
+  sealed_commit: ""
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: "Run once on the VM from the merge commit of this preregistration."
