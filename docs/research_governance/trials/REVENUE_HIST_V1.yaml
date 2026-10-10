@@ -36,15 +36,28 @@ data:
   dataset_end: "2022-03-31"
   universe: "LIQUID_COMMON_STOCKS_AT_ENTRY"
   discovery_data_reused: false
-  independent_confirmation: true
+  independent_confirmation: false
 
 exposure_state:
   train_seen: false
   validation_seen: false
-  oos_seen: false
+  oos_seen: true
   future_holdout_seen: false
-  exposed_dimensions: []
-  exposures: []
+  exposed_dimensions:
+    - "per-month top-decile, bottom-decile and universe net returns for S1_YOY and S2_SUR at DT/H5/H20, per calendar-year fold"
+  exposures:
+    - exposure_id: "EXP_REVENUE_HIST_V1_2015_2021"
+      dataset_id: "TWSE_TPEX_DAILY_AND_MOPS_REVENUE_2014_2022"
+      dataset_family_id: "TWSE_TPEX_MONTHLY_REVENUE"
+      dataset_lineage_id: "LINEAGE_MOPS_T21SC03_V1"
+      start_date: "2014-11-03"
+      end_date: "2022-03-31"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "revenue-surprise decile portfolios vs post-deadline entry returns by horizon and year"
+      source_trial_id: "TRIAL_REVENUE_HIST_V1"
+      first_seen_at: "2026-10-10T08:19:00+08:00"
 
 search:
   parameters_searched:
@@ -56,18 +69,24 @@ search:
 
 governance:
   plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/REVENUE_HIST_V1.yaml"
-  registry_hash: "NOT_YET_RUN"
+  registry_hash: "BUNDLE_SHA256:ae1aad4cf261d648f89a532052b31073b357eb21c781bc44daf8cc10e3fe0faa"
   no_oos_tuning: true
   production_effect: "NONE"
 
 result:
-  status: "IN_PROGRESS"
-  decision: "FROZEN_AWAITING_FETCH"
-  sealed_commit: ""
+  status: "SEALED"
+  decision: "REPLICATED_S2_SUR_H20_STRONG"
+  sealed_commit: "62b981e"
   PRODUCTION_READY: false
   DISCOVERY_DATA_REUSED: false
-  INDEPENDENT_CONFIRMATION: true
+  INDEPENDENT_CONFIRMATION: false
   FUTURE_CONFIRMATION_UNTOUCHED: true
   notes: >
-    2015-2021 prices and revenue were never fetched before this preregistration. The study re-runs the parent's
-    frozen code once; results are reported per 1,000,000 TWD of buys.
+    Run once from 62b981e (84 event months 2015-01..2021-12; 1,803 sessions, 1,871 symbols). Primary S2_SUR H20 is
+    STRONG -> REPLICATED: top-decile net +2.104% per 20 sessions (+21,040 TWD per 1M of buys), universe +0.715%,
+    excess +1.389% with t 4.82, excess positive in all 7 full years and top net positive in 6/7 (2015 -0.59%, excess
+    +1.21%). S1_YOY H20 is also STRONG (+1.429%, excess +0.725%, t 2.05). S2_SUR H5 is RELATIVE_ONLY (net -0.077%,
+    excess +0.348%, t 2.91); DT lines are NO_EDGE. Missing exits: H5 20, H20 40 (last close used). Bundle sha256
+    ae1aad4c. Matches the parent (2022-2026 S2_SUR H20 excess +1.88%) on never-seen history; still not production:
+    forward confirmation REVENUE_FORWARD_V1 decides. The slice was unseen before this run (out-of-sample replication);
+    the ledger flags independent_confirmation false because the slice is now exposed.

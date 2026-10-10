@@ -400,3 +400,20 @@ datasets:
     parent_dataset_ids: []
     derivation_description: "Per-stock foreign, investment-trust and dealer net buy/sell shares fetched 2026-10-09 by research/inst_flow_v1/fetch_inst.py for the TWSE trading days 2022-01-03..2026-10-02; raw pages kept gzipped on the VM. Days after 2026-10-02 are not part of it."
     canonical_status: "CANONICAL_PARTITION"
+
+  - dataset_id: "TWSE_TPEX_DAILY_AND_MOPS_REVENUE_2014_2022"
+    dataset_family_id: "TWSE_TPEX_MONTHLY_REVENUE"
+    dataset_lineage_id: "LINEAGE_MOPS_T21SC03_V1"
+    source: "MOPS_T21SC03_MONTHLY_REVENUE_SUMMARY_AND_TWSE_TPEX_DAILY_QUOTES"
+    frequency: "DAILY"
+    market: "TWSE_AND_TPEX"
+    timezone: "Asia/Taipei"
+    start_date: "2014-11-03"
+    end_date: "2022-03-31"
+    universe_definition: "ALL_LISTED_AND_OTC_COMMON_STOCKS"
+    point_in_time_universe: true
+    survivorship_bias: "NONE_OFFICIAL_DAILY_PUBLICATION; REVENUE_TABLES_COMPILED_2026_09_23_INCLUDE_LATER_CORRECTIONS"
+    mutable: false
+    parent_dataset_ids: []
+    derivation_description: "REVENUE_HIST_V1 fetch on 2026-10-09/10: MOPS t21sc03 pages for revenue months 2014-01..2021-12 (research/revenue_hist_v1/hist_fetch_revenue.py) and official TWSE/TPEx daily quotes plus TWSE ex-rights for 2014-11-03..2022-03-31 (rebound_learning.market_daily into a separate database); 1,803 sessions, 1,871 symbols. The production daily DB was not touched."
+    canonical_status: "CANONICAL_PARTITION"
