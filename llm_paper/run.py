@@ -221,6 +221,39 @@ def load_bars(first_day):
     return sessions, bars, ex
 
 
+def reply_picks(text):
+    """{symbol: (name, reason)} from a reply's JSON, for display only (scoring uses the frozen groups)."""
+    m = re.search(r'\{.*\}', text or '', re.S)
+    try:
+        rows = json.loads(m.group(0))['picks'] if m else []
+        return {str(r.get('symbol', '')).strip(): (str(r.get('name') or ''), str(r.get('reason') or '')) for r in rows}
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return {}
+
+
+def batch_detail(batch, ev):
+    """Homepage view of one batch: each model's picks with name, reason and running net, plus the shared picks."""
+    names = {r['symbol']: r['name'] for rows in (batch.get('candidates') or {}).values() for r in rows}
+    out = {'day': batch['day'], 'status': ev['status'], 'exit_day': ev['exit_day'], 'mark_day': ev.get('mark_day'),
+           'frozen_at': batch.get('frozen_at'), 'models': {}, 'groups': {}}
+    for v, _, _ in VARIANTS:
+        for m in MODELS:
+            r = batch.get('replies', {}).get(v + m, {})
+            info = reply_picks(r.get('text')) if r.get('ok') else {}
+            g = ev['groups'].get(v + m, {})
+            out['models'][m] = {
+                'model': (r.get('meta') or {}).get('model'), 'ok': bool(r.get('ok')), 'error': (r.get('error') or '')[:120],
+                'invalid': batch.get('invalid', {}).get(v + m, []),
+                'picks': [{'symbol': s, 'name': names.get(s) or info.get(s, ('', ''))[0], 'reason': info.get(s, ('', ''))[1],
+                           'net_pct': (g.get('positions') or {}).get(s), 'filled': s not in (g.get('unfilled') or [])}
+                          for s in batch['groups'].get(v + m, [])]}
+        for g in BASE_GROUPS:
+            e = ev['groups'].get(v + g, {})
+            out['groups'][g] = {'symbols': batch['groups'].get(v + g, []), 'net_pct': e.get('net_pct')}
+        out['consensus'] = [{'symbol': s, 'name': names.get(s, '')} for s in batch['groups'].get(v + 'consensus', [])]
+    return out
+
+
 def feed(now, publish=True):
     batches = [json.loads(p.read_text(encoding='utf-8')) for p in sorted(OUT_DIR.glob('picks_*.json'))]
     if not batches:
@@ -229,9 +262,12 @@ def feed(now, publish=True):
     sessions, bars, ex = load_bars(batches[0]['day'])
     is_closed = F.calendar_closed()
     evals = [evaluate(b, sessions, bars, ex, is_closed) for b in batches]
+    recent = [batch_detail(b, e) for b, e in list(zip(batches, evals))[-6:] if e['status'] != 'void_late'][::-1]
     data = {'schema_version': 1, 'rules_version': RULES_VERSION, 'generated_at': now.isoformat(timespec='seconds'),
-            'rules': {'per_model': PER_MODEL, 'hold_sessions': HOLD, 'capital': CAPITAL, 'groups': list(GROUPS)},
-            'summary': summarize(evals), 'batches': sorted(evals, key=lambda e: e['day'], reverse=True)}
+            'rules': {'per_model': PER_MODEL, 'hold_sessions': HOLD, 'capital': CAPITAL, 'groups': list(GROUPS),
+                      'models': list(MODELS), 'max_price': 200},
+            'summary': summarize(evals), 'recent': recent,
+            'batches': sorted(evals, key=lambda e: e['day'], reverse=True)}
     F.write_json(OUT_DIR / 'llm-paper-latest.json', data)
     if publish:
         from firebase_store import FirebaseStore
@@ -265,7 +301,13 @@ def main():
     a = ap.parse_args()
     now = datetime.now(TPE)
     if a.cmd == 'pick':
-        return pick(now, a.force)
+        rc = pick(now, a.force)
+        if rc == 0 and not a.force and not a.no_publish:   # put the new picks on the homepage right away
+            try:
+                feed(datetime.now(TPE))
+            except Exception as exc:  # noqa: BLE001  (picks are frozen already; the 08:20 feed run retries)
+                print('feed after pick failed:', type(exc).__name__, exc)
+        return rc
     if a.cmd == 'candidates':                    # dry run: no API calls, nothing written
         today = now.date().isoformat()
         prev, _ = previous_universe(DAILY_DB, today)
