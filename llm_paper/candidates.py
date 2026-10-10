@@ -10,6 +10,8 @@ import requests
 
 TWSE_PUNISH = 'https://openapi.twse.com.tw/v1/announcement/punish'
 TPEX_DISPOSAL = 'https://www.tpex.org.tw/openapi/v1/tpex_disposal_information'
+TWSE_QUOTES = 'https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL'
+TPEX_QUOTES = 'https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes'
 STOCK = re.compile(r'^[1-8]\d{3}$')       # 4-digit common stocks; 0xxx are ETFs, 91xx are TDRs
 WINDOW, MIN_AVG_AMOUNT = 20, 50_000_000
 FIELDS = ('symbol', 'name', 'exchange', 'security_type', 'price_date', 'close', 'amount', 'avg_amount_20d',
@@ -41,14 +43,23 @@ def disposition_symbols(entry_day, get=requests.get):
     return found
 
 
-def load_names(path):
+def load_names(path, get=requests.get):
+    """Short names from the TWSE / TPEx daily quote APIs; the revenue table fills any gap."""
+    names = {}
     try:
         db = sqlite3.connect('file:%s?mode=ro' % path, uri=True)
-        names = dict(db.execute("SELECT symbol, name FROM revenue WHERE name IS NOT NULL AND name != '' ORDER BY month"))
+        names.update(db.execute("SELECT symbol, name FROM revenue WHERE name IS NOT NULL AND name != '' ORDER BY month"))
         db.close()
-        return names
     except sqlite3.Error:
-        return {}
+        pass
+    for url, code, name in ((TWSE_QUOTES, 'Code', 'Name'), (TPEX_QUOTES, 'SecuritiesCompanyCode', 'CompanyName')):
+        try:
+            r = get(url, timeout=30)
+            r.raise_for_status()
+            names.update({str(row[code]).strip(): str(row[name]).strip() for row in r.json() if row.get(code) and row.get(name)})
+        except (requests.RequestException, ValueError, KeyError, TypeError):
+            pass
+    return names
 
 
 def build(db_path, prev, entry_day, max_price, names, disposed, checked_at):

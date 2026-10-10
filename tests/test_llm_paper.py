@@ -169,3 +169,21 @@ def test_prompt_files_render():
                                                        entry_session='2026-10-12', cutoff_time='2026-10-12 08:00',
                                                        candidates_json='{"fields":[],"rows":[]}')
         assert '2026-10-12' in text and '2026-10-08' in text and '{"picks"' in text and '{date}' not in text and '{{' not in text
+
+
+def test_names_come_from_exchange_quote_apis(tmp_path):
+    class Resp:
+        def __init__(self, rows):
+            self.rows = rows
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.rows
+
+    def get(url, timeout):
+        if 'twse' in url:
+            return Resp([{'Code': '2303', 'Name': '聯電'}])
+        raise L.C.requests.ConnectionError()                      # TPEx down: keep what we have
+    assert L.C.load_names(tmp_path / 'missing.sqlite', get) == {'2303': '聯電'}
