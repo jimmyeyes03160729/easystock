@@ -417,3 +417,38 @@ datasets:
     parent_dataset_ids: []
     derivation_description: "REVENUE_HIST_V1 fetch on 2026-10-09/10: MOPS t21sc03 pages for revenue months 2014-01..2021-12 (research/revenue_hist_v1/hist_fetch_revenue.py) and official TWSE/TPEx daily quotes plus TWSE ex-rights for 2014-11-03..2022-03-31 (rebound_learning.market_daily into a separate database); 1,803 sessions, 1,871 symbols. The production daily DB was not touched."
     canonical_status: "CANONICAL_PARTITION"
+
+  - dataset_id: "TWSE_TPEX_DEALER_SPLIT_2022_01_2026_10_02"
+    dataset_family_id: "TWSE_TPEX_INSTITUTIONAL_FLOW"
+    dataset_lineage_id: "LINEAGE_TWSE_TPEX_T86_V1"
+    source: "TWSE_T86_AND_TPEX_3ITRADE_HEDGE_DAILY"
+    frequency: "DAILY"
+    market: "TWSE_AND_TPEX"
+    timezone: "Asia/Taipei"
+    start_date: "2022-01-03"
+    end_date: "2026-10-02"
+    universe_definition: "ALL_LISTED_AND_OTC_COMMON_STOCKS"
+    point_in_time_universe: true
+    survivorship_bias: "NONE_OFFICIAL_DAILY_PUBLICATION"
+    mutable: false
+    parent_dataset_ids:
+      - "TWSE_TPEX_INSTITUTIONAL_FLOW_2022_01_2026_10_02"
+    derivation_description: "Dealer net shares split into proprietary (自行買賣) and hedging (避險) by research/dealer_hedge_v1/extract_dealer.py from the raw pages stored by INST_FLOW_V1; no new download. INST_FLOW_V1 excluded the dealer series a priori, so these columns have not been related to returns before."
+    canonical_status: "CANONICAL_PARTITION"
+
+  - dataset_id: "FINMIND_TX_INSTITUTIONAL_OI_2021_12_2026_10_02"
+    dataset_family_id: "TAIFEX_FUTURES_INSTITUTIONAL"
+    dataset_lineage_id: "LINEAGE_FINMIND_TAIWANFUTURESINSTITUTIONALINVESTORS_V1"
+    source: "FINMIND_API_V4_TAIWANFUTURESINSTITUTIONALINVESTORS_TX (redistribution of TAIFEX daily institutional futures statistics)"
+    frequency: "DAILY"
+    market: "TAIFEX"
+    timezone: "Asia/Taipei"
+    start_date: "2021-12-01"
+    end_date: "2026-10-02"
+    universe_definition: "TX_TAIEX_FUTURES_ALL_MONTHS_COMBINED"
+    point_in_time_universe: true
+    survivorship_bias: "NONE_SINGLE_INSTRUMENT"
+    mutable: false
+    parent_dataset_ids: []
+    derivation_description: "Foreign, investment-trust and dealer long/short open interest and traded contracts in TX, fetched from the free FinMind API (no token) by research/dealer_hedge_v1/fetch_futures.py; raw responses kept gzipped on the VM. Days after 2026-10-02 are dropped."
+    canonical_status: "CANONICAL_PARTITION"
