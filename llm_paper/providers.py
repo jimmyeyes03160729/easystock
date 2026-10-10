@@ -62,7 +62,7 @@ def ask_anthropic(prompt):
 
 
 def ask_gemini(prompt):
-    model = env('LLM_PAPER_GEMINI_MODEL', default='gemini-2.5-pro')
+    model = env('LLM_PAPER_GEMINI_MODEL', default='gemini-3.1-pro-preview')
     data = _post('https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent' % model,
                  {'x-goog-api-key': env('GEMINI_API_KEY', 'GOOGLE_API_KEY'), 'Content-Type': 'application/json'},
                  {'contents': [{'role': 'user', 'parts': [{'text': prompt}]}], 'tools': [{'google_search': {}}]})
