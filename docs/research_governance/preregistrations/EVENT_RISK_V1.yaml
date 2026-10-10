@@ -1,0 +1,64 @@
+# EasyStock preregistration — EVENT_RISK_V1 (do 法說會 / 財報 days carry abnormal day-trade risk?)
+# Frozen in git BEFORE any event-conditioned return is computed.
+# Motivation: market_events (PRs #64-#68) now holds point-in-time timestamps for financial-report approvals, quarterly
+#   EPS / self-reported earnings, board-meeting dates and investor conferences for 2025-01..2026-10. The owner asked
+#   whether day-trade lanes should skip or size down on those days. This study is descriptive on whole-market daily bars;
+#   it does NOT test any runway B rule or filter variant (META_B_FILTER_V1 forbids retesting B variants on its folds).
+
+preregistration_id: "EVENT_RISK_V1"
+created_at: "2026-10-10T09:00:00+08:00"
+status: "FROZEN"
+research_only: true
+production_effect: "NONE"
+code: "research/event_risk_v1/event_risk.py (pure helpers unit-tested in tests/test_event_risk.py)"
+
+data:
+  bars: "official TWSE/TPEx daily bars, VM /home/ubuntu/easystock-learning-data/rebound/market-daily.sqlite (unadjusted OHLC + exchange reference price)"
+  events: "VM /home/ubuntu/easystock-market-events/events.sqlite (tables announcements, conferences)"
+  days: "trading days 2025-01-06 .. 2026-10-02 (first days skipped so every day has a previous session)"
+  universe: "common stocks (symbol ^[1-9][0-9]{3}$) whose amount rank on the PREVIOUS session is <= 0.15 (about the 290 most traded)"
+  reuse_disclosure: "daily bars 2025-2026 were used by earlier studies (rebound, revenue, inst-flow); events were never conditioned on before"
+  forbidden: ["PHASE2C_FUTURE_CONFIRMATION_60D", "REBOUND_V2 future partition and its carved-out span", "any day > 2026-10-02"]
+
+events:
+  # D = trading day, P = previous trading day. Announcement times are MOPS spoke date+time (second precision).
+  POST_REPORT: "a financial_report_approved or self_reported_earnings announcement with spoke time in (P 13:30:00, D 09:00:00]"
+  CONF_START: "an investor conference (conferences table) with start_date == D"
+  POST_CONF: "an investor conference with P <= end_date < D (conference ended on the previous session or the non-trading days before D)"
+  BOARD_DAY: "a board_meeting_scheduled announcement whose parsed meeting_date == D, filed before D"
+  CONTROL: "universe stock-days with none of the four events"
+
+metrics:
+  gap: "open / reference - 1"
+  abs_gap: "|gap|"
+  oc: "close / open - 1 (long at the open, out at the close; gross of costs)"
+  range: "(high - low) / reference"
+  per_1m: "mean oc x 1,000,000 = gross TWD per 1M of buys"
+
+statistics:
+  mean_se: "day-clustered: SE = sqrt(sum_day (sum_i in day (x_i - mean))^2) / n"
+  excess: "event mean minus control mean; SE = sqrt(SE_event^2 + SE_control^2); t = excess / SE"
+  ratios: "sd(oc) event / control, mean abs_gap event / control"
+  halves: "2025 and 2026 reported separately (descriptive consistency)"
+
+decision_per_event:
+  INSUFFICIENT: "fewer than 300 event stock-days"
+  SKIP_SUPPORTED: "excess oc <= -20 bps with t <= -2.0, and the same sign in both halves"
+  SIZE_DOWN_CANDIDATE: "not SKIP_SUPPORTED, and (sd(oc) ratio >= 1.3 or abs_gap ratio >= 1.5)"
+  NO_EFFECT: "otherwise"
+  family_rule: >-
+    No outcome changes production directly. SKIP_SUPPORTED or SIZE_DOWN_CANDIDATE only justifies a separately
+    preregistered forward check on the B1-B3 paper-lane trades from 2026-10-12 onward (>= 60 trading days),
+    comparing event-tagged vs untagged trades at the lanes' own costs. NO_EFFECT -> tags stay informational only.
+
+prohibited:
+  - "changing event definitions, windows, universe, thresholds or metrics after seeing results"
+  - "searching other time windows (e.g. D+2, D-1) on this data and reporting them as confirmatory"
+  - "reading any day after 2026-10-02 or any reserved partition"
+
+known_limitations:
+  - "company list = companies listed on 2026-10-09 (delisted names missing; small for the top-15% liquid universe)"
+  - "conference rows have no announcement timestamp; conferences are pre-announced weeks ahead, so CONF_START/POST_CONF are treated as known in advance"
+  - "announcement categories come from subject text only (no body) for history; some subsidiary filings may be misclassified"
+  - "daily bars cannot show intraday path risk (stop-outs); range is the proxy"
+  - "about 40% of board-meeting notices have no parsable meeting date, so BOARD_DAY is incomplete"
