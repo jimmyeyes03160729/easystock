@@ -63,25 +63,37 @@ def test_evaluate_holds_five_sessions_and_unfilled_limit_up_stays_cash():
     assert s['groups']['p200_claude']['batches'] == 0
 
 
-def test_pick_freezes_once_and_records_failures(tmp_path, monkeypatch):
+SESSIONS20 = ['2026-09-%02d' % d for d in (14, 15, 16, 17, 18, 21, 22, 23, 24, 25, 26, 29, 30)] +     ['2026-10-%02d' % d for d in (1, 2, 5, 6, 7, 8, 12)]
+
+
+def daily_db(path, extra=()):
+    """20 sessions; UNIVERSE stocks flat at their price, plus extra (symbol, close, amount, n_sessions) rows."""
     import sqlite3
-    db = tmp_path / 'daily.sqlite'
-    con = sqlite3.connect(db)
-    con.executescript("CREATE TABLE sessions(day, exchange, status); CREATE TABLE bars(symbol, day, close, amount);"
-                      "INSERT INTO sessions VALUES('2026-10-12','TWSE','open');")
-    con.executemany('INSERT INTO bars VALUES(?,?,?,?)', [(s, '2026-10-12', c, a) for s, (c, a) in UNIVERSE.items()]
-                    + [('2050', '2026-10-12', 350.0, 900_000_000)])                  # liquid but above 200
+    con = sqlite3.connect(path)
+    con.executescript("CREATE TABLE sessions(day, exchange, status); CREATE TABLE ex_rights(symbol, day, previous_close, reference);"
+                      "CREATE TABLE bars(symbol, day, exchange, close, amount);")
+    con.executemany("INSERT INTO sessions VALUES(?, 'TWSE', 'open')", [(d,) for d in SESSIONS20])
+    rows = [(s, d, 'TWSE', c, a) for s, (c, a) in UNIVERSE.items() for d in SESSIONS20]
+    rows += [(s, d, 'TPEx', c, a) for s, c, a, n in extra for d in SESSIONS20[-n:]]
+    con.executemany('INSERT INTO bars VALUES(?,?,?,?,?)', rows)
     con.commit()
     con.close()
+
+
+def test_pick_freezes_once_and_records_failures(tmp_path, monkeypatch):
+    db = tmp_path / 'daily.sqlite'
+    daily_db(db, [('2050', 350.0, 900_000_000, 20)])                                 # liquid but above 200
     monkeypatch.setattr(L, 'OUT_DIR', tmp_path)
     monkeypatch.setattr(L, 'VARIANTS', tuple(L.ALL_VARIANTS.values()))           # both prompts
     monkeypatch.setattr(L, 'DAILY_DB', str(db))
+    monkeypatch.setattr(L.C, 'disposition_symbols', lambda day: {'2019'})
+    monkeypatch.setattr(L.C, 'load_names', lambda path: {'2003': '測試三'})
     reply = '{"picks": [{"symbol": "2001"}, {"symbol": "2002"}]}'
     calls = []
 
     def fake(p):
         calls.append(p)
-        return reply if '200 元' not in p else '{"picks": [{"symbol": "2050"}, {"symbol": "2003"}]}', {}
+        return reply if 'candidates' not in p and '"fields"' not in p else '{"picks": [{"symbol": "2050"}, {"symbol": "2003"}]}', {}
     monkeypatch.setattr(L, 'PROVIDERS', {'openai': (fake, ('X',)),
                                          'claude': (fake, ('X',)),
                                          'gemini': (lambda p: 1 / 0, ('X',))})
@@ -89,18 +101,71 @@ def test_pick_freezes_once_and_records_failures(tmp_path, monkeypatch):
     now = datetime(2026, 10, 13, 8, 0, tzinfo=L.TPE)
     assert L.pick(now, clock=lambda: now.replace(minute=6)) == 0
     data = json.loads((tmp_path / 'picks_2026-10-13.json').read_text(encoding='utf-8'))
-    assert data['prev_session'] == '2026-10-12' and not data['late']
+    assert data['prev_session'] == '2026-10-12' and not data['late'] and data['status_source_ok']
     assert len(calls) == 4                                                            # 2 prompts x 2 models
     assert data['groups']['consensus'] == ['2001', '2002'] and 'gemini' not in data['replies']
     assert data['groups']['p200_consensus'] == ['2003'] and data['invalid']['p200_openai'] == ['2050']
-    assert data['groups']['hot10'][0] == '2050' and '2050' not in data['groups']['p200_hot10']
-    assert set(data['prompts']) == {'main', 'p200'}
+    cand = {r['symbol'] for r in data['candidates']['p200']}
+    assert '2050' not in cand and '2019' not in cand and '2000' not in cand            # >200, disposed, avg 20M
+    assert data['groups']['hot10'][0] == '2050' and set(data['groups']['p200_hot10']) <= cand
+    assert '"測試三"' in data['prompts']['p200'] and '2026-10-13' in data['prompts']['p200']
     assert (tmp_path / 'picks.sha256').read_text().count('picks_2026-10-13.json') == 1
     assert L.pick(now) == 0                                                           # already frozen: untouched
     assert L.pick(datetime(2026, 10, 14, 9, 30, tzinfo=L.TPE)) == 1                   # too late
 
 
+def test_candidates_filter_and_adjust_for_ex_rights(tmp_path):
+    import sqlite3
+    db = tmp_path / 'daily.sqlite'
+    daily_db(db, [('3001', 100.0, 80_000_000, 19), ('3002', 50.0, 60_000_000, 20)])
+    con = sqlite3.connect(db)
+    con.execute("UPDATE bars SET close = 45.0 WHERE symbol = '3002' AND day >= '2026-10-07'")   # 5.0 cash dividend on 10-07
+    con.execute("INSERT INTO ex_rights VALUES('3002', '2026-10-07', 50.0, 45.0)")
+    con.commit()
+    con.close()
+    rows = L.C.build(str(db), '2026-10-12', '2026-10-13', 200.0, {}, set(), 't')
+    by = {r['symbol']: r for r in rows}
+    assert '3001' not in by                                    # only 19 sessions
+    r = by['3002']
+    assert r['exchange'] == 'TPEX' and r['return_5d_pct'] == 0.0 and r['ma20'] == 45.0   # dividend is not a loss
+    assert rows[0]['avg_amount_20d'] >= rows[-1]['avg_amount_20d']
+    assert all(x['trading_status'] == '正常' for x in rows)
+    unknown = L.C.build(str(db), '2026-10-12', '2026-10-13', 200.0, {}, None, 't')
+    assert {x['trading_status'] for x in unknown} == {'未知'}
+    table = json.loads(L.C.as_prompt_json(rows))
+    assert table['fields'][0] == 'symbol' and len(table['rows']) == len(rows)
+    assert table['common']['history_sessions'] == 20 and table['common']['price_date'] == '2026-10-12'
+
+
+def test_disposition_periods_cover_the_entry_day():
+    assert L.C.roc_dates('115/10/08～115/10/15') == ['2026-10-08', '2026-10-15']
+    assert L.C.roc_dates('1151008~1151019') == ['2026-10-08', '2026-10-19']
+
+    class Resp:
+        def __init__(self, rows):
+            self.rows = rows
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.rows
+
+    def get(url, timeout):
+        if 'twse' in url:
+            return Resp([{'Code': '1709', 'DispositionPeriod': '115/10/08～115/10/15'},
+                         {'Code': '1111', 'DispositionPeriod': '115/09/01～115/09/05'}])
+        return Resp([{'SecuritiesCompanyCode': '3441', 'DispositionPeriod': '1151008~1151019'}])
+    assert L.C.disposition_symbols('2026-10-13', get) == {'1709', '3441'}
+
+    def broken(url, timeout):
+        raise L.C.requests.ConnectionError()
+    assert L.C.disposition_symbols('2026-10-13', broken) is None
+
+
 def test_prompt_files_render():
     for _, path, _ in L.ALL_VARIANTS.values():
-        text = path.read_text(encoding='utf-8').format(date='2026-10-12', time='08:00', prev_session='2026-10-08')
+        text = path.read_text(encoding='utf-8').format(date='2026-10-12', time='08:00', prev_session='2026-10-08',
+                                                       entry_session='2026-10-12', cutoff_time='2026-10-12 08:00',
+                                                       candidates_json='{"fields":[],"rows":[]}')
         assert '2026-10-12' in text and '2026-10-08' in text and '{"picks"' in text and '{date}' not in text and '{{' not in text
