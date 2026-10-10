@@ -1,0 +1,44 @@
+# EasyStock OOS Consumption Ledger — DEALER_HEDGE_V1 (preregistered, run once)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "PHASE2_HISTORICAL_DEALER_HEDGE_V1_RUN"
+created_at: "2026-10-10T18:00:00+08:00"
+description: >
+  The single preregistered run of DEALER_HEDGE_V1 (frozen in 3b6bd20) on official daily bars, the per-stock dealer
+  proprietary/hedging split and FinMind TX foreign open interest, 2022-01-03..2026-10-02. Reserved future partitions
+  and days > 2026-10-02 were not read.
+
+consumption_events:
+  - consumption_id: "CNS_DEALER_HEDGE_V1_2022_2026"
+    trial_id: "TRIAL_DEALER_HEDGE_V1"
+    dataset_id: "TWSE_TPEX_DEALER_SPLIT_2022_01_2026_10_02"
+    dataset_family_id: "TWSE_TPEX_INSTITUTIONAL_FLOW"
+    dataset_lineage_id: "LINEAGE_TWSE_TPEX_T86_V1"
+    slice:
+      start_date: "2022-01-03"
+      end_date: "2026-10-02"
+      slice_definition: "DEALER_HEDGE_V1: events 2022-01-28..2026-10-01, DH5/DS5 top decile vs liquid universe and FX5 gate ON vs OFF, DT/H5/H20"
+    role: "OOS"
+    exposure:
+      performance_seen: true
+      labels_seen: true
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: true
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "top-decile, bottom-decile and universe net returns per dealer signal, horizon and year"
+      - "liquid-universe net returns split by the 5-day change of foreign TX net open interest, per horizon and year"
+    consumed_at: "2026-10-10T17:40:00+08:00"
+    record_type: "PREREGISTERED_CONSUMPTION"
+    recorded_after_exposure: true
+    source_artifact: "VM:/home/ubuntu/easystock-research/dealer_hedge_v1/run/research/dealer_hedge_v1/output/easystock_dealer_hedge_v1_20261010.tar.gz (sha256 055d03fae4f20528ca1f96bb8f7a808a3695e6519fa6b715128016046f03f602)"
+    source_commit: "3b6bd20"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Discovery-quality exposure of the dealer split and the TX institutional series for 2022-2026 (FINMIND_TX_INSTITUTIONAL_OI_2021_12_2026_10_02 also consumed); any confirmation must use sessions after 2026-10-02."

@@ -1,4 +1,4 @@
-# EasyStock Research Trial Ledger — PREREGISTERED (frozen before any dealer- or futures-conditioned return is read)
+# EasyStock Research Trial Ledger — PREREGISTERED trial, sealed after its single run (2026-10-10)
 
 trial_id: "TRIAL_DEALER_HEDGE_V1"
 parent_trial_id: "TRIAL_INST_FLOW_V1"
@@ -40,10 +40,23 @@ data:
 exposure_state:
   train_seen: false
   validation_seen: false
-  oos_seen: false
+  oos_seen: true
   future_holdout_seen: false
-  exposed_dimensions: []
-  exposures: []
+  exposed_dimensions:
+    - "per-event top-decile, bottom-decile and universe net returns for DH5 and DS5 at DT/H5/H20 per year, the top-3 DT quota line, and FX5 gate ON/OFF universe returns per horizon and year"
+  exposures:
+    - exposure_id: "EXP_DEALER_HEDGE_V1_2022_2026"
+      dataset_id: "TWSE_TPEX_DEALER_SPLIT_2022_01_2026_10_02"
+      dataset_family_id: "TWSE_TPEX_INSTITUTIONAL_FLOW"
+      dataset_lineage_id: "LINEAGE_TWSE_TPEX_T86_V1"
+      start_date: "2022-01-03"
+      end_date: "2026-10-02"
+      role: "OOS"
+      seen: true
+      exposed_dimensions:
+        - "dealer hedging/proprietary net-buy ratio portfolios and TX foreign OI gate vs next-open entry returns by horizon and year"
+      source_trial_id: "TRIAL_DEALER_HEDGE_V1"
+      first_seen_at: "2026-10-10T17:40:00+08:00"
 
 search:
   parameters_searched:
@@ -56,19 +69,24 @@ search:
 
 governance:
   plan_hash: "PREREGISTRATION_FILE_GIT_BLOB:docs/research_governance/preregistrations/DEALER_HEDGE_V1.yaml"
-  registry_hash: "NOT_YET_RUN"
+  registry_hash: "055d03fae4f20528ca1f96bb8f7a808a3695e6519fa6b715128016046f03f602"
   no_oos_tuning: true
   production_effect: "NONE"
 
 result:
-  status: "IN_PROGRESS"
-  decision: "FROZEN_NOT_RUN"
-  sealed_commit: ""
+  status: "SEALED"
+  decision: "NO_STRONG_RELATIVE_ONLY"
+  sealed_commit: "3b6bd20"
   PRODUCTION_READY: false
   DISCOVERY_DATA_REUSED: true
   INDEPENDENT_CONFIRMATION: false
   FUTURE_CONFIRMATION_UNTOUCHED: true
   notes: >
-    The dealer split is extracted from the INST_FLOW_V1 raw pages and the TX data is fetched from FinMind (five
-    requests) on the VM before the study; only counts and consistency are checked. The study runs once from the
-    merge commit.
+    Frozen rule: no STRONG in 9 tests. DH5 (dealer hedging) DT/H5 RELATIVE_ONLY: excess +0.045% (t 3.1) / +0.156%
+    (t 2.1) but top net -0.456% / -0.274% = -4,563 / -2,735 TWD per 1M; H20 WEAK (top net +0.354%, excess +0.054%,
+    t 0.2). DS5 (dealer proprietary) DT/H5 RELATIVE_ONLY: excess +0.102% (t 7.9) / +0.168% (t 2.6), top net -0.398% /
+    -0.262% = -3,984 / -2,622 TWD per 1M; H20 WEAK: top net +0.751% (+7,507 TWD per 1M per 20 sessions), excess
+    +0.450% t 1.49 (below 2.0 and far below the family-wise 3.0), positive top net in 4/5 years. Quota top-3 DT:
+    -2,950 (DH5) / -3,906 (DS5) TWD per day. FX5 gate (foreign TX net OI 5-day change > 0): DT NO_EDGE (on -0.438%
+    vs off -0.554%, t 1.7), H5 NO_EDGE (t 0.6), H20 WEAK (on +1.466% vs off -0.568%, diff +2.03% t 1.22, 24/32
+    events, 4/5 years positive). 2,302 pages, 1,958,261 stock-days, 0 dealer-split mismatches; TX foreign 1,173 days.
