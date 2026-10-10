@@ -1,0 +1,15 @@
+[Unit]
+Description=EasyStock LLM paper test: score frozen picks against the nightly daily bars
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+Environment=LLM_PAPER_DIR=/home/ubuntu/easystock-llm-paper
+ExecStart=/home/ubuntu/easystock/.venv/bin/python -m llm_paper.run feed
+TimeoutStartSec=300
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
