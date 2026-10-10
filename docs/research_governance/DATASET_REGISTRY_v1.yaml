@@ -468,3 +468,20 @@ datasets:
     parent_dataset_ids: []
     derivation_description: "Foreign, investment-trust and dealer long/short open interest and traded contracts in TX, fetched from the free FinMind API (no token) by research/dealer_hedge_v1/fetch_futures.py; raw responses kept gzipped on the VM. Days after 2026-10-02 are dropped."
     canonical_status: "CANONICAL_PARTITION"
+
+  - dataset_id: "TWSE_0050_DAILY_2022_01_2026_10_02"
+    dataset_family_id: "TWSE_ETF_DAILY_OFFICIAL"
+    dataset_lineage_id: "LINEAGE_TWSE_STOCK_DAY_TWT49U_V1"
+    source: "TWSE_STOCK_DAY_AND_TWT49U_EX_RIGHTS"
+    frequency: "DAILY"
+    market: "TWSE"
+    timezone: "Asia/Taipei"
+    start_date: "2022-01-03"
+    end_date: "2026-10-02"
+    universe_definition: "0050_ONLY"
+    point_in_time_universe: true
+    survivorship_bias: "NONE_SINGLE_ETF"
+    mutable: false
+    parent_dataset_ids: []
+    derivation_description: "0050 open and close from STOCK_DAY (one request per month) and ex-dividend records from TWT49U (one per year), fetched 2026-10-10 by research/revenue_v1/etf0050.py; rows after 2026-10-02 were removed before use. The 2025 1-for-4 split is detected from the price jump."
+    canonical_status: "CANONICAL_PARTITION"

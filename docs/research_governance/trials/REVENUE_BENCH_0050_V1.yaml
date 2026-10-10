@@ -1,0 +1,94 @@
+# EasyStock Research Trial Ledger — Legacy Backfill (descriptive benchmark comparison, 2026-10-10)
+
+trial_id: "TRIAL_REVENUE_BENCH_0050_V1"
+parent_trial_id: "TRIAL_REVENUE_SHORT_V1"
+created_at: "2026-10-10T22:00:00+08:00"
+study_name: "REVENUE_BENCH_0050_V1 sealed revenue event portfolios versus 0050 over the same windows"
+research_stage: "EXPLORATORY"
+ledger_record_type: "LEGACY_BACKFILL"
+recorded_after_experiment: true
+
+provenance:
+  source_classification: "HISTORICAL_REUSE"
+  source_refs:
+    - "research/revenue_v1/rev_bench.py"
+    - "docs/research_governance/trials/REVENUE_DRIFT_V1.yaml"
+    - "docs/research_governance/trials/REVENUE_SHORT_V1.yaml"
+
+hypothesis:
+  statement: "Descriptive: do the sealed S2_SUR decile and TOP10 event portfolios still earn more than 0050 over the same open-to-close windows, after costs?"
+  preregistered: false
+  exploratory: true
+
+objective:
+  spec_version: "OBJECTIVE_FUNCTION_SPEC_v1"
+  primary_metric: "mean_event_net_minus_0050_net"
+  direction: "DESCRIPTIVE"
+  baseline: "0050_SAME_WINDOWS"
+  frozen_before_search: false
+
+data:
+  dataset_id: "TWSE_0050_DAILY_2022_01_2026_10_02"
+  dataset_family_id: "TWSE_ETF_DAILY_OFFICIAL"
+  dataset_lineage_id: "LINEAGE_TWSE_STOCK_DAY_TWT49U_V1"
+  start_date: "2022-01-03"
+  end_date: "2026-10-02"
+  dataset_end: "2026-10-02"
+  universe: "0050_ONLY"
+  discovery_data_reused: true
+  independent_confirmation: false
+
+exposure_state:
+  train_seen: false
+  validation_seen: false
+  oos_seen: true
+  future_holdout_seen: false
+  exposed_dimensions:
+    - "0050 net return over each revenue event window and the difference from the sealed portfolios, per year"
+  exposures:
+    - exposure_id: "EXP_REVENUE_BENCH_0050_2022_2026"
+      dataset_id: "TWSE_0050_DAILY_2022_01_2026_10_02"
+      dataset_family_id: "TWSE_ETF_DAILY_OFFICIAL"
+      dataset_lineage_id: "LINEAGE_TWSE_STOCK_DAY_TWT49U_V1"
+      start_date: "2022-02-01"
+      end_date: "2026-10-02"
+      role: "DESCRIPTIVE"
+      seen: true
+      exposed_dimensions:
+        - "0050 window returns and differences from the sealed event portfolios"
+      source_trial_id: "TRIAL_REVENUE_BENCH_0050_V1"
+      first_seen_at: "2026-10-10T21:30:00+08:00"
+
+search:
+  parameters_searched:
+    - "none (descriptive; six sealed portfolio-horizon series compared with one benchmark)"
+  search_space:
+    series: "S2_SUR decile H5/H10/H15/H20 and TOP10 H10/H15"
+  trial_count: 6
+  post_hoc_changes: false
+
+governance:
+  plan_hash: "a936b1fbc39dd214857c29f57d98b683b0f874b530e94ec87184e7618e6b8c8d"
+  registry_hash: "NOT_APPLICABLE"
+  no_oos_tuning: true
+  production_effect: "NONE"
+
+result:
+  status: "SEALED"
+  decision: "DECILE_BEATS_0050_TOP10_WEAKER"
+  sealed_commit: "d9585ec"
+  PRODUCTION_READY: false
+  DISCOVERY_DATA_REUSED: true
+  INDEPENDENT_CONFIRMATION: false
+  FUTURE_CONFIRMATION_UNTOUCHED: true
+  notes: >
+    Per event (net of costs; 0050 with dividends, the 2025 1-for-4 split and the 0.1% ETF tax), strategy / 0050 /
+    difference (t): decile H5 +1.09% / +0.55% / +0.53% (1.32); H10 +1.65% / +0.68% / +0.97% (2.23); H15 +2.51% /
+    +0.98% / +1.52% (2.79), beats 0050 in 36 of 54 events; H20 +2.98% / +1.64% / +1.34% (1.96). TOP10 H10 +1.31% /
+    +0.68% / +0.63% (1.20); TOP10 H15 +2.18% / +0.98% / +1.19% (1.58). Per 1M TWD invested per event, decile H15
+    +25,079 vs 0050 +9,843. Compounded over the event windows: decile H15 +248% vs 0050 in the same windows +56%;
+    0050 buy-and-hold 2022-02-07 to 2026-10-02 was +257% (dividends and split adjusted), i.e. similar to the
+    decile H15 total while the strategy holds about half of each month. Worst years against 0050: 2022 (decile
+    negative in both) and 2026 for TOP10 (-1.9 / -1.5). Post-hoc and descriptive: the benchmark was added after
+    the sealed results were known; the PASS rules of the parent trials are unchanged. The fetch briefly stored
+    0050 rows up to 2026-10-08 (not read, then deleted before use).
