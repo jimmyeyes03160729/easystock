@@ -36,7 +36,7 @@ data:
   dataset_end: "2022-03-31"
   universe: "LIQUID_COMMON_STOCKS_AT_ENTRY"
   discovery_data_reused: false
-  independent_confirmation: true
+  independent_confirmation: false
 
 exposure_state:
   train_seen: false
@@ -79,7 +79,7 @@ result:
   sealed_commit: "62b981e"
   PRODUCTION_READY: false
   DISCOVERY_DATA_REUSED: false
-  INDEPENDENT_CONFIRMATION: true
+  INDEPENDENT_CONFIRMATION: false
   FUTURE_CONFIRMATION_UNTOUCHED: true
   notes: >
     Run once from 62b981e (84 event months 2015-01..2021-12; 1,803 sessions, 1,871 symbols). Primary S2_SUR H20 is
@@ -88,4 +88,5 @@ result:
     +1.21%). S1_YOY H20 is also STRONG (+1.429%, excess +0.725%, t 2.05). S2_SUR H5 is RELATIVE_ONLY (net -0.077%,
     excess +0.348%, t 2.91); DT lines are NO_EDGE. Missing exits: H5 20, H20 40 (last close used). Bundle sha256
     ae1aad4c. Matches the parent (2022-2026 S2_SUR H20 excess +1.88%) on never-seen history; still not production:
-    forward confirmation REVENUE_FORWARD_V1 decides.
+    forward confirmation REVENUE_FORWARD_V1 decides. The slice was unseen before this run (out-of-sample replication);
+    the ledger flags independent_confirmation false because the slice is now exposed.
