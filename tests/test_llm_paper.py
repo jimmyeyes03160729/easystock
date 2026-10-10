@@ -34,7 +34,8 @@ def test_groups_consensus_majority_and_baselines():
 
 def test_default_providers_are_chatgpt_and_claude():
     assert L.MODELS == ('openai', 'claude')
-    assert L.GROUPS == ('openai', 'claude', 'consensus', 'hot10', 'random5')
+    assert L.GROUPS == ('openai', 'claude', 'consensus', 'hot10', 'random5',
+                        'p200_openai', 'p200_claude', 'p200_consensus', 'p200_hot10', 'p200_random5')
 
 
 def bar(o, c, ref=None):
@@ -67,21 +68,31 @@ def test_pick_freezes_once_and_records_failures(tmp_path, monkeypatch):
     con = sqlite3.connect(db)
     con.executescript("CREATE TABLE sessions(day, exchange, status); CREATE TABLE bars(symbol, day, close, amount);"
                       "INSERT INTO sessions VALUES('2026-10-12','TWSE','open');")
-    con.executemany('INSERT INTO bars VALUES(?,?,?,?)', [(s, '2026-10-12', c, a) for s, (c, a) in UNIVERSE.items()])
+    con.executemany('INSERT INTO bars VALUES(?,?,?,?)', [(s, '2026-10-12', c, a) for s, (c, a) in UNIVERSE.items()]
+                    + [('2050', '2026-10-12', 350.0, 900_000_000)])                  # liquid but above 200
     con.commit()
     con.close()
     monkeypatch.setattr(L, 'OUT_DIR', tmp_path)
     monkeypatch.setattr(L, 'DAILY_DB', str(db))
     reply = '{"picks": [{"symbol": "2001"}, {"symbol": "2002"}]}'
-    monkeypatch.setattr(L, 'PROVIDERS', {'openai': (lambda p: (reply, {}), ('X',)),
-                                         'claude': (lambda p: (reply, {}), ('X',)),
+    calls = []
+
+    def fake(p):
+        calls.append(p)
+        return reply if '200 元' not in p else '{"picks": [{"symbol": "2050"}, {"symbol": "2003"}]}', {}
+    monkeypatch.setattr(L, 'PROVIDERS', {'openai': (fake, ('X',)),
+                                         'claude': (fake, ('X',)),
                                          'gemini': (lambda p: 1 / 0, ('X',))})
     monkeypatch.setattr(L, 'env', lambda *k, default='': 'k')
     now = datetime(2026, 10, 13, 8, 0, tzinfo=L.TPE)
     assert L.pick(now, clock=lambda: now.replace(minute=6)) == 0
     data = json.loads((tmp_path / 'picks_2026-10-13.json').read_text(encoding='utf-8'))
     assert data['prev_session'] == '2026-10-12' and not data['late']
+    assert len(calls) == 4                                                            # 2 prompts x 2 models
     assert data['groups']['consensus'] == ['2001', '2002'] and 'gemini' not in data['replies']
+    assert data['groups']['p200_consensus'] == ['2003'] and data['invalid']['p200_openai'] == ['2050']
+    assert data['groups']['hot10'][0] == '2050' and '2050' not in data['groups']['p200_hot10']
+    assert set(data['prompts']) == {'main', 'p200'}
     assert (tmp_path / 'picks.sha256').read_text().count('picks_2026-10-13.json') == 1
     assert L.pick(now) == 0                                                           # already frozen: untouched
     assert L.pick(datetime(2026, 10, 14, 9, 30, tzinfo=L.TPE)) == 1                   # too late

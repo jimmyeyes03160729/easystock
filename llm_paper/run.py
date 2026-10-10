@@ -10,6 +10,8 @@
 - 組別：各家各自、consensus（所有啟用的 AI 都成功且都選）、majority2（啟用三家以上時才有：至少兩家選）、
   hot10（前一交易日成交金額前 10 名）、random5（前一日成交額 >= 5000 萬、股價 >= 10 元中依日期固定亂數抽 5 檔）。
   LLM 組要贏 hot10 與 random5 才算有東西；只贏大盤不算。
+- 第二份提示詞 p200（2026-10-10 第一批之前加入，使用者本金 20 萬）：只收前一日收盤 <= 200 元的股票，
+  超過的回答記為 invalid；組別加上 p200_ 前綴，hot10 / random5 也只從 <= 200 元的股票挑。
 不下單，只做紙上記錄。
 """
 import argparse
@@ -40,7 +42,10 @@ MIN_AMOUNT, MIN_PRICE = 50_000_000, 10.0
 CAPITAL = 1_000_000
 LATEST_FREEZE = '08:55'
 MODELS = tuple(m for m in os.environ.get('LLM_PAPER_PROVIDERS', 'openai,claude').split(',') if m in PROVIDERS)
-GROUPS = MODELS + ('consensus',) + (('majority2',) if len(MODELS) > 2 else ()) + ('hot10', 'random5')
+BASE_GROUPS = MODELS + ('consensus',) + (('majority2',) if len(MODELS) > 2 else ()) + ('hot10', 'random5')
+# (group prefix, prompt file, max previous close)
+VARIANTS = (('', PROMPT_FILE, None), ('p200_', Path(__file__).with_name('prompt_p200.txt'), 200.0))
+GROUPS = tuple(v + g for v, _, _ in VARIANTS for g in BASE_GROUPS)
 
 
 def parse_symbols(text, universe):
@@ -106,29 +111,34 @@ def pick(now, force=False, clock=lambda: datetime.now(TPE)):
         print('too late to freeze before the open:', now.isoformat())
         return 1
     prev, universe = previous_universe(DAILY_DB, today)
-    prompt = PROMPT_FILE.read_text(encoding='utf-8').format(date=today, time=now.strftime('%H:%M'), prev_session=prev)
-    active = {m: PROVIDERS[m][0] for m in MODELS if env(*PROVIDERS[m][1])}
+    prompts = {v: f.read_text(encoding='utf-8').format(date=today, time=now.strftime('%H:%M'), prev_session=prev)
+               for v, f, _ in VARIANTS}
+    jobs = [(v, m) for v, _, _ in VARIANTS for m in MODELS if env(*PROVIDERS[m][1])]
 
-    def ask(item):
-        m, fn = item
+    def ask(job):
+        v, m = job
         try:
-            text, meta = fn(prompt)
-            return m, {'ok': True, 'text': text, 'meta': meta}
+            text, meta = PROVIDERS[m][0](prompts[v])
+            return v + m, {'ok': True, 'text': text, 'meta': meta}
         except Exception as exc:  # noqa: BLE001  (a failed provider is recorded, the others still run)
-            return m, {'ok': False, 'error': str(exc)[:500]}
-    with ThreadPoolExecutor(3) as pool:
-        replies = dict(pool.map(ask, active.items()))
-    for m in MODELS:
-        replies.setdefault(m, {'ok': False, 'error': 'no API key configured'})
-    model_picks, invalid = {}, {}
-    for m, r in replies.items():
-        if r['ok']:
-            model_picks[m], invalid[m] = parse_symbols(r['text'], universe)
+            return v + m, {'ok': False, 'error': str(exc)[:500]}
+    with ThreadPoolExecutor(max(1, len(jobs))) as pool:
+        replies = dict(pool.map(ask, jobs))
+    groups, invalid = {}, {}
+    for v, _, max_price in VARIANTS:
+        uni = {s: ca for s, ca in universe.items() if max_price is None or ca[0] <= max_price}
+        model_picks = {}
+        for m in MODELS:
+            r = replies.setdefault(v + m, {'ok': False, 'error': 'no API key configured'})
+            if r['ok']:
+                model_picks[m], invalid[v + m] = parse_symbols(r['text'], uni)
+        groups.update({v + g: syms for g, syms in build_groups(model_picks, uni, today).items()})
     now_done = clock()
     data = {'rules_version': RULES_VERSION, 'day': today, 'prev_session': prev, 'asked_at': now.isoformat(timespec='seconds'),
             'frozen_at': now_done.isoformat(timespec='seconds'), 'late': now_done >= now.replace(hour=9, minute=0, second=0, microsecond=0),
-            'prompt_sha256': hashlib.sha256(prompt.encode('utf-8')).hexdigest(), 'prompt': prompt,
-            'groups': build_groups(model_picks, universe, today), 'invalid': invalid,
+            'prompt_sha256': {v.rstrip('_') or 'main': hashlib.sha256(p.encode('utf-8')).hexdigest() for v, p in prompts.items()},
+            'prompts': {v.rstrip('_') or 'main': p for v, p in prompts.items()},
+            'groups': groups, 'invalid': invalid,
             'replies': replies}
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write_frozen(path, data)
