@@ -1,0 +1,43 @@
+# EasyStock OOS Consumption Ledger — REVENUE_BENCH_0050_V1 (descriptive benchmark comparison)
+
+schema_version: "OOS_CONSUMPTION_LEDGER_SCHEMA_v1"
+ledger_name: "PHASE2_HISTORICAL_REVENUE_BENCH_0050_V1_RUN"
+created_at: "2026-10-10T22:00:00+08:00"
+description: >
+  Descriptive comparison of the sealed revenue event portfolios with 0050 over the same windows (rev_bench.py, merged in
+  d9585ec). Only 0050 daily bars and ex-dividend records up to 2026-10-02 were used; the sealed portfolio series were not
+  recomputed. Reserved future partitions were not read.
+
+consumption_events:
+  - consumption_id: "CNS_REVENUE_BENCH_0050_2022_2026"
+    trial_id: "TRIAL_REVENUE_BENCH_0050_V1"
+    dataset_id: "TWSE_0050_DAILY_2022_01_2026_10_02"
+    dataset_family_id: "TWSE_ETF_DAILY_OFFICIAL"
+    dataset_lineage_id: "LINEAGE_TWSE_STOCK_DAY_TWT49U_V1"
+    slice:
+      start_date: "2022-02-01"
+      end_date: "2026-10-02"
+      slice_definition: "0050 open-to-close returns over each revenue event window of the sealed portfolios"
+    role: "DESCRIPTIVE"
+    exposure:
+      performance_seen: true
+      labels_seen: false
+      aggregate_metrics_seen: true
+      subgroup_results_seen: true
+      parameter_selection_influenced: false
+      research_direction_influenced: false
+      human_seen: true
+      ai_seen: true
+    exposure_level: "LEVEL_3_SUBGROUP_RESULTS_SEEN"
+    dimensions_seen:
+      - "0050 window returns by horizon and year; differences from the sealed event portfolios"
+    consumed_at: "2026-10-10T21:30:00+08:00"
+    record_type: "LEGACY_BACKFILL"
+    recorded_after_exposure: true
+    source_artifact: "VM:/home/ubuntu/easystock-research/revenue_v1/output_bench/easystock_revenue_bench_0050_20261010.tar.gz (sha256 a936b1fbc39dd214857c29f57d98b683b0f874b530e94ec87184e7618e6b8c8d)"
+    source_commit: "d9585ec"
+    governance:
+      pristine_before: false
+      pristine_after: false
+      independent_confirmation_eligible_after: false
+      notes: "Benchmark only; the forward revenue test should also report 0050 as a secondary comparison."
