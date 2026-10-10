@@ -187,3 +187,24 @@ def test_names_come_from_exchange_quote_apis(tmp_path):
             return Resp([{'Code': '2303', 'Name': '聯電'}])
         raise L.C.requests.ConnectionError()                      # TPEx down: keep what we have
     assert L.C.load_names(tmp_path / 'missing.sqlite', get) == {'2303': '聯電'}
+
+
+def test_batch_detail_shows_names_reasons_and_failures():
+    batch = {'day': '2026-10-13', 'frozen_at': '2026-10-13T08:04:00+08:00',
+             'candidates': {'p200': [{'symbol': '2303', 'name': '聯電'}]},
+             'groups': {'p200_openai': ['2303', '2409'], 'p200_claude': [], 'p200_consensus': [], 'p200_hot10': ['2303'],
+                        'p200_random5': []},
+             'invalid': {'p200_openai': ['9999']},
+             'replies': {'p200_openai': {'ok': True, 'meta': {'model': 'gpt-6.1-sol'},
+                                         'text': '{"picks":[{"symbol":"2303","name":"x","reason":"理由A"},'
+                                                 '{"symbol":"2409","name":"友達","reason":"理由B"}]}'},
+                         'p200_claude': {'ok': False, 'error': 'HTTP 529: overloaded'}}}
+    ev = {'status': 'holding', 'exit_day': '2026-10-19', 'mark_day': '2026-10-14',
+          'groups': {'p200_openai': {'positions': {'2303': 1.5}, 'unfilled': ['2409'], 'net_pct': 0.75}}}
+    d = L.batch_detail(batch, ev)
+    gpt = d['models']['openai']
+    assert gpt['model'] == 'gpt-6.1-sol' and gpt['invalid'] == ['9999']
+    assert gpt['picks'][0] == {'symbol': '2303', 'name': '聯電', 'reason': '理由A', 'net_pct': 1.5, 'filled': True}
+    assert gpt['picks'][1]['name'] == '友達' and gpt['picks'][1]['filled'] is False
+    assert d['models']['claude']['ok'] is False and 'overloaded' in d['models']['claude']['error']
+    assert d['groups']['openai']['net_pct'] == 0.75 and d['groups']['hot10']['symbols'] == ['2303']

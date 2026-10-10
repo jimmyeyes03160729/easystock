@@ -412,7 +412,8 @@
       <nav class="hidden lg:flex min-w-0 flex-1 items-center justify-center gap-0.5 bg-[#131A26] p-1 rounded-xl border border-[#232F42] text-xs font-semibold section-nav overflow-hidden" style="border-bottom:none; margin-bottom:0; padding:4px;" aria-label="首頁區域">
         <a href="#intraday-strategies" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#F1F5F9] hover:bg-[#1C2B3C] transition-colors whitespace-nowrap">01 盤中摸魚</a>
         <a href="#short-term" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">02 短期持股</a>
-        <a href="#learningSection" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">03 牛馬 AI 加班進修</a>
+        <a href="#ai-picks" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">03 AI 選股</a>
+        <a href="#learningSection" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">04 牛馬 AI 加班進修</a>
         <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">社畜後台 ↗</a>
       </nav>
 
@@ -465,7 +466,8 @@
   <nav class="section-nav lg:hidden" aria-label="首頁行動區域">
     <a href="#intraday-strategies">01 盤中摸魚</a>
     <a href="#short-term">02 短期持股</a>
-    <a href="#learningSection">03 牛馬 AI 加班進修</a>
+    <a href="#ai-picks">03 AI 選股</a>
+    <a href="#learningSection">04 牛馬 AI 加班進修</a>
     <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener">社畜後台 ↗</a>
   </nav>
 
@@ -787,9 +789,44 @@
     </details>
   </section>
 
+  <!-- =====================================================
+       03 AI 選股（ChatGPT／Claude 紙上測試）
+       ===================================================== -->
+  <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]" id="ai-picks">
+    <div class="flex items-center gap-2">
+      <span class="h-6 w-6 rounded-md bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#A78BFA] font-mono text-xs font-bold">03</span>
+      <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9]">AI 選股 · 200 元以內</h2>
+    </div>
+    <span class="text-xs text-[#64748B]">ChatGPT × Claude · 每個開盤日 08:00 · 持有 5 個交易日</span>
+  </div>
+
+  <section id="aiPicksModule" class="panel bg-[#131A26] border border-[#232F42] rounded-2xl p-4 shadow-sm mb-8" aria-labelledby="aiPicksTitle">
+    <div class="flex items-start justify-between gap-4 border-b border-[#232F42] pb-3">
+      <div>
+        <h2 id="aiPicksTitle" class="text-sm font-bold text-[#F1F5F9] m-0">今天的 AI 選股</h2>
+        <p class="text-xs text-[#64748B] mt-1">程式從官方日線挑出收盤 200 元以內、20 日均成交額 5,000 萬以上、非處置股的候選名單，ChatGPT 和 Claude 各自上網查新聞後最多選 5 檔。當天開盤買進，第 5 個交易日收盤賣出。</p>
+      </div>
+      <button class="btn share-btn flex items-center gap-1 px-2.5 py-1 rounded bg-[#1C2B3C] hover:bg-[#273647] text-[#F1F5F9] text-xs flex-shrink-0" type="button" data-share-ignore onclick="prepareModuleShare('aiPicksModule','AI 選股')">
+        <span class="material-symbols-outlined text-[13px]">share</span> 分享圖片 ↗
+      </button>
+    </div>
+    <div class="flex items-center justify-end flex-wrap gap-2 my-2.5 font-mono text-xs sm:text-[13px]">
+      <div class="px-3 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 text-xs font-semibold">紙上追蹤 · 不下單 · 尚未證明有效</div>
+    </div>
+    <p id="aiPicksStatus" role="status" aria-live="polite" class="text-xs text-[#64748B] font-medium">等待 AI 選股資料…</p>
+    <div id="aiPicksCards" class="mt-3"></div>
+    <div id="aiPicksRecord" class="mt-4 pt-3 border-t border-[#232F42]"></div>
+    <details class="mt-3 p-3.5 rounded-xl bg-[#0D1C2D] border border-[#232F42]/60 text-xs sm:text-[13px] text-[#64748B] leading-relaxed">
+      <summary class="cursor-pointer font-bold text-[#F1F5F9] hover:text-[#06B6D4]">怎麼算、怎麼判斷</summary>
+      <p class="mt-2.5"><strong>計分：</strong>每家每天的選股當作一筆 100 萬平均分配，開盤價買進（開盤漲停買不到就留現金），第 5 個交易日收盤賣出，扣手續費與證交稅。名單在 09:00 開盤前凍結，之後不改。</p>
+      <p class="mt-1.5"><strong>對照組：</strong>從同一份候選名單取「前一天成交金額前 10 名」（熱門股）與「依日期固定亂數抽 5 檔」（隨機股）。AI 常選到熱門股，所以要同時贏過這兩組，才代表它真的會選。</p>
+      <p class="mt-1.5"><strong>判斷時機：</strong>至少累積 40 批（約兩個月）再看。在那之前的輸贏多半是運氣。</p>
+    </details>
+  </section>
+
   <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]">
     <div class="flex items-center gap-2.5">
-      <span class="h-7 w-7 rounded-lg bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#F59E0B] font-mono text-xs font-bold shadow-sm">03</span>
+      <span class="h-7 w-7 rounded-lg bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#F59E0B] font-mono text-xs font-bold shadow-sm">04</span>
       <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9]">☕ 牛馬 AI 加班進修打卡室</h2>
       <span class="px-2.5 py-1 rounded-full bg-[#1C2B3C] text-[#10B981] font-mono text-xs font-semibold border border-[#10B981]/30">收盤覆盤 · 離職基金</span>
     </div>
@@ -5353,6 +5390,7 @@
 <script src="assets/mobile-nav.js?v=ed9c7d1d0f6c"></script>
 <script src="assets/revenue-observation.js?v=2c059febec26"></script>
 <script src="assets/short-term.js?v=5f5f867c7dbd"></script>
+<script src="assets/ai-picks.js?v=18da24857e80"></script>
 <script src="assets/b-lanes-replay.js?v=ea6b415dae32"></script>
 </body>
 </html>
