@@ -8,7 +8,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-  <link rel="stylesheet" href="assets/dashboard-ux.css?v=fc2dae56be79" />
+  <link rel="stylesheet" href="assets/dashboard-ux.css?v=39f21310759a" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 
@@ -107,6 +107,8 @@
     .section-heading h2 { font-size:18px; font-weight:750; letter-spacing:-.02em; color:var(--main); }
     .section-heading h2 span { font-size:inherit!important; font-family:inherit!important; color:inherit!important; font-weight:inherit!important; }
     .section-heading > span { color:var(--muted); font-size:11px; font-family:"JetBrains Mono",monospace; }
+    .section-heading > div { flex-wrap:wrap; row-gap:6px; min-width:0; }
+    .section-heading .rounded-full { white-space:nowrap; flex:none; }
     .overview-grid { display:grid; grid-template-columns:minmax(220px,1fr) minmax(0,3fr); gap:18px; margin-bottom:26px; }
     .workspace section.panel,.overview-grid > .panel,.strategy-grid > .panel { border-radius:12px; padding:20px; }
     .overview-grid h2 { font-size:17px; }
@@ -5383,12 +5385,12 @@
 <nav class="mobile-bottom-nav" aria-label="手機主導覽">
   <a href="#intraday-strategies" aria-label="盤中摸魚" aria-current="location"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span><span>盤中摸魚</span></a>
   <a href="#short-term" aria-label="短期持股"><span class="material-symbols-outlined" aria-hidden="true">trending_up</span><span>短期持股</span></a>
+  <a href="#ai-picks" aria-label="AI 選股"><span class="material-symbols-outlined" aria-hidden="true">smart_toy</span><span>AI 選股</span></a>
   <a href="#learningSection" aria-label="牛馬 AI"><span class="material-symbols-outlined" aria-hidden="true">psychology</span><span>牛馬 AI</span></a>
-  <a href="#chrome-tools" aria-label="小工具"><span class="material-symbols-outlined" aria-hidden="true">extension</span><span>小工具</span></a>
   <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" aria-label="社畜後台" target="_blank" rel="noopener"><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span><span>社畜後台</span></a>
 </nav>
 <script src="assets/mobile-nav.js?v=ed9c7d1d0f6c"></script>
-<script src="assets/revenue-observation.js?v=2c059febec26"></script>
+<script src="assets/revenue-observation.js?v=c1040fe37c1d"></script>
 <script src="assets/short-term.js?v=5f5f867c7dbd"></script>
 <script src="assets/ai-picks.js?v=18da24857e80"></script>
 <script src="assets/b-lanes-replay.js?v=ea6b415dae32"></script>

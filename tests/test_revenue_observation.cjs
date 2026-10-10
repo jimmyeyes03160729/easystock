@@ -12,7 +12,8 @@ const row={symbol:'2330',name:'<img onerror="bad">',subject:'<script>bad</script
 const waiting=ui.table({rows:[row]});
 assert(!waiting.includes('<script>') && !waiting.includes('<img'));
 assert(waiting.includes('等待收盤'));
-assert(waiting.includes('<td>—</td></tr>'));
+assert(/>—<\/td><\/tr>/.test(waiting));
+assert(waiting.includes('<strong>2330 &lt;img'));
 const done=ui.table({rows:[{...row,status:'complete',outcome:{open:100,high:105,low:98,close:102,open_pct:0,high_pct:5,low_pct:-2,close_pct:2,open_to_close_pct:2}}]});
 assert(done.includes('+2.00%') && done.includes('-2.00%'));
 assert(ui.summary({summary:{total:1,complete:0,up_rate:null,mean_close_pct:null}}).includes('—'));
