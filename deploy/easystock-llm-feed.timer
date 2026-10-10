@@ -1,0 +1,12 @@
+[Unit]
+Description=EasyStock LLM paper test: score after the nightly daily-bar collector
+
+[Timer]
+OnCalendar=*-*-* 01:50:00 Asia/Taipei
+OnCalendar=*-*-* 08:20:00 Asia/Taipei
+Persistent=true
+RandomizedDelaySec=30
+Unit=easystock-llm-feed.service
+
+[Install]
+WantedBy=timers.target

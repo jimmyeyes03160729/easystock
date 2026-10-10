@@ -1,0 +1,16 @@
+[Unit]
+Description=EasyStock LLM paper test: freeze ChatGPT/Claude/Gemini short-term picks before the open
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+Environment=LLM_PAPER_DIR=/home/ubuntu/easystock-llm-paper
+ExecCondition=/home/ubuntu/easystock/.venv/bin/python market_calendar.py --check-today
+ExecStart=/home/ubuntu/easystock/.venv/bin/python -m llm_paper.run pick
+TimeoutStartSec=900
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true

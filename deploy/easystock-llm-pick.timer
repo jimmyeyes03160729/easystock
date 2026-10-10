@@ -1,0 +1,10 @@
+[Unit]
+Description=EasyStock LLM paper test: pre-open picks on weekdays (the service skips closed days)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 08:00:00 Asia/Taipei
+Persistent=false
+Unit=easystock-llm-pick.service
+
+[Install]
+WantedBy=timers.target
