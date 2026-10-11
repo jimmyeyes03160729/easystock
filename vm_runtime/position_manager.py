@@ -6,8 +6,9 @@ Paper research positions and daily BUY limit execution
 
 from __future__ import annotations
 import math
+import os
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, time
 
 try:
     from easystock_admin.store import (
@@ -107,7 +108,12 @@ class PositionManager:
     不呼叫 Shioaji Order / Deal。
     """
 
-    ENTRY_START = time(9, 30)
+    _entry_start_env = os.environ.get('LIVE_ENTRY_START', '09:15')
+    try:
+        _sh, _sm = map(int, _entry_start_env.split(':'))
+        ENTRY_START = time(_sh, _sm)
+    except Exception:
+        ENTRY_START = time(9, 15)
     ENTRY_CUTOFF = time(12, 30)
     FORCE_EXIT_TIME = time(12, 55)
     DAYTRADE_END = time(13, 0)

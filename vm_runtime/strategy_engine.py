@@ -462,7 +462,8 @@ def evaluate_daytrade(
     rows5,
     rows15,
     stock=None,
-    market_level="YELLOW"
+    market_level="YELLOW",
+    market_regime=None,
 ):
 
     stock = stock or {}
@@ -821,7 +822,7 @@ def evaluate_daytrade(
     if (
         vwap
         and close
-        < vwap * 0.998
+        < vwap
     ):
 
         vetoes.append(
@@ -838,6 +839,13 @@ def evaluate_daytrade(
 
         vetoes.append(
             "距VWAP過遠"
+        )
+
+
+    buy_ratio = num(stock.get("buy_ratio_60s"))
+    if buy_ratio is not None and buy_ratio < 0.50:
+        vetoes.append(
+            "主動買盤佔比不足"
         )
 
 
@@ -881,6 +889,13 @@ def evaluate_daytrade(
 
         vetoes.append(
             "市場紅燈"
+        )
+
+
+    if market_regime == "FADE" or stock.get("market_regime") == "FADE" or stock.get("fade_detected"):
+
+        vetoes.append(
+            "大盤開高走低出貨盤"
         )
 
 

@@ -95,7 +95,12 @@ from strategy_engine import evaluate_daytrade, clamp, MAX_ROUNDTRIP_COST_PCT
 
 TPE = timezone(timedelta(hours=8))
 
-ENTRY_START = dtime(9, 30)
+_entry_start_env = os.environ.get('LIVE_ENTRY_START', '09:15')
+try:
+    _esh, _esm = map(int, _entry_start_env.split(':'))
+    ENTRY_START = dtime(_esh, _esm)
+except Exception:
+    ENTRY_START = dtime(9, 15)
 ENTRY_CUTOFF = dtime(12, 30)
 FORCE_EXIT_TIME = dtime(12, 55)
 DAYTRADE_END = dtime(13, 0)
@@ -409,30 +414,31 @@ LOOP_SLEEP_SECONDS = max(
 STOP_LOSS_PCT = float(
     os.environ.get(
         "LIVE_STOP_LOSS_PCT",
-        "0.008",
+        "0.018",
     )
 )
 
 TAKE_PROFIT_PCT = float(
     os.environ.get(
         "LIVE_TAKE_PROFIT_PCT",
-        "0.012",
+        "0.045",
     )
 )
 
 TRAILING_ACTIVATE_PCT = float(
     os.environ.get(
         "LIVE_TRAILING_ACTIVATE_PCT",
-        "0.006",
+        "0.025",
     )
 )
 
 TRAILING_PULLBACK_PCT = float(
     os.environ.get(
         "LIVE_TRAILING_PULLBACK_PCT",
-        "0.004",
+        "0.008",
     )
 )
+
 
 MIN_WARM_5M_BARS = int(
     os.environ.get(
@@ -1070,10 +1076,10 @@ def build_position_manager() -> PositionManager:
         allow_reentry=False,
         research_mode=True,
         exit_mode=os.environ.get('LIVE_EXIT_MODE', 'hybrid'),
-        breakeven_activate_pct=float(os.environ.get('LIVE_BREAKEVEN_ACTIVATE_PCT', '.006')),
-        breakeven_floor_pct=float(os.environ.get('LIVE_BREAKEVEN_FLOOR_PCT', '.0035')),
+        breakeven_activate_pct=float(os.environ.get('LIVE_BREAKEVEN_ACTIVATE_PCT', '.015')),
+        breakeven_floor_pct=float(os.environ.get('LIVE_BREAKEVEN_FLOOR_PCT', '.006')),
         technical_exit_enabled=os.environ.get('LIVE_TECHNICAL_EXIT_ENABLED', '1') == '1',
-        cost_aware_breakeven=os.environ.get('LIVE_COST_AWARE_BREAKEVEN', '0') == '1',
+        cost_aware_breakeven=os.environ.get('LIVE_COST_AWARE_BREAKEVEN', '1') == '1',
     )
 
 
@@ -3985,6 +3991,7 @@ class IntradayLiveEngine:
                 symbol
             ),
             market_level=self.market_level,
+            market_regime=getattr(self, 'market_gate', {}).get('market_regime'),
         )
 
         # 秒級 ENTRY 時，事件價格應優先使用最新 Tick，
@@ -4082,6 +4089,12 @@ class IntradayLiveEngine:
             self._entry_reject(symbol, 'outside_entry_window', strategy_time.strftime('%H:%M:%S'))
             return
 
+        if getattr(self, 'market_gate', {}).get('fade_detected', False):
+            self._entry_reject(symbol, 'market_regime_fade',
+                               f"fade_reason={getattr(self, 'market_gate', {}).get('fade_reason', 'market_regime_fade')}")
+            self.manager.observe_entry_predicate(symbol, False, strategy_time)
+            return
+
         if getattr(self, 'market_gate', {}).get('gate_action', 'PASS') != 'PASS' or now_tpe().timestamp() > self.market_valid_until:
             gate = getattr(self, 'market_gate', {})
             reason = ('market_risk_red' if gate.get('gate_reason') == 'market_risk_red'
@@ -4156,10 +4169,15 @@ class IntradayLiveEngine:
         try:
             limits = read_live_settings()
             gain = (price / previous_close - 1) * 100 if previous_close else None
-            if gain is None or not limits['min_price'] <= price <= limits['max_price'] or gain > limits['max_gain_pct']:
+            min_gain = float(os.environ.get('LIVE_MIN_GAIN_PCT', '1.5'))
+            max_gain = min(float(os.environ.get('LIVE_MAX_GAIN_PCT', '4.0')), float(limits.get('max_gain_pct', 8.5)))
+            if gain is None or not limits['min_price'] <= price <= limits['max_price'] or not (min_gain <= gain <= max_gain):
                 gain_text = '-' if gain is None else f'{gain:+.2f}%'
-                self._entry_reject(symbol, 'user_limits' if gain is not None else 'previous_close_missing',
-                                   f'price={price:.2f} gain={gain_text}')
+                reject_reason = ('user_limits' if gain is not None and (price < limits['min_price'] or price > limits['max_price'] or gain > limits.get('max_gain_pct', 8.5))
+                                 else 'gain_outside_breakout_range' if gain is not None
+                                 else 'previous_close_missing')
+                self._entry_reject(symbol, reject_reason,
+                                   f'price={price:.2f} gain={gain_text} range=[+{min_gain:.1f}%, +{max_gain:.1f}%]')
                 self.manager.observe_entry_predicate(symbol, False, strategy_time)
                 return
         except Exception as exc:

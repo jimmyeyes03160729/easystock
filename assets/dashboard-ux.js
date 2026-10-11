@@ -7,7 +7,7 @@
     const ms = Date.parse(at);
     return Number.isFinite(ms) ? new Date(ms).toLocaleString('zh-TW', {timeZone:'Asia/Taipei', hour12:false}) + '（台北）' : '尚未取得有效時間';
   }
-  const MODEL_PAUSED = '跑道 A 暫停進場：模型未就緒（已過期或未載入），正在改版為「跑道 B 的過濾器」並以歷史與前瞻資料驗證；不切換策略或放寬條件。';
+  const MODEL_PAUSED = '跑道 A：模型維護中（待收盤訓練晉升）；大盤出貨過濾與做多突破風控規則常態運行。';
   function emptyReason({live = {}, health = {}, filtered = false, now = Date.now()} = {}) {
     if (!health.current) return health.message || '尚無有效快照，無法確認訊號原因。';
     if (filtered) return '目前紀錄被股價 / 單張預算篩選隱藏；請清除篩選。篩選不會改變交易設定。';

@@ -50,13 +50,46 @@ def snapshot_risk(snapshot, now, *, source='shioaji', max_age=90, yellow_pct=-1.
         if observed.date() != now.astimezone(TPE).date() or not 0 <= age <= max_age:
             return dict(source=source, level='UNKNOWN', valid=False, data_health='STALE',
                         reason='index_quote_missing_or_stale', observed_at=observed.isoformat(),
-                        age_seconds=round(age, 2))
+                        age_seconds=round(age, 2), fade_detected=False, regime='UNKNOWN')
+
+        # 開高走低出貨盤態判定 (Market Regime Fade)
+        high_change = get('high_change_rate')
+        open_change = get('open_change_rate')
+        high_val = get('high')
+        open_val = get('open')
+        ref_val = get('reference') or get('yesterday_close')
+        if high_change is None and high_val is not None and ref_val is not None:
+            try:
+                if float(ref_val) > 0:
+                    high_change = (float(high_val) / float(ref_val) - 1.0) * 100.0
+            except (ValueError, TypeError, ZeroDivisionError):
+                pass
+        if open_change is None and open_val is not None and ref_val is not None:
+            try:
+                if float(ref_val) > 0:
+                    open_change = (float(open_val) / float(ref_val) - 1.0) * 100.0
+            except (ValueError, TypeError, ZeroDivisionError):
+                pass
+
+        fade_detected = False
+        fade_reason = None
+        if high_change is not None and math.isfinite(high_change):
+            if high_change >= 0.3 and (change <= 0.0 or (high_change - change) >= 0.5):
+                fade_detected = True
+                fade_reason = f'high_fade:+{high_change:.2f}%_to_{change:+.2f}%'
+        elif open_change is not None and math.isfinite(open_change):
+            if open_change >= 0.3 and change <= 0.0:
+                fade_detected = True
+                fade_reason = f'open_fade:+{open_change:.2f}%_to_{change:+.2f}%'
+
         return dict(source=source, level='RED' if change <= red_pct else 'YELLOW' if change <= yellow_pct else 'GREEN',
                     valid=True, data_health='HEALTHY', observed_at=observed.isoformat(),
-                    age_seconds=round(age, 2), change_pct=change, reason='index_snapshot')
+                    age_seconds=round(age, 2), change_pct=change, reason='index_snapshot',
+                    fade_detected=fade_detected, fade_reason=fade_reason,
+                    regime='FADE' if fade_detected else 'NORMAL')
     except (ValueError, TypeError, OverflowError, OSError):
         return dict(source=source, level='UNKNOWN', valid=False, data_health='UNAVAILABLE',
-                    reason='index_quote_missing_or_stale')
+                    reason='index_quote_missing_or_stale', fade_detected=False, regime='UNKNOWN')
 
 
 def combine(base, live):
@@ -116,6 +149,8 @@ class MarketGate:
         data_reason = ('all_sources_fresh' if health == 'HEALTHY' else
                        'one_source_fresh' if health == 'DEGRADED' else
                        'market_data_unavailable')
+        any_fade = any(risk.get('fade_detected') for risk in usable)
+        fade_reasons = [risk.get('fade_reason') for risk in usable if risk.get('fade_reason')]
         return dict(level=effective, market_risk=effective, live_risk=live,
                     market_condition_reason=condition_reason, data_reason=data_reason,
                     selected_source=selected.get('source'),
@@ -128,6 +163,9 @@ class MarketGate:
                     source_count=len(usable), observed_at=selected.get('observed_at'),
                     quote_at=selected.get('observed_at'), received_at=now.isoformat(),
                     age_seconds=selected.get('age_seconds'), valid=bool(usable),
+                    fade_detected=any_fade,
+                    fade_reason=','.join(fade_reasons) if fade_reasons else None,
+                    market_regime='FADE' if any_fade else 'NORMAL',
                     sources={name: dict(status=risk.get('data_health', 'UNKNOWN'),
                                         quote_at=risk.get('observed_at'), age_seconds=risk.get('age_seconds'),
                                         usable=bool(risk.get('valid')))
