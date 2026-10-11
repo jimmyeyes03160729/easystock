@@ -895,10 +895,9 @@ def evaluate_daytrade(
             in rows5[-6:-1]
         )
         if close < recent_low:
-            soft_penalties.append(
-                "5分K回測短低"
+            hard_vetoes.append(
+                "5分K破短低"
             )
-            penalty_score += 8
 
     raw_daytrade_score = daytrade_score
     adjusted_score = max(0, min(100, daytrade_score - penalty_score))
