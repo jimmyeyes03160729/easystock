@@ -3989,7 +3989,6 @@ class IntradayLiveEngine:
 
         ranked_top = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
         print("[ENTRY_REJECT_SUMMARY] " + " ".join(f"{k}={v}" for k, v in ranked_top))
-        print(f"[REJECT_DIAGNOSTICS] 總評估={total_evals}次 | Top瓶頸卡點: {top3_desc}")
 
         diagnostics = {
             "total_evaluations": total_evals,
@@ -4233,12 +4232,6 @@ class IntradayLiveEngine:
             model_prob = float(model_decision['probability'])
             composite_score = round(0.5 * rule_score_pct + 50.0 * model_prob, 2)
             print(f"[COMPOSITE_SCORE] symbol={symbol} composite={composite_score} (rule_score={rule_score_pct:.1f}, model_prob={model_prob:.3f})")
-
-            composite_min = float(os.environ.get('LIVE_COMPOSITE_SCORE_MIN', '62.0'))
-            if composite_score < composite_min:
-                self._entry_reject(symbol, 'composite_score_low', f"composite={composite_score} min={composite_min}")
-                self.manager.observe_entry_predicate(symbol, False, strategy_time)
-                return
 
             model_reason = f"綜合勝率分 {composite_score:.1f} (模型 {model_decision['probability']:.3f} / 規則 {rule_score_pct:.0f})"
 
