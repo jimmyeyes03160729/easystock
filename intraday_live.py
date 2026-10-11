@@ -4169,15 +4169,10 @@ class IntradayLiveEngine:
         try:
             limits = read_live_settings()
             gain = (price / previous_close - 1) * 100 if previous_close else None
-            min_gain = float(os.environ.get('LIVE_MIN_GAIN_PCT', '1.5'))
-            max_gain = min(float(os.environ.get('LIVE_MAX_GAIN_PCT', '4.0')), float(limits.get('max_gain_pct', 8.5)))
-            if gain is None or not limits['min_price'] <= price <= limits['max_price'] or not (min_gain <= gain <= max_gain):
+            if gain is None or not limits['min_price'] <= price <= limits['max_price'] or gain > limits['max_gain_pct']:
                 gain_text = '-' if gain is None else f'{gain:+.2f}%'
-                reject_reason = ('user_limits' if gain is not None and (price < limits['min_price'] or price > limits['max_price'] or gain > limits.get('max_gain_pct', 8.5))
-                                 else 'gain_outside_breakout_range' if gain is not None
-                                 else 'previous_close_missing')
-                self._entry_reject(symbol, reject_reason,
-                                   f'price={price:.2f} gain={gain_text} range=[+{min_gain:.1f}%, +{max_gain:.1f}%]')
+                self._entry_reject(symbol, 'user_limits' if gain is not None else 'previous_close_missing',
+                                   f'price={price:.2f} gain={gain_text}')
                 self.manager.observe_entry_predicate(symbol, False, strategy_time)
                 return
         except Exception as exc:
