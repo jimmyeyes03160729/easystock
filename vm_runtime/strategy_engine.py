@@ -813,41 +813,64 @@ def evaluate_daytrade(
 
 
     # =====================================================
-    # Veto
+    # Veto 與 軟性扣分 (Top-K 綜合評分機制)
     # =====================================================
 
-    vetoes = []
+    hard_vetoes = []
+    soft_penalties = []
+    penalty_score = 0
 
-
+    # 1. 致命風控底線 (Hard Vetoes: 一票否決，守住安全底線)
     if (
         vwap
         and close
         < vwap
     ):
-
-        vetoes.append(
+        hard_vetoes.append(
             "跌破VWAP"
         )
 
+    if market_level == "RED":
+        hard_vetoes.append(
+            "市場紅燈"
+        )
 
+    if market_regime == "FADE" or stock.get("market_regime") == "FADE" or stock.get("fade_detected"):
+        hard_vetoes.append(
+            "大盤開高走低出貨盤"
+        )
+
+    if MAX_ROUNDTRIP_COST_PCT > 0 and close > 0:
+        from paper_execution import roundtrip_cost_pct
+        if roundtrip_cost_pct(close) > MAX_ROUNDTRIP_COST_PCT:
+            hard_vetoes.append(
+                "交易成本過高"
+            )
+
+    # 2. 技術品質扣分項 (Soft Penalties: 納入 Top-K 綜合評分扣分，不直接封殺)
     if (
         vwap_distance
         is not None
         and vwap_distance
         > 0.03
     ):
-
-        vetoes.append(
+        soft_penalties.append(
             "距VWAP過遠"
         )
-
+        penalty_score += 8
 
     buy_ratio = num(stock.get("buy_ratio_60s"))
     if buy_ratio is not None and buy_ratio < 0.50:
-        vetoes.append(
-            "主動買盤佔比不足"
-        )
-
+        if buy_ratio < 0.40:
+            soft_penalties.append(
+                "主動買盤疲弱(<40%)"
+            )
+            penalty_score += 12
+        else:
+            soft_penalties.append(
+                "主動買盤偏低(40-50%)"
+            )
+            penalty_score += 6
 
     if (
         upper_wick_ratio(
@@ -860,54 +883,26 @@ def evaluate_daytrade(
         )
         < 0.65
     ):
-
-        vetoes.append(
+        soft_penalties.append(
             "末根爆上影"
         )
-
+        penalty_score += 8
 
     if len(rows5) >= 7:
-
         recent_low = min(
-
             row["low"]
-
             for row
             in rows5[-6:-1]
-
         )
-
-
         if close < recent_low:
-
-            vetoes.append(
-                "5分K破短低"
+            soft_penalties.append(
+                "5分K回測短低"
             )
+            penalty_score += 8
 
-
-    if market_level == "RED":
-
-        vetoes.append(
-            "市場紅燈"
-        )
-
-
-    if market_regime == "FADE" or stock.get("market_regime") == "FADE" or stock.get("fade_detected"):
-
-        vetoes.append(
-            "大盤開高走低出貨盤"
-        )
-
-
-    if MAX_ROUNDTRIP_COST_PCT > 0 and close > 0:
-
-        from paper_execution import roundtrip_cost_pct
-
-        if roundtrip_cost_pct(close) > MAX_ROUNDTRIP_COST_PCT:
-
-            vetoes.append(
-                "交易成本過高"
-            )
+    raw_daytrade_score = daytrade_score
+    adjusted_score = max(0, min(100, daytrade_score - penalty_score))
+    vetoes = list(hard_vetoes)
 
 
     # =====================================================
@@ -973,17 +968,13 @@ def evaluate_daytrade(
 
 
     # =====================================================
-    # 最終進場條件
+    # 最終進場條件 (及格線 68 分，無硬否決，至少 2 個進場理由)
     # =====================================================
 
     eligible = bool(
-
-        daytrade_score >= 76
-
-        and len(vetoes) == 0
-
+        len(hard_vetoes) == 0
+        and adjusted_score >= 68
         and len(reasons) >= 2
-
     )
 
 
@@ -993,7 +984,13 @@ def evaluate_daytrade(
             eligible,
 
         "daytrade_score":
-            daytrade_score,
+            adjusted_score,
+
+        "raw_daytrade_score":
+            raw_daytrade_score,
+
+        "penalty_score":
+            penalty_score,
 
         "price":
             round(
@@ -1076,6 +1073,12 @@ def evaluate_daytrade(
 
         "vetoes":
             vetoes,
+
+        "hard_vetoes":
+            hard_vetoes,
+
+        "soft_penalties":
+            soft_penalties,
 
         "daytrade_reasons":
             reasons[:4],

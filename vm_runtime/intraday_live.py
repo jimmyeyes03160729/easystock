@@ -2671,6 +2671,11 @@ class IntradayLiveEngine:
         self._market_checked_at = 0.0
         self._market_block_counts = {'market_risk_red': 0, 'market_data_unavailable': 0}
         self._entry_reject_counts = {}
+        self._entry_reject_veto_counts = {}
+        self._entry_soft_penalty_counts = {}
+        self._entry_evaluation_count = 0
+        self._entry_reject_diagnostics = {}
+        self._top_candidates_ranking = []
         self._entry_reject_last = {}
         self._entry_reject_summary_at = 0.0
         self._entry_reject_summary_logged = {}
@@ -3932,8 +3937,22 @@ class IntradayLiveEngine:
         """Count one no-ENTRY outcome and log it, throttling repeats per symbol."""
         now_mono = time.monotonic()
         with self._lock:
+            self._entry_evaluation_count = getattr(self, '_entry_evaluation_count', 0) + 1
             self._entry_reject_counts[reason] = min(
                 1_000_000_000, self._entry_reject_counts.get(reason, 0) + 1)
+
+            # 退件診斷器：細粒度拆解 veto 子項與明細
+            if reason == 'strategy_veto' and 'veto=' in detail:
+                veto_part = detail.split('veto=', 1)[1].split(' ', 1)[0]
+                for v in veto_part.split(','):
+                    v = v.strip()
+                    if v:
+                        v_key = f"veto:{v}"
+                        if not hasattr(self, '_entry_reject_veto_counts'):
+                            self._entry_reject_veto_counts = {}
+                        self._entry_reject_veto_counts[v_key] = min(
+                            1_000_000_000, self._entry_reject_veto_counts.get(v_key, 0) + 1)
+
             last = self._entry_reject_last.get(symbol)
             if last and last[0] == reason and now_mono - last[1] < ENTRY_REJECT_LOG_SECONDS:
                 return
@@ -3941,18 +3960,51 @@ class IntradayLiveEngine:
         print(f"[ENTRY_REJECT] {symbol} reason={reason}" + (f" {detail}" if detail else ""))
 
     def log_entry_reject_summary(self, force=False):
-        """Print cumulative no-ENTRY reasons for the session when they changed."""
+        """Print cumulative no-ENTRY reasons and granular diagnostics when changed."""
         now_mono = time.monotonic()
         with self._lock:
             counts = dict(self._entry_reject_counts)
+            veto_counts = dict(getattr(self, '_entry_reject_veto_counts', {}))
+            soft_counts = dict(getattr(self, '_entry_soft_penalty_counts', {}))
+            total_evals = getattr(self, '_entry_evaluation_count', sum(counts.values()))
             if counts == self._entry_reject_summary_logged:
                 return
             if not force and now_mono - self._entry_reject_summary_at < ENTRY_REJECT_SUMMARY_SECONDS:
                 return
             self._entry_reject_summary_at = now_mono
             self._entry_reject_summary_logged = counts
-        ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
-        print("[ENTRY_REJECT_SUMMARY] " + " ".join(f"{k}={v}" for k, v in ranked))
+
+        # 計算 Top 瓶頸原因 (整合頂層拒絕原因與具體 veto 項目)
+        merged_reasons = {}
+        for k, v in counts.items():
+            if k == 'strategy_veto' and veto_counts:
+                continue  # 以細項優先呈現
+            merged_reasons[k] = v
+        for k, v in veto_counts.items():
+            merged_reasons[k] = v
+
+        ranked_all = sorted(merged_reasons.items(), key=lambda kv: (-kv[1], kv[0]))
+        top3 = ranked_all[:3]
+        top3_desc = ", ".join(f"{k}({v}次, {v/max(1, total_evals)*100:.1f}%)" for k, v in top3) if top3 else "無"
+
+        ranked_top = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+        print("[ENTRY_REJECT_SUMMARY] " + " ".join(f"{k}={v}" for k, v in ranked_top))
+        print(f"[REJECT_DIAGNOSTICS] 總評估={total_evals}次 | Top瓶頸卡點: {top3_desc}")
+
+        diagnostics = {
+            "total_evaluations": total_evals,
+            "top_bottlenecks": [{"reason": k, "count": v, "pct": round(v / max(1, total_evals) * 100, 1)} for k, v in top3],
+            "reject_counts": counts,
+            "veto_counts": veto_counts,
+            "soft_penalty_counts": soft_counts,
+            "updated_at": now_tpe().isoformat()
+        }
+        self._entry_reject_diagnostics = diagnostics
+        try:
+            if hasattr(self, 'store') and self.store and hasattr(self.store, 'db') and self.store.db:
+                self.store.db.reference('/market_data/intraday_live/reject_diagnostics').set(diagnostics)
+        except Exception:
+            pass
 
     def evaluate_symbol(
         self,
@@ -4024,6 +4076,15 @@ class IntradayLiveEngine:
             or []
         )
 
+        soft_penalties = (
+            result.get("soft_penalties")
+            or []
+        )
+        if soft_penalties:
+            for sp in soft_penalties:
+                self._entry_soft_penalty_counts[sp] = min(
+                    1_000_000_000, self._entry_soft_penalty_counts.get(sp, 0) + 1)
+
         reasons = (
             result.get("reasons")
             or result.get(
@@ -4032,6 +4093,7 @@ class IntradayLiveEngine:
             or []
         )
 
+        penalty_str = f" penalty={','.join(map(str, soft_penalties))}" if soft_penalties else ""
         print(
             f"[STRATEGY] "
             f"{strategy_time.strftime('%H:%M:%S')} "
@@ -4040,6 +4102,7 @@ class IntradayLiveEngine:
             f"score={score} "
             f"eligible={eligible} mode={self.entry_mode} "
             f"veto={','.join(map(str, vetoes)) or '-'}"
+            f"{penalty_str}"
         )
 
         position = get_position_safe(
@@ -4140,6 +4203,7 @@ class IntradayLiveEngine:
         ) if previous_close else None
         model_decision = self.daytrade_model.evaluate(feature_row or {})
         model_reason = None
+        composite_score = round(float(score or 0.0), 2)
         if self.entry_mode == 'model':
             # Log evaluation before a rejection; ENTRY_DECISION is fill evidence.
             print(f"[MODEL_DECISION] symbol={symbol} rule_eligible={eligible} "
@@ -4163,7 +4227,20 @@ class IntradayLiveEngine:
                                    f"probability={model_decision['probability']} threshold={model_decision['threshold']}")
                 self.manager.observe_entry_predicate(symbol, False, strategy_time)
                 return
-            model_reason = f"模型分數 {model_decision['probability']:.3f} ({model_decision['model_version']})"
+
+            # Top-K 綜合勝率評分 (Composite Score: 50% 規則分 + 50% AI微結構模型分)
+            rule_score_pct = max(0.0, min(100.0, float(score or 0.0)))
+            model_prob = float(model_decision['probability'])
+            composite_score = round(0.5 * rule_score_pct + 50.0 * model_prob, 2)
+            print(f"[COMPOSITE_SCORE] symbol={symbol} composite={composite_score} (rule_score={rule_score_pct:.1f}, model_prob={model_prob:.3f})")
+
+            composite_min = float(os.environ.get('LIVE_COMPOSITE_SCORE_MIN', '62.0'))
+            if composite_score < composite_min:
+                self._entry_reject(symbol, 'composite_score_low', f"composite={composite_score} min={composite_min}")
+                self.manager.observe_entry_predicate(symbol, False, strategy_time)
+                return
+
+            model_reason = f"綜合勝率分 {composite_score:.1f} (模型 {model_decision['probability']:.3f} / 規則 {rule_score_pct:.0f})"
 
         # Apply user constraints BEFORE creating any position/ENTRY.
         try:
@@ -4272,12 +4349,15 @@ class IntradayLiveEngine:
                 vwap=result.get("vwap"),
                 decision_evidence={
                     'decision_mode': self.entry_mode,
+                    'composite_score': composite_score,
+                    'soft_penalties': list(soft_penalties),
                     'model_version': model_decision.get('model_version') if self.entry_mode == 'model' else None,
                     'model_artifact_sha256': model_decision.get('artifact_sha256') if self.entry_mode == 'model' else None,
                     'model_score': model_decision.get('probability') if self.entry_mode == 'model' else None,
                     'model_threshold': model_decision.get('threshold') if self.entry_mode == 'model' else None,
                     'entry_features': feature_row,
                     'entry_gate_evidence': {'market_gate': 'PASS', 'strategy_vetoes': list(vetoes),
+                        'soft_penalties': list(soft_penalties), 'composite_score': composite_score,
                         'radar_selected': True, 'fresh_quote_at': strategy_time.isoformat(),
                         'entry_window': True, 'user_settings': dict(limits),
                         'rule_eligible': eligible, 'model_accepted': model_decision.get('accepted')},
@@ -4304,6 +4384,8 @@ class IntradayLiveEngine:
         used_model = self.entry_mode == 'model'
         event['position'].update({
             'decision_mode': self.entry_mode,
+            'composite_score': composite_score,
+            'soft_penalties': list(soft_penalties),
             'model_version': model_decision.get('model_version') if used_model else None,
             'model_artifact_sha256': model_decision.get('artifact_sha256') if used_model else None,
             'model_score': model_decision.get('probability') if used_model else None,
