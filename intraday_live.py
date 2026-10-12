@@ -79,7 +79,7 @@ from position_manager import PositionManager
 from daytrade_learning.runtime import Recorder
 from daytrade_learning.episodes import ResearchStore
 from market_risk import MarketGate, premarket_context, snapshot_risk
-from market_data.shioaji import taiex_contract
+from market_data.shioaji import taiex_contract, StockMetadataCache
 from market_data.diagnostics import save_gate
 from market_data.context import esun_index_snapshot
 from market_data.health import observe as observe_provider
@@ -2688,6 +2688,8 @@ class IntradayLiveEngine:
         self.manager.paper_max_daily_entries = MAX_DAILY_ENTRIES
         self._previous_closes = {}
         self._previous_close_retry = {}
+        self._b_stock_metadata = StockMetadataCache()
+        self._b_metadata_log_at = 0.0
 
     # -----------------------------------------------------
     # Boot
@@ -3645,11 +3647,7 @@ class IntradayLiveEngine:
 
             self.radar_metrics[symbol] = metrics
 
-            contract = self.contracts.get(symbol)
-            lane_rows.append({**stock, **metrics, "symbol": symbol,
-                "previous_close": num(getattr(contract, "reference", None)),
-                "daytrade_short_allowed": str(getattr(contract, "day_trade", "")).split(".")[-1] == "Yes",
-                "sector": str(getattr(contract, "category", "") or stock.get("industry") or "")})
+            lane_rows.append(self._b_lane_row(symbol, stock, metrics, current))
 
             if not qualifies_volume_surge(
                 metrics
@@ -3708,8 +3706,16 @@ class IntradayLiveEngine:
 
             if getattr(self, "runway_v2", None) is not None:
                 try:
-                    prev_map = {str(r["symbol"]): r.get("previous_close") or self._previous_closes.get(str(r["symbol"]), (None, None))[1] for r in lane_rows}
+                    # B's registered reference source is SDK contract metadata,
+                    # independent of lane A's on-demand historical close cache.
+                    prev_map = {str(r["symbol"]): r.get("previous_close") for r in lane_rows}
                     self.runway_v2.on_radar_update(lane_rows, self.bars, prev_map, current, market=self.market_risk)
+                    if current.timestamp() - self._b_metadata_log_at >= 60:
+                        self._b_metadata_log_at = current.timestamp()
+                        print('[B_LANES_METADATA] rows={} reference={} sector={} short_known={}'.format(
+                            len(lane_rows), sum(r['previous_close'] is not None for r in lane_rows),
+                            sum(bool(r['sector']) for r in lane_rows),
+                            sum(r['daytrade_eligibility'] is not None for r in lane_rows)))
                 except Exception as exc:
                     print(f"[RUNWAY_V2_RADAR_WARN] {exc}")
 
@@ -3863,6 +3869,15 @@ class IntradayLiveEngine:
     # -----------------------------------------------------
     # Strategy
     # -----------------------------------------------------
+
+    def _b_lane_row(self, symbol, stock, metrics, current):
+        metadata = self._b_stock_metadata.read(self.api, self.contracts.get(symbol), symbol, current)
+        return {**stock, **metrics, 'symbol': symbol,
+                'previous_close': metadata['reference'], 'sector': metadata['category'],
+                'daytrade_short_allowed': metadata['day_trade'] == 'Yes',
+                'daytrade_eligibility': metadata['day_trade'],
+                'metadata_source': metadata['metadata_source'],
+                'metadata_status': metadata['metadata_status']}
 
     def fresh_entry_quote(self, symbol, allow_lookup=False):
         """Actual previous completed close, not scanner percent aliases or contract reference."""
