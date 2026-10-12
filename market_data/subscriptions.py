@@ -22,6 +22,8 @@ class QuoteSubscriptions:
         key, now = (symbol, kind), self.clock()
         with self.lock:
             r = self.records.get(key)
+            if r and r.get('cancel_requested'):
+                return False
             if r and r['state'] in ('pending', 'active'):
                 return True
             if r and (r['state'] == 'cancelling' or now < r['retry_at']):
@@ -50,6 +52,11 @@ class QuoteSubscriptions:
             if r['state'] == 'failed':
                 del self.records[key]
                 return
+            if r['state'] == 'pending':
+                # Subscribe and unsubscribe ACKs share a topic without an action ID.
+                # Serialize them so a late subscribe ACK cannot free a cancel slot.
+                r['cancel_requested'] = True
+                return
             if r['state'] == 'cancelling' and now < r['retry_at']:
                 return
             r.update(state='cancelling', retry_at=now + self.retry_seconds)
@@ -59,10 +66,14 @@ class QuoteSubscriptions:
             self.counters['cancel_uncertain'] += 1
 
     def confirm_data(self, symbol, kind):
+        cancel = False
         with self.lock:
             r = self.records.get((symbol, kind))
             if r and r['state'] == 'pending':
                 r['state'] = 'active'
+                cancel = r.get('cancel_requested', False)
+        if cancel:
+            self.cancel(symbol, kind)
 
     def event(self, response_code, event_code, info, event=''):
         info = str(info)
@@ -70,6 +81,7 @@ class QuoteSubscriptions:
         if not topic:
             return
         key = (topic[2], 'Tick' if topic[1] == 'TIC' else 'BidAsk')
+        cancel = False
         with self.lock:
             r = self.records.get(key)
             if not r:
@@ -85,9 +97,14 @@ class QuoteSubscriptions:
             elif r['state'] == 'pending':
                 if ok:
                     r['state'] = 'active'
+                    cancel = r.get('cancel_requested', False)
                 else:
                     r.update(state='failed', retry_at=self.clock() + self.retry_seconds)
                     self.counters['subscribe_rejected'] += 1
+                    if r.get('cancel_requested'):
+                        del self.records[key]
+        if cancel:
+            self.cancel(*key)
 
     def status(self, symbol, kind):
         with self.lock:

@@ -10,7 +10,9 @@ The old code marked a request successful before receiving the broker event.
 `market_data/subscriptions.py` now accounts for Tick and BidAsk together:
 170 Tick slots, 20 shared BidAsk slots, at most 190 reserved subscriptions.
 Pending subscribe and cancellation requests consume slots until their result
-is known. A transport exception retains its reservation. Explicit subscription
+is known. Cancellation requested before the subscribe ACK is deferred until
+that ACK; these topic-only ACKs must never overlap and release a slot early.
+A transport exception retains its reservation. Explicit subscription
 rejections release their reservation and have a 30-second retry cooldown;
 failed or unacknowledged cancellation is retried with the same cooldown.
 An absent-subscription response confirms cancellation. Incoming quote data

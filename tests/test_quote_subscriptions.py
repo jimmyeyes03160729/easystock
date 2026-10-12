@@ -58,6 +58,7 @@ def test_cancel_holds_slot_until_ack_and_pins_open_position():
 def test_candidate_rank_changes_do_not_reset_book_history_every_three_seconds():
     m, now, sent = fixture(book_limit=1)
     m.select_books(['2330', '2317'])
+    ack(m, '2330')
     now[0] = 3
     m.select_books(['2317', '2330'])
     assert sent == [('2330', 'BidAsk', True)]
@@ -68,14 +69,14 @@ def test_candidate_rank_changes_do_not_reset_book_history_every_three_seconds():
 
 def test_confirmed_absence_can_finish_cancellation_even_with_outer_200():
     m, _, _ = fixture()
-    m.request('2330', 'BidAsk'); m.cancel('2330', 'BidAsk')
+    m.request('2330', 'BidAsk'); ack(m, '2330'); m.cancel('2330', 'BidAsk')
     ack(m, '2330', detail="Subscription Not Found Response code: '400'")
     assert m.reserved() == 0
 
 
 def test_cancel_rejection_keeps_slot_and_retries_after_cooldown():
     m, now, sent = fixture(book_limit=1)
-    m.request('2330', 'BidAsk'); m.cancel('2330', 'BidAsk')
+    m.request('2330', 'BidAsk'); ack(m, '2330'); m.cancel('2330', 'BidAsk')
     ack(m, '2330', code=400)
     assert m.reserved() == 1
     assert not m.request('2317', 'BidAsk')
@@ -118,3 +119,23 @@ def test_quote_events_are_safe_during_concurrent_reservations():
     with ThreadPoolExecutor(max_workers=8) as workers:
         accepted = list(workers.map(lambda n: m.request(str(n), 'Tick'), range(100)))
     assert sum(accepted) == 10 and m.reserved() == 10
+
+
+def test_cancel_before_subscribe_ack_never_mistakes_the_late_ack_for_release():
+    m, _, sent = fixture(book_limit=1)
+    m.request('2330', 'BidAsk'); m.cancel('2330', 'BidAsk')
+    assert sent == [('2330', 'BidAsk', True)]
+    assert m.reserved() == 1
+    ack(m, '2330')
+    assert m.status('2330', 'BidAsk') == 'cancelling' and m.reserved() == 1
+    assert not m.request('2317', 'BidAsk')
+    ack(m, '2330')
+    assert m.reserved() == 0 and m.request('2317', 'BidAsk')
+
+
+def test_rejected_pending_subscription_clears_a_deferred_cancel():
+    m, _, sent = fixture()
+    m.request('2330', 'BidAsk'); m.cancel('2330', 'BidAsk')
+    ack(m, '2330', code=400)
+    assert m.reserved() == 0 and m.status('2330', 'BidAsk') == 'unselected'
+    assert len(sent) == 1
