@@ -68,7 +68,8 @@ def test_info_record_can_identify_its_stock_through_base():
 
 
 @pytest.mark.parametrize('flag,expected', [(DayTrade.Yes, 'Yes'), (DayTrade.OnlyBuy, 'OnlyBuy'),
-    (DayTrade.No, 'No'), ('Yes', 'Yes'), ('DayTrade.Yes', 'Yes'), (None, None), (True, None), ('UNKNOWN', None)])
+    (DayTrade.No, 'No'), ('Yes', 'Yes'), ('DayTrade.Yes', 'Yes'), (None, None), (True, None),
+    ('UNKNOWN', None), ('Unknown.Yes', None), ('No.Yes', None), ('DayTrade.No.Yes', None)])
 def test_short_eligibility_is_explicit_not_truthiness(flag, expected):
     result = StockMetadataCache().read(api_with(info(day_trade=flag)), BASE, 'TEST', NOW)
     assert result['day_trade'] == expected

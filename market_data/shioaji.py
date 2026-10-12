@@ -62,8 +62,10 @@ class StockMetadataCache:
             category = fields.get('category')
             category = category.strip() if isinstance(category, str) else ''
             flag = fields.get('day_trade')
-            flag = str(getattr(flag, 'value', flag)).split('.')[-1]
-            flag = flag if flag in ('Yes', 'OnlyBuy', 'No') else None
+            flag = getattr(flag, 'value', flag)
+            if isinstance(flag, str) and flag.startswith('DayTrade.'):
+                flag = flag[len('DayTrade.'):]
+            flag = flag if isinstance(flag, str) and flag in ('Yes', 'OnlyBuy', 'No') else None
             result.update(reference=reference, category=category, day_trade=flag,
                           metadata_source=source,
                           metadata_status='ready' if reference and category and flag else 'partial')

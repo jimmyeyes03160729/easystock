@@ -21,9 +21,9 @@ The installed SDK 1.7.4 exposes a contracts-v2 namespace. Its `contracts.get(cod
 
 ## Tests and safety
 
-- Targeted metadata, B1/B2/B3, replay, diagnostic, risk, cost and Guardian tests: **121 passed / 6 subtests**.
+- Targeted metadata, B1/B2/B3, replay, diagnostic, risk, cost and Guardian tests: **124 passed / 6 subtests**.
 - `pnpm test`: all groups passed, including **72 Node cases**.
-- Full Windows root regression with UTF-8: **842 passed / 57 subtests / 4 skipped** before the last five metadata cases were added; those five are included in the targeted run above. Two subtests of the existing Linux timer-installation test fail because Windows has no `bash`. No unrelated tests or production behavior were changed to hide this platform limitation. Linux CI runs the complete suite, including the final additions, before merge.
+- Full Windows root regression with UTF-8: **842 passed / 57 subtests / 4 skipped** before the last eight metadata cases were added; those eight are included in the targeted run above. Two subtests of the existing Linux timer-installation test fail because Windows has no `bash`. No unrelated tests or production behavior were changed to hide this platform limitation. Linux CI runs the complete suite, including the final additions, before merge.
 - SDK smoke test on the VM: real SDK 1.7.4 BaseContract, legacy Stock and DayTrade with **synthetic** info, no API client, login, credentials or orders. This confirms type adaptation, not live metadata recovery or future trade profitability.
 - Syntax and `git diff --check` passed.
 
