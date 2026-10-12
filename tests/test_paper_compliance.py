@@ -111,9 +111,10 @@ def test_sdk_adapter_reads_directional_evidence_without_order_calls():
     tree=ast.parse((root/'intraday_live.py').read_text(encoding='utf-8'))
     engine=next(node for node in tree.body if isinstance(node,ast.ClassDef) and node.name=='IntradayLiveEngine')
     method=next(node for node in engine.body if isinstance(node,ast.FunctionDef) and node.name=='paper_execution_evidence')
-    namespace={'as_datetime':lambda value: value}
+    from market_data.shioaji import StockMetadataCache
+    namespace={'as_datetime':lambda value: value,'StockMetadataCache':StockMetadataCache,'now_tpe':lambda: AT}
     exec(compile(ast.Module(body=[method],type_ignores=[]),'<runtime-method>','exec'),namespace)
-    contract=SimpleNamespace(day_trade=SimpleNamespace(value='Yes'),category='24')
+    contract=SimpleNamespace(code='3189',day_trade=SimpleNamespace(value='Yes'),category='24')
     snapshot=SimpleNamespace(ts=AT,buy_price=100,sell_price=100.5,buy_volume=2,sell_volume=3)
     api=SimpleNamespace(snapshots=Mock(return_value=[snapshot]))
     runtime=SimpleNamespace(contracts={'3189':contract},api=api)

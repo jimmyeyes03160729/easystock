@@ -2766,12 +2766,10 @@ class IntradayLiveEngine:
         if contract is None:
             print(f'[PAPER_EVIDENCE] {symbol} contract_missing')
             return {'eligibility': None, 'eligibility_detail': 'contract_missing'}
-        try:
-            flag = getattr(contract, 'day_trade', None)
-            flag = getattr(flag, 'value', flag)
-            category = str(getattr(contract, 'category', '') or '')
-        except Exception as exc:
-            flag, category = 'unreadable:' + type(exc).__name__, ''
+        # Resolve v2 BaseContract -> StockInfo, or legacy Stock fields. Each
+        # execution attempt rechecks metadata; do not reuse B's cached permission.
+        metadata = StockMetadataCache().read(self.api, contract, str(symbol), now_tpe())
+        flag, category = metadata['day_trade'], metadata['category']
         eligibility = True if flag in ('Yes', 'OnlyBuy') else False if flag == 'No' else None
         # Only ordinary stocks are covered by this simulator's tax model.
         if not category or category in ('00', 'ETF', 'ETN'):
