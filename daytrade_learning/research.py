@@ -42,6 +42,21 @@ def promote_candidate(data, candidate, *, promoted_at=None, write_log=True, arch
     """Atomically make a successfully trained candidate the next-session model."""
     if not isinstance(candidate, dict) or candidate.get('status') != 'candidate_only':
         return candidate
+    folds = candidate.get('folds') or []
+    try:
+        picks = sum(int((f.get('candidate') or {}).get('count') or 0) for f in folds)
+        parts = [(float(f['candidate']['mean_net_return_pct']), int(f['candidate']['count']))
+                 for f in folds if (f.get('candidate') or {}).get('count')
+                 and (f.get('candidate') or {}).get('mean_net_return_pct') is not None]
+        mean = sum(value * count for value, count in parts) / picks if picks and parts else None
+    except (ValueError, TypeError, KeyError, OverflowError):
+        return {**candidate, 'status': 'blocked', 'approved': False, 'deployment_allowed': False,
+                'reason': 'paper_selection_validation_invalid'}
+    if picks < 5 or sum(count for _, count in parts) != picks or mean is None or not math.isfinite(mean) or mean <= 0:
+        return {**candidate, 'status': 'blocked', 'approved': False, 'deployment_allowed': False,
+                'reason': 'paper_selection_validation_not_met',
+                'selection_validation': {'selected_count': picks, 'mean_net_return_pct': mean,
+                                         'minimum_selected_count': 5}}
     model_dir=Path(data)/'models'; latest=model_dir/'latest-approved.json'
     when=datetime.fromisoformat(promoted_at) if promoted_at else datetime.now(TPE)
     if when.tzinfo is None:when=when.replace(tzinfo=TPE)

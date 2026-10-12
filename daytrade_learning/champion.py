@@ -190,7 +190,8 @@ def run_close(data,day,controls):
                     errors.append({'stage':'archive','error':type(exc).__name__});action='blocked';result={**candidate,'status':'backup_failed'}
             if action!='blocked':
                 candidate['close_date']=day
-                result=promote_candidate(data,candidate,write_log=False,archive_previous=False);action='promoted'
+                result=promote_candidate(data,candidate,write_log=False,archive_previous=False)
+                action='promoted' if result.get('approved') is True else 'blocked'
             if action=='promoted' and not (models/'frozen-baseline.json').exists():
                 try:freeze_once(models,result)
                 except FileExistsError:pass

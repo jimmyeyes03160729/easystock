@@ -701,6 +701,17 @@ def evaluate_daytrade(
     # Pattern score
     # =====================================================
 
+    # Explicit opening-recovery pattern on completed bars only. A green market
+    # alone never enables it; require a low open and renewed stock-level demand.
+    reference = num(stock.get('previous_close'))
+    recent = rows5[-3:]
+    dates = {str(r.get('date') or '')[:10] for r in rows5}
+    opening_recovery = bool(reference and len(dates) == 1 and '' not in dates
+        and rows5[0]['open'] < reference and vwap and close > vwap
+        and recent[0]['low'] <= recent[1]['low'] <= recent[2]['low']
+        and close > recent[-2]['high'] and close > last['open']
+        and (num(stock.get('buy_ratio_60s')) or 0) >= .52 and (vol_ratio or 0) >= 1.15)
+
     pattern_score = clamp(
 
         five_trend * 0.55
@@ -712,6 +723,7 @@ def evaluate_daytrade(
             if (
                 orb
                 or compression_breakout
+                or opening_recovery
             )
             else 0
         )
@@ -958,6 +970,9 @@ def evaluate_daytrade(
             "壓縮後放量突破"
         )
 
+    if opening_recovery:
+        reasons.insert(0, '開低站回VWAP、低點墊高後放量轉強')
+
 
     if daily_uptrend:
 
@@ -1056,6 +1071,8 @@ def evaluate_daytrade(
 
         "opening_range_breakout":
             orb,
+
+        "opening_recovery": opening_recovery,
 
         "compression_breakout":
             compression_breakout,

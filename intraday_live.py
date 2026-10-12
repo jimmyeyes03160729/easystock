@@ -85,6 +85,7 @@ from market_data.context import esun_index_snapshot
 from market_data.health import observe as observe_provider
 from market_data.bidask_archive import recorder as bidask_recorder
 from market_data.subscriptions import QuoteSubscriptions
+from market_data.a_candidates import candidate as a_candidate, snapshot as a_candidate_snapshot
 from daytrade_learning.model_runtime import DaytradeModel, live_features, write_runtime_model_status, refresh_runtime_model_status
 from easystock_admin.store import read_live_settings
 from strategy_engine import evaluate_daytrade, clamp, MAX_ROUNDTRIP_COST_PCT
@@ -2536,6 +2537,7 @@ class IntradayLiveEngine:
         self.api = sj.Shioaji()
         self._quote_contracts = {}
         self.quote_subscriptions = QuoteSubscriptions(self._send_quote_subscription)
+        self._a_candidates = {}
 
         self.bars = LiveBarBook()
 
@@ -2810,6 +2812,7 @@ class IntradayLiveEngine:
                 "/market_data/intraday_live/config"
             ).update({
                 "entry_mode": self.entry_mode,
+                "a_recommendation_policy": "rules-68-ai-advisory-v1" if self.entry_mode == 'rules' else 'approved-model-gate',
                 "model_version": self.daytrade_model.model_version,
                 "model_ready": self.daytrade_model.artifact is not None,
                 "model_artifact_sha256": self.daytrade_model.artifact_sha256,
@@ -3729,8 +3732,11 @@ class IntradayLiveEngine:
         )
 
         with self._lock:
+            b_metadata = {str(r['symbol']): r for r in lane_rows}
             for row in top_rows:
                 symbol = str(row["symbol"])
+                row['previous_close'] = b_metadata.get(symbol, {}).get('previous_close')
+                row['daytrade_eligibility'] = b_metadata.get(symbol, {}).get('daytrade_eligibility')
                 # 將即時雷達欄位合併給 strategy / ENTRY reason。
                 self.candidates[symbol] = row
 
@@ -3903,6 +3909,33 @@ class IntradayLiveEngine:
     # Strategy
     # -----------------------------------------------------
 
+    def _record_a_candidate(self, symbol, result, price, current, model=None):
+        try:
+            with self._lock:
+                ticks = list(self.radar_ticks.get(symbol, []))
+            if not ticks or symbol not in self.scanner_top_symbols:
+                self._a_candidates.pop(symbol, None)
+                return
+            stock = dict(self.candidates.get(symbol) or {})
+            cached = self._previous_closes.get(symbol)
+            if cached and cached[0] == current.date().isoformat():
+                stock['previous_close'] = cached[1]
+            value = a_candidate(symbol=symbol, stock=stock, result=result, price=price,
+                now=current, quote_at=datetime.fromtimestamp(ticks[-1][0], TPE),
+                limits=read_live_settings(), entry_window=in_entry_window(current),
+                market_pass=getattr(self, 'market_gate', {}).get('gate_action') == 'PASS'
+                    and now_tpe().timestamp() <= self.market_valid_until,
+                mode=self.entry_mode, model=model)
+            if value:
+                self._a_candidates[symbol] = value
+            else:
+                self._a_candidates.pop(symbol, None)
+            for stale in set(self._a_candidates) - self.scanner_top_symbols:
+                self._a_candidates.pop(stale, None)
+        except Exception as exc:
+            self._a_candidates.pop(symbol, None)
+            print(f'[A_CANDIDATE_WARN] {type(exc).__name__}')
+
     def _b_lane_row(self, symbol, stock, metrics, current):
         metadata = self._b_stock_metadata.read(self.api, self.contracts.get(symbol), symbol, current)
         return {**stock, **metrics, 'symbol': symbol,
@@ -4048,8 +4081,8 @@ class IntradayLiveEngine:
         }
         self._entry_reject_diagnostics = diagnostics
         try:
-            if hasattr(self, 'store') and self.store and hasattr(self.store, 'db') and self.store.db:
-                self.store.db.reference('/market_data/intraday_live/reject_diagnostics').set(diagnostics)
+            if getattr(self, 'store', None) and getattr(self.store, 'live', None):
+                self.store.live.child('reject_diagnostics').set(diagnostics)
         except Exception:
             pass
 
@@ -4107,6 +4140,10 @@ class IntradayLiveEngine:
         if price is None:
             self._entry_reject(symbol, 'no_price')
             return
+
+        candidate_recorder = getattr(self, '_record_a_candidate', None)
+        if candidate_recorder:
+            candidate_recorder(symbol, result, price, strategy_time)
 
         score = result.get(
             "daytrade_score"
@@ -4249,6 +4286,8 @@ class IntradayLiveEngine:
             radar=stock,
         ) if previous_close else None
         model_decision = self.daytrade_model.evaluate(feature_row or {})
+        if candidate_recorder:
+            candidate_recorder(symbol, result, price, strategy_time, model_decision)
         model_reason = None
         composite_score = round(float(score or 0.0), 2)
         if self.entry_mode == 'model':
@@ -4281,7 +4320,7 @@ class IntradayLiveEngine:
             composite_score = round(0.5 * rule_score_pct + 50.0 * model_prob, 2)
             print(f"[COMPOSITE_SCORE] symbol={symbol} composite={composite_score} (rule_score={rule_score_pct:.1f}, model_prob={model_prob:.3f})")
 
-            model_reason = f"綜合勝率分 {composite_score:.1f} (模型 {model_decision['probability']:.3f} / 規則 {rule_score_pct:.0f})"
+            model_reason = f"綜合評分 {composite_score:.1f} (模型 {model_decision['probability']:.3f} / 規則 {rule_score_pct:.0f})"
 
         # Apply user constraints BEFORE creating any position/ENTRY.
         try:
@@ -5044,6 +5083,11 @@ class IntradayLiveEngine:
             self.market_level,
         )
         self.log_entry_reject_summary()
+        try:
+            db.reference('/market_data/intraday_live/a_candidates').set(
+                a_candidate_snapshot(self._a_candidates, now_tpe(), recommendation_limit()))
+        except Exception as exc:
+            print(f'[A_CANDIDATES_PUBLISH_WARN] {type(exc).__name__}')
 
         if self._runtime_instance_id:
             try:

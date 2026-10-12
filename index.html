@@ -621,7 +621,7 @@
       <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9]">盤中摸魚 · AI 模擬當沖</h2>
       <span class="px-2.5 py-1 rounded-full bg-[#1C2B3C] text-[#06B6D4] font-mono text-xs font-semibold border border-[#06B6D4]/30">工位自救 · 虛擬交易</span>
     </div>
-    <span class="text-xs text-[#64748B] font-medium">永豐 Shioaji 行情 ➔ 量能雷達 ➔ 11項特徵 ➔ AI 模型判斷</span>
+    <span class="text-xs text-[#64748B] font-medium">永豐 Shioaji 行情 ➔ 量能雷達 ➔ 規則轉強／突破 ➔ AI 附加評分</span>
   </div>
 
   <section class="recommendation-section mb-8">
@@ -641,7 +641,7 @@
       <div class="my-3.5 py-2.5 px-4 rounded-xl bg-[#0D1C2D] border border-[#232F42]/60 flex flex-wrap items-center justify-between gap-3 font-mono text-xs sm:text-[13px] text-[#64748B]">
         <div class="flex items-center gap-1.5"><span class="text-[#10B981] font-bold">09:00–09:10</span><span class="font-medium">B1 五檔觀察 · 09:10 狀態通知</span></div>
         <span class="text-[#232F42]">➔</span>
-        <div class="flex items-center gap-1.5"><span class="text-[#06B6D4] font-bold">09:15</span><span class="font-medium">跑道 A 做多突破</span></div>
+        <div class="flex items-center gap-1.5"><span class="text-[#06B6D4] font-bold">09:30</span><span class="font-medium">跑道 A 轉強／突破</span></div>
         <span class="text-[#232F42]">➔</span>
         <div class="flex items-center gap-1.5"><span class="text-[#F59E0B] font-bold">12:30</span><span class="font-medium">停止新單進場</span></div>
         <span class="text-[#232F42]">➔</span>
@@ -655,12 +655,15 @@
           <div class="flex items-center justify-between border-b border-[#232F42]/80 pb-2.5 mb-2.5 flex-wrap gap-2">
             <div class="flex items-center gap-2">
               <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
-              <span class="font-bold text-sm text-[#F1F5F9]">跑道 A · 做多突破量化</span>
-              <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-[#1C2B3C] text-cyan-400 border border-cyan-500/30">09:15~12:30</span>
+              <span class="font-bold text-sm text-[#F1F5F9]">跑道 A · 轉強／突破模擬</span>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-[#1C2B3C] text-cyan-400 border border-cyan-500/30">09:30~12:30</span>
             </div>
             <span class="text-[11px] text-[#94A3B8] font-mono">VWAP 突破 · 大盤出貨過濾 · 限額 100 萬</span>
           </div>
 
+          <p id="aPolicyDisclosure" class="text-xs text-[#94A3B8] mb-2">等待當日進場模式確認。</p>
+          <div id="aCandidateList" class="space-y-2 mb-4" aria-live="polite"></div>
+          <div class="text-xs text-[#94A3B8] mb-2">模擬持倉與成交紀錄</div>
           <div id="intradayPickList" class="space-y-3">
             <div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-mono">等待 AI 模擬當沖資料（尚無當日有效快照）…</div>
           </div>
@@ -3142,6 +3145,7 @@
 
   function renderLiveIntraday() {
     updateDashboardUX();
+    if (window.AWatchlist) window.AWatchlist.render(INTRADAY_LIVE, liveDataState());
 
     const container =
       document.getElementById(
@@ -5394,5 +5398,6 @@
 <script src="assets/short-term.js?v=5f5f867c7dbd"></script>
 <script src="assets/ai-picks.js?v=18da24857e80"></script>
 <script src="assets/b-lanes-replay.js?v=ea6b415dae32"></script>
+<script src="assets/a-watchlist.js?v=44db2c9964bb"></script>
 </body>
 </html>
