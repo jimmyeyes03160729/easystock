@@ -53,6 +53,20 @@ class LaneTests(unittest.TestCase):
         self.ready()
         self.suite.books.clear()
         self.assertIsNone(self.suite._signal("B1", "TEST", self.now)[0])
+
+    def test_diagnostics_distinguish_quota_rejection_missing_close_and_spread(self):
+        self.ready()
+        self.suite.books.clear()
+        self.suite.register_subscription_status(lambda _: 'failed')
+        self.suite.advance(self.now)
+        self.assertIn('五檔訂閱遭拒', self.suite.state['B1']['rejects'])
+        self.suite._observation_statuses = {'TEST': 'active'}
+        self.ready()
+        self.suite.rows['TEST']['previous_close'] = 0
+        self.assertEqual(self.suite._signal('B1', 'TEST', self.now)[1], '昨收資料缺漏或無效')
+        self.ready()
+        self.suite.books['TEST'][-1]['ask'] = 123
+        self.assertEqual(self.suite._signal('B1', 'TEST', self.now)[1], '買賣價差超過一檔')
         self.book(self.now-timedelta(seconds=4))
         self.assertIsNone(self.suite._signal("B1", "TEST", self.now)[0])
 

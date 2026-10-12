@@ -87,6 +87,7 @@ class LaneSuite:
         self.day, self.state = "", {}
         self.market = {"valid": False}
         self.subscribe = None
+        self.subscription_status = None
         self.subscribed = set()
         self.sender = sender or default_sender
         self.publisher = publisher
@@ -112,6 +113,9 @@ class LaneSuite:
 
     def register_bidask_subscriber(self, fn):
         self.subscribe = fn
+
+    def register_subscription_status(self, fn):
+        self.subscription_status = fn
 
     def has_open(self, symbol):
         with self.lock:
@@ -224,12 +228,7 @@ class LaneSuite:
                     continue
                 self.rows[symbol] = {**row, "previous_close": finite(previous_closes.get(symbol)), "observed_at": now.timestamp()}
                 self.bars[symbol] = completed_bars(cache.rows5(symbol) or [], now)
-                if self.subscribe and symbol not in self.subscribed:
-                    try:
-                        self.subscribe(symbol)
-                        self.subscribed.add(symbol)
-                    except Exception:
-                        pass
+                # Live subscriptions are allocated centrally, not per radar row.
             self._capture('radar', {'now':now.isoformat(),'rows':rows,'market':self.market,
                 'previous_closes':previous_closes,'bars':{str(r['symbol']):self.bars.get(str(r['symbol']),[]) for r in rows if r.get('symbol')}})
 
@@ -240,32 +239,48 @@ class LaneSuite:
         return None
 
     def _observations(self, symbol, now):
+        return self._observation_check(symbol, now)[0]
+
+    def _observation_check(self, symbol, now):
+        state = getattr(self, '_observation_statuses', {}).get(symbol)
+        blocked = {'unselected': '未分配五檔額度', 'failed': '五檔訂閱遭拒',
+                   'cancelling': '五檔取消等待確認'}
+        if state in blocked:
+            return None, blocked[state]
         tape = [x for x in self.tapes.get(symbol, []) if 0 <= (now - x[0]).total_seconds() <= 60]
         book = self._book(symbol, now)
-        if not book or len(tape) < 6 or (now - tape[-1][0]).total_seconds() > 3:
-            return None
+        if not book:
+            reasons = {'unselected': '未分配五檔額度', 'failed': '五檔訂閱遭拒',
+                       'pending': '五檔訂閱等待確認', 'cancelling': '五檔取消等待確認'}
+            return None, reasons.get(state, '五檔缺失或超過3秒')
+        if len(tape) < 6:
+            return None, '60秒逐筆不足6筆'
+        if (now - tape[-1][0]).total_seconds() > 3:
+            return None, '逐筆超過3秒'
         if (book["ask"] - book["bid"]) > get_tick_size(book["bid"]) * 1.01:
-            return None
+            return None, '買賣價差超過一檔'
         books = [b for b in self.books.get(symbol, []) if 0 <= (now - b["dt"]).total_seconds() <= 15]
         if len(books) < 3 or (books[-1]["dt"] - books[0]["dt"]).total_seconds() < 5:
-            return None
+            return None, '連續五檔不足3筆或5秒'
         recent = [x for x in tape if (now - x[0]).total_seconds() <= 10]
         classified = sum(x[3] for x in recent if x[2] in (1, 2))
         total = sum(x[3] for x in recent)
         if total <= 0 or classified / total < .8:
-            return None
+            return None, '10秒成交方向辨識不足80%'
         buy = sum(x[3] for x in recent if x[2] == 1) / classified
-        return tape, book, books, buy
+        return (tape, book, books, buy), ''
 
     def _signal(self, lane, symbol, now):
         row = self.rows[symbol]
-        obs = self._observations(symbol, now)
+        obs, observation_reason = self._observation_check(symbol, now)
         if not obs:
-            return None, "五檔／逐筆不足或延遲"
+            return None, observation_reason
         tape, book, books, buy = obs
         price, prev = tape[-1][1], row["previous_close"]
-        if price <= 0 or prev <= 0:
-            return None, "價格或昨收資料不符"
+        if price <= 0:
+            return None, '成交價無效'
+        if prev <= 0:
+            return None, '昨收資料缺漏或無效'
         if abs(price / prev - 1) >= .07:
             return None, "接近漲跌停風險"
         direction = 1 if buy >= .65 and sum(b["obi"] >= .1 for b in books[-3:]) == 3 else (
@@ -390,6 +405,7 @@ class LaneSuite:
         now = taiwan(now)
         with self.lock:
             self._roll(now)
+            self._observation_statuses = {s: self.subscription_status(s) for s in self.rows} if self.subscription_status else {}
             time_str = now.strftime("%H:%M:%S")
             changed = False
             for lane, spec in SPECS.items():
@@ -476,7 +492,8 @@ class LaneSuite:
             if self.recorder and not self.offline:
                 import hashlib
                 state_hash=hashlib.sha256(json.dumps(self.state,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
-                self._capture('clock', {'now':now.isoformat(),'state_hash':state_hash})
+                self._capture('clock', {'now':now.isoformat(),'state_hash':state_hash,
+                                       'subscription_states':getattr(self, '_observation_statuses', {})})
 
     def export_snapshot(self, now=None):
         now = taiwan(now or datetime.now(TPE))

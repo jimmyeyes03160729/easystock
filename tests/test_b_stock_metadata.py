@@ -132,7 +132,7 @@ def engine_fixture(now=NOW):
     tree = ast.parse(Path('intraday_live.py').read_text(encoding='utf8'))
     cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'IntradayLiveEngine')
     methods = [n for n in cls.body if isinstance(n, ast.FunctionDef)
-               and n.name in ('_b_lane_row', 'refresh_volume_radar')]
+               and n.name in ('_b_lane_row', '_select_b_books', 'refresh_volume_radar')]
     scope = {'dtime': dtime, 'now_tpe': lambda: now, 'ENTRY_CUTOFF': dtime(12, 30),
              'RADAR_REFRESH_SECONDS': 3, 'time': SimpleNamespace(monotonic=lambda: 100),
              'num': lambda x: x, 'recommendation_limit': lambda: 3,
@@ -142,6 +142,7 @@ def engine_fixture(now=NOW):
     module = ast.Module(body=[ast.ClassDef(name='Engine', bases=[], keywords=[], body=methods, decorator_list=[])], type_ignores=[])
     exec(compile(ast.fix_missing_locations(module), '<runtime-radar-methods>', 'exec'), scope)
     engine = scope['Engine']()
+    engine.quote_subscriptions = SimpleNamespace(select_books=Mock())
     engine._b_stock_metadata = StockMetadataCache()
     engine._b_metadata_log_at = engine._last_radar_refresh = 0
     engine._lock = threading.RLock()

@@ -59,6 +59,8 @@ def apply(suite, event):
     elif kind=='release':
         suite.release_symbol(d['symbol'])
     elif kind=='clock':
+        states = d.get('subscription_states', {})
+        suite.register_subscription_status(lambda symbol: states.get(symbol))
         suite.advance(stamp(d['now']))
     else:
         raise ValueError('unknown input kind')

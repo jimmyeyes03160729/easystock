@@ -84,6 +84,7 @@ from market_data.diagnostics import save_gate
 from market_data.context import esun_index_snapshot
 from market_data.health import observe as observe_provider
 from market_data.bidask_archive import recorder as bidask_recorder
+from market_data.subscriptions import QuoteSubscriptions
 from daytrade_learning.model_runtime import DaytradeModel, live_features, write_runtime_model_status, refresh_runtime_model_status
 from easystock_admin.store import read_live_settings
 from strategy_engine import evaluate_daytrade, clamp, MAX_ROUNDTRIP_COST_PCT
@@ -2533,6 +2534,8 @@ class IntradayLiveEngine:
         )
 
         self.api = sj.Shioaji()
+        self._quote_contracts = {}
+        self.quote_subscriptions = QuoteSubscriptions(self._send_quote_subscription)
 
         self.bars = LiveBarBook()
 
@@ -2654,17 +2657,8 @@ class IntradayLiveEngine:
             self.runway_v2.advance(now_tpe())
             print(f"[RUNWAY_V2_BOOT] enabled={self.runway_v2.enabled}")
             if self.runway_v2 and self.runway_v2.enabled:
-                def _sub_bidask(symbol: str) -> None:
-                    c = self.contracts.get(symbol)
-                    if c:
-                        try:
-                            self.api.subscribe(c, quote_type=sj.QuoteType.BidAsk)
-                            print(f"[RUNWAY_V2_BIDASK_SUB] {symbol}")
-                        except Exception:
-                            raise
-                    else:
-                        raise ValueError("contract unavailable")
-                self.runway_v2.register_bidask_subscriber(_sub_bidask)
+                self.runway_v2.register_subscription_status(
+                    lambda symbol: self.quote_subscriptions.status(symbol, 'BidAsk'))
         except Exception as exc:
             self.runway_v2 = None
             print(f"[RUNWAY_V2_BOOT_FAIL] {exc}")
@@ -3120,6 +3114,7 @@ class IntradayLiveEngine:
             quote = args[1] if len(args) > 1 else (args[0] if args else None)
             if quote:
                 symbol = getattr(quote, "code", "")
+                self.quote_subscriptions.confirm_data(symbol, 'BidAsk')
                 archive = bidask_recorder()
                 if archive is not None and symbol:
                     archive.record(symbol, quote)
@@ -3134,12 +3129,58 @@ class IntradayLiveEngine:
         self.api.on_tick_stk_v1()(
             self.on_tick
         )
+        self.api.set_event_callback(self.on_quote_event)
         try:
             self.api.on_bidask_stk_v1()(
                 self.on_bidask
             )
         except Exception as exc:
             print(f"[WARN] on_bidask_stk_v1 bind: {exc}")
+
+    def _send_quote_subscription(self, symbol, kind, subscribe):
+        contract = self.contracts.get(symbol) or self._quote_contracts.get(symbol)
+        if contract is None:
+            raise ValueError('contract unavailable')
+        self._quote_contracts[symbol] = contract
+        fn = self.api.subscribe if subscribe else self.api.unsubscribe
+        fn(contract, quote_type=getattr(sj.QuoteType, kind))
+
+    def on_quote_event(self, response_code, event_code, info, event):
+        self.quote_subscriptions.event(response_code, event_code, info, event)
+        # Do not print broker client identifiers or account information.
+        if str(response_code) != '200' or 'Max Num Subscriptions' in str(info):
+            print(f"[QUOTE_SUBSCRIPTION_EVENT] code={response_code} event_code={event_code} "
+                  f"quota_exceeded={'Max Num Subscriptions' in str(info)}")
+
+    def _select_b_books(self, rows, current):
+        lanes = self.runway_v2
+        if lanes is None or not lanes.enabled:
+            return
+        with lanes.lock:
+            pinned = {s for lane in lanes.state.values() for s in lane['positions']}
+        candidates = []
+        opening = current.hour == 9 and current.minute < 10
+        priorities = {}
+        for row in rows:
+            symbol = str(row['symbol'])
+            prev, price = num(row.get('previous_close')), num(row.get('price'))
+            if not prev or not price or abs(price / prev - 1) >= .07:
+                continue
+            buy = num(row.get('buy_ratio_60s')) or 0
+            direction = 1 if buy >= .65 else (-1 if buy <= .35 else 0)
+            aligned = False
+            if opening:
+                sector = row.get('sector')
+                peers = [r for r in rows if r['symbol'] != symbol and sector and r.get('sector') == sector
+                         and num(r.get('previous_close')) and num(r.get('price'))]
+                aligned = bool(direction and len(peers) >= 2 and
+                               sum(direction * (r['price'] / r['previous_close'] - 1) > 0
+                                   for r in peers) / len(peers) >= .6)
+            # Ranking allocates scarce data; it does not replace any strategy gate.
+            priorities[symbol] = (aligned, abs(buy - .5), num(row.get('amount_60s')) or 0)
+            candidates.append(row)
+        candidates.sort(key=lambda r: priorities[str(r['symbol'])], reverse=True)
+        self.quote_subscriptions.select_books([str(r['symbol']) for r in candidates], pinned)
 
     def subscribe_all(self) -> None:
         print("[BOOT] Subscribe Shioaji Tick...")
@@ -3152,10 +3193,8 @@ class IntradayLiveEngine:
             start=1,
         ):
             try:
-                self.api.subscribe(
-                    contract,
-                    quote_type=sj.QuoteType.Tick,
-                )
+                self._quote_contracts[symbol] = contract
+                self.quote_subscriptions.request(symbol, 'Tick')
 
                 print(
                     f"[SUB {index}/"
@@ -3207,7 +3246,7 @@ class IntradayLiveEngine:
         with self._lock:
             if symbol in self.contracts:
                 self.candidates[symbol] = row
-                return True
+                return self.quote_subscriptions.request(symbol, 'Tick')
 
         contract = get_contract(
             self.api,
@@ -3221,10 +3260,9 @@ class IntradayLiveEngine:
             return False
 
         try:
-            self.api.subscribe(
-                contract,
-                quote_type=sj.QuoteType.Tick,
-            )
+            self._quote_contracts[symbol] = contract
+            if not self.quote_subscriptions.request(symbol, 'Tick'):
+                return False
 
             with self._lock:
                 self.contracts[symbol] = contract
@@ -3256,12 +3294,9 @@ class IntradayLiveEngine:
 
         if contract is not None:
             try:
-                self.api.unsubscribe(
-                    contract,
-                    quote_type=sj.QuoteType.Tick,
-                )
-                if lanes is not None and symbol in lanes.subscribed:
-                    self.api.unsubscribe(contract, quote_type=sj.QuoteType.BidAsk)
+                self.quote_subscriptions.cancel(symbol, 'Tick')
+                self.quote_subscriptions.cancel(symbol, 'BidAsk')
+                if lanes is not None:
                     lanes.release_symbol(symbol)
             except Exception:
                 pass
@@ -3308,7 +3343,9 @@ class IntradayLiveEngine:
             ).set({
                 "source": "shioaji_multi_scanner",
                 "pool_limit": RADAR_POOL_SIZE,
-                "actual_subscriptions": len(self.contracts),
+                "actual_subscriptions": self.quote_subscriptions.snapshot()['counts'].get('Tick_active', 0),
+                "requested_tick_symbols": len(self.contracts),
+                "subscription_budget": self.quote_subscriptions.snapshot(),
                 "refresh_seconds": UNIVERSE_REFRESH_SECONDS,
                 "updated_at": now_tpe().isoformat(timespec="seconds"),
             })
@@ -3346,6 +3383,7 @@ class IntradayLiveEngine:
             return
 
         self._last_universe_refresh = now_mono
+        self.quote_subscriptions.retry_cancellations()
 
         rows = scan_market_activity_universe(
             self.api,
@@ -3363,9 +3401,7 @@ class IntradayLiveEngine:
             for row in rows
         }
         new_symbols = set(new_map)
-        old_symbols = set(
-            self.radar_universe_symbols
-        )
+        old_symbols = set(self.contracts)
 
         # 先取消掉榜者，確保訂閱數永遠留在安全上限內。
         for symbol in sorted(
@@ -3384,9 +3420,7 @@ class IntradayLiveEngine:
 
         added_count = 0
 
-        for symbol in sorted(
-            new_symbols - old_symbols
-        ):
+        for symbol in sorted(new_symbols):
             if self._subscribe_universe_symbol(
                 new_map[symbol]
             ):
@@ -3707,6 +3741,7 @@ class IntradayLiveEngine:
                     # B's registered reference source is SDK contract metadata,
                     # independent of lane A's on-demand historical close cache.
                     prev_map = {str(r["symbol"]): r.get("previous_close") for r in lane_rows}
+                    self._select_b_books(lane_rows, current)
                     self.runway_v2.on_radar_update(lane_rows, self.bars, prev_map, current, market=self.market_risk)
                     if current.timestamp() - self._b_metadata_log_at >= 60:
                         self._b_metadata_log_at = current.timestamp()
@@ -4729,6 +4764,8 @@ class IntradayLiveEngine:
             ):
                 return
 
+            self.quote_subscriptions.confirm_data(symbol, 'Tick')
+
             volume = tick_volume(
                 tick
             )
@@ -5120,6 +5157,13 @@ class IntradayLiveEngine:
         for symbol, position in list(self.manager.positions.items()):
             if not self._subscribe_universe_symbol({"symbol": symbol, "name": position.get("name", symbol)}):
                 raise RuntimeError("Cannot subscribe restored OPEN position")
+        if self.runway_v2 is not None:
+            with self.runway_v2.lock:
+                restored_b = {s: p for lane in self.runway_v2.state.values() for s, p in lane['positions'].items()}
+            for symbol, position in restored_b.items():
+                if not self._subscribe_universe_symbol({'symbol': symbol, 'name': position.get('name', symbol)}):
+                    raise RuntimeError('Cannot subscribe restored B OPEN position')
+                self.quote_subscriptions.request(symbol, 'BidAsk')
 
         current = now_tpe()
         current_t = current.timetz().replace(
