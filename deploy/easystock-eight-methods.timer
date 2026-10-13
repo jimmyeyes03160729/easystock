@@ -1,0 +1,10 @@
+[Unit]
+Description=EasyStock observation feed refresh (operator approval required)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 08..14:*:00,30 Asia/Taipei
+Persistent=false
+Unit=easystock-eight-methods.service
+
+[Install]
+WantedBy=timers.target

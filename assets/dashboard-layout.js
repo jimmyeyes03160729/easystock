@@ -9,12 +9,12 @@
 
   const style=document.createElement('style');style.id='simpleHomeStyle';
   style.textContent=`
-  #shortTermModule{min-width:0;padding:20px;margin:22px 0 30px;height:auto}
-  #shortTermModule .share-btn{font-size:11px;white-space:nowrap}
-  #shortTermModule .short-module-head{flex-wrap:wrap;gap:8px}
-  #short-term{display:block;scroll-margin-top:90px}
+  #eightMethodsModule{min-width:0;padding:20px;margin:22px 0 30px;height:auto}
+  #eightMethodsModule .share-btn{font-size:11px;white-space:nowrap}
+  #eightMethodsModule .eight-module-head{flex-wrap:wrap;gap:8px}
+  #eight-methods{display:block;scroll-margin-top:90px}
   #learningSection [role=status]:empty{display:none}
-  @media(max-width:480px){#shortTermModule{padding:16px}}
+  @media(max-width:480px){#eightMethodsModule{padding:16px}}
   `;
   document.head.append(style);
 })();

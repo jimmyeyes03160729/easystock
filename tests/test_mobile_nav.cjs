@@ -16,7 +16,7 @@ test('M1-M7: real anchors, five labels, desktop/mobile safe-area, active and gua
   const html=fs.readFileSync('index.html','utf8'),{w,run}=createDOM(html);
   const nav=w.document.querySelector('.mobile-bottom-nav'),links=[...nav.querySelectorAll('a')];
   assert.equal(links.length,5);
-  assert.deepEqual(links.map(a=>a.getAttribute('aria-label')),['盤中摸魚','短期持股','AI 選股','牛馬 AI','社畜後台']);
+  assert.deepEqual(links.map(a=>a.getAttribute('aria-label')),['盤中摸魚','開盤八法・尾盤八法','AI 選股','牛馬 AI','社畜後台']);
   assert.match(html,/\.mobile-bottom-nav\s*\{ display:none;/);
   assert.match(html,/@media\(max-width:768px\)/);
   assert.match(html,/body\s*\{ padding-bottom:calc\(68px \+ env\(safe-area-inset-bottom/);
@@ -40,7 +40,7 @@ function navigationFixture(t,{productionLayout=false}={}){
   t.after(()=>w.close());
   const nav=w.document.querySelector('.mobile-bottom-nav');
   const links=[...nav.querySelectorAll('a[href^="#"]')];
-  const positions={'#intraday-strategies':100,'#short-term':900,'#learningSection':1700,'#chrome-tools':-2000};
+  const positions={'#intraday-strategies':100,'#eight-methods':900,'#learningSection':1700,'#chrome-tools':-2000};
   for(const [href,top] of Object.entries(positions))w.document.querySelector(href).getBoundingClientRect=()=>({top:positions[href]});
   // AI picks sits just above the learning section on the page.
   w.document.querySelector('#ai-picks').getBoundingClientRect=()=>({top:positions['#learningSection']-300});
@@ -80,114 +80,114 @@ function navigationFixture(t,{productionLayout=false}={}){
   return {w,click,scroll,active,advance,scrollend,flush};
 }
 
-test('CASE 1-2: short-term stays selected while smooth scrolling past intraday',t=>{
+test('CASE 1-2: eight-methods stays selected while smooth scrolling past intraday',t=>{
   const f=navigationFixture(t);
-  f.click('#short-term');f.active('#short-term');
-  f.scroll({'#intraday-strategies':80,'#short-term':600});
-  f.active('#short-term');assert.equal(f.w.location.hash,'#short-term');
+  f.click('#eight-methods');f.active('#eight-methods');
+  f.scroll({'#intraday-strategies':80,'#eight-methods':600});
+  f.active('#eight-methods');assert.equal(f.w.location.hash,'#eight-methods');
 });
 
 test('CASE 3-7: AI stays selected through the entire path; scrollend restores manual spy',t=>{
   const f=navigationFixture(t);
   f.click('#learningSection');f.active('#learningSection');
   for(const positions of [
-    {'#intraday-strategies':80,'#short-term':700,'#learningSection':1400},
-    {'#intraday-strategies':-600,'#short-term':100,'#learningSection':800},
-    {'#intraday-strategies':-1300,'#short-term':-600,'#learningSection':100}
+    {'#intraday-strategies':80,'#eight-methods':700,'#learningSection':1400},
+    {'#intraday-strategies':-600,'#eight-methods':100,'#learningSection':800},
+    {'#intraday-strategies':-1300,'#eight-methods':-600,'#learningSection':100}
   ]){
     f.scroll(positions);f.advance(120);f.active('#learningSection');
   }
   assert.equal(f.w.location.hash,'#learningSection');
   f.scrollend();f.active('#learningSection');
-  f.scroll({'#short-term':100,'#learningSection':800});f.active('#short-term');
-  f.scroll({'#intraday-strategies':100,'#short-term':800});f.active('#intraday-strategies');
+  f.scroll({'#eight-methods':100,'#learningSection':800});f.active('#eight-methods');
+  f.scroll({'#intraday-strategies':100,'#eight-methods':800});f.active('#intraday-strategies');
 });
 
 test('fallback waits for scroll inactivity even when animation takes longer than 300ms',t=>{
   const f=navigationFixture(t);
   f.click('#learningSection');
   for(let step=0;step<10;step++){
-    f.scroll({'#intraday-strategies':-600,'#short-term':100,'#learningSection':800});
+    f.scroll({'#intraday-strategies':-600,'#eight-methods':100,'#learningSection':800});
     f.advance(120);f.active('#learningSection');
   }
-  f.scroll({'#short-term':-600,'#learningSection':100});
+  f.scroll({'#eight-methods':-600,'#learningSection':100});
   f.advance(200);f.active('#learningSection');
-  f.scroll({'#short-term':100,'#learningSection':800});f.active('#short-term');
-  f.scroll({'#intraday-strategies':100,'#short-term':800});f.active('#intraday-strategies');
+  f.scroll({'#eight-methods':100,'#learningSection':800});f.active('#eight-methods');
+  f.scroll({'#intraday-strategies':100,'#eight-methods':800});f.active('#intraday-strategies');
 });
 
 test('CASE 8: hashchange locks AI through intermediate positions and settles on AI',t=>{
   const f=navigationFixture(t);
   f.w.history.replaceState(null,'','#learningSection');f.w.dispatchEvent(new f.w.Event('hashchange'));
   f.active('#learningSection');
-  f.scroll({'#intraday-strategies':-600,'#short-term':100,'#learningSection':800});f.active('#learningSection');
-  f.scroll({'#short-term':-600,'#learningSection':100});f.scrollend();f.active('#learningSection');
+  f.scroll({'#intraday-strategies':-600,'#eight-methods':100,'#learningSection':800});f.active('#learningSection');
+  f.scroll({'#eight-methods':-600,'#learningSection':100});f.scrollend();f.active('#learningSection');
   assert.equal(f.w.location.hash,'#learningSection');
 });
 
 test('rapid clicks ignore the cancelled previous scrollend and keep the latest destination',t=>{
   const f=navigationFixture(t);
-  f.click('#short-term');
-  f.scroll({'#intraday-strategies':-600,'#short-term':100,'#learningSection':800});
+  f.click('#eight-methods');
+  f.scroll({'#intraday-strategies':-600,'#eight-methods':100,'#learningSection':800});
   f.click('#learningSection');f.scrollend();
   f.scroll({});f.active('#learningSection');
-  f.scroll({'#short-term':-600,'#learningSection':100});f.scrollend();f.active('#learningSection');
+  f.scroll({'#eight-methods':-600,'#learningSection':100});f.scrollend();f.active('#learningSection');
 });
 
-test('intraday click stays selected while scrolling upwards through short-term',t=>{
+test('intraday click stays selected while scrolling upwards through eight-methods',t=>{
   const f=navigationFixture(t);
   f.click('#intraday-strategies');f.active('#intraday-strategies');
-  f.scroll({'#intraday-strategies':-600,'#short-term':100,'#learningSection':800});f.active('#intraday-strategies');
-  f.scroll({'#intraday-strategies':100,'#short-term':800,'#learningSection':1500});
+  f.scroll({'#intraday-strategies':-600,'#eight-methods':100,'#learningSection':800});f.active('#intraday-strategies');
+  f.scroll({'#intraday-strategies':100,'#eight-methods':800,'#learningSection':1500});
   f.scrollend();f.active('#intraday-strategies');
 });
 
 test('already-visible anchors and bottom-clamped destinations release the lock',t=>{
   const f=navigationFixture(t);
   f.click('#intraday-strategies');f.advance(200);
-  f.scroll({'#intraday-strategies':-600,'#short-term':100});f.active('#short-term');
+  f.scroll({'#intraday-strategies':-600,'#eight-methods':100});f.active('#eight-methods');
   f.click('#learningSection');f.w.scrollY=9400;
-  f.scroll({'#short-term':-300,'#learningSection':400});f.scrollend();f.active('#learningSection');
-  f.scroll({'#short-term':100,'#learningSection':800});f.active('#short-term');
+  f.scroll({'#eight-methods':-300,'#learningSection':400});f.scrollend();f.active('#learningSection');
+  f.scroll({'#eight-methods':100,'#learningSection':800});f.active('#eight-methods');
 });
 
 test('touch, wheel and keyboard scrolling can interrupt a navigation lock',t=>{
   const f=navigationFixture(t);
   for(const event of [new f.w.Event('touchmove',{bubbles:true}),new f.w.Event('wheel',{bubbles:true}),new f.w.KeyboardEvent('keydown',{key:'PageUp',bubbles:true})]){
-    f.click('#learningSection');f.scroll({'#intraday-strategies':-600,'#short-term':100,'#learningSection':800});
-    f.w.document.body.dispatchEvent(event);f.flush();f.active('#short-term');
+    f.click('#learningSection');f.scroll({'#intraday-strategies':-600,'#eight-methods':100,'#learningSection':800});
+    f.w.document.body.dispatchEvent(event);f.flush();f.active('#eight-methods');
   }
 });
 
 test('manual spy follows the actual scroll padding and fixed header active line',t=>{
   const f=navigationFixture(t);
   f.w.document.documentElement.style.scrollPaddingTop='160px';
-  f.scroll({'#intraday-strategies':-600,'#short-term':180,'#learningSection':800});f.active('#short-term');
+  f.scroll({'#intraday-strategies':-600,'#eight-methods':180,'#learningSection':800});f.active('#eight-methods');
   f.w.document.documentElement.style.scrollPaddingTop='40px';
-  f.scroll({'#intraday-strategies':-600,'#short-term':85});f.active('#intraday-strategies');
-  f.scroll({'#short-term':84});f.active('#short-term');
+  f.scroll({'#intraday-strategies':-600,'#eight-methods':85});f.active('#intraday-strategies');
+  f.scroll({'#eight-methods':84});f.active('#eight-methods');
 });
 
-test('production short-term scroll-margin remains selected when a queued spy runs after scrollend',t=>{
+test('production eight-methods scroll-margin remains selected when a queued spy runs after scrollend',t=>{
   const f=navigationFixture(t,{productionLayout:true});
-  assert.equal(f.w.getComputedStyle(f.w.document.querySelector('#short-term')).scrollMarginTop,'90px');
-  f.click('#short-term');
+  assert.equal(f.w.getComputedStyle(f.w.document.querySelector('#eight-methods')).scrollMarginTop,'90px');
+  f.click('#eight-methods');
   // Native anchor alignment adds html scroll-padding (100) and section scroll-margin (90).
-  f.scroll({'#intraday-strategies':-600,'#short-term':190,'#learningSection':800});
+  f.scroll({'#intraday-strategies':-600,'#eight-methods':190,'#learningSection':800});
   f.w.dispatchEvent(new f.w.Event('scroll')); // Spy still pending at scrollend.
-  f.scrollend();f.flush();f.active('#short-term');
-  f.scroll({'#short-term':189});f.active('#short-term');
-  assert.equal(f.w.location.hash,'#short-term');
+  f.scrollend();f.flush();f.active('#eight-methods');
+  f.scroll({'#eight-methods':189});f.active('#eight-methods');
+  assert.equal(f.w.location.hash,'#eight-methods');
 });
 
-test('production short-term scroll-margin is included in fallback settle and manual spy boundaries',t=>{
+test('production eight-methods scroll-margin is included in fallback settle and manual spy boundaries',t=>{
   const f=navigationFixture(t,{productionLayout:true});
-  f.click('#short-term');
-  f.scroll({'#intraday-strategies':-600,'#short-term':190,'#learningSection':800});
-  f.advance(200);f.scroll({});f.active('#short-term');
-  f.scroll({'#short-term':211});f.active('#intraday-strategies');
-  f.scroll({'#short-term':210});f.active('#short-term');
-  f.scroll({'#short-term':-600,'#learningSection':100});f.active('#learningSection');
+  f.click('#eight-methods');
+  f.scroll({'#intraday-strategies':-600,'#eight-methods':190,'#learningSection':800});
+  f.advance(200);f.scroll({});f.active('#eight-methods');
+  f.scroll({'#eight-methods':211});f.active('#intraday-strategies');
+  f.scroll({'#eight-methods':210});f.active('#eight-methods');
+  f.scroll({'#eight-methods':-600,'#learningSection':100});f.active('#learningSection');
 });
 
 test('CASE 9-10: banner uses scoped responsive CSS, its original ratio and desktop dimensions',t=>{

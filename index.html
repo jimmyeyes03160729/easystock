@@ -159,9 +159,9 @@
       #themeToggleLabel { display:none; }
 
       /* Data supplied at runtime can contain long names, model IDs and timestamps. */
-      #intradayPickList > *, #runwayV2PickList > *, #overnightPickList > *, #shortTermModule, #learningSection,
+      #intradayPickList > *, #runwayV2PickList > *, #overnightPickList > *, #eightMethodsModule, #learningSection,
       .system-stats > *, .filter-panel > * { min-width:0; }
-      #intradayPickList, #runwayV2PickList, #overnightPickList, #shortTermModule, #learningSection { overflow-wrap:anywhere; }
+      #intradayPickList, #runwayV2PickList, #overnightPickList, #eightMethodsModule, #learningSection { overflow-wrap:anywhere; }
     }
     @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } * { transition:none!important; } }
 
@@ -220,19 +220,19 @@
   /* Panels and cards in light mode */
   html[data-theme="light"] .panel,
   html[data-theme="light"] #daytradeModule,
-  html[data-theme="light"] #shortTermModule,
+  html[data-theme="light"] #eightMethodsModule,
   html[data-theme="light"] #learningSection,
   html[data-theme="light"] .system-stats > div,
   html[data-theme="light"] .filter-panel,
   html.light .panel,
   html.light #daytradeModule,
-  html.light #shortTermModule,
+  html.light #eightMethodsModule,
   html.light #learningSection,
   html.light .system-stats > div,
   html.light .filter-panel,
   html:not(.dark) .panel,
   html:not(.dark) #daytradeModule,
-  html:not(.dark) #shortTermModule,
+  html:not(.dark) #eightMethodsModule,
   html:not(.dark) #learningSection,
   html:not(.dark) .system-stats > div,
   html:not(.dark) .filter-panel {
@@ -245,15 +245,15 @@
   html[data-theme="light"] .learning-numbers > div,
   html[data-theme="light"] .learning-bottom > div,
   html[data-theme="light"] #learningSection details,
-  html[data-theme="light"] details.short-method,
+  html[data-theme="light"] details.eight-method,
   html.light .learning-numbers > div,
   html.light .learning-bottom > div,
   html.light #learningSection details,
-  html.light details.short-method,
+  html.light details.eight-method,
   html:not(.dark) .learning-numbers > div,
   html:not(.dark) .learning-bottom > div,
   html:not(.dark) #learningSection details,
-  html:not(.dark) details.short-method {
+  html:not(.dark) details.eight-method {
     background-color: #F8FAFC !important;
     border-color: #E2E8F0 !important;
   }
@@ -371,21 +371,22 @@
 .recommendation-section{margin-bottom:30px}
 .ranked-heading{padding-top:18px;border-top:1px solid var(--border)}
 .section-number{font-size:12px!important;letter-spacing:.08em!important;margin-right:8px;padding:2px 7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:"JetBrains Mono",monospace;}
-.short-module{padding:22px;margin-bottom:30px;background:var(--panel);border:1px solid var(--border);border-radius:12px;}
-.short-module-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
-.short-module h2{font-size:14px;font-weight:700;line-height:1.5}
-.short-module p{font-size:12px;line-height:1.7;margin:6px 0}
-.short-module table th{color:var(--muted);font-weight:600;white-space:nowrap}
-.short-module table td{font-variant-numeric:tabular-nums}
-.short-rule-note{display:inline-block;border:1px solid var(--border-bright);background:var(--surface);padding:4px 10px;font-size:11px;border-radius:6px;color:var(--accent);font-family:"JetBrains Mono",monospace;}
-.short-method{font-size:12px;line-height:1.7;margin:12px 0;border-top:1px solid var(--border);padding-top:14px}
-.short-method summary{cursor:pointer}
+.eight-module{padding:22px;margin-bottom:30px;background:var(--panel);border:1px solid var(--border);border-radius:12px;}
+.eight-module-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.eight-module h2{font-size:14px;font-weight:700;line-height:1.5}
+.eight-module p{font-size:12px;line-height:1.7;margin:6px 0}
+.eight-module table th{color:var(--muted);font-weight:600;white-space:nowrap}
+.eight-module table td{font-variant-numeric:tabular-nums}
+.eight-method{font-size:12px;line-height:1.7;margin:12px 0;border-top:1px solid var(--border);padding-top:14px}
+.eight-method summary{cursor:pointer}
 .market-context{margin-bottom:24px}
 .recommendation-section .panel{padding:20px;border-radius:12px;}
 #intradayPickList,#runwayV2PickList{display:flex;flex-direction:column;gap:12px}
 #overnightPickList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 #overnightPickList>div:only-child{grid-column:1/-1}
-@media(max-width:800px){#overnightPickList{grid-template-columns:1fr;}.short-module-head{flex-direction:column;}}
+@media(max-width:800px){#overnightPickList{grid-template-columns:1fr;}.eight-module-head{flex-direction:column;}}
+
+.eight-module [role=tablist]{display:flex;gap:10px;margin:14px 0}.eight-module button,.eight-module input{padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--text)}.eight-module [aria-selected=true]{border-color:#06b6d4;color:#06b6d4}.eight-card{border:1px solid var(--border);border-radius:10px;padding:14px;margin:10px 0;min-width:0}.eight-card svg{width:100%;max-width:340px;height:100px;color:#06b6d4}.eight-card ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0;list-style:none}.eight-card small{overflow-wrap:anywhere}.eight-module [hidden]{display:none!important}@media(max-width:600px){.eight-card ul{grid-template-columns:1fr}.eight-module input{width:100%}}
 </style>
 <link rel="icon" type="image/png" sizes="128x128" href="chrome-extension/assets/icon128.png">
 </head>
@@ -413,7 +414,7 @@
 
       <nav class="hidden lg:flex min-w-0 flex-1 items-center justify-center gap-0.5 bg-[#131A26] p-1 rounded-xl border border-[#232F42] text-xs font-semibold section-nav overflow-hidden" style="border-bottom:none; margin-bottom:0; padding:4px;" aria-label="首頁區域">
         <a href="#intraday-strategies" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#F1F5F9] hover:bg-[#1C2B3C] transition-colors whitespace-nowrap">01 盤中摸魚</a>
-        <a href="#short-term" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">02 短期持股</a>
+        <a href="#eight-methods" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">02 開盤八法・尾盤八法</a>
         <a href="#ai-picks" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">03 AI 選股</a>
         <a href="#learningSection" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">04 牛馬 AI 加班進修</a>
         <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">社畜後台 ↗</a>
@@ -467,7 +468,7 @@
 
   <nav class="section-nav lg:hidden" aria-label="首頁行動區域">
     <a href="#intraday-strategies">01 盤中摸魚</a>
-    <a href="#short-term">02 短期持股</a>
+    <a href="#eight-methods">02 開盤八法・尾盤八法</a>
     <a href="#ai-picks">03 AI 選股</a>
     <a href="#learningSection">04 牛馬 AI 加班進修</a>
     <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener">社畜後台 ↗</a>
@@ -748,50 +749,17 @@
     </div>
   </section>
 
-  <!-- =====================================================
-       02 短期持股（持有 15 天內）
-       ===================================================== -->
-  <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]" id="short-term">
-    <div class="flex items-center gap-2">
-      <span class="h-6 w-6 rounded-md bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#06B6D4] font-mono text-xs font-bold">02</span>
-      <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9]">短期持股 · 持有 15 天內</h2>
-    </div>
-    <span class="text-xs text-[#64748B]">月營收驚喜 · 每月一批 · 持有 10 個交易日</span>
-  </div>
-
-  <section id="shortTermModule" class="panel short-module bg-[#131A26] border border-[#232F42] rounded-2xl p-4 shadow-sm mb-8" aria-labelledby="shortTermTitle">
-    <div class="short-module-head flex items-start justify-between gap-4 border-b border-[#232F42] pb-3">
-      <div>
-        <h2 id="shortTermTitle" class="text-sm font-bold text-[#F1F5F9] m-0">本月短期名單 · 營收驚喜前 10 名</h2>
-        <p class="text-xs text-[#64748B] mt-1">每月營收公布截止日晚上選出 10 檔，隔天開盤各買約 10 萬，持有 10 個交易日（約兩週）後收盤賣出。不是當沖。</p>
-      </div>
-      <button class="btn share-btn flex items-center gap-1 px-2.5 py-1 rounded bg-[#1C2B3C] hover:bg-[#273647] text-[#F1F5F9] text-xs flex-shrink-0" type="button" data-share-ignore onclick="prepareModuleShare('shortTermModule','短期持股')">
-        <span class="material-symbols-outlined text-[13px]">share</span> 分享圖片 ↗
-      </button>
-    </div>
-    <div class="flex items-center justify-end flex-wrap gap-2 my-2.5 font-mono text-xs sm:text-[13px]">
-      <div class="short-rule-note px-3 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 text-xs font-semibold">紙上追蹤 · 不下單 · 回測扣成本後為正，前瞻驗證中</div>
-    </div>
-    <p id="shortTermStatus" role="status" aria-live="polite" class="text-xs text-[#64748B] font-medium">等待短期名單資料…</p>
-    <div id="shortTermPicks" class="mt-3"></div>
-    <div id="shortTermHistory" class="mt-4 pt-3 border-t border-[#232F42]"></div>
-    <p id="shortTermFullLine" class="text-xs text-[#64748B] mt-3"></p>
-    <details id="shortTermFull" class="short-method mt-2 p-3.5 rounded-xl bg-[#0D1C2D] border border-[#232F42]/60 text-xs sm:text-[13px] text-[#64748B]">
-      <summary class="cursor-pointer font-bold text-[#F1F5F9] hover:text-[#06B6D4]">全部上市櫃公司（依驚喜分數排序，不設成交額門檻）</summary>
-      <p class="mt-2">收集資料用：當月有營收的上市櫃公司全部列入，從同一天開盤追蹤到第 10 個交易日。上方 10 檔組合仍用回測驗證過的規則（近 20 日均成交額 ≥ 5,000 萬）。</p>
-      <input id="shortTermFullSearch" type="search" placeholder="搜尋代號或名稱" class="mt-2 mb-2 px-2 py-1 rounded bg-[#1C2B3C] border border-[#232F42] text-[#F1F5F9] text-xs w-full sm:w-64" aria-label="搜尋全部公司">
-      <div id="shortTermFullRows"><p class="text-xs py-2">展開後載入。</p></div>
-    </details>
-    <details class="short-method mt-3 p-3.5 rounded-xl bg-[#0D1C2D] border border-[#232F42]/60 text-xs sm:text-[13px] text-[#64748B] leading-relaxed">
-      <summary class="cursor-pointer font-bold text-[#F1F5F9] hover:text-[#06B6D4] flex items-center gap-1.5">
-        <span class="material-symbols-outlined text-[18px] text-[#F59E0B]">analytics</span>
-        <span>選股方式與歷史回測</span>
-      </summary>
-      <p class="mt-2.5"><strong>選股：</strong>每月 10 日（遇假日順延到下一個交易日）上市櫃公司營收公布截止，當晚計算每檔的「營收驚喜分數」＝本月營收年增率，跟它自己過去 12 個月年增率比，高出幾個標準差。只看普通股、近 20 日平均成交額 ≥ 5,000 萬、股價 ≥ 10 元。名單在截止日晚上凍結，之後不再更改。</p>
-      <p class="mt-1.5"><strong>買賣：</strong>取分數最高 10 檔，隔天開盤各買約 10 萬（100 萬資金），開盤就漲停的買不到、那 10 萬留現金；持有 10 個交易日，第 10 天收盤賣出。損益扣手續費（0.1425% × 2.8 折、最低 20 元）與 0.3% 證交稅。</p>
-      <p class="mt-1.5"><strong>歷史回測（2022-02～2026-09，共 56 批，每月一批）：</strong>前 10 名每批平均 +1.28%，約每 100 萬 +12,834 元；56 批中 35 批賺錢，最差一批 −8.24%，2022 空頭年平均 −1.47%。同期全市場平均 +0.71%，前 10 名只多 0.57%，統計上還不夠穩（t 1.24）；若改買全部前 10%（約 60～90 檔，需用零股），每批 +1.62%、多 0.90%（t 4.17），比較穩。持有 5 天與 20 天的版本也通過檢驗。</p>
-      <p class="mt-1.5"><strong>限制：</strong>這批歷史資料已經用來研究過，不算獨立證明；2026 年 9 月營收（10/13 進場）起的前瞻紀錄才是真正的驗證，會列在上方。資金一個月約只用兩週；名單在營收截止日才產生，其餘日子沒有新名單。</p>
-    </details>
+  <!-- 02 Independent market observations -->
+  <div class="section-heading ranked-heading" id="eight-methods"><h2>02 開盤八法・尾盤八法</h2></div>
+  <section id="eightMethodsModule" class="panel eight-module" aria-label="開盤八法・尾盤八法">
+    <div class="eight-module-head"><p>Asia/Taipei · 盤勢分類與觀察選股，未驗證為買入訊號，不自動下單。</p>
+    <button type="button" class="btn share-btn" data-share-ignore onclick="prepareModuleShare('eightMethodsModule','開盤八法・尾盤八法')">分享</button></div>
+    <div role="tablist" aria-label="八法觀察"><button type="button" id="openingTab" role="tab" aria-selected="true" aria-controls="openingPanel">開盤八法</button><button type="button" id="closingTab" role="tab" aria-selected="false" aria-controls="closingPanel" tabindex="-1">尾盤八法</button></div>
+    <label for="eightSearch">搜尋股票</label><input id="eightSearch" type="search" placeholder="股票代號或名稱">
+    <p id="eightStatus" role="status" aria-live="polite">等待行情觀察資料…</p>
+    <div id="openingPanel" role="tabpanel" aria-labelledby="openingTab"><p>昨收 → 09:05 → 09:10 → 09:15；09:15 前尚未完成。各時點僅採用之前 30 秒內成交，平盤及缺 Tick 不分類。</p><div id="openingMarkets"></div><div id="openingRows"></div>
+    <details class="eight-method"><summary>八種型態與三段價格說明</summary><ol><li>漲漲漲：連續上行</li><li>漲漲跌：先升後回落</li><li>漲跌跌：上行後連續回落</li><li>跌漲漲：下行後連續回升</li><li>跌跌漲：連續下行後回升</li><li>跌跌跌：連續下行</li><li>跌漲跌：下上交錯</li><li>漲跌漲：上下交錯</li></ol><a href="https://www.yunfar.com.tw/GBSSKILL/starting-8ways.html" target="_blank" rel="noopener">開盤八法參考</a></details></div>
+    <div id="closingPanel" role="tabpanel" aria-labelledby="closingTab" hidden><p>13:00～13:25 觀察；13:25 起收盤集合競價，連續交易訊號已截止。</p><p>台股 TW_XQ_SCRIPT_V1：漲幅 3–5%、量比 &gt; 1、換手率 2–10%、市值 50–500 億 TWD、量擴張、5/20/60 均線、強於大盤、股價 ≥ 當日高點 98%。大陸規則另存，未套用於台股。</p><div id="closingRows"></div><a href="https://www.xq.com.tw/xstrader/大陸股神楊永興的尾盤八法/" target="_blank" rel="noopener">XQ 台股腳本參考</a></div>
   </section>
 
   <!-- =====================================================
@@ -909,7 +877,7 @@
       <span>社畜看盤免責條款 & 量化隔離說明</span>
     </div>
     本頁為量化資料整理與研究工具，不構成投資建議。
-    首頁「短期持股」是紙上追蹤的規則選股，回測為正不代表未來獲利；
+    首頁「開盤八法・尾盤八法」是盤勢分類與觀察選股，未經績效驗證，不是買入訊號；
     遇到紅燈市場可直接選擇觀望。
     資料核心為 TWSE / TPEx 官方公開資料；
     永豐 Shioaji 負責即時當沖行情，
@@ -5383,19 +5351,19 @@
 <script src="assets/vendor/html2canvas.min.js"></script>
 <script src="assets/module-share.js?v=d047d833f8a3"></script>
 <script src="assets/learning-status.js?v=7abe6c98e7b4"></script>
-<script src="assets/dashboard-layout.js?v=7c969a513b7d"></script>
+<script src="assets/dashboard-layout.js?v=488bb302a486"></script>
 <script src="assets/intraday-chart.js?v=17c577fb8eaa"></script>
 <script src="assets/provider-health.js?v=e8f08c578597"></script>
 <nav class="mobile-bottom-nav" aria-label="手機主導覽">
   <a href="#intraday-strategies" aria-label="盤中摸魚" aria-current="location"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span><span>盤中摸魚</span></a>
-  <a href="#short-term" aria-label="短期持股"><span class="material-symbols-outlined" aria-hidden="true">trending_up</span><span>短期持股</span></a>
+  <a href="#eight-methods" aria-label="開盤八法・尾盤八法"><span class="material-symbols-outlined" aria-hidden="true">trending_up</span><span>八法觀察</span></a>
   <a href="#ai-picks" aria-label="AI 選股"><span class="material-symbols-outlined" aria-hidden="true">smart_toy</span><span>AI 選股</span></a>
   <a href="#learningSection" aria-label="牛馬 AI"><span class="material-symbols-outlined" aria-hidden="true">psychology</span><span>牛馬 AI</span></a>
   <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" aria-label="社畜後台" target="_blank" rel="noopener"><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span><span>社畜後台</span></a>
 </nav>
 <script src="assets/mobile-nav.js?v=ed9c7d1d0f6c"></script>
 <script src="assets/revenue-observation.js?v=c1040fe37c1d"></script>
-<script src="assets/short-term.js?v=5f5f867c7dbd"></script>
+<script src="assets/eight-methods.js?v=056579923275"></script>
 <script src="assets/ai-picks.js?v=18da24857e80"></script>
 <script src="assets/b-lanes-replay.js?v=ea6b415dae32"></script>
 <script src="assets/a-watchlist.js?v=44db2c9964bb"></script>

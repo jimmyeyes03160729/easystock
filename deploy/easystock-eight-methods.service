@@ -1,0 +1,10 @@
+[Unit]
+Description=EasyStock opening and closing observations (no orders)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+EnvironmentFile=/home/ubuntu/easystock/.env
+ExecStart=/home/ubuntu/easystock/.venv/bin/python -m eight_methods.feed --publish

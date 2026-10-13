@@ -31,8 +31,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
-from short_term import feed as F  # noqa: E402  (same fill, ex-rights and session helpers as the short-term block)
-from short_term.feed import R  # noqa: E402
+import paper_helpers as F  # shared calendar, prices and JSON
+from paper_helpers import R  # noqa: E402
 from llm_paper import candidates as C  # noqa: E402
 from llm_paper.providers import PROVIDERS, env  # noqa: E402
 
@@ -118,7 +118,7 @@ def pick(now, force=False, clock=lambda: datetime.now(TPE)):
     prev, universe = previous_universe(DAILY_DB, today)
     checked_at = clock().isoformat(timespec='minutes')
     disposed = C.disposition_symbols(today) if any(mp for _, _, mp in VARIANTS) else set()
-    names = C.load_names(F.PICKS_DIR / 'revenue.sqlite')
+    names = C.load_names(F.REVENUE_DIR / 'revenue.sqlite')
     cands = {v: C.build(DAILY_DB, prev, today, mp, names, disposed, checked_at) for v, _, mp in VARIANTS if mp}
     fields = {'date': today, 'time': now.strftime('%H:%M'), 'prev_session': prev, 'entry_session': today,
               'cutoff_time': now.strftime('%Y-%m-%d %H:%M')}
@@ -312,7 +312,7 @@ def main():
         today = now.date().isoformat()
         prev, _ = previous_universe(DAILY_DB, today)
         disposed = C.disposition_symbols(today)
-        rows = C.build(DAILY_DB, prev, today, 200.0, C.load_names(F.PICKS_DIR / 'revenue.sqlite'), disposed,
+        rows = C.build(DAILY_DB, prev, today, 200.0, C.load_names(F.REVENUE_DIR / 'revenue.sqlite'), disposed,
                        now.isoformat(timespec='minutes'))
         print('prev_session', prev, 'candidates', len(rows), 'prompt_chars', len(C.as_prompt_json(rows)),
               'disposed', 'unavailable' if disposed is None else len(disposed))
