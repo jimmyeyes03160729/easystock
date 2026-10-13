@@ -54,6 +54,8 @@ def apply(suite, event):
         suite.on_tick(d['symbol'],d['price'],stamp(d['datetime']),d['tick_type'],d['volume'])
     elif kind=='bidask':
         suite.on_bidask(d['symbol'],d['quote'])
+    elif kind=='book_reset':
+        suite.reset_books(d['symbol'],d['reason'],d.get('source'),d.get('source_epoch'))
     elif kind=='radar':
         suite.on_radar_update(d['rows'],Cache(d['bars']),d['previous_closes'],stamp(d['now']),market=d['market'])
     elif kind=='release':

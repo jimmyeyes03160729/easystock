@@ -215,3 +215,22 @@ def test_runtime_mirror_matches_and_registered_b_strategy_is_not_changed():
     assert Path('intraday_live.py').read_bytes() == Path('vm_runtime/intraday_live.py').read_bytes()
     source = Path('intraday_live.py').read_text(encoding='utf8')
     assert "prev_map = {str(r[\"symbol\"]): r.get(\"previous_close\") for r in lane_rows}" in source
+
+
+def test_book_pool_omits_unaffordable_candidates_but_keeps_holdings_pinned():
+    engine=engine_fixture()
+    engine.runway_v2=SimpleNamespace(enabled=True,lock=threading.RLock(),state={'B1':{'positions':{'HELD':{}}}})
+    engine._select_b_books([
+        {'symbol':'EXPENSIVE','price':500,'previous_close':490},
+        {'symbol':'CHEAP','price':199.5,'previous_close':198},
+        {'symbol':'HELD','price':500,'previous_close':490}],NOW)
+    engine.quote_subscriptions.select_books.assert_called_once_with(['CHEAP'],{'HELD'})
+
+
+def test_book_pool_routes_to_dual_manager_when_explicitly_enabled():
+    engine=engine_fixture()
+    engine.runway_v2=SimpleNamespace(enabled=True,lock=threading.RLock(),state={'B1':{'positions':{}}})
+    engine.dual_books=SimpleNamespace(select=Mock())
+    engine._select_b_books([{'symbol':'CHEAP','price':100,'previous_close':99}],NOW)
+    engine.dual_books.select.assert_called_once_with(['CHEAP'],set(),NOW)
+    engine.quote_subscriptions.select_books.assert_not_called()

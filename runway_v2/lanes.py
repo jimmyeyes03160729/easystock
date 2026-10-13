@@ -117,6 +117,11 @@ class LaneSuite:
     def register_subscription_status(self, fn):
         self.subscription_status = fn
 
+    def reset_books(self, symbol, reason, source=None, epoch=None):
+        with self.lock:
+            self.books.pop(symbol, None)
+            self._capture('book_reset', {'symbol':symbol,'reason':reason,'source':source,'source_epoch':epoch})
+
     def has_open(self, symbol):
         with self.lock:
             return any(symbol in lane["positions"] for lane in self.state.values())
@@ -187,10 +192,12 @@ class LaneSuite:
             if history and dt <= history[-1]["dt"]:
                 return
             self._capture('bidask', {'symbol':symbol,'quote':{'datetime':dt.isoformat(),
-                'bid_price':bp,'ask_price':ap,'bid_volume':bv,'ask_volume':av}})
+                'bid_price':bp,'ask_price':ap,'bid_volume':bv,'ask_volume':av,
+                'source':get('source') or 'shioaji','source_epoch':get('source_epoch')}})
             total = sum(bv + av)
             book = {"dt": dt, "bid": bp[0], "ask": ap[0], "bv": bv[0], "av": av[0],
-                    "obi": (sum(bv) - sum(av)) / total if total else 0}
+                    "obi": (sum(bv) - sum(av)) / total if total else 0,
+                    "source":get('source') or 'shioaji',"source_epoch":get('source_epoch')}
             # Keep the most recent quote in each 250ms bucket. A high-frequency
             # liquid stock must not exhaust the bounded deque before five seconds.
             if history and int(history[-1]["dt"].timestamp() * 4) == int(dt.timestamp() * 4):
@@ -244,6 +251,7 @@ class LaneSuite:
     def _observation_check(self, symbol, now):
         state = getattr(self, '_observation_statuses', {}).get(symbol)
         blocked = {'unselected': '未分配五檔額度', 'failed': '五檔訂閱遭拒',
+                   'unit_unverified': '五檔數量單位未確認',
                    'cancelling': '五檔取消等待確認'}
         if state in blocked:
             return None, blocked[state]
@@ -350,6 +358,7 @@ class LaneSuite:
         if direction * (entry - stop) <= 0 or direction * (target - entry) <= 0:
             return None, "進出場價位不符"
         return {"direction": direction, "entry_price": entry, "stop_price": stop, "target": target,
+                "book_source":book.get('source','shioaji'),"book_source_epoch":book.get('source_epoch'),
                 "signal_type": lane, "reasons": [reason], "score": 0}, ""
 
     def _net(self, pos, exit_price):
