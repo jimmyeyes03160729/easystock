@@ -34,13 +34,13 @@
   if(!get('eightMethodsModule'))return;
   let feeds={},busy=false;
   function render(){
-    const query=get('eightSearch').value.trim().toLowerCase(),now=new Date();
+    const now=new Date();
     let messages=[];
     for(const [key,version,container,renderRow] of [['opening_eight','OPENING_EIGHT_METHODS_V1','openingRows',openingRow],['closing_eight','CLOSING_EIGHT_METHODS_V1','closingRows',closingRow]]){
-      const f=feeds[key],ok=valid(f,version,now)&&(key!=='closing_eight'||f.ruleset==='TW_XQ_SCRIPT_V1');
+      const f=feeds[key],ok=valid(f,version,now)&&(key!=='closing_eight'||f.ruleset==='TW_CLOSING_RULES_V1');
       if(!ok){get(container).innerHTML='<p>資料不足：今日觀察 feed 尚未發布或已過期。</p>';if(key==='opening_eight')get('openingMarkets').innerHTML='<p>加權／櫃買：資料不足，尚無有效指數成交時點。</p>';messages.push('資料不足／尚未發布');continue;}
-      const rows=(Array.isArray(f.rows)?f.rows:[]).filter(r=>`${r.symbol} ${r.name}`.toLowerCase().includes(query));
-      get(container).innerHTML=rows.map(r=>renderRow(r,now)).join('')||'<p>目前沒有符合搜尋的觀察資料。</p>';
+      const rows=Array.isArray(f.rows)?f.rows:[];
+      get(container).innerHTML=rows.map(r=>renderRow(r,now)).join('')||'<p>目前沒有觀察資料。</p>';
       if(key==='opening_eight')get('openingMarkets').innerHTML=(f.markets||[]).map(r=>openingRow(r,now)).join('');
       messages.push(`${f.source||''} · 更新 ${f.updated_at} · ${f.scope||''} ${(f.diagnostics||[]).join('；')}`);
     }
@@ -48,7 +48,6 @@
   }
   function tab(name){for(const n of ['opening','closing']){const selected=n===name;get(n+'Tab').setAttribute('aria-selected',String(selected));get(n+'Tab').tabIndex=selected?0:-1;get(n+'Panel').hidden=!selected;}}
   for(const n of ['opening','closing']){get(n+'Tab').addEventListener('click',()=>tab(n));get(n+'Tab').addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?'opening':e.key==='End'?'closing':n==='opening'?'closing':'opening';tab(next);get(next+'Tab').focus();}});}
-  get('eightSearch').addEventListener('input',render);
   async function load(){
     if(busy)return;busy=true;
     const root=String(global.FIREBASE_ROOT||'https://easystock-c237a-default-rtdb.firebaseio.com/market_data').replace(/\/$/,'');

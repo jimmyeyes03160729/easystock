@@ -13,13 +13,14 @@ test('stale, future and wrong version feed rejected',()=>{
  const f={schema_version:1,version:'OPENING_EIGHT_METHODS_V1',day:'2026-10-13',updated_at:now.toISOString()};
  assert(E.valid(f,f.version,now));assert(!E.valid(f,'old',now));assert(!E.valid(f,f.version,new Date(+now+91000)));assert(!E.valid(f,f.version,new Date(+now-1)));
 });
-test('tabs, search, graph, source freshness and isolated requests in production DOM',async()=>{
+test('tabs, complete stock list, source freshness and isolated requests in production DOM',async()=>{
  const dom=new JSDOM(fs.readFileSync('index.html','utf8'),{runScripts:'outside-only'}),w=dom.window;
- const paths=[];w.fetch=async url=>{paths.push(url);const opening=url.includes('opening_eight');const time=new Date();const day=new Date(+time+8*3600000).toISOString().slice(0,10);return {ok:true,json:async()=>({schema_version:1,version:opening?'OPENING_EIGHT_METHODS_V1':'CLOSING_EIGHT_METHODS_V1',ruleset:'TW_XQ_SCRIPT_V1',day,updated_at:time.toISOString(),rows:[{symbol:'2330',name:'台積電',status:'classified',method:1,prices:[100,101,102,103],directions:['U','U','U'],quote_at:time.toISOString(),conditions:[]}],markets:[]})};};
+ const paths=[];w.fetch=async url=>{paths.push(url);const opening=url.includes('opening_eight');const time=new Date();const day=new Date(+time+8*3600000).toISOString().slice(0,10);return {ok:true,json:async()=>({schema_version:1,version:opening?'OPENING_EIGHT_METHODS_V1':'CLOSING_EIGHT_METHODS_V1',ruleset:'TW_CLOSING_RULES_V1',day,updated_at:time.toISOString(),rows:[{symbol:'2330',name:'台積電',status:'classified',method:1,prices:[100,101,102,103],directions:['U','U','U'],quote_at:time.toISOString(),conditions:[]}],markets:[]})};};
  w.eval(fs.readFileSync('assets/eight-methods.js','utf8'));await new Promise(r=>setImmediate(r));
  assert.equal(paths.length,2);assert(paths.every(p=>/public_feed\/(opening|closing)_eight\.json$/.test(p)));
  w.document.getElementById('closingTab').click();assert(w.document.getElementById('openingPanel').hidden);assert(!w.document.getElementById('closingPanel').hidden);
- const search=w.document.getElementById('eightSearch');search.value='不存在';search.dispatchEvent(new w.Event('input'));assert(w.document.getElementById('closingRows').textContent.includes('沒有符合'));
+ assert.equal(w.document.querySelector('#eightMethodsModule input[type=search]'),null);assert(w.document.getElementById('closingRows').textContent.includes('2330'));
+ assert(!/XQ|xq\.com/.test(w.document.getElementById('eightMethodsModule').outerHTML));
  w.document.getElementById('openingTab').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));assert.equal(w.document.getElementById('closingTab').getAttribute('aria-selected'),'true');
  assert(fs.readFileSync('index.html','utf8').includes('grid-template-columns:1fr'));w.close();
 });

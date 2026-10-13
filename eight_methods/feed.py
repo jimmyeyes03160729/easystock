@@ -10,7 +10,7 @@ import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from .rules import TPE, OPENING, CLOSING, SOURCE_OPEN, SOURCE_CLOSE, opening, closing, stamp
+from .rules import TPE, OPENING, CLOSING, SOURCE_OPEN, opening, closing, stamp
 
 DATA = Path(os.getenv('EIGHT_JOURNAL_DIR', '/home/ubuntu/easystock-learning-data'))
 DAILY = Path(os.getenv('EIGHT_DAILY_DB', '/home/ubuntu/easystock-learning-data/rebound/market-daily.sqlite'))
@@ -93,7 +93,7 @@ def build(rows, now, diagnostics=()):
               'scope': '既有 journal 實際觀察股票；非全市場掃描。journal 每五分鐘取樣，邊界缺 Tick 不補值。',
               'source': 'Shioaji 成交時間戳 journal + 官方 TWSE/TPEx 日 K（唯讀）'}
     return {'opening_eight': dict(common, version=OPENING, reference=SOURCE_OPEN, rows=opened, markets=markets),
-            'closing_eight': dict(common, version=CLOSING, ruleset='TW_XQ_SCRIPT_V1', reference=SOURCE_CLOSE, rows=closed)}
+            'closing_eight': dict(common, version=CLOSING, ruleset='TW_CLOSING_RULES_V1', rows=closed)}
 
 def main():
     parser = argparse.ArgumentParser()

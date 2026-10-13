@@ -386,7 +386,7 @@
 #overnightPickList>div:only-child{grid-column:1/-1}
 @media(max-width:800px){#overnightPickList{grid-template-columns:1fr;}.eight-module-head{flex-direction:column;}}
 
-.eight-module [role=tablist]{display:flex;gap:10px;margin:14px 0}.eight-module button,.eight-module input{padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--text)}.eight-module [aria-selected=true]{border-color:#06b6d4;color:#06b6d4}.eight-card{border:1px solid var(--border);border-radius:10px;padding:14px;margin:10px 0;min-width:0}.eight-card svg{width:100%;max-width:340px;height:100px;color:#06b6d4}.eight-card ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0;list-style:none}.eight-card small{overflow-wrap:anywhere}.eight-module [hidden]{display:none!important}@media(max-width:600px){.eight-card ul{grid-template-columns:1fr}.eight-module input{width:100%}}
+.eight-module [role=tablist]{display:flex;gap:10px;margin:14px 0}.eight-module button{padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--text)}.eight-module [aria-selected=true]{border-color:#06b6d4;color:#06b6d4}.eight-card{border:1px solid var(--border);border-radius:10px;padding:14px;margin:10px 0;min-width:0}.eight-card svg{width:100%;max-width:340px;height:100px;color:#06b6d4}.eight-card ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0;list-style:none}.eight-card small{overflow-wrap:anywhere}.eight-module [hidden]{display:none!important}@media(max-width:600px){.eight-card ul{grid-template-columns:1fr}}
 </style>
 <link rel="icon" type="image/png" sizes="128x128" href="chrome-extension/assets/icon128.png">
 </head>
@@ -755,11 +755,10 @@
     <div class="eight-module-head"><p>Asia/Taipei · 盤勢分類與觀察選股，未驗證為買入訊號，不自動下單。</p>
     <button type="button" class="btn share-btn" data-share-ignore onclick="prepareModuleShare('eightMethodsModule','開盤八法・尾盤八法')">分享</button></div>
     <div role="tablist" aria-label="八法觀察"><button type="button" id="openingTab" role="tab" aria-selected="true" aria-controls="openingPanel">開盤八法</button><button type="button" id="closingTab" role="tab" aria-selected="false" aria-controls="closingPanel" tabindex="-1">尾盤八法</button></div>
-    <label for="eightSearch">搜尋股票</label><input id="eightSearch" type="search" placeholder="股票代號或名稱">
     <p id="eightStatus" role="status" aria-live="polite">等待行情觀察資料…</p>
     <div id="openingPanel" role="tabpanel" aria-labelledby="openingTab"><p>昨收 → 09:05 → 09:10 → 09:15；09:15 前尚未完成。各時點僅採用之前 30 秒內成交，平盤及缺 Tick 不分類。</p><div id="openingMarkets"></div><div id="openingRows"></div>
     <details class="eight-method"><summary>八種型態與三段價格說明</summary><ol><li>漲漲漲：連續上行</li><li>漲漲跌：先升後回落</li><li>漲跌跌：上行後連續回落</li><li>跌漲漲：下行後連續回升</li><li>跌跌漲：連續下行後回升</li><li>跌跌跌：連續下行</li><li>跌漲跌：下上交錯</li><li>漲跌漲：上下交錯</li></ol><a href="https://www.yunfar.com.tw/GBSSKILL/starting-8ways.html" target="_blank" rel="noopener">開盤八法參考</a></details></div>
-    <div id="closingPanel" role="tabpanel" aria-labelledby="closingTab" hidden><p>13:00～13:25 觀察；13:25 起收盤集合競價，連續交易訊號已截止。</p><p>台股 TW_XQ_SCRIPT_V1：漲幅 3–5%、量比 &gt; 1、換手率 2–10%、市值 50–500 億 TWD、量擴張、5/20/60 均線、強於大盤、股價 ≥ 當日高點 98%。大陸規則另存，未套用於台股。</p><div id="closingRows"></div><a href="https://www.xq.com.tw/xstrader/大陸股神楊永興的尾盤八法/" target="_blank" rel="noopener">XQ 台股腳本參考</a></div>
+    <div id="closingPanel" role="tabpanel" aria-labelledby="closingTab" hidden><p>13:00～13:25 觀察；13:25 起收盤集合競價，連續交易訊號已截止。</p><p>台股 TW_CLOSING_RULES_V1：漲幅 3–5%、量比 &gt; 1、換手率 2–10%、市值 50–500 億 TWD、量擴張、5/20/60 均線、強於大盤、股價 ≥ 當日高點 98%。大陸規則另存，未套用於台股。</p><div id="closingRows"></div></div>
   </section>
 
   <!-- =====================================================
@@ -5363,7 +5362,7 @@
 </nav>
 <script src="assets/mobile-nav.js?v=ed9c7d1d0f6c"></script>
 <script src="assets/revenue-observation.js?v=c1040fe37c1d"></script>
-<script src="assets/eight-methods.js?v=056579923275"></script>
+<script src="assets/eight-methods.js?v=5d6ef924fbc5"></script>
 <script src="assets/ai-picks.js?v=18da24857e80"></script>
 <script src="assets/b-lanes-replay.js?v=ea6b415dae32"></script>
 <script src="assets/a-watchlist.js?v=44db2c9964bb"></script>

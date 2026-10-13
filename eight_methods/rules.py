@@ -6,13 +6,12 @@ TPE = timezone(timedelta(hours=8), 'Asia/Taipei')
 OPENING = 'OPENING_EIGHT_METHODS_V1'
 CLOSING = 'CLOSING_EIGHT_METHODS_V1'
 SOURCE_OPEN = 'https://www.yunfar.com.tw/GBSSKILL/starting-8ways.html'
-SOURCE_CLOSE = 'https://www.xq.com.tw/xstrader/大陸股神楊永興的尾盤八法/'
 # Reference numbering is deliberately NOT lexicographic.
 PATTERNS = ['UUU', 'UUD', 'UDD', 'DUU', 'DDU', 'DDD', 'DUD', 'UDU']
 DESCRIPTIONS = ['連續上行', '先升後回落', '上行後連續回落', '下行後連續回升',
                 '連續下行後回升', '連續下行', '下上交錯', '上下交錯']
 RULESETS = {
-    'TW_XQ_SCRIPT_V1': {'currency': 'TWD', 'gain': [3, 5], 'turnover': [2, 10],
+    'TW_CLOSING_RULES_V1': {'currency': 'TWD', 'gain': [3, 5], 'turnover': [2, 10],
                         'cap': [5e9, 50e9], 'ratio_min_exclusive': 1, 'high_ratio': .98},
     'CN_ORIGINAL_V1': {'currency': 'CNY', 'gain': [3, 5], 'turnover': [5, 10],
                        'cap': [5e9, 20e9], 'ratio_min_exclusive': 1, 'high_ratio': 1,
@@ -57,7 +56,7 @@ def opening(previous_close, quotes, now):
     return dict(result, status='classified', prices=prices, directions=directions,
                 method=PATTERNS.index(''.join(directions))+1, reason='三段價格型態，非買入訊號')
 
-def closing(row, now, ruleset='TW_XQ_SCRIPT_V1'):
+def closing(row, now, ruleset='TW_CLOSING_RULES_V1'):
     rule = RULESETS[ruleset]
     if rule.get('enabled') is False:
         raise ValueError('CN original qualitative rules are archived, not implemented with TW thresholds')
