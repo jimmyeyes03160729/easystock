@@ -5,6 +5,7 @@ const path = require('node:path');
 const { createClient } = require('./client');
 const configured = require('./indices.json').indices;
 const { MarketContext } = require('./context');
+const { Books } = require('./books');
 const BACKOFF = [1000, 2000, 5000, 10000, 30000, 60000];
 const tpe = ms => new Date(ms + 8 * 3600000).toISOString().replace('Z', '+08:00');
 function timestamp(raw) {
@@ -52,6 +53,7 @@ class Provider {
     this.wanted=Object.entries(configured).filter(([,value])=>value.enabled);
     this.acks=new Set();this.lastArchive=0;this.lastPoll=0;this.inFlight=false;
     this.marketContext=new MarketContext();this.breadthSnapshots={};this.lastBreadthPoll=-Infinity;
+    this.books=new Books({directory:this.directory,clock:this.clock,write:atomic});
   }
   error(code) {
     this.diagnostic.error_code=code;this.diagnostic.last_error_at=tpe(this.clock());
@@ -74,15 +76,16 @@ class Provider {
     try {
       const message=typeof raw==='string'?JSON.parse(raw):raw;
       if (!message || typeof message.event !== 'string') throw Error('invalid_event');
+      this.books.message(message);
       this.diagnostic.last_event_at=tpe(this.clock());
       if (['heartbeat','pong'].includes(message.event)) this.diagnostic.last_heartbeat_at=tpe(this.clock());
       else if (message.event==='subscribed') {
-        for (const item of Array.isArray(message.data)?message.data:[message.data]) if(item?.symbol)this.acks.add(item.symbol);
+        for (const item of Array.isArray(message.data)?message.data:[message.data]) if(item?.channel==='indices'&&item?.symbol)this.acks.add(item.symbol);
         this.diagnostic.subscription_count=this.acks.size;
         this.diagnostic.subscribed=this.wanted.every(([,m])=>this.acks.has(m.symbol));
       } else if (['data','snapshot'].includes(message.event)) this.accept(message.data);
       else if(message.event==='error') this.error('subscription_error');
-    } catch (_) {this.diagnostic.parser_ok=false;this.error('parser_invalid');}
+    } catch (_) {this.books.stop();this.diagnostic.parser_ok=false;this.error('parser_invalid');}
   }
   flush() {
     const now=this.clock();
@@ -128,20 +131,27 @@ class Provider {
   async session() {
     const client=this.factory();await deadline(client.login());
     const stock=client.websocketClient.stock;this.stock=stock;this.acks.clear();
+    const sessionToken=Symbol('esun-session');this.sessionToken=sessionToken;
+    const current=()=>this.sessionToken===sessionToken;
     delete this.diagnostic.last_heartbeat_at;
     this.diagnostic.subscription_count=0;
     let sessionError=null;
-    stock.on('message',raw=>this.message(raw));
-    stock.on('authenticated',()=>{this.diagnostic.authenticated=true;});
-    stock.on('unauthenticated',()=>{sessionError='authentication_failed';});
-    stock.on('disconnect',()=>{sessionError='disconnected';this.diagnostic.connected=false;});
-    stock.on('error',()=>{sessionError='websocket_error';});
+    let booksStarted=false;
+    stock.on('message',raw=>{if(!current())return;this.message(raw);if(booksStarted&&!this.books.connected&&!this.stopped)sessionError='websocket_error';});
+    stock.on('authenticated',()=>{if(current())this.diagnostic.authenticated=true;});
+    stock.on('unauthenticated',()=>{if(current()){sessionError='authentication_failed';this.books.stop();}});
+    stock.on('disconnect',()=>{if(current()){sessionError='disconnected';this.diagnostic.connected=false;this.books.stop();}});
+    stock.on('error',()=>{if(current()){sessionError='websocket_error';this.books.stop();}});
     await deadline(stock.connect());
+    if(this.stopped||sessionError)throw Error(sessionError||'stopped');
     this.diagnostic.connected=true;this.diagnostic.authenticated=true;this.diagnostic.reconnect_state='connected';
+    this.books.start(stock);
+    booksStarted=true;
+    const bookTimer=setInterval(()=>{try{this.books.reconcile();this.books.flush();}catch(_){sessionError='storage_error';this.books.stop();}},500);
     const sessionStarted=this.clock();
-    for(const [,m] of this.wanted)stock.subscribe({channel:'indices',symbol:m.symbol});
-    await this.poll(client);this.flush();
     try {
+      for(const [,m] of this.wanted)stock.subscribe({channel:'indices',symbol:m.symbol});
+      await this.poll(client);this.flush();
       while(!this.stopped && !sessionError) {
         await this.sleep(5000);
         if(this.stopped)break;
@@ -151,7 +161,7 @@ class Provider {
         this.flush();
       }
       if(sessionError && !this.stopped)throw Error(sessionError);
-    } finally { try{stock.disconnect();}catch(_){} this.diagnostic.connected=false;this.diagnostic.authenticated=false;this.diagnostic.subscribed=false;this.flush(); }
+    } finally { clearInterval(bookTimer);this.books.stop();try{stock.disconnect();}catch(_){} this.diagnostic.connected=false;this.diagnostic.authenticated=false;this.diagnostic.subscribed=false;this.flush(); }
   }
   async run() {
     let attempt=0;

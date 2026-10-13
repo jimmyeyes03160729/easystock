@@ -85,6 +85,7 @@ from market_data.context import esun_index_snapshot
 from market_data.health import observe as observe_provider
 from market_data.bidask_archive import recorder as bidask_recorder
 from market_data.subscriptions import QuoteSubscriptions
+from market_data.dual_books import DualBooks
 from market_data.a_candidates import candidate as a_candidate, snapshot as a_candidate_snapshot
 from daytrade_learning.model_runtime import DaytradeModel, live_features, write_runtime_model_status, refresh_runtime_model_status
 from easystock_admin.store import read_live_settings
@@ -2659,8 +2660,13 @@ class IntradayLiveEngine:
             self.runway_v2.advance(now_tpe())
             print(f"[RUNWAY_V2_BOOT] enabled={self.runway_v2.enabled}")
             if self.runway_v2 and self.runway_v2.enabled:
+                self.dual_books = None
+                if os.environ.get('RUNWAY_B_BOOKS_MODE', 'native') == 'dual':
+                    # E.SUN depth stays blocked until three exact-time full-vector
+                    # comparisons verify the per-symbol unit in this socket epoch.
+                    self.dual_books = DualBooks(self.quote_subscriptions, self.runway_v2)
                 self.runway_v2.register_subscription_status(
-                    lambda symbol: self.quote_subscriptions.status(symbol, 'BidAsk'))
+                    lambda symbol: self.dual_books.status(symbol) if self.dual_books else self.quote_subscriptions.status(symbol, 'BidAsk'))
         except Exception as exc:
             self.runway_v2 = None
             print(f"[RUNWAY_V2_BOOT_FAIL] {exc}")
@@ -3122,7 +3128,10 @@ class IntradayLiveEngine:
                 if archive is not None and symbol:
                     archive.record(symbol, quote)
                 if getattr(self, "runway_v2", None) and symbol:
-                    self.runway_v2.on_bidask(symbol, quote)
+                    if getattr(self, 'dual_books', None):
+                        self.dual_books.native_quote(symbol, quote, now_tpe())
+                    else:
+                        self.runway_v2.on_bidask(symbol, quote)
         except Exception:
             pass
 
@@ -3169,6 +3178,8 @@ class IntradayLiveEngine:
             prev, price = num(row.get('previous_close')), num(row.get('price'))
             if not prev or not price or abs(price / prev - 1) >= .07:
                 continue
+            if price * 1000 > 200000:
+                continue  # Allocate books to affordable lots; held positions remain pinned.
             buy = num(row.get('buy_ratio_60s')) or 0
             direction = 1 if buy >= .65 else (-1 if buy <= .35 else 0)
             aligned = False
@@ -3183,7 +3194,11 @@ class IntradayLiveEngine:
             priorities[symbol] = (aligned, abs(buy - .5), num(row.get('amount_60s')) or 0)
             candidates.append(row)
         candidates.sort(key=lambda r: priorities[str(r['symbol'])], reverse=True)
-        self.quote_subscriptions.select_books([str(r['symbol']) for r in candidates], pinned)
+        ranked = [str(r['symbol']) for r in candidates]
+        if getattr(self, 'dual_books', None):
+            self.dual_books.select(ranked, pinned, current)
+        else:
+            self.quote_subscriptions.select_books(ranked, pinned)
 
     def subscribe_all(self) -> None:
         print("[BOOT] Subscribe Shioaji Tick...")
@@ -3349,6 +3364,7 @@ class IntradayLiveEngine:
                 "actual_subscriptions": self.quote_subscriptions.snapshot()['counts'].get('Tick_active', 0),
                 "requested_tick_symbols": len(self.contracts),
                 "subscription_budget": self.quote_subscriptions.snapshot(),
+                "book_sources": self.dual_books.snapshot() if getattr(self, 'dual_books', None) else {'mode':'native'},
                 "refresh_seconds": UNIVERSE_REFRESH_SECONDS,
                 "updated_at": now_tpe().isoformat(timespec="seconds"),
             })
@@ -5265,6 +5281,8 @@ class IntradayLiveEngine:
                 self.heartbeat_if_due()
                 if getattr(self, "runway_v2", None) is not None:
                     try:
+                        if getattr(self, 'dual_books', None):
+                            self.dual_books.poll(current)
                         self.runway_v2.advance(current)
                     except Exception as exc:
                         print(f"[B_LANES_WARN] {type(exc).__name__}")

@@ -80,3 +80,32 @@ test('repeated login failure actually waits with bounded backoff',async()=>{
     assert(!JSON.stringify(provider.diagnostic).includes('secret'));
   }finally{fs.rmSync(directory,{recursive:true,force:true});}
 });
+test('late previous-socket disconnect cannot clear the new book epoch',async()=>{
+ const {EventEmitter}=require('node:events');
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'esun-epoch-'));
+ const sockets=[];let phase=1,provider;
+ const factory=()=>{
+  const stock=new EventEmitter();stock.connect=async()=>stock.emit('message',{event:'authenticated'});stock.disconnect=()=>stock.emit('disconnect');
+  stock.subscribe=()=>{};stock.ping=()=>{};sockets.push(stock);
+  return {login:async()=>{},websocketClient:{stock},restClient:{stock:{
+   intraday:{quote:async({symbol})=>({symbol,index:100,time:now*1000})},
+   snapshot:{quotes:async()=>({})}}}};
+ };
+ try{
+  provider=new Provider({directory,clock:()=>now,factory,sleep:async()=>{
+   if(phase===2){const epoch=provider.books.epoch;sockets[0].emit('disconnect');
+    assert.equal(provider.books.connected,true);assert.equal(provider.books.epoch,epoch);}
+   provider.stopped=true;
+  }});
+  await provider.session();phase=2;provider.stopped=false;await provider.session();
+ }finally{provider?.stop();fs.rmSync(directory,{recursive:true,force:true});}
+});
+test('disconnect during connect is never revived as an authenticated book session',async()=>{
+ const {EventEmitter}=require('node:events');
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'esun-connect-race-'));
+ const stock=new EventEmitter();stock.connect=async()=>{stock.emit('disconnect');};stock.disconnect=()=>{};
+ try{
+  const p=new Provider({directory,clock:()=>now,factory:()=>({login:async()=>{},websocketClient:{stock}})});
+  await assert.rejects(()=>p.session(),/disconnected/);assert.equal(p.books.connected,false);
+ }finally{fs.rmSync(directory,{recursive:true,force:true});}
+});
