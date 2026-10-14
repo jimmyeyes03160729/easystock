@@ -11,7 +11,7 @@ backup_root=/data/backup/vm
 [[ -d "$backup_root" && -r "$backup_root" && -w "$backup_root" && -x "$backup_root" ]] \
   || die "Backup directory must be accessible and writable: $backup_root"
 # Verify logs can be opened for append without truncating existing content.
-for logfile in "$backup_root/sync.log" "$backup_root/healthcheck.log"; do
+for logfile in "$backup_root/sync.log" "$backup_root/healthcheck.log" "$backup_root/datasets-sync.log"; do
   : >> "$logfile" || die "Cannot append to log: $logfile"
 done
 

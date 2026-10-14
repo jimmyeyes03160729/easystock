@@ -55,4 +55,11 @@ PY
 else
   bad "LAST_SUCCESS is missing: $BACKUP_ROOT/LAST_SUCCESS"
 fi
+# Backtest datasets are a separate job; staleness is a warning so it never masks the core backup result.
+DATASETS_LAST="${DATASETS_ROOT:-$BACKUP_ROOT/datasets}/LAST_SUCCESS"
+if [[ -f "$DATASETS_LAST" ]] && find "$DATASETS_LAST" -mmin -"$((MAX_LAST_SUCCESS_AGE_HOURS * 60))" | grep -q .; then
+  ok "datasets LAST_SUCCESS: $(cat "$DATASETS_LAST")"
+else
+  warn "datasets LAST_SUCCESS missing or older than ${MAX_LAST_SUCCESS_AGE_HOURS}h: $DATASETS_LAST"
+fi
 exit "$status"

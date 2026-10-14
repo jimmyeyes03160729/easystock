@@ -125,6 +125,24 @@ docker compose -p easystock-nas -f compose.example.yaml run --rm easystock-nas-b
 
 定期輪替兩份日誌。更新程式後重新 build 並 `up -d --no-deps easystock-scheduler`。此部署不使用 GitHub Actions，也不操作 Oracle VM 正式交易服務；同步仍僅依原腳本產生、拉回及清理本次備份 snapshot。
 
+## 回測資料集（sync_datasets.sh）
+
+`sync_from_vm.sh` 排除所有 `*.sqlite`，也不含 learning-data 以外的目錄，因此回測常用的資料原本只存在 VM。`sync_datasets.sh` 每天 15:45（盤中引擎 13:00 結束後）補齊：
+
+| VM 來源 | NAS 位置 | 方式 |
+| --- | --- | --- |
+| `/home/ubuntu/easystock-runway-v2/recordings/`（B 跑道逐筆＋五檔輸入錄製） | `/data/backup/vm/datasets/runway-recordings/` | rsync 增量，無 `--delete` |
+| `/home/ubuntu/easystock-history-expanded-data/`（約 100 檔逐筆與 1 分 K；略過 `parts/`、`*.tmp`、`*.lock`） | `/data/backup/vm/datasets/history-expanded/` | rsync 增量，無 `--delete` |
+| `/home/ubuntu/easystock-learning-data/rebound/market-daily.sqlite`（全市場日 K） | `/data/backup/vm/datasets/sqlite/<timestamp>/market-daily.sqlite` | `sqlite3.Connection.backup()` 快照 |
+| `/home/ubuntu/easystock-learning-data/rebound/dataset-v2.sqlite` | `/data/backup/vm/datasets/sqlite/<timestamp>/rebound-dataset-v2.sqlite` | 同上 |
+
+- 只複製，不刪除 VM 原始資料。VM 上只會刪除本次在 `/home/ubuntu/easystock-sync-snapshots/datasets-<timestamp>/` 產生的快照，且須先在 NAS 通過 `PRAGMA integrity_check`。
+- VM 剩餘空間低於「快照大小＋3 GB」時拒絕建立快照，避免擠滿交易 VM 的硬碟。
+- SQLite 先同步到 NAS 的 `sqlite/.staging/`（跨次保留，rsync 只傳變動的頁），驗證後再複製成日期目錄；日期目錄保留 7 天（`DATASET_SNAPSHOT_KEEP_DAYS`）。
+- 成功後更新 `/data/backup/vm/datasets/LAST_SUCCESS`；日誌在 `/data/backup/vm/datasets-sync.log`。healthcheck 對此只發警告，不影響核心備份的判定。
+- 首次同步約 3–4 GB，之後每天只傳新增檔案與資料庫變動。
+- 不需要修改 compose：資料寫在既有的 `/data/backup/vm` 掛載下。部署時重新 build 並 `up -d --no-deps easystock-scheduler` 即可。
+
 ## 五檔委託簿（BidAsk）封存搬移
 
 VM 實盤引擎每收到一筆五檔報價，就由 `market_data/bidask_archive.py` 以背景執行緒寫入
