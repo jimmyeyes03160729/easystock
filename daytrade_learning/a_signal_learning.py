@@ -134,6 +134,7 @@ def make_rows(trades, packs, snapshots, day):
             label_cost_basis=trade.get('research_cost_basis'),exit_mode=trade.get('exit_mode'),
             policy_version=(trade.get('entry_gate_evidence') or {}).get('research_policy_version'),
             online_features=(trade.get('entry_gate_evidence') or {}).get('a_context_features'),
+            online_captured_at=(trade.get('entry_gate_evidence') or {}).get('a_context_captured_at'),
             bar_basis='retrospective_completed_minute_bars_not_verified_live_availability'))
     return rows,dict(excluded)
 
@@ -175,6 +176,7 @@ def candidate_status(rows):
             'enough independent dates and balanced outcomes','frozen forward validation protocol'],
         exclusions=['paper fill flag and skip reason','exit price and reason','MFE and MAE','future bars'])
     online=[r for r in rows if r['day']>='2026-10-15' and r.get('policy_version')
+            and r.get('online_captured_at') and stamp(r['online_captured_at'])<=stamp(r['entry_time'])
             and isinstance(r.get('online_features'),dict)
             and all(number(r['online_features'].get(k)) for k in FEATURES)]
     if not online:return result
@@ -225,6 +227,7 @@ def capture_online(cache,symbol,entry,base,manager,market_directory):
                    for name in ('intraday_live.py','strategy_engine.py','position_manager.py')}
     version=hashlib.sha256(json.dumps([policy,source_hashes],sort_keys=True).encode()).hexdigest()
     return {'a_context_features':dict({k:base.get(k) for k in BASE},**pattern,**market),
+            'a_context_captured_at':datetime.now(TPE).isoformat(),
             'a_context_market_times':times,'research_policy_version':version}
 
 
@@ -250,7 +253,9 @@ def build(data,market,out,day):
                 snapshots.append(json.loads(line))
         sources.append(path)
     rows,excluded=make_rows(trades,packs,snapshots,day)
-    dataset=dict(schema=SCHEMA,day=day,rows=rows,source_hashes={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources})
+    dataset=dict(schema=SCHEMA,day=day,rows=rows,source_hashes={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources},
+        outcome_source=str(data/'research.sqlite'),outcome_query='SELECT payload FROM research_trades WHERE day=?',
+        outcome_query_day=day,outcome_snapshot_sha256=hashlib.sha256(json.dumps(trades,sort_keys=True).encode()).hexdigest())
     write(out/'datasets'/(day+'.json'),dataset)
     history=[]
     for p in sorted((out/'datasets').glob('????-??-??.json')):

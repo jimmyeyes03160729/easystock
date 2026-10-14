@@ -25,7 +25,7 @@ def read_journal(path, now):
         for line in f:
             try:
                 item = json.loads(line)
-                if item.get('kind') != 'sample':
+                if item.get('kind') not in ('sample', 'opening_boundary'):
                     continue
                 r = item['data']
                 observed, quote, available = stamp(r['observed_at']), stamp(r['quote_at']), stamp(item['recorded_at'])
@@ -49,7 +49,7 @@ def enrich_daily(rows, path, now):
     try:
         for r in rows.values():
             if r['symbol'] in ('IX0001', 'IX0043'):
-                name = '發行量加權股價指數' if r['symbol'] == 'IX0001' else '櫃買指數'
+                name = 'TAIEX' if r['symbol'] == 'IX0001' else 'TPEX'
                 data = db.execute('SELECT close FROM indices WHERE name=? AND day<? ORDER BY day DESC LIMIT 1', (name, now.date().isoformat())).fetchone()
                 r['previous_close'] = data[0] if data else None
                 continue
@@ -90,7 +90,7 @@ def build(rows, now, diagnostics=()):
             markets.append(dict(symbol=symbol, name=name, **opening(None, [], now)))
     common = {'schema_version': 1, 'day': now.date().isoformat(), 'updated_at': now.isoformat(),
               'timezone': 'Asia/Taipei', 'diagnostics': list(diagnostics),
-              'scope': '既有 journal 實際觀察股票；非全市場掃描。journal 每五分鐘取樣，邊界缺 Tick 不補值。',
+              'scope': '既有 journal 實際觀察股票；非全市場掃描。journal 加開盤邊界成交與既有指數快照，缺 Tick 不補值。',
               'source': 'Shioaji 成交時間戳 journal + 官方 TWSE/TPEx 日 K（唯讀）'}
     return {'opening_eight': dict(common, version=OPENING, reference=SOURCE_OPEN, rows=opened, markets=markets),
             'closing_eight': dict(common, version=CLOSING, ruleset='TW_CLOSING_RULES_V1', rows=closed)}
@@ -116,6 +116,9 @@ def main():
                         target.update(price=r.get('price'), quote_at=r['quote_at'])
         except (ValueError, TypeError, KeyError, AttributeError):
             diagnostics.append('既有即時觀察投影不可用')
+    from market_data.opening_observations import merge_indices
+    market = Path(os.getenv('EASYSTOCK_MARKET_DATA_DIR', '/home/ubuntu/easystock-market-data'))
+    diagnostics += merge_indices(rows, market / 'dataset' / (now.date().isoformat()+'.jsonl'), now)
     diagnostics += enrich_daily(rows, DAILY, now)
     feeds = build(rows, now, diagnostics)
     OUT.mkdir(parents=True, exist_ok=True)

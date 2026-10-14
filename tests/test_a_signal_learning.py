@@ -73,3 +73,13 @@ def test_extended_feature_trainer_uses_all_columns_and_checks_width():
     assert scores[-1]>scores[0]
     with pytest.raises(ValueError,match='width'):
         fit_logistic(rows,iterations=1,feature_count=5)
+
+
+def test_forward_candidate_rejects_context_captured_after_entry():
+    from daytrade_learning.a_signal_learning import FEATURES
+    row={'day':'2026-10-15','entry_time':'2026-10-15T10:00:00+08:00',
+         'online_captured_at':'2026-10-15T10:00:01+08:00','policy_version':'synthetic',
+         'online_features':{k:1 for k in FEATURES},'missing_features':[]}
+    assert candidate_status([row]).get('eligible_online_samples',0)==0
+    row['online_captured_at']='2026-10-15T09:59:59+08:00'
+    assert candidate_status([row])['eligible_online_samples']==1

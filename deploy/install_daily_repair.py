@@ -8,7 +8,7 @@ import shutil
 
 ALLOWED={'runway_v2/replay.py','market_data/dual_books.py','intraday_live.py',
     'daytrade_learning/runtime.py','daytrade_learning/research.py','daytrade_learning/a_signal_learning.py',
-    'market_data/opening_observations.py','eight_methods/feed.py','llm_paper/run.py','assets/ai-picks.js'}
+    'market_data/opening_observations.py','eight_methods/feed.py','vm_runtime/esun_marketdata/provider.js'}
 
 
 def digest(path,normalized=False):

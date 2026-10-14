@@ -4403,6 +4403,14 @@ class IntradayLiveEngine:
         if model_reason:
             entry_reasons.insert(1, model_reason)
 
+        context_evidence = {}
+        try:
+            from daytrade_learning.a_signal_learning import capture_online
+            from market_data.health import data_dir
+            context_evidence = capture_online(self.bars, symbol, strategy_time.isoformat(),
+                                              feature_row, self.manager, data_dir())
+        except Exception as exc:
+            print('[A_CONTEXT] capture unavailable:', type(exc).__name__)
         evaluated_price = price
         checked = self.fresh_entry_quote(symbol)
         if checked is None:
@@ -4434,14 +4442,6 @@ class IntradayLiveEngine:
         except Exception as exc:
             self._entry_reject(symbol, 'settings_unavailable', type(exc).__name__)
             return
-        context_evidence = {}
-        try:
-            from daytrade_learning.a_signal_learning import capture_online
-            from market_data.health import data_dir
-            context_evidence = capture_online(self.bars, symbol, strategy_time.isoformat(),
-                                              feature_row, self.manager, data_dir())
-        except Exception as exc:
-            print('[A_CONTEXT] capture unavailable:', type(exc).__name__)
         try:
             event = self.manager.open_position(
                 symbol=symbol,
