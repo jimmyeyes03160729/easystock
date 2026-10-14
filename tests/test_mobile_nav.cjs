@@ -12,25 +12,26 @@ test('Chrome install CTA reuses the extension manifest logo at a fixed undistort
   assert.match(fs.readFileSync('index.html','utf8'),/\.extension-cta \.extension-icon img\s*\{[^}]*object-fit:contain/);
   w.close();
 });
-test('M1-M7: real anchors, five labels, desktop/mobile safe-area, active and guarded admin route',()=>{
+test('M1-M7: real anchors, four labels, desktop/mobile safe-area, active and guarded admin route',()=>{
   const html=fs.readFileSync('index.html','utf8'),{w,run}=createDOM(html);
   const nav=w.document.querySelector('.mobile-bottom-nav'),links=[...nav.querySelectorAll('a')];
-  assert.equal(links.length,5);
-  assert.deepEqual(links.map(a=>a.getAttribute('aria-label')),['盤中摸魚','開盤八法・尾盤八法','AI 選股','牛馬 AI','社畜後台']);
+  assert.equal(links.length,4);
+  assert.deepEqual(links.map(a=>a.getAttribute('aria-label')),['盤中摸魚','開盤八法・尾盤八法','牛馬 AI','社畜後台']);
   assert.match(html,/\.mobile-bottom-nav\s*\{ display:none;/);
   assert.match(html,/@media\(max-width:768px\)/);
   assert.match(html,/body\s*\{ padding-bottom:calc\(68px \+ env\(safe-area-inset-bottom/);
-  assert.match(html,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
+  assert.match(html,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.match(html,/:focus-visible/);
-  for(const a of links.slice(0,4))assert(w.document.querySelector(a.getAttribute('href')));
+  for(const a of links.slice(0,3))assert(w.document.querySelector(a.getAttribute('href')));
   assert(w.document.querySelector('#chrome-tools .extension-cta[href^="https://chromewebstore.google.com/"]'));
-  assert.equal(links[4].pathname,'/admin');assert(!links[4].search);
+  assert.equal(links[3].pathname,'/admin');assert(!links[3].search);
   assert.equal(w.document.querySelectorAll('.section-nav.hidden.lg\\:flex').length,1);
   const ids=[...w.document.querySelectorAll('[id]')].map(n=>n.id);assert.equal(new Set(ids).size,ids.length);
+  // The AI picks module was removed; no navigation may point at it.
+  assert(!w.document.querySelector('#ai-picks, #aiPicksModule, a[href="#ai-picks"]'));
   run('assets/mobile-nav.js');links[1].dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true}));
   assert.equal(links[1].getAttribute('aria-current'),'location');assert(!links[0].hasAttribute('aria-current'));
-  w.location.hash='#learningSection';w.dispatchEvent(new w.Event('hashchange'));assert.equal(links[3].getAttribute('aria-current'),'location');
-  w.location.hash='#ai-picks';w.dispatchEvent(new w.Event('hashchange'));assert.equal(links[2].getAttribute('aria-current'),'location');
+  w.location.hash='#learningSection';w.dispatchEvent(new w.Event('hashchange'));assert.equal(links[2].getAttribute('aria-current'),'location');
   w.close();
 });
 
@@ -42,8 +43,6 @@ function navigationFixture(t,{productionLayout=false}={}){
   const links=[...nav.querySelectorAll('a[href^="#"]')];
   const positions={'#intraday-strategies':100,'#eight-methods':900,'#learningSection':1700,'#chrome-tools':-2000};
   for(const [href,top] of Object.entries(positions))w.document.querySelector(href).getBoundingClientRect=()=>({top:positions[href]});
-  // AI picks sits just above the learning section on the page.
-  w.document.querySelector('#ai-picks').getBoundingClientRect=()=>({top:positions['#learningSection']-300});
   w.document.querySelector('header.fixed').getBoundingClientRect=()=>({bottom:64});
   Object.defineProperty(w.document.documentElement,'scrollHeight',{value:10000});
   w.innerHeight=600;w.scrollY=1000;
