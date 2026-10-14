@@ -1,0 +1,13 @@
+[Unit]
+Description=Immutable next-session B1 closing-eight pool (shadow only)
+After=easystock-eight-methods.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+ExecCondition=/home/ubuntu/easystock/.venv/bin/python market_calendar.py --check-today
+ExecStart=/home/ubuntu/easystock/.venv/bin/python -m runway_v2.closing_pool
+TimeoutStartSec=90
+UMask=0077
+NoNewPrivileges=true

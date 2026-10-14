@@ -1,0 +1,12 @@
+[Unit]
+Description=Official TWSE and TPEx issued common shares for closing checks
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+ExecStart=/home/ubuntu/easystock/.venv/bin/python -m eight_methods.company_shares
+TimeoutStartSec=90
+UMask=0077
+NoNewPrivileges=true

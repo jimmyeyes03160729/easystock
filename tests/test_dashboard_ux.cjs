@@ -116,3 +116,12 @@ test('B1 shows only new lane records and explicitly unverified performance',t=>{
   const card=w.document.getElementById('runwayV2PickList').textContent;
   assert.match(card,/出場原因未提供/);assert.match(card,/進場理由未提供/);
 });
+
+test('B2 empty cause and B3 real trades render in independent lane cards',t=>{
+  const {w,evalCode}=setup(t,{withMain:true});
+  evalCode(`INTRADAY_LIVE={runway_b_lanes:{lanes:{B2:{rejects:{'五檔數量單位未確認':20},closed_trades:{}},B3:{closed_trades:{a:{symbol:'2317',name:'鴻海',direction:1,entry_time:new Date().toISOString(),exit_time:new Date().toISOString(),entry_price:100,exit_price:99,return_pct:-1,net_pnl:-1000}}}}}};renderRunwayV2Live();`);
+  assert.match(w.document.getElementById('runwayB2PickList').textContent,/五檔數量單位未確認.*20根.*10:40/);
+  const b3=w.document.getElementById('runwayB3PickList').textContent;
+  assert.match(b3,/鴻海/);assert.match(b3,/B3 五分K突破做多/);assert.match(b3,/-1,000 元/);
+  assert(!w.document.getElementById('runwayV2PickList').textContent.includes('鴻海'));
+});

@@ -1,0 +1,11 @@
+[Unit]
+Description=Freeze pre-auction observations at 13:25 for next-session B1
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 13:25:00 Asia/Taipei
+Persistent=false
+AccuracySec=1s
+Unit=easystock-b1-closing-freeze.service
+
+[Install]
+WantedBy=timers.target

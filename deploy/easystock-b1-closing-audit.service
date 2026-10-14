@@ -1,0 +1,13 @@
+[Unit]
+Description=Offline source and exact replay audit of B1 closing comparison
+After=easystock-intraday.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+ExecStart=/home/ubuntu/easystock/.venv/bin/python -m runway_v2.closing_audit
+TimeoutStartSec=600
+Nice=10
+UMask=0077
+NoNewPrivileges=true

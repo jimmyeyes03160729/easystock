@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily audit of forward B1 shadow comparison
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 14:35:00 Asia/Taipei
+Persistent=false
+Unit=easystock-b1-closing-audit.service
+
+[Install]
+WantedBy=timers.target

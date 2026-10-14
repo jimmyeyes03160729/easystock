@@ -1,0 +1,43 @@
+trial_id: B1_CLOSING_EIGHT_POOL_V1
+registered_on: 2026-10-14
+mode: independent_shadow_paper
+question: Does a pre-auction eight-rule universe improve next-session B1 relative to its existing quote-allocation ranking?
+source_days: prospective_only_from_2026-10-15
+first_possible_execution_day: 2026-10-16
+pool:
+  observation_window: "13:00:00 <= Taiwan time < 13:25:00"
+  freeze_time: "13:25:00"
+  ruleset: TW_CLOSING_RULES_V1
+  required_conditions: all_eight_complete_and_passed
+  quote_max_age_seconds: 30
+  shares: official_issued_common_shares_available_before_decision
+  quantity_check: same_snapshot_trade_value_divided_by_volume_must_have_unique_share_scale_within_low_high
+  quantity_limitation: internal_snapshot_consistency_check_not_independent_book_unit_calibration
+  ranking: cumulative_shares_descending_then_symbol_ascending
+  max_symbols_per_arm: 10
+  max_one_lot_notional_TWD: 200000
+  missing: empty_no_backfill_no_retrospective_selection
+control:
+  ranking: existing_B1_book_ranking_first_available_after_0900
+  count: same_as_closing_pool
+  freeze: first_ranking_with_at_least_that_count_before_0910
+  both_entry_filters_activated: same_control_freeze_event
+execution:
+  strategy: unchanged_B1_five_level_trend_pullback
+  capital_per_arm_TWD: 1000000
+  independent_ledgers: true
+  data: shared_existing_Shioaji_native_tick_and_bidask
+  subscription_limits: existing_shared_190_total_170_Tick_20_BidAsk
+  held_positions: retain_priority_over_new_candidates
+  new_broker_connections: 0
+  new_websocket_sessions: 0
+  primary_effect: native_books_prioritize_both_shadow_lists_before_0910_within_existing_quota
+  after_0910: release_shadow_watch_books_except_positions_still_waiting_for_exit
+evaluation:
+  required: immutable_pool_receipt_complete_input_recording_exact_clock_replay_match_and_both_universes_observed
+  exclude: missing_pool_unequal_lists_unknown_quantity_missing_ticks_or_books_clock_gaps_or_unresolved_positions
+  outputs: after_cost_net_pnl_realized_drawdown_trade_count_and_difference
+  stresses: extra_one_tick_each_side_and_500ms_and_1500ms_input_delay
+  promotion: none_automatic
+  interpretation: forward_paper_description_no_claim_of_verified_win_rate
+holdouts: no_historical_or_pristine_holdout_results_used_for_selection_or_tuning

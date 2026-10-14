@@ -67,7 +67,7 @@ def enrich_daily(rows, path, now):
         db.close()
     return []
 
-def build(rows, now, diagnostics=()):
+def build(rows, now, diagnostics=(), opening_symbols=None):
     opened, closed, markets = [], [], []
     for r in rows.values():
         base = {k: r.get(k) for k in ('symbol', 'name', 'price', 'quote_at', 'daily_as_of')}
@@ -75,7 +75,7 @@ def build(rows, now, diagnostics=()):
         if r['symbol'] in ('IX0001', 'IX0043'):
             markets.append(obs)
         else:
-            opened.append(obs)
+            if opening_symbols is None or r['symbol'] in opening_symbols:opened.append(obs)
             benchmark = rows.get('IX0043' if r.get('exchange') == 'TPEX' else 'IX0001', {})
             try:
                 at = stamp(benchmark['quote_at'])
@@ -84,7 +84,10 @@ def build(rows, now, diagnostics=()):
                     r = dict(r, benchmark_gain_pct=(benchmark['price']/prev-1)*100)
             except (KeyError, ValueError, TypeError):
                 pass
-            closed.append(dict(base, **closing(r, now)))
+            evidence={k:r.get(k) for k in ('day_volume','turnover_pct','market_cap','quantity_check','volume_scale','shares_source','shares_asof')}
+            result=closing(r,now)
+            if opening_symbols is None or r['symbol'] in opening_symbols or (result['gain_pct'] is not None and 3-1e-9<=result['gain_pct']<=5+1e-9):
+                closed.append(dict(base, **evidence, **result))
     for symbol, name in [('IX0001', '加權指數'), ('IX0043', '櫃買指數')]:
         if not any(r['symbol'] == symbol for r in markets):
             markets.append(dict(symbol=symbol, name=name, **opening(None, [], now)))
@@ -93,7 +96,9 @@ def build(rows, now, diagnostics=()):
               'scope': '既有 journal 實際觀察股票；非全市場掃描。journal 加開盤邊界成交與既有指數快照，缺 Tick 不補值。',
               'source': 'Shioaji 成交時間戳 journal + 官方 TWSE/TPEx 日 K（唯讀）'}
     return {'opening_eight': dict(common, version=OPENING, reference=SOURCE_OPEN, rows=opened, markets=markets),
-            'closing_eight': dict(common, version=CLOSING, ruleset='TW_CLOSING_RULES_V1', rows=closed)}
+            'closing_eight': dict(common, version=CLOSING, ruleset='TW_CLOSING_RULES_V1', rows=closed,
+                scope='journal 觀察股加既有全市場 REST 快照漲幅3～5%候選，再檢查完整八項；缺資料不補值。',
+                source='E.SUN 既有 snapshot.quotes + Shioaji journal + TWSE/TPEx 官方日 K 與普通股數')}
 
 def main():
     parser = argparse.ArgumentParser()
@@ -119,8 +124,18 @@ def main():
     from market_data.opening_observations import merge_indices
     market = Path(os.getenv('EASYSTOCK_MARKET_DATA_DIR', '/home/ubuntu/easystock-market-data'))
     diagnostics += merge_indices(rows, market / 'dataset' / (now.date().isoformat()+'.jsonl'), now)
+    from .closing_inputs import enrich
+    opening_symbols=set(rows)
+    diagnostics += enrich(rows, market/'equity-snapshot.json', OUT/'company-shares.json', now)
     diagnostics += enrich_daily(rows, DAILY, now)
-    feeds = build(rows, now, diagnostics)
+    feeds = build(rows, now, diagnostics,opening_symbols=opening_symbols)
+    from runway_v2.closing_pool import observe,freeze,next_session
+    trial_root=Path(os.getenv('B1_CLOSING_POOL_DIR','/home/ubuntu/easystock-b1-closing'))
+    observe(feeds['closing_eight'],trial_root,now)
+    from market_calendar import is_market_open
+    if now.strftime('%H:%M:%S')>='13:25:00' and is_market_open(now.date().isoformat())[0]:
+        pool=freeze(trial_root,now.date().isoformat(),next_session(now.date().isoformat()),now)
+        feeds['closing_eight']['next_b1_pool']={k:pool[k] for k in ('source_day','target_day','symbols','status','reason','observation_at','frozen_at')}
     OUT.mkdir(parents=True, exist_ok=True)
     for key, feed in feeds.items():
         path = OUT / (key + '.json')

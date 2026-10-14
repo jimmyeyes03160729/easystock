@@ -2,6 +2,11 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {JSDOM}=require('jsdom');
 const E=require('../assets/eight-methods.js');
 const now=new Date('2026-10-13T13:10:00+08:00');
+test('frozen next-session pool has dated empty reason and never claims live picks',()=>{
+ const p={target_day:'2026-10-14',frozen_at:'2026-10-13T13:25:00+08:00',symbols:[],status:'EMPTY_DATA_OR_NO_MATCH',reason:'資料不足，不補選'};
+ assert.match(E.poolText(p,new Date('2026-10-13T14:00:00+08:00')),/2026-10-14.*資料不足，不補選.*共用既有五檔額度/);
+ assert.match(E.poolText(p,now),/尚未凍結/);
+});
 test('XSS escapes names, times, reasons and condition labels; numeric chart rejects strings',()=>{
  const r={symbol:'2330',name:'<img src=x onerror=alert(1)>',reason:'<script>x</script>',quote_at:now.toISOString(),conditions:[{label:'<svg>',state:'pass',reason:'<img>'}],prices:[100,101,102,103]};
  for(const html of [E.openingRow(r,now),E.closingRow(r,now)]){assert(!html.includes('<img'));assert(!html.includes('<script'));assert(html.includes('&lt;img'));}

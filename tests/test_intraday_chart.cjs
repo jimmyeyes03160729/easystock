@@ -20,5 +20,11 @@ const {createDOM,settle}=require('./dom.cjs'),assert=require('node:assert/strict
  assert.equal(JSON.stringify(s({execution_kind:'paper_fill',shares:1000})),JSON.stringify({filled:true,label:'模擬已成交',text:'模擬帳本已成交 1,000 股。'}));
  assert.equal(s({paper_execution:'SKIPPED',paper_skip_reason:'daytrade_eligibility_unknown'}).text,'模擬帳本未成交：無法確認可否當沖。');
  assert.equal(s({}),null);
+ // Same stock and entry time in A and B must open the selected lane record.
+ w.document.querySelector('#tradeDialog button').click();
+ w.INTRADAY_LIVE.runway_b_lanes={lanes:{B3:{closed_trades:{one:{symbol:'2330',name:'台積電',direction:-1,entry_time:'2026-09-22T09:30:00+08:00',exit_time:'2026-09-22T09:45:00+08:00',entry_price:100,exit_price:99,return_pct:.75,reasons:['五分K突破']}}}}};
+ w.document.querySelector('button').dataset.tradeLane='B3';w.document.querySelector('button').click();await settle();
+ assert.match(w.document.querySelector('#tradeOutcome').textContent,/B3 模擬先賣後買.*扣成本報酬 0.75%/);
+ assert.match(w.document.querySelector('#tradeReasons').textContent,/五分K突破/);
  dom.window.close();console.log('PASS trade chart: closed state, OHLC, entry/exit, escaped evidence, reject wrong session, research vs Paper status');
 })().catch(e=>{console.error(e);process.exitCode=1});

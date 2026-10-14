@@ -29,22 +29,24 @@
  }
  window.paperExecutionStatus=paperStatus;
  function outcome(t){
+  if(t.lane){const action=t.direction===-1?'先賣後買':'買進做多';return `${t.lane} 模擬${action} ${price(t.entry_price)} 元${t.open?' · 持倉損益尚未實現。':` → 平倉 ${price(t.exit_price)} 元 · 扣成本報酬 ${price(t.return_pct)}% · ${t.exit_reason||'已平倉'}。`}`;}
   const s=paperStatus(t),research=s&&!s.filled,net=number(t.research_net_pnl_pct);
   const ret=net!==null?`扣成本報酬 ${price(net)}%`:`報酬（未扣成本）${price(t.pnl_pct)}%`;
   const head=t.open?`${research?'研究訊號進場':'模擬買入'} ${price(t.entry_price)} 元 · 持倉損益尚未實現。`
    :`${research?'研究訊號進場':'模擬買入'} ${price(t.entry_price)} 元 → ${research?'出場':'賣出'} ${price(t.exit_price)} 元 · ${ret} · ${t.exit_reason||'已平倉'}。`;
   return s?`${head} ${s.text}`:head;
  }
- function trades(){return [...Object.values(INTRADAY_LIVE?.open_positions||{}).map(x=>({...x,open:true})),...Object.values(INTRADAY_LIVE?.closed_trades||{}).map(x=>({...x,open:false}))];}
+ function trades(){return [...Object.values(INTRADAY_LIVE?.open_positions||{}).map(x=>({...x,open:true})),...Object.values(INTRADAY_LIVE?.closed_trades||{}).map(x=>({...x,open:false})),
+  ...['B1','B2','B3'].flatMap(lane=>{const r=INTRADAY_LIVE?.runway_b_lanes?.lanes?.[lane];return [...Object.values(r?.open_positions||{}).map(x=>({...x,lane,open:true})),...Object.values(r?.closed_trades||{}).map(x=>({...x,lane,open:false}))];})];}
  function evidence(t){
   const e=t.model_evidence||{},f=e.features||{},score=number(e.score??t.model_score??t.entry_score),threshold=number(e.threshold??t.model_threshold),s=paperStatus(t);
-  put('tradeModelReason',threshold!==null&&score!==null?`進場時模型分數 ${score.toFixed(4)}，達到門檻 ${threshold.toFixed(4)}，${s&&!s.filled?'記為研究訊號，但未實際模擬成交':'通過報價與資金檢查後模擬買入'}。分數不是勝率。`:'此筆未保存完整模型門檻；以下僅列原始進場紀錄，不推測模型因果。');
+  put('tradeModelReason',t.lane?`${t.lane} 規則模擬；以下列出當時保存的進場理由。`:threshold!==null&&score!==null?`進場時模型分數 ${score.toFixed(4)}，達到門檻 ${threshold.toFixed(4)}，${s&&!s.filled?'記為研究訊號，但未實際模擬成交':'通過報價與資金檢查後模擬買入'}。分數不是勝率。`:'此筆未保存完整模型門檻；以下僅列原始進場紀錄，不推測模型因果。');
   const lines=[];
   for(const [key,label,suffix] of [['gain_pct','相對昨收','%'],['return_5m_pct','近 5 分鐘報酬','%'],['volume_ratio','成交量比',' 倍'],['buy_ratio_60s','近 60 秒主動買入比',''],['vwap_distance_pct','偏離成交量加權均價','%']]){
    if(number(f[key])!==null)lines.push(`${label}：${Number(f[key]).toFixed(2)}${suffix}`);
   }
   if(e.model_version)lines.push(`模型版本：${e.model_version}`);
-  if(!lines.length)lines.push(...(Array.isArray(t.entry_reasons)?t.entry_reasons.map(String):[]));
+  if(!lines.length)lines.push(...(Array.isArray(t.lane?t.reasons:t.entry_reasons)?(t.lane?t.reasons:t.entry_reasons).map(String):[]));
   const list=document.getElementById('tradeReasons');list.replaceChildren();for(const line of lines.length?lines:['尚無可用的進場依據']){const li=document.createElement('li');li.textContent=line;list.append(li);}
  }
  function draw(payload,t){
@@ -68,12 +70,12 @@
  async function refresh(t){const mine=++generation;controller?.abort();controller=new AbortController();const timer=setTimeout(()=>controller.abort(),12000);try{
   const response=await fetch(`${FIREBASE_ROOT}/intraday_live/charts/${encodeURIComponent(t.symbol)}.json`,{cache:'no-store',signal:controller.signal});if(!response.ok)throw Error('讀取失敗');const payload=await response.json();if(mine===generation){const status=document.getElementById('tradeStatus');status.textContent=t.open?'OPEN · 持倉中':'CLOSE · 已平倉';status.className=`trade-status ${t.open?'trade-open':'trade-closed'}`;put('tradeOutcome',outcome(t));draw(payload,t);}
  }catch(e){if(mine===generation)put('tradeChartNote','當日K線暫時無法讀取，請稍後重新開啟。');}finally{clearTimeout(timer);}}
- function open(card){const t=trades().find(r=>String(r.symbol)===card.dataset.tradeSymbol&&String(r.entry_time||'')===card.dataset.tradeEntry);if(!t)return;selected=t;
+ function open(card){const t=trades().find(r=>String(r.symbol)===card.dataset.tradeSymbol&&String(r.entry_time||'')===card.dataset.tradeEntry&&String(r.lane||'')===String(card.dataset.tradeLane||''));if(!t)return;selected=t;
   put('tradeTitle',`${t.symbol} ${t.name||''} · 當日K線`);const status=document.getElementById('tradeStatus');status.textContent=t.open?'OPEN · 持倉中':'CLOSE · 已平倉';status.className=`trade-status ${t.open?'trade-open':'trade-closed'}`;
   put('tradeOutcome',outcome(t));
   evidence(t);document.getElementById('tradeChart').replaceChildren();put('tradeChartNote','讀取當日K線…');if(!dialog.open)dialog.showModal();refresh(t);
  }
  document.addEventListener('click',e=>{const card=e.target.closest('[data-trade-symbol]');if(card)open(card);});
  document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-trade-symbol]')){e.preventDefault();open(e.target);}});
- setInterval(()=>{if(selected&&dialog.open){const latest=trades().find(t=>t.symbol===selected.symbol&&t.entry_time===selected.entry_time);if(latest)selected=latest;refresh(selected);}},15000);
+ setInterval(()=>{if(selected&&dialog.open){const latest=trades().find(t=>t.symbol===selected.symbol&&t.entry_time===selected.entry_time&&t.lane===selected.lane);if(latest)selected=latest;refresh(selected);}},15000);
 })();

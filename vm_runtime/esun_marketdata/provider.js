@@ -6,6 +6,7 @@ const { createClient } = require('./client');
 const configured = require('./indices.json').indices;
 const { MarketContext } = require('./context');
 const { Books } = require('./books');
+const { project:equitySnapshot } = require('./equity_snapshot');
 const BACKOFF = [1000, 2000, 5000, 10000, 30000, 60000];
 const tpe = ms => new Date(ms + 8 * 3600000).toISOString().replace('Z', '+08:00');
 function timestamp(raw) {
@@ -52,7 +53,7 @@ class Provider {
       subscribed:false,parser_ok:true,reconnect_count:0,consecutive_failures:0,reconnect_state:'idle'};
     this.wanted=Object.entries(configured).filter(([,value])=>value.enabled);
     this.acks=new Set();this.lastArchive=0;this.lastPoll=0;this.inFlight=false;
-    this.marketContext=new MarketContext();this.breadthSnapshots={};this.lastBreadthPoll=-Infinity;
+    this.marketContext=new MarketContext();this.breadthSnapshots={};this.breadthReceivedAt={};this.lastBreadthPoll=-Infinity;
     this.openingBoundaryDay=null;this.openingBoundarySeen=new Set();
     this.books=new Books({directory:this.directory,clock:this.clock,write:atomic});
   }
@@ -107,6 +108,7 @@ class Provider {
       features:{market_return_1m:null,market_return_5m:null,market_return_15m:null,
         sector_return_1m:null,sector_return_5m:null,sector_return_15m:null,sector_vs_market_strength:null,market_regime:null}};
     atomic(path.join(this.directory,'context.json'),context);
+    atomic(path.join(this.directory,'equity-snapshot.json'),equitySnapshot(this.breadthSnapshots,now,this.breadthReceivedAt));
     // Dataset snapshots: only fresh exchange data; keep receipt time separate, no invented returns.
     if(now-this.lastArchive>=60000 && Object.values(quotes).some(q=>q.fresh)) {
       const dir=path.join(this.directory,'dataset');fs.mkdirSync(dir,{recursive:true,mode:0o700});
@@ -140,8 +142,8 @@ class Provider {
       }
       if(this.clock()-this.lastBreadthPoll>=60000) {
         for(const market of ['TSE','OTC']) {
-          try {this.breadthSnapshots[market]=await deadline(client.restClient.stock.snapshot.quotes({market}),6000);}
-          catch(_) {delete this.breadthSnapshots[market];}
+          try {this.breadthSnapshots[market]=await deadline(client.restClient.stock.snapshot.quotes({market}),6000);this.breadthReceivedAt[market]=this.clock();}
+          catch(_) {delete this.breadthSnapshots[market];delete this.breadthReceivedAt[market];}
         }
         this.lastBreadthPoll=this.clock();
       }

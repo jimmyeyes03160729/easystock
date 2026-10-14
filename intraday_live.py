@@ -2670,6 +2670,16 @@ class IntradayLiveEngine:
         except Exception as exc:
             self.runway_v2 = None
             print(f"[RUNWAY_V2_BOOT_FAIL] {exc}")
+        self.b1_closing_experiment = None
+        if self.runway_v2 and self.runway_v2.enabled and os.getenv('B1_CLOSING_EXPERIMENT_ENABLED','0')=='1':
+            try:
+                from runway_v2.closing_experiment import ClosingExperiment
+                self.b1_closing_experiment=ClosingExperiment(
+                    os.getenv('B1_CLOSING_POOL_DIR','/home/ubuntu/easystock-b1-closing'),
+                    lambda s:self.quote_subscriptions.status(s,'BidAsk'),now_tpe(),
+                    book_limit=self.quote_subscriptions.book_limit)
+            except Exception as exc:
+                print(f'[B1_CLOSING_EXPERIMENT_WARN] {type(exc).__name__}')
         self._market_checked_at = 0.0
         self._market_block_counts = {'market_risk_red': 0, 'market_data_unavailable': 0}
         self._entry_reject_counts = {}
@@ -3132,6 +3142,8 @@ class IntradayLiveEngine:
                         self.dual_books.native_quote(symbol, quote, now_tpe())
                     else:
                         self.runway_v2.on_bidask(symbol, quote)
+                trial=getattr(self,'b1_closing_experiment',None)
+                if trial and self.quote_subscriptions.status(symbol,'BidAsk')=='active':trial.on_bidask(symbol,quote)
         except Exception:
             pass
 
@@ -3195,6 +3207,8 @@ class IntradayLiveEngine:
             candidates.append(row)
         candidates.sort(key=lambda r: priorities[str(r['symbol'])], reverse=True)
         ranked = [str(r['symbol']) for r in candidates]
+        trial=getattr(self,'b1_closing_experiment',None)
+        if trial:ranked,pinned=trial.select(ranked,pinned,current)
         if getattr(self, 'dual_books', None):
             self.dual_books.select(ranked, pinned, current)
         else:
@@ -3305,6 +3319,8 @@ class IntradayLiveEngine:
         lanes = getattr(self, "runway_v2", None)
         if lanes is not None and lanes.has_open(symbol):
             return
+        trial=getattr(self,'b1_closing_experiment',None)
+        if trial and symbol in trial.required_ticks(now_tpe()):return
 
         contract = self.contracts.get(
             symbol
@@ -3414,6 +3430,16 @@ class IntradayLiveEngine:
                 "[WARN] market activity universe empty"
             )
             return
+
+        trial=getattr(self,'b1_closing_experiment',None)
+        if trial:
+            required=trial.required_ticks(current)
+            by_symbol={str(r['symbol']):r for r in rows}
+            priority=[]
+            for symbol in sorted(required):
+                previous=self.candidates.get(symbol,{})
+                priority.append(by_symbol.get(symbol) or {'symbol':symbol,'name':previous.get('name',symbol)})
+            rows=(priority+[r for r in rows if str(r['symbol']) not in required])[:RADAR_POOL_SIZE]
 
         new_map = {
             str(row["symbol"]): row
@@ -3765,6 +3791,8 @@ class IntradayLiveEngine:
                     prev_map = {str(r["symbol"]): r.get("previous_close") for r in lane_rows}
                     self._select_b_books(lane_rows, current)
                     self.runway_v2.on_radar_update(lane_rows, self.bars, prev_map, current, market=self.market_risk)
+                    trial=getattr(self,'b1_closing_experiment',None)
+                    if trial:trial.radar(lane_rows,self.bars,prev_map,current,self.market_risk)
                     if current.timestamp() - self._b_metadata_log_at >= 60:
                         self._b_metadata_log_at = current.timestamp()
                         print('[B_LANES_METADATA] rows={} reference={} sector={} short_known={}'.format(
@@ -4885,6 +4913,8 @@ class IntradayLiveEngine:
             if getattr(self, "runway_v2", None) is not None:
                 try:
                     self.runway_v2.on_tick(symbol, price, dt, current_tick_type, volume)
+                    trial=getattr(self,'b1_closing_experiment',None)
+                    if trial:trial.on_tick(symbol,price,dt,current_tick_type,volume)
                 except Exception:
                     pass
 
@@ -5177,6 +5207,7 @@ class IntradayLiveEngine:
             pass
 
         self.learning.close()
+        if getattr(self,'b1_closing_experiment',None):self.b1_closing_experiment.close()
         if getattr(self, 'runway_v2', None) is not None:
             self.runway_v2.close_recording()
         print("✅ Intraday Live stopped")
@@ -5215,6 +5246,7 @@ class IntradayLiveEngine:
             )
 
             self.learning.close()
+            if getattr(self,'b1_closing_experiment',None):self.b1_closing_experiment.close()
             if getattr(self, 'runway_v2', None) is not None:
                 self.runway_v2.close_recording()
             return
@@ -5222,6 +5254,10 @@ class IntradayLiveEngine:
         self.init_firebase()
         self.login()
         self.install_callback()
+        trial=getattr(self,'b1_closing_experiment',None)
+        if trial:
+            for symbol in sorted(trial.required_ticks(now_tpe())):
+                self._subscribe_universe_symbol({'symbol':symbol,'name':symbol})
         # Re-subscribe restored OPEN symbols even after the 12:30 scanner cutoff.
         for symbol, position in list(self.manager.positions.items()):
             if not self._subscribe_universe_symbol({"symbol": symbol, "name": position.get("name", symbol)}):
@@ -5293,6 +5329,8 @@ class IntradayLiveEngine:
                         if getattr(self, 'dual_books', None):
                             self.dual_books.poll(current)
                         self.runway_v2.advance(current)
+                        trial=getattr(self,'b1_closing_experiment',None)
+                        if trial:trial.advance(current)
                     except Exception as exc:
                         print(f"[B_LANES_WARN] {type(exc).__name__}")
 

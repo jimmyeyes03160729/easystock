@@ -4,6 +4,16 @@ const {Provider,normalize,BACKOFF,tpe}=require('./provider');
 const mapping={symbol:'IX0001',name:'加權'},now=Date.parse('2026-09-30T10:00:00+08:00');
 const {MarketContext,breadth}=require('./context');
 const indices=require('./indices.json').indices;
+const {project}=require('./equity_snapshot');
+test('equity snapshot reuses REST, checks quantity scale and preserves original receipt',()=>{
+ const row={symbol:'2330',type:'EQUITY',closePrice:100,lowPrice:99,highPrice:101,tradeVolume:20000,tradeValue:2000000000,lastUpdated:now*1000};
+ const s={TSE:{date:'2026-09-30',data:[row]}};
+ const p=project(s,now+10000,{TSE:now+1000});
+ assert.equal(p.rows['2330'].day_volume,20000000);assert.equal(p.rows['2330'].received_at,tpe(now+1000));
+ assert.equal(project(s,now,{}).rows['2330'],undefined);
+ assert.equal(project({TSE:{...s.TSE,data:[{...row,tradeValue:1}]}},now,{TSE:now}).rows['2330'].day_volume,null);
+ assert.equal(project(s,now,{TSE:now-1}).rows['2330'],undefined);
+});
 function quotes(at=now){return Object.fromEntries(Object.entries(indices).map(([k,m],i)=>[k,normalize({symbol:m.symbol,index:100+i,changePercent:i,lastUpdated:at*1000},m,at)]));}
 function snapshots(){return Object.fromEntries(['TSE','OTC'].map(market=>[market,{market,date:'2026-09-30',data:[1,-1,0].map((change,i)=>({symbol:String(2330+i),type:'EQUITY',change,closePrice:100,lastUpdated:now*1000}))}]));}
 test('E1/E6/E7: seven verified indices, deterministic ranks and price-only rotation',()=>{

@@ -1,0 +1,10 @@
+[Unit]
+Description=Capture official issued shares before the closing decision
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 07:30:00 Asia/Taipei
+Persistent=true
+Unit=easystock-company-shares.service
+
+[Install]
+WantedBy=timers.target

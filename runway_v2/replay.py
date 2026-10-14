@@ -16,7 +16,7 @@ from .orderbook import get_tick_size
 from .replay_journal import SCHEMA, fingerprint
 
 # Parser changes must invalidate cached audit results independently of strategy.
-INPUT_KINDS = frozenset(('seed', 'clock', 'bidask', 'tick', 'radar', 'release', 'book_reset'))
+INPUT_KINDS = frozenset(('seed', 'clock', 'bidask', 'tick', 'radar', 'release', 'book_reset', 'entry_universe'))
 
 
 def state_hash(state):
@@ -49,6 +49,10 @@ class EventStream:
 def apply(suite, event):
     kind,d=event['kind'],event['data']
     if kind=='seed':
+        active=d.get('active_lanes',list(SPECS))
+        if not active or not set(active)<=set(SPECS):raise ValueError('invalid_active_lanes')
+        suite.active_lanes=tuple(active)
+        suite.entry_symbols=None if d.get('entry_symbols') is None else set(d['entry_symbols'])
         suite.day=d['day']; suite.state=json.loads(json.dumps(d['state']))
         suite.prior_unresolved=bool(d['prior_unresolved'])
         suite.rows.clear(); suite.bars.clear(); suite.books.clear(); suite.tapes.clear()
@@ -59,6 +63,8 @@ def apply(suite, event):
         suite.on_bidask(d['symbol'],d['quote'])
     elif kind=='book_reset':
         suite.reset_books(d['symbol'],d['reason'],d.get('source'),d.get('source_epoch'))
+    elif kind=='entry_universe':
+        suite.set_entry_universe(d['symbols'])
     elif kind=='radar':
         suite.on_radar_update(d['rows'],Cache(d['bars']),d['previous_closes'],stamp(d['now']),market=d['market'])
     elif kind=='release':

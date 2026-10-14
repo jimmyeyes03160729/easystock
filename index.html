@@ -159,9 +159,9 @@
       #themeToggleLabel { display:none; }
 
       /* Data supplied at runtime can contain long names, model IDs and timestamps. */
-      #intradayPickList > *, #runwayV2PickList > *, #overnightPickList > *, #eightMethodsModule, #learningSection,
+      #intradayPickList > *, #runwayV2PickList > *, #runwayB2PickList > *, #runwayB3PickList > *, #overnightPickList > *, #eightMethodsModule, #learningSection,
       .system-stats > *, .filter-panel > * { min-width:0; }
-      #intradayPickList, #runwayV2PickList, #overnightPickList, #eightMethodsModule, #learningSection { overflow-wrap:anywhere; }
+      #intradayPickList, #runwayV2PickList, #runwayB2PickList, #runwayB3PickList, #overnightPickList, #eightMethodsModule, #learningSection { overflow-wrap:anywhere; }
     }
     @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } * { transition:none!important; } }
 
@@ -699,6 +699,14 @@
           <div id="runwayV2PickList" class="space-y-3">
             <div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-mono">B1 等待當日行情與五檔資料</div>
           </div>
+          <section class="mt-5 border-t border-[#232F42] pt-4" aria-label="B2 布林轉折模擬紀錄">
+            <div class="flex justify-between gap-2 mb-3"><h3 class="font-bold text-sm text-[#F1F5F9]">B2 · 布林轉折</h3><span id="runwayB2Stamp" class="text-xs text-sub"></span></div>
+            <div id="runwayB2PickList" class="space-y-3"></div>
+          </section>
+          <section class="mt-5 border-t border-[#232F42] pt-4" aria-label="B3 五分K突破模擬紀錄">
+            <div class="flex justify-between gap-2 mb-3"><h3 class="font-bold text-sm text-[#F1F5F9]">B3 · 五分K趨勢突破</h3><span id="runwayB3Stamp" class="text-xs text-sub"></span></div>
+            <div id="runwayB3PickList" class="space-y-3"></div>
+          </section>
           <details id="bReplayPanel" class="mt-4 text-xs">
             <summary class="cursor-pointer font-semibold text-[#F1F5F9]">B1／B2／B3 回測、成交壓力與資料品質</summary>
             <p id="bReplayStatus" class="text-sub mt-3" role="status">等待歷史資料盤點與回放報告</p>
@@ -756,7 +764,7 @@
     <p id="eightStatus" role="status" aria-live="polite">等待行情觀察資料…</p>
     <div id="openingPanel" role="tabpanel" aria-labelledby="openingTab"><p>昨收 → 09:05 → 09:10 → 09:15；09:15 前尚未完成。各時點僅採用之前 30 秒內成交，平盤及缺 Tick 不分類。</p><div id="openingMarkets"></div><div id="openingRows"></div>
     <details class="eight-method"><summary>八種型態與三段價格說明</summary><ol><li>漲漲漲：連續上行</li><li>漲漲跌：先升後回落</li><li>漲跌跌：上行後連續回落</li><li>跌漲漲：下行後連續回升</li><li>跌跌漲：連續下行後回升</li><li>跌跌跌：連續下行</li><li>跌漲跌：下上交錯</li><li>漲跌漲：上下交錯</li></ol><a href="https://www.yunfar.com.tw/GBSSKILL/starting-8ways.html" target="_blank" rel="noopener">開盤八法參考</a></details></div>
-    <div id="closingPanel" role="tabpanel" aria-labelledby="closingTab" hidden><p>13:00～13:25 觀察；13:25 起收盤集合競價，連續交易訊號已截止。</p><p>台股 TW_CLOSING_RULES_V1：漲幅 3–5%、量比 &gt; 1、換手率 2–10%、市值 50–500 億 TWD、量擴張、5/20/60 均線、強於大盤、股價 ≥ 當日高點 98%。大陸規則另存，未套用於台股。</p><div id="closingRows"></div></div>
+    <div id="closingPanel" role="tabpanel" aria-labelledby="closingTab" hidden><p>13:00～13:25 觀察；13:25 起收盤集合競價，連續交易訊號已截止。</p><p>台股 TW_CLOSING_RULES_V1：漲幅 3–5%、量比 &gt; 1、換手率 2–10%、市值 50–500 億 TWD、量擴張、5/20/60 均線、強於大盤、股價 ≥ 當日高點 98%。大陸規則另存，未套用於台股。</p><p id="closingPoolStatus" aria-live="polite"></p><div id="closingRows"></div></div>
   </section>
 
   <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]">
@@ -3698,13 +3706,14 @@
      RUNWAY V2 · 實驗動能跑道渲染（只顯示後端實際紀錄）
      ======================================================== */
 
-  function renderRunwayV2Live() {
-    const container = document.getElementById("runwayV2PickList");
+  function renderRunwayV2Live(lane = "B1") {
+    if (lane === "B1") { renderRunwayV2Live("B2"); renderRunwayV2Live("B3"); }
+    const container = document.getElementById(lane === "B1" ? "runwayV2PickList" : `runway${lane}PickList`);
     if (!container) return;
 
-    const stamp = document.getElementById("runwayV2Stamp");
+    const stamp = document.getElementById(lane === "B1" ? "runwayV2Stamp" : `runway${lane}Stamp`);
     const suite = INTRADAY_LIVE?.runway_b_lanes;
-    const v2Data = suite?.lanes?.B1;
+    const v2Data = suite?.lanes?.[lane];
     const background = document.getElementById("runwayBackgroundStatus");
     if (background) background.textContent = ["B2", "B3"].map(lane => {
       const data = suite?.lanes?.[lane];
@@ -3744,9 +3753,9 @@
     } else if (isShowingPreviousDay) {
       if (stamp) stamp.textContent = "保留上一交易日戰報";
     } else {
-      if (stamp) stamp.textContent = lastUpdate ? `B1 ${v2Data?.session === "closed" ? "已結束" : "觀察中"} · ${formatTaiwanDateTime(lastUpdate)}` : "尚無 B1 新跑道快照";
+      if (stamp) stamp.textContent = lastUpdate ? `${lane} ${v2Data?.session === "closed" ? "已結束" : "觀察中"} · ${formatTaiwanDateTime(lastUpdate)}` : `尚無 ${lane} 新跑道快照`;
       const rejects = Object.entries(v2Data?.rejects || {}).sort((a, b) => b[1] - a[1]);
-      container.innerHTML = `<div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-medium">B1 尚無模擬交易。${escapeHtml(rejects[0]?.[0] || "等待新鮮五檔與符合條件的訊號")}。</div>`;
+      container.innerHTML = `<div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-medium">${lane} 尚無模擬交易。${escapeHtml(rejects[0]?.[0] || "等待新鮮五檔與符合條件的訊號")}。${lane === 'B2' ? '需要20根當日完整五分K，正常最早約10:40。' : ''}</div>`;
       return;
     }
 
@@ -3802,14 +3811,15 @@
       const netPnl = n(x.net_pnl);
       const netPnlText = netPnl !== null ? `${netPnl >= 0 ? "+" : ""}${Math.round(netPnl).toLocaleString()} 元` : "";
 
-      const signalTypeLabel = `B1 五檔${x.direction === -1 ? "反彈做空" : "拉回做多"}`;
+      const signalTypeLabel = lane === 'B1' ? `B1 五檔${x.direction === -1 ? "反彈做空" : "拉回做多"}` :
+        `${lane} ${lane === 'B2' ? '布林轉折' : '五分K突破'}${x.direction === -1 ? '做空' : '做多'}`;
       
       let rawReasons = Array.isArray(x.reasons) ? x.reasons : (typeof x.reasons === "string" ? x.reasons.split(",").map(s => s.trim()) : []);
       let reasons = rawReasons.filter(r => typeof r === "string" && !r.includes("?"));
       if (!reasons.length) reasons = ["進場理由未提供"];
 
       return `
-        <div class="rounded-xl border border-emerald-500/20 bg-[#0F172A]/70 p-3.5 sm:p-4 surface trade-detail-card transition-all hover:border-emerald-500/40 cursor-pointer" role="button" tabindex="0" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(stockName)} B1 模擬交易紀錄">
+        <div class="rounded-xl border border-emerald-500/20 bg-[#0F172A]/70 p-3.5 sm:p-4 surface trade-detail-card transition-all hover:border-emerald-500/40 cursor-pointer" role="button" tabindex="0" data-trade-lane="${lane}" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(stockName)} ${lane} 模擬交易紀錄">
           <div class="flex items-start justify-between gap-2.5">
             <div>
               <div class="flex items-center gap-2 flex-wrap">
@@ -3823,7 +3833,7 @@
                 </span>
               </div>
               <div class="text-xs text-[#94A3B8] mt-1.5 leading-normal font-medium flex items-center gap-2 flex-wrap">
-                <span>${isOpen ? (x.quote_stale || !laneFresh ? '報價延遲 · 等待新鮮五檔' : '五檔監控 · 停損2檔／停利3檔') : escapeHtml(exitReason)}</span>
+                <span>${isOpen ? (x.quote_stale || !laneFresh ? '報價延遲 · 等待新鮮五檔' : lane === 'B1' ? '五檔監控 · 停損2檔／停利3檔' : lane === 'B2' ? '五檔監控 · 布林中軌目標' : '五檔監控 · 結構停損與趨勢目標') : escapeHtml(exitReason)}</span>
                 ${x.score ? `<span class="text-[11px] text-[#64748B] font-mono">評分: ${fmt(x.score, 1)}</span>` : ''}
               </div>
             </div>
@@ -5314,7 +5324,7 @@
 <script src="assets/module-share.js?v=d047d833f8a3"></script>
 <script src="assets/learning-status.js?v=7abe6c98e7b4"></script>
 <script src="assets/dashboard-layout.js?v=488bb302a486"></script>
-<script src="assets/intraday-chart.js?v=17c577fb8eaa"></script>
+<script src="assets/intraday-chart.js?v=c1b6c0f3f272"></script>
 <script src="assets/provider-health.js?v=e8f08c578597"></script>
 <nav class="mobile-bottom-nav" aria-label="手機主導覽">
   <a href="#intraday-strategies" aria-label="盤中摸魚" aria-current="location"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span><span>盤中摸魚</span></a>
@@ -5324,7 +5334,7 @@
 </nav>
 <script src="assets/mobile-nav.js?v=ed9c7d1d0f6c"></script>
 <script src="assets/revenue-observation.js?v=c1040fe37c1d"></script>
-<script src="assets/eight-methods.js?v=5d6ef924fbc5"></script>
+<script src="assets/eight-methods.js?v=525d6893a4c2"></script>
 <script src="assets/b-lanes-replay.js?v=ea6b415dae32"></script>
 <script src="assets/a-watchlist.js?v=44db2c9964bb"></script>
 </body>

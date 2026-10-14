@@ -8,10 +8,10 @@ from runway_v2.replay_journal import InputRecorder
 from runway_v2.replay import Cache,load_day,replay_events,build_report,trade_metrics
 
 
-def record_fixture(tmp_path, with_reset=False):
+def record_fixture(tmp_path, with_reset=False, active_lanes=None, entry_symbols=None, freeze=False):
     clock=[datetime(2026,10,12,8,59,tzinfo=TPE)]
     rec=InputRecorder(tmp_path/'recordings',now=lambda:clock[0])
-    live=LaneSuite(tmp_path/'live.sqlite',sender=lambda *_:None,recorder=rec)
+    live=LaneSuite(tmp_path/'live.sqlite',sender=lambda *_:None,recorder=rec,active_lanes=active_lanes,entry_symbols=entry_symbols)
     save=live._save
     live._save=lambda *_args,**_kwargs:None
     start=clock[0]; now=start.replace(hour=9,minute=3)
@@ -26,6 +26,7 @@ def record_fixture(tmp_path, with_reset=False):
     while at<=start.replace(hour=13,minute=0):
         clock[0]=at
         if at==now:
+            if freeze:live.set_entry_universe(['TEST'])
             if with_reset:
                 live.reset_books('TEST','provider_or_epoch_changed','esun','synthetic-epoch')
             live.on_radar_update(rows,Cache({}),{r['symbol']:r['previous_close'] for r in rows},at,market={'valid':True,'gate_action':'PASS'})
@@ -48,6 +49,15 @@ def test_complete_source_reset_recording_passes_audit_and_exact_replay(tmp_path)
     assert profile['eligibility']['B1']['eligible']
     result=replay_events(events)
     assert result['mismatched_clocks']==0 and result['state']==live.state
+
+def test_shadow_b1_only_and_frozen_universe_exactly_replay(tmp_path):
+    rec,live=record_fixture(tmp_path/'allow',active_lanes=('B1',),entry_symbols=[],freeze=True)
+    events,profile,errors=load_day(rec.folder)
+    assert not errors and profile['input_counts']['entry_universe']==1
+    assert live.state['B1']['entries']>0 and live.state['B2']['entries']==live.state['B3']['entries']==0
+    result=replay_events(events);assert result['mismatched_clocks']==0 and result['state']==live.state
+    _,blocked=record_fixture(tmp_path/'block',active_lanes=('B1',),entry_symbols=[])
+    assert blocked.state['B1']['entries']==0
 
 
 def test_unknown_input_still_excludes_recording(tmp_path):

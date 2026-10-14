@@ -75,7 +75,7 @@ def default_sender(text, event_key):
 
 
 class LaneSuite:
-    def __init__(self, db_path=None, sender=None, publisher=None, recorder=None, offline=False):
+    def __init__(self, db_path=None, sender=None, publisher=None, recorder=None, offline=False, active_lanes=None, entry_symbols=None):
         self.path = Path(db_path or os.environ.get("RUNWAY_B_LANES_DB", str(DB_DIR / "lanes.sqlite")))
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with database(self.path) as db:
@@ -97,6 +97,14 @@ class LaneSuite:
         self._last_save = self._last_publish = 0.0
         self.last_feed_at = None
         self.enabled = os.environ.get("RUNWAY_B_LANES_ENABLED", "1").lower() in ("1", "true", "yes")
+        self.active_lanes = tuple(active_lanes) if active_lanes is not None else tuple(SPECS)
+        if not self.active_lanes or not set(self.active_lanes)<=set(SPECS):raise ValueError('invalid_active_lanes')
+        self.entry_symbols = None if entry_symbols is None else set(entry_symbols)
+
+    def set_entry_universe(self, symbols):
+        with self.lock:
+            self.entry_symbols=set(symbols)
+            self._capture('entry_universe', {'symbols':sorted(self.entry_symbols)})
 
     def _capture(self, kind, data):
         if self.recorder and not self.offline:
@@ -155,7 +163,8 @@ class LaneSuite:
         self.rows.clear()
         self.bars.clear()
         self.last_feed_at = None
-        self._capture('seed', {'day':self.day,'state':self.state,'prior_unresolved':self.prior_unresolved})
+        self._capture('seed', {'day':self.day,'state':self.state,'prior_unresolved':self.prior_unresolved,
+            'active_lanes':list(self.active_lanes),'entry_symbols':sorted(self.entry_symbols) if self.entry_symbols is not None else None})
 
     def _save(self, now, force=False):
         if self.offline:
@@ -418,6 +427,7 @@ class LaneSuite:
             time_str = now.strftime("%H:%M:%S")
             changed = False
             for lane, spec in SPECS.items():
+                if lane not in self.active_lanes:continue
                 state = self.state[lane]
                 checks = state.setdefault('execution_checks', {})
                 def count(key):
@@ -450,6 +460,7 @@ class LaneSuite:
                 if sum(t["net_pnl"] for t in state["trades"]) <= -6000 or len(state["positions"]) >= 3:
                     continue
                 for symbol, row in self.rows.items():
+                    if self.entry_symbols is not None and symbol not in self.entry_symbols:continue
                     if len(state["positions"]) >= 3:
                         break
                     if symbol in state["positions"] or now.timestamp() - row["observed_at"] > 30:
