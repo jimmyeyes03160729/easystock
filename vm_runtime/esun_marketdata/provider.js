@@ -53,6 +53,7 @@ class Provider {
     this.wanted=Object.entries(configured).filter(([,value])=>value.enabled);
     this.acks=new Set();this.lastArchive=0;this.lastPoll=0;this.inFlight=false;
     this.marketContext=new MarketContext();this.breadthSnapshots={};this.lastBreadthPoll=-Infinity;
+    this.openingBoundaryDay=null;this.openingBoundarySeen=new Set();
     this.books=new Books({directory:this.directory,clock:this.clock,write:atomic});
   }
   error(code) {
@@ -89,6 +90,7 @@ class Provider {
   }
   flush() {
     const now=this.clock();
+    this.captureOpeningBoundaries(now);
     this.diagnostic.checked_at=tpe(now);
     const quotes=Object.fromEntries(Object.entries(this.quotes).map(([key,quote])=>[key,{...quote,
       age_seconds:Math.max(0,Math.round((now-Date.parse(quote.quote_at))/1000)),
@@ -110,6 +112,23 @@ class Provider {
       const dir=path.join(this.directory,'dataset');fs.mkdirSync(dir,{recursive:true,mode:0o700});
       fs.appendFileSync(path.join(dir,tpe(now).slice(0,10)+'.jsonl'),JSON.stringify({received_at:tpe(now),...context})+'\n',{mode:0o600});
       this.lastArchive=now;
+    }
+  }
+  captureOpeningBoundaries(now) {
+    const day=tpe(now).slice(0,10);
+    if(this.openingBoundaryDay!==day){this.openingBoundaryDay=day;this.openingBoundarySeen.clear();}
+    for(const minute of ['05','10','15']) {
+      const boundary=Date.parse(day+'T09:'+minute+':00+08:00');
+      if(now<boundary||now-boundary>65000)continue;
+      for(const key of ['taiex','otc']) {
+        const id=key+minute;if(this.openingBoundarySeen.has(id))continue;
+        const row=(this.marketContext.history[key]||[]).filter(q=>q.at<=boundary&&boundary-q.at<=30000).at(-1);
+        if(!row)continue;
+        const dir=path.join(this.directory,'opening-index-boundaries');fs.mkdirSync(dir,{recursive:true,mode:0o700});
+        fs.appendFileSync(path.join(dir,day+'.jsonl'),JSON.stringify({received_at:tpe(now),
+          indices:{[key]:{price:row.price,quote_at:tpe(row.at),received_at:tpe(now)}}})+'\n',{mode:0o600});
+        this.openingBoundarySeen.add(id);
+      }
     }
   }
   async poll(client) {

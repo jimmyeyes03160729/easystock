@@ -31,6 +31,7 @@ class Recorder:
         self.queue = queue.Queue(maxsize=10000)
         self.lock = threading.Lock()
         self.last_sample = {}
+        self.opening_boundaries = set()
         self.dropped = 0
         self.errors = 0
         self.thread = None
@@ -57,6 +58,18 @@ class Recorder:
             return
         bucket = int(current.timestamp() // 300)
         with self.lock:
+            for minute in (5,10,15):
+                boundary=current.replace(hour=9,minute=minute,second=0,microsecond=0)
+                key=(current.date().isoformat(),symbol,minute)
+                if key in self.opening_boundaries or not 0 <= (current-boundary).total_seconds() <= 65:
+                    continue
+                self.opening_boundaries.add(key)
+                prior=[t for t in ticks if 0 <= boundary.timestamp()-t[0] <= 30]
+                if prior:
+                    tick=max(prior,key=lambda t:t[0])
+                    self.submit('opening_boundary',{'symbol':symbol,'name':metadata.get('name',symbol),
+                        'observed_at':current.isoformat(),'quote_at':datetime.fromtimestamp(tick[0],TPE).isoformat(),
+                        'price':tick[3],'boundary_at':boundary.isoformat()})
             if self.last_sample.get(symbol) == bucket:
                 return
             self.last_sample[symbol] = bucket

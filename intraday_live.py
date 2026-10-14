@@ -4434,6 +4434,14 @@ class IntradayLiveEngine:
         except Exception as exc:
             self._entry_reject(symbol, 'settings_unavailable', type(exc).__name__)
             return
+        context_evidence = {}
+        try:
+            from daytrade_learning.a_signal_learning import capture_online
+            from market_data.health import data_dir
+            context_evidence = capture_online(self.bars, symbol, strategy_time.isoformat(),
+                                              feature_row, self.manager, data_dir())
+        except Exception as exc:
+            print('[A_CONTEXT] capture unavailable:', type(exc).__name__)
         try:
             event = self.manager.open_position(
                 symbol=symbol,
@@ -4453,6 +4461,7 @@ class IntradayLiveEngine:
                     'model_threshold': model_decision.get('threshold') if self.entry_mode == 'model' else None,
                     'entry_features': feature_row,
                     'entry_gate_evidence': {'market_gate': 'PASS', 'strategy_vetoes': list(vetoes),
+                        **context_evidence,
                         'soft_penalties': list(soft_penalties), 'composite_score': composite_score,
                         'radar_selected': True, 'fresh_quote_at': strategy_time.isoformat(),
                         'entry_window': True, 'user_settings': dict(limits),

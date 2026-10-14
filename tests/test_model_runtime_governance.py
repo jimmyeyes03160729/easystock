@@ -568,7 +568,9 @@ class DaytradeModelIdentityTests(unittest.TestCase):
             path = Path(folder) / 'model.json'
             payload = artifact(version='v-test', trained_through='2026-09-28', profile='p1')
             path.write_text(json.dumps(payload), encoding='utf-8')
-            model = DaytradeModel(path=path)
+            # Identity test has a fixed artifact date; freshness is covered separately.
+            with patch.object(DaytradeModel, 'age_in_weekdays', return_value=1):
+                model = DaytradeModel(path=path)
             identity = model.identity()
             self.assertEqual(identity['version'], 'v-test')
             self.assertEqual(identity['trained_through'], '2026-09-28')

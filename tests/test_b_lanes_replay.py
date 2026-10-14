@@ -8,7 +8,7 @@ from runway_v2.replay_journal import InputRecorder
 from runway_v2.replay import Cache,load_day,replay_events,build_report,trade_metrics
 
 
-def record_fixture(tmp_path):
+def record_fixture(tmp_path, with_reset=False):
     clock=[datetime(2026,10,12,8,59,tzinfo=TPE)]
     rec=InputRecorder(tmp_path/'recordings',now=lambda:clock[0])
     live=LaneSuite(tmp_path/'live.sqlite',sender=lambda *_:None,recorder=rec)
@@ -26,6 +26,8 @@ def record_fixture(tmp_path):
     while at<=start.replace(hour=13,minute=0):
         clock[0]=at
         if at==now:
+            if with_reset:
+                live.reset_books('TEST','provider_or_epoch_changed','esun','synthetic-epoch')
             live.on_radar_update(rows,Cache({}),{r['symbol']:r['previous_close'] for r in rows},at,market={'valid':True,'gate_action':'PASS'})
             for sec,p in ((50,120),(40,122),(30,121.5),(20,122),(9,120.5),(7,121),(5,121),(3,121.5),(1,121.5),(0,121.5)):
                 live.on_tick('TEST',p,at-timedelta(seconds=sec),1,10)
@@ -37,6 +39,41 @@ def record_fixture(tmp_path):
     live.close_recording(); live.worker.shutdown(wait=True)
     assert rec.finished
     return rec,live
+
+
+def test_complete_source_reset_recording_passes_audit_and_exact_replay(tmp_path):
+    rec,live=record_fixture(tmp_path,with_reset=True)
+    events,profile,errors=load_day(rec.folder)
+    assert not errors and profile['input_counts']['book_reset']==1
+    assert profile['eligibility']['B1']['eligible']
+    result=replay_events(events)
+    assert result['mismatched_clocks']==0 and result['state']==live.state
+
+
+def test_unknown_input_still_excludes_recording(tmp_path):
+    rec,_=record_fixture(tmp_path)
+    with gzip.open(rec.path,'rt',encoding='utf-8') as stream:
+        events=[json.loads(line) for line in stream]
+    events[1]['kind']='unsupported_event'
+    rec.path.write_bytes(gzip.compress(''.join(json.dumps(e)+'\n' for e in events).encode()))
+    import hashlib
+    meta=json.loads(rec.meta_path.read_text(encoding='utf-8'))
+    meta['sha256']=hashlib.sha256(rec.path.read_bytes()).hexdigest()
+    rec.meta_path.write_text(json.dumps(meta),encoding='utf-8')
+    _,_,errors=load_day(rec.folder)
+    assert '未知輸入種類' in errors
+
+
+def test_ineligible_clock_gap_day_does_not_replay_or_publish_zero_metrics(tmp_path,monkeypatch):
+    import runway_v2.replay as replay
+    folder=tmp_path/'recordings'/'2026-10-14';folder.mkdir(parents=True)
+    profile={'eligibility':{k:{'eligible':False,'reasons':['該跑道時段判斷時鐘中斷超過30秒']} for k in ('B1','B2','B3')}}
+    monkeypatch.setattr(replay,'load_day',lambda *_:([{'kind':'seed'}],profile,[]))
+    def unexpected(*_):raise AssertionError('Ineligible day must not replay')
+    monkeypatch.setattr(replay,'replay_events',unexpected)
+    report=build_report(folder.parent,since='2026-10-14',until='2026-10-14')
+    assert report['summary']['B1']['scenarios']['baseline']['net_pnl'] is None
+    assert report['daily'][0]['lanes']['B1']['status']=='excluded'
 
 
 def test_exact_replay_matches_live_fee_and_trade_path(tmp_path):

@@ -104,11 +104,13 @@ def promote_candidate(data, candidate, *, promoted_at=None, write_log=True, arch
     return promoted
 
 
-def fit_logistic(rows, iterations=800, learning_rate=.12):
+def fit_logistic(rows, iterations=800, learning_rate=.12, feature_count=None):
     """Small deterministic logistic trainer; keeps the VM dependency-free."""
     xs=[[finite(v) for v in r['features']] for r in rows]
     ys=[int(r['net_return_pct']>0) for r in rows]
-    n=len(xs); width=len(FEATURES)
+    n=len(xs); width=len(FEATURES) if feature_count is None else feature_count
+    if not xs or not isinstance(width,int) or width<1 or any(len(x)!=width for x in xs):
+        raise ValueError('invalid_feature_width')
     mean=[sum(x[j] for x in xs)/n for j in range(width)]
     scale=[max((sum((x[j]-mean[j])**2 for x in xs)/n)**.5,1e-9) for j in range(width)]
     standardized=[[(x[j]-mean[j])/scale[j] for j in range(width)] for x in xs]

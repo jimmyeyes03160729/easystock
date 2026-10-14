@@ -15,6 +15,9 @@ from .lanes import LaneSuite, SPECS, TPE, stamp, completed_bars
 from .orderbook import get_tick_size
 from .replay_journal import SCHEMA, fingerprint
 
+# Parser changes must invalidate cached audit results independently of strategy.
+INPUT_KINDS = frozenset(('seed', 'clock', 'bidask', 'tick', 'radar', 'release', 'book_reset'))
+
 
 def state_hash(state):
     return hashlib.sha256(json.dumps(state,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
@@ -126,7 +129,7 @@ def load_day(folder):
                     last_received=recv
                     kind,d=e['kind'],e['data']; counts[kind]+=1
                     if kind=='seed' and d.get('prior_unresolved'): unresolved=True
-                    if kind not in ('seed','clock','bidask','tick','radar','release'): raise ValueError('未知輸入種類')
+                    if kind not in INPUT_KINDS: raise ValueError('未知輸入種類')
                     if kind=='clock':
                         at=stamp(d['now'])
                         if at is None or at.date().isoformat()!=path.parent.name: raise ValueError('判斷日期不符')
@@ -230,7 +233,7 @@ def cache_key(folder, db_path, day):
             if Path(meta['file']).name!=meta['file']: return None
             files.append([p.name,digest_file(p),digest_file(folder/meta['file'])])
         live=live_state(db_path,day)
-        return state_hash(dict(files=files,strategy=fingerprint(),live=normalized(live) if live else None))
+        return state_hash(dict(files=files,strategy=fingerprint(),parser=digest_file(Path(__file__)),live=normalized(live) if live else None))
     except (OSError,ValueError,KeyError,TypeError): return None
 
 
@@ -273,6 +276,12 @@ def build_report(record_root, history_roots=(), learning_root='', book_root='', 
             if not found.get('raw_five_level_files'): reasons=list(reasons)+['沒有歷史完整五檔']
             for lane in SPECS: row['lanes'][lane]=dict(status='excluded',reasons=reasons,metrics=None)
             daily.append(row); continue
+        # No lane can publish metrics from an ineligible day. Avoid replaying
+        # millions of callbacks merely to discard every result afterwards.
+        if not any(criteria['eligible'] for criteria in profile['eligibility'].values()):
+            for lane in SPECS:
+                row['lanes'][lane]=dict(status='excluded',reasons=profile['eligibility'][lane]['reasons'],metrics=None)
+            daily.append(row);continue
         baseline=replay_events(events)
         recorded=profile['manifests'][-1].get('final_state')
         archived=live_state(db_path,day)

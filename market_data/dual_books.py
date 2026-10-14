@@ -31,6 +31,10 @@ class DualBooks:
         self.verified_units = {}
         self.unit_samples = {}
         self.unit_blocked = set()
+        self.diagnostic_written_at = None
+
+    def _count(self, reason):
+        self.counters[reason]=self.counters.get(reason,0)+1
 
     def select(self, symbols, pinned, now):
         with self.suite.lock,self.lock:
@@ -115,23 +119,35 @@ class DualBooks:
                     if not received or not 0 <= (now-received).total_seconds() <= 3: continue
                     raw_valid=self._validate(quote,now,'lots')
                     if raw_valid:self._verify_symbol_unit(symbol,raw_valid,now)
+                    else:self._count('invalid_esun_book')
                     unit=None if symbol in self.unit_blocked else self.unit or self.verified_units.get(symbol)
                     valid=self._validate(quote,now,unit)
                     if valid: current[symbol]=valid
                 self.esun=current;self.last_clock=at
-            except (OSError,ValueError,TypeError,AttributeError,KeyError):
+            except (OSError,ValueError,TypeError,AttributeError,KeyError) as exc:
+                reason=str(exc) if isinstance(exc,ValueError) and str(exc) in ('stale','disconnected','oversized','ipc_write_failed') else type(exc).__name__
+                self._count('poll_failure_'+reason)
                 self.esun.clear();self.esun_states.clear();self.last_clock=None
                 self.verified_units.clear();self.unit_samples.clear();self.unit_blocked.clear()
             for symbol in set(self.selected)|set(self.esun)|set(self.native_books): self._route(symbol,now)
+            if self.diagnostic_written_at is None or (now-self.diagnostic_written_at).total_seconds()>=1:
+                try:
+                    atomic(self.directory/'b-books-diagnostics.json',dict(self.snapshot(),generated_at=now.isoformat()))
+                    self.diagnostic_written_at=now
+                except OSError:self._count('diagnostic_write_failed')
 
     def _verify_symbol_unit(self, symbol, raw, now):
         if symbol in self.unit_blocked:return
         if self.native.status(symbol,'BidAsk')!='active':return
         match=next((q for q in reversed(self.native_history.get(symbol,()))
             if q['datetime']==raw['datetime'] and 0 <= (now-q['datetime']).total_seconds() <= 3),None)
-        if not match or any(match[k]!=raw[k] for k in ('bid_price','ask_price')):return
+        if not match:
+            self._count('unit_no_native_timestamp_match');return
+        if any(match[k]!=raw[k] for k in ('bid_price','ask_price')):
+            self._count('unit_price_mismatch');return
         native=match['bid_volume']+match['ask_volume'];esun=raw['bid_volume']+raw['ask_volume']
-        if sum(v>0 for v in native)<8:return
+        if sum(v>0 for v in native)<8:
+            self._count('unit_insufficient_positive_levels');return
         lots=all(a==b for a,b in zip(esun,native))
         shares=all(a==b*1000 for a,b in zip(esun,native))
         unit='lots' if lots else 'shares' if shares else None
@@ -141,6 +157,7 @@ class DualBooks:
             self.counters['unit_conflict']=self.counters.get('unit_conflict',0)+1
             return
         samples=self.unit_samples.setdefault(symbol,{})
+        if raw['datetime'] not in samples:self._count('unit_distinct_pairs')
         samples[raw['datetime']]=unit
         if len(set(samples.values()))!=1:
             self.verified_units.pop(symbol,None);self.unit_samples.pop(symbol,None);self.unit_blocked.add(symbol);return
@@ -174,6 +191,8 @@ class DualBooks:
     def snapshot(self):
         with self.lock:
             return dict(mode='dual',esun_global_size_verified=self.unit is not None,
+                requested_count=len(self.requested),worker_quote_at=self.last_clock.isoformat() if self.last_clock else None,
+                calibration_pairs_by_symbol={symbol:len(samples) for symbol,samples in self.unit_samples.items()},
                 verified_symbols=dict(self.verified_units),unit_events=dict(self.counters),
                 unit_blocked_symbols=sorted(self.unit_blocked),
                 esun_selected=sum(x[0]=='esun' for x in self.selected.values()),

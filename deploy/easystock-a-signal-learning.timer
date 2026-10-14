@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily offline A signal pattern and market review after collection
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 14:30:00 Asia/Taipei
+OnCalendar=Mon..Fri *-*-* 17:00:00 Asia/Taipei
+Persistent=true
+Unit=easystock-a-signal-learning.service
+
+[Install]
+WantedBy=timers.target

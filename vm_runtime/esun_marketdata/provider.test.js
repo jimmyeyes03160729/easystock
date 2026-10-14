@@ -109,3 +109,18 @@ test('disconnect during connect is never revived as an authenticated book sessio
   await assert.rejects(()=>p.session(),/disconnected/);assert.equal(p.books.connected,false);
  }finally{fs.rmSync(directory,{recursive:true,force:true});}
 });
+
+test('opening boundary stores the last preceding index quote once, excluding the later quote',()=>{
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'esun-opening-'));
+ const boundary=Date.parse('2026-10-14T09:05:00+08:00');let clock=boundary-1000;
+ try{
+  const p=new Provider({directory,clock:()=>clock});
+  p.accept({symbol:'IX0001',index:100,time:clock*1000});
+  clock=boundary+1000;p.accept({symbol:'IX0001',index:999,time:clock*1000});
+  p.flush();p.flush();
+  const rows=fs.readFileSync(path.join(directory,'opening-index-boundaries','2026-10-14.jsonl'),'utf8').trim().split('\n').map(JSON.parse);
+  assert.equal(rows.length,1);assert.equal(rows[0].indices.taiex.price,100);
+  assert(Date.parse(rows[0].indices.taiex.quote_at)<boundary);
+  assert.equal(Date.parse(rows[0].received_at),clock);
+ }finally{fs.rmSync(directory,{recursive:true,force:true});}
+});
