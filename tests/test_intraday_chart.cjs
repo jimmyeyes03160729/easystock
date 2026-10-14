@@ -26,5 +26,7 @@ const {createDOM,settle}=require('./dom.cjs'),assert=require('node:assert/strict
  w.document.querySelector('button').dataset.tradeLane='B3';w.document.querySelector('button').click();await settle();
  assert.match(w.document.querySelector('#tradeOutcome').textContent,/B3 模擬先賣後買.*扣成本報酬 0.75%/);
  assert.match(w.document.querySelector('#tradeReasons').textContent,/五分K突破/);
+ assert.match(w.document.querySelector('#tradeChart svg').textContent,/賣出 100.00/);
+ assert.match(w.document.querySelector('#tradeChart svg').textContent,/買回 99.00/);
  dom.window.close();console.log('PASS trade chart: closed state, OHLC, entry/exit, escaped evidence, reject wrong session, research vs Paper status');
 })().catch(e=>{console.error(e);process.exitCode=1});
