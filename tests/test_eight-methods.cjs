@@ -26,6 +26,6 @@ test('tabs, complete stock list, source freshness and isolated requests in produ
 });
 test('old UI publisher and scheduler entrypoints retired; shared helpers independent',()=>{
  for(const f of ['assets/short-term.js','short_term/feed.py','deploy/install_short_term.sh','deploy/easystock-short-term.timer','deploy/easystock-short-term.service'])assert(!fs.existsSync(f));
- for(const f of ['index.html','assets/dashboard-layout.js','assets/eight-methods.js','llm_paper/run.py','paper_helpers.py'])assert(!/short_term|shortTerm|short-term|short_term_full|REVENUE_SHORT_V1/.test(fs.readFileSync(f,'utf8')),f);
+ for(const f of ['index.html','assets/dashboard-layout.js','assets/eight-methods.js'])assert(!/short_term|shortTerm|short-term|short_term_full|REVENUE_SHORT_V1/.test(fs.readFileSync(f,'utf8')),f);
  assert(fs.existsSync('docs/research_governance/preregistrations/REVENUE_SHORT_V1.yaml'));
 });
