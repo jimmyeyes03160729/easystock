@@ -23,7 +23,9 @@ def test_boundary_capture_uses_last_trade_before_boundary_once(monkeypatch,tmp_p
     try:
         for _ in range(2):r.sample('2330',now,ticks,{}, {'name':'test'},True,{})
     finally:r.close()
-    rows=[json.loads(l) for l in (tmp_path/'journal-2026-10-14.jsonl').read_text().splitlines()]
+    # The writer names journals by wall-clock write date, not the sample date, so find the single file.
+    journals=list(tmp_path.glob('journal-*.jsonl'));assert len(journals)==1
+    rows=[json.loads(l) for l in journals[0].read_text(encoding='utf-8').splitlines()]
     boundary=[r for r in rows if r['kind']=='opening_boundary']
     assert len(boundary)==1 and boundary[0]['data']['price']==100
     assert boundary[0]['data']['quote_at']<boundary[0]['data']['boundary_at']
