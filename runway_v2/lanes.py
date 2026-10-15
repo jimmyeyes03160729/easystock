@@ -460,6 +460,8 @@ class LaneSuite:
                 if sum(t["net_pnl"] for t in state["trades"]) <= -6000 or len(state["positions"]) >= 3:
                     continue
                 for symbol, row in self.rows.items():
+                    limited=self.market.get('rebound_mode',False)
+                    if limited and len(state['positions'])>=1:break
                     if self.entry_symbols is not None and symbol not in self.entry_symbols:continue
                     if len(state["positions"]) >= 3:
                         break
@@ -469,19 +471,21 @@ class LaneSuite:
                     # symbol/lane/day is the initial registered experiment.
                     if any(t["symbol"] == symbol for t in state["trades"]):
                         continue
-                    if not self.market.get("valid") or now.timestamp() - self.market.get("observed_at", 0) > 30 or self.market.get("gate_action") == "BLOCK":
+                    if not self.market.get("valid") or now.timestamp() - self.market.get("observed_at", 0) > 30 or self.market.get("gate_action") == "BLOCK" or now.timestamp()>self.market.get('entry_valid_until',float('inf')):
                         reason, signal = "大盤風險資料不符", None
                     else:
                         signal, reason = self._signal(lane, symbol, now)
                     if signal is None:
                         state["rejects"][reason] = state["rejects"].get(reason, 0) + 1
                         continue
+                    if limited and signal['direction']!=1:continue
                     if signal["direction"] == -1 and row.get("daytrade_short_allowed") is not True:
                         state["rejects"]["未確認先賣後買資格"] = state["rejects"].get("未確認先賣後買資格", 0) + 1
                         continue
                     price = signal["entry_price"]
                     count('entry_fill_checks')
-                    shares = int(min(200000, 1000000 - state["used"]) // (price * 1000)) * 1000
+                    shares = int(min(100000 if limited else 200000, 1000000 - state["used"]) // (price * 1000)) * 1000
+                    if limited:shares=min(shares,1000)
                     book = self._book(symbol, now)
                     depth = (book["av"] if signal["direction"] == 1 else book["bv"]) if book else 0
                     if shares < 1000:
@@ -492,7 +496,9 @@ class LaneSuite:
                         continue
                     state["positions"][symbol] = {**signal, "symbol": symbol, "name": row.get("name") or symbol,
                         "entry_time": now.isoformat(), "shares": shares, "current_price": price,
-                        "trade_id": f"{lane}-{self.day}-{symbol}", "half_closed": False}
+                        "trade_id": f"{lane}-{self.day}-{symbol}", "half_closed": False,
+                        "market_entry_mode":'REBOUND' if limited else 'NORMAL',
+                        "market_entry_evidence":dict(self.market)}
                     state["used"] += price * shares
                     state["entries"] += 1
                     changed = True

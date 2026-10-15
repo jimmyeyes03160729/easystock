@@ -8,6 +8,10 @@ from .health import TPE, aggregate, atomic, data_dir, read_json, timestamp
 
 SOURCES = ('shioaji', 'esun')
 REASONS = ('market_risk_red', 'market_data_unavailable')
+REBOUND_REASONS=('market_rebound_limited','rebound_data_unavailable','rebound_index_stale',
+    'rebound_fast_drop','rebound_slow_decline','rebound_pullback','rebound_cooldown',
+    'rebound_base_unavailable','rebound_snapshot_stale','rebound_volume_warmup',
+    'rebound_breadth_incomplete','rebound_volume_reset','rebound_conditions_not_met','rebound_guard_unavailable')
 CONDITIONS = ('no_fresh_market_data', 'fresh_live_red',
               'premarket_red_pending_confirmation', 'recent_risk_pending_confirmation',
               'fresh_live_green', 'fresh_live_yellow')
@@ -46,7 +50,9 @@ def save_gate(gate, *, now, premarket_date, model_ready, radar_candidate_count, 
             'market_level': gate.get('level') if gate.get('level') in ('GREEN', 'YELLOW', 'RED', 'UNKNOWN') else 'UNKNOWN',
             'market_condition_reason': gate.get('market_condition_reason') if gate.get('market_condition_reason') in CONDITIONS else 'no_fresh_market_data',
             'data_health': gate.get('data_health') if gate.get('data_health') in ('HEALTHY', 'DEGRADED', 'UNAVAILABLE') else 'UNKNOWN',
-            'gate_reason': gate.get('gate_reason') if gate.get('gate_reason') in (*REASONS, 'market_risk_pass') else 'market_data_unavailable',
+            'gate_reason': gate.get('gate_reason') if gate.get('gate_reason') in (*REASONS,*REBOUND_REASONS, 'market_risk_pass') else 'market_data_unavailable',
+            'rebound_mode':gate.get('rebound_mode') is True,
+            'base_market_level':gate.get('base_market_level') if gate.get('base_market_level') in ('RED','GREEN','YELLOW','UNKNOWN') else None,
             'selected_source': gate.get('selected_source') if gate.get('selected_source') in SOURCES else None,
             'premarket_date': _date(premarket_date),
             'premarket_level': gate.get('premarket_level') if gate.get('premarket_level') in ('GREEN', 'YELLOW', 'RED', 'UNKNOWN') else 'UNKNOWN',
@@ -80,7 +86,9 @@ def read_gate():
             'market_level': row.get('market_level') if row.get('market_level') in ('GREEN', 'YELLOW', 'RED', 'UNKNOWN') else 'UNKNOWN',
             'market_condition_reason': row.get('market_condition_reason') if row.get('market_condition_reason') in CONDITIONS else 'no_fresh_market_data',
             'data_health': row.get('data_health') if row.get('data_health') in ('HEALTHY', 'DEGRADED', 'UNAVAILABLE') else 'UNKNOWN',
-            'gate_reason': row.get('gate_reason') if row.get('gate_reason') in (*REASONS, 'market_risk_pass') else 'market_data_unavailable',
+            'gate_reason': row.get('gate_reason') if row.get('gate_reason') in (*REASONS,*REBOUND_REASONS, 'market_risk_pass') else 'market_data_unavailable',
+            'rebound_mode':row.get('rebound_mode') is True,
+            'base_market_level':row.get('base_market_level') if row.get('base_market_level') in ('RED','GREEN','YELLOW','UNKNOWN') else None,
             'selected_source': row.get('selected_source') if row.get('selected_source') in SOURCES else None,
             'premarket_date': _date(row.get('premarket_date')),
             'premarket_level': row.get('premarket_level') if row.get('premarket_level') in ('GREEN', 'YELLOW', 'RED', 'UNKNOWN') else 'UNKNOWN',
