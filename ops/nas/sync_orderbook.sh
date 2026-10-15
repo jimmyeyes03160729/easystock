@@ -19,7 +19,8 @@ REMOTE_REPO="${REMOTE_REPO:-/home/ubuntu/easystock}"
 log() { printf '%s [orderbook] %s\n' "$(date -Iseconds)" "$*"; }
 die() { log "ERROR: $*" >&2; exit 1; }
 
-mountpoint -q /data || die '/data must be a persistent mount point'
+# The NAS scheduler bind-mounts only /data/backup/vm and /data/backup/orderbook, so /data itself is not a mount.
+mountpoint -q /data || mountpoint -q "$ORDERBOOK_ROOT" || die '/data or orderbook root must be a persistent mount point'
 [[ -r "$KNOWN_HOSTS" ]] || die "verified known_hosts is required: $KNOWN_HOSTS"
 mkdir -p "$ORDERBOOK_ROOT/raw"
 exec 9>"$ORDERBOOK_ROOT/.sync.lock"
