@@ -173,7 +173,9 @@ class EngineTests(unittest.TestCase):
             is_exit_event=lambda event: isinstance(event, dict) and event.get('type') == 'EXIT',
             push_line_text=Mock(),format_entry_message=Mock(return_value='entry'),
             time=types.SimpleNamespace(monotonic=lambda:self.mono),ENTRY_REJECT_LOG_SECONDS=300.0,
-            ENTRY_REJECT_SUMMARY_SECONDS=60.0)
+            ENTRY_REJECT_SUMMARY_SECONDS=60.0,is_etf=lambda s,n='':False,
+            DAYTRADE_MIN_PRICE=30.0,DAYTRADE_MAX_PRICE=200.0,DAYTRADE_MIN_LOTS=3000.0,
+            num=lambda v: float(v) if v is not None else None)
         self.mono=1000.0
         exec(compile(ast.Module(body=methods,type_ignores=[]),'<engine>','exec'),self.ns)
         self.manager=PositionManager(research_mode=True, before_open=Mock(return_value=dict(status='skipped',skip_reason='daily_buy_limit_exceeded',shares=0)))

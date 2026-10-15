@@ -4432,24 +4432,29 @@ class IntradayLiveEngine:
 
         # 模擬當沖邊界防線（Paper Trade Entry 門檻）：
         # 1) 排除 ETF / ETN
-        if is_etf(symbol, name):
+        _is_etf = globals().get('is_etf')
+        if callable(_is_etf) and _is_etf(symbol, name):
             self._entry_reject(symbol, 'etf_ineligible', f'{symbol} {name} 為 ETF/ETN 排除標的')
             self.manager.observe_entry_predicate(symbol, False, strategy_time)
             return
 
         # 2) 股價限制 30~200 元（模擬當沖限制；Universe 盤後學習金額無上限）
-        if price < DAYTRADE_MIN_PRICE or price > DAYTRADE_MAX_PRICE:
+        _min_p = float(globals().get('DAYTRADE_MIN_PRICE', 30.0))
+        _max_p = float(globals().get('DAYTRADE_MAX_PRICE', 200.0))
+        if price < _min_p or price > _max_p:
             self._entry_reject(symbol, 'price_out_of_range',
-                               f'price={price:.2f} 不在當沖限制範圍 [{DAYTRADE_MIN_PRICE:.0f}, {DAYTRADE_MAX_PRICE:.0f}]')
+                               f'price={price:.2f} 不在當沖限制範圍 [{_min_p:.0f}, {_max_p:.0f}]')
             self.manager.observe_entry_predicate(symbol, False, strategy_time)
             return
 
         # 3) 成交張數門檻 >= 3000 張
-        vol = num(stock.get("volume")) or num(stock.get("yesterday_volume")) or num(stock.get("total_volume"))
+        _num = globals().get('num', lambda v: float(v) if v is not None and str(v).replace('.','',1).isdigit() else None)
+        _min_lots = float(globals().get('DAYTRADE_MIN_LOTS', 3000.0))
+        vol = _num(stock.get("volume")) or _num(stock.get("yesterday_volume")) or _num(stock.get("total_volume"))
         if vol is not None and vol > 0:
             lots = vol / 1000.0 if vol >= 50000 else vol
-            if lots < DAYTRADE_MIN_LOTS:
-                self._entry_reject(symbol, 'low_volume', f'lots={lots:.0f} < {DAYTRADE_MIN_LOTS:.0f}')
+            if lots < _min_lots:
+                self._entry_reject(symbol, 'low_volume', f'lots={lots:.0f} < {_min_lots:.0f}')
                 self.manager.observe_entry_predicate(symbol, False, strategy_time)
                 return
 
