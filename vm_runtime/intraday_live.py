@@ -2545,6 +2545,10 @@ class IntradayLiveEngine:
         self.market_level = "YELLOW"
         self.premarket_brief: dict = {}
         self._market_gate_machine = MarketGate()
+        from market_rebound import ReboundGuard
+        self._rebound_guard=ReboundGuard()
+        self._base_market_gate={}
+        self._rebound_checked_at=0.0
         self.market_gate = {'gate_action': 'BLOCK', 'gate_reason': 'market_data_unavailable'}
 
         self.candidates: dict[
@@ -2745,6 +2749,8 @@ class IntradayLiveEngine:
             yellow_pct=float(os.environ.get('LIVE_INDEX_YELLOW_PCT', '-1')),
             red_pct=float(os.environ.get('LIVE_INDEX_RED_PCT', '-2')))
         gate = self._market_gate_machine.update(brief, {'shioaji': shioaji, 'esun': esun}, current)
+        self._base_market_gate=dict(gate)
+        self._rebound_checked_at=0
         self.premarket_brief = brief
         self.market_risk = gate
         self.market_gate = gate
@@ -2768,6 +2774,40 @@ class IntradayLiveEngine:
                 market_level=self.market_level, checked_at=current.isoformat()))
         except Exception as exc:
             print('[RISK] status publish failed:', type(exc).__name__)
+
+    def refresh_rebound_guard(self, current=None):
+        if os.getenv('MARKET_REBOUND_MODE','0')!='1':return
+        current=current or now_tpe()
+        if current.timestamp()-getattr(self,'_rebound_checked_at',0)<1:return
+        self._rebound_checked_at=current.timestamp()
+        from market_data.health import data_dir,read_json,atomic
+        import json
+        root=data_dir()
+        try:
+            gate=self._rebound_guard.update(self._base_market_gate,read_json(root/'context.json'),
+                read_json(root/'equity-snapshot.json'),read_json(root/'esun.json'),current)
+        except Exception as exc:
+            gate=dict(self._base_market_gate,gate_action='BLOCK',gate_reason='rebound_guard_unavailable',
+                      rebound_state='UNAVAILABLE',rebound_mode=False,entry_valid_until=0)
+            print('[REBOUND_GUARD_WARN]',type(exc).__name__)
+        self.market_gate=gate;self.market_risk=gate;self.market_level=gate.get('level','RED')
+        self.market_valid_until=gate.get('entry_valid_until',0) if gate.get('gate_action')=='PASS' else 0
+        lanes=getattr(self,'runway_v2',None)
+        if lanes:
+            with lanes.lock:lanes.market=dict(gate,observed_at=current.timestamp())
+        trial=getattr(self,'b1_closing_experiment',None)
+        if trial:
+            for arm in trial.arms.values():
+                with arm.lock:arm.market=dict(gate,observed_at=current.timestamp())
+        try:
+            payload=dict(gate,checked_at=current.isoformat())
+            atomic(root/'market-rebound.json',payload)
+            with (root/('market-rebound-'+current.date().isoformat()+'.jsonl')).open('a') as f:
+                f.write(json.dumps(payload,ensure_ascii=False)+'\n')
+            save_gate(gate,now=current,premarket_date=(getattr(self,'premarket_brief',{}) or {}).get('scan_date'),
+                model_ready=self.daytrade_model.artifact is not None,
+                radar_candidate_count=len(self.scanner_top_symbols),block_counts=self._market_block_counts)
+        except OSError:pass
 
     def paper_execution_evidence(self, symbol):
         """Read-only SDK contract/snapshot; no order API and no last-price fill.
@@ -2802,7 +2842,8 @@ class IntradayLiveEngine:
                     ask=getattr(quote, 'sell_price', None),
                     # SDK snapshot buy/sell volumes are ordinary board lots.
                     bid_shares=float(getattr(quote, 'buy_volume', 0))*1000,
-                    ask_shares=float(getattr(quote, 'sell_volume', 0))*1000)
+                    ask_shares=min(float(getattr(quote, 'sell_volume', 0))*1000,
+                        1000 if getattr(self,'market_gate',{}).get('rebound_mode') else float('inf')))
         except Exception as exc:
             print(f'[PAPER_EVIDENCE] {symbol} snapshot_failed {type(exc).__name__}: {str(exc)[:200]} {detail}')
             return dict(evidence, quote_error='snapshot_failed:' + type(exc).__name__)
@@ -4271,6 +4312,10 @@ class IntradayLiveEngine:
         # 新 ENTRY
         # -------------------------------------------------
 
+        self.refresh_rebound_guard()
+        if getattr(self,'market_gate',{}).get('rebound_mode') and (self.manager.positions or price*1000>100000):
+            self._entry_reject(symbol,'rebound_small_position_limit')
+            return
         if getattr(self, 'collect_only', False):
             return
 
@@ -4367,6 +4412,10 @@ class IntradayLiveEngine:
             model_reason = f"綜合評分 {composite_score:.1f} (模型 {model_decision['probability']:.3f} / 規則 {rule_score_pct:.0f})"
 
         # Apply user constraints BEFORE creating any position/ENTRY.
+        self.refresh_rebound_guard()
+        if getattr(self,'market_gate',{}).get('rebound_mode') and (self.manager.positions or price*1000>100000):
+            self._entry_reject(symbol,'rebound_small_position_limit')
+            return
         try:
             limits = read_live_settings()
             gain = (price / previous_close - 1) * 100 if previous_close else None
@@ -4470,6 +4519,14 @@ class IntradayLiveEngine:
         except Exception as exc:
             self._entry_reject(symbol, 'settings_unavailable', type(exc).__name__)
             return
+        self.refresh_rebound_guard()
+        if self.market_gate.get('gate_action')!='PASS' or now_tpe().timestamp()>self.market_valid_until:
+            self._entry_reject(symbol,'market_changed_before_entry')
+            return
+        if self.market_gate.get('rebound_mode') and (self.manager.positions or price*1000>100000):
+            self._entry_reject(symbol,'rebound_small_position_limit')
+            return
+        if self.market_gate.get('rebound_mode'):entry_reasons.insert(0,'大盤放量反彈：小額模擬觀察，非全面解除紅燈')
         try:
             event = self.manager.open_position(
                 symbol=symbol,
@@ -4489,6 +4546,7 @@ class IntradayLiveEngine:
                     'model_threshold': model_decision.get('threshold') if self.entry_mode == 'model' else None,
                     'entry_features': feature_row,
                     'entry_gate_evidence': {'market_gate': 'PASS', 'strategy_vetoes': list(vetoes),
+                        'rebound_guard': dict(getattr(self,'market_gate',{})),
                         **context_evidence,
                         'soft_penalties': list(soft_penalties), 'composite_score': composite_score,
                         'radar_selected': True, 'fresh_quote_at': strategy_time.isoformat(),
@@ -5323,6 +5381,7 @@ class IntradayLiveEngine:
 
                 if dtime(9, 0) <= tt < ENTRY_CUTOFF:
                     self.refresh_market_risk()
+                    self.refresh_rebound_guard(current)
                 self.heartbeat_if_due()
                 if getattr(self, "runway_v2", None) is not None:
                     try:
