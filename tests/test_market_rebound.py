@@ -60,3 +60,10 @@ def test_repeated_generated_timestamp_cannot_invent_receipt_history():
         t=START+timedelta(seconds=second);c2,e2,w2=inputs(t,100+second*.002)
         e2['rows']=e['rows'];g.update(RED,c2,e2,w2,t)
     assert len(g.snapshots)==1
+
+def test_single_quote_crash_blocks_before_thirty_seconds_of_history():
+    g=ReboundGuard()
+    for seconds,price in [(0,100),(5,99.8)]:
+        now=START+timedelta(seconds=seconds);c,e,w=inputs(now,price)
+        result=g.update(dict(RED,level='GREEN',gate_action='PASS',quote_at=now.isoformat()),c,e,w,now)
+    assert result['gate_reason']=='rebound_fast_drop' and result['gate_action']=='BLOCK'

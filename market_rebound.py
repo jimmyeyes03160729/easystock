@@ -52,7 +52,8 @@ class ReboundGuard:
         fast=[];slow=[];rising=[]
         for rows in self.indices.values():
             price=rows[-1][1];previous=before(rows,ts-30)
-            fast.append(previous is not None and (price/previous-1)*100<=-.15)
+            fast.append((len(rows)>1 and (price/rows[-2][1]-1)*100<=-.15) or
+                        (previous is not None and (price/previous-1)*100<=-.15))
             boundary=int(ts//60)*60
             closes=[before(rows,boundary-i*60) for i in (3,2,1,0)]
             complete=all(p is not None for p in closes)
