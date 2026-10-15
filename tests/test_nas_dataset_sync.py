@@ -15,6 +15,15 @@ def test_scripts_parse(name):
     subprocess.run(['bash', '-n', str(NAS / name)], check=True)
 
 
+@pytest.mark.parametrize('name', ['sync_from_vm.sh', 'sync_orderbook.sh', 'sync_datasets.sh'])
+def test_every_rsync_applies_optional_owner(name):
+    # Copies must be readable by the NAS login account when BACKUP_CHOWN is configured.
+    lines = (NAS / name).read_text(encoding='utf-8').splitlines()
+    assert any(line.startswith('RSYNC_OWNER=();') and '--chown="$BACKUP_CHOWN"' in line for line in lines)
+    calls = [line for line in lines if line.lstrip().startswith('rsync ')]
+    assert calls and all('"${RSYNC_OWNER[@]}"' in line for line in calls)
+
+
 def test_orderbook_accepts_bind_mounted_root():
     # The NAS scheduler mounts /data/backup/orderbook, not /data, so either must satisfy the check.
     text = (NAS / 'sync_orderbook.sh').read_text(encoding='utf-8')
