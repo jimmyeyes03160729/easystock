@@ -379,6 +379,54 @@ RADAR_MAX_WARM_QUERIES = max(
     ),
 )
 
+# 當沖標的篩選門檻 (Day Trading Candidate Filters)
+CANDIDATE_MIN_PRICE = max(
+    0.0,
+    float(
+        os.environ.get(
+            "LIVE_CANDIDATE_MIN_PRICE",
+            "30.0",
+        )
+    ),
+)
+
+CANDIDATE_MAX_PRICE = max(
+    0.0,
+    float(
+        os.environ.get(
+            "LIVE_CANDIDATE_MAX_PRICE",
+            "200.0",
+        )
+    ),
+)
+
+CANDIDATE_MIN_LOTS = max(
+    0.0,
+    float(
+        os.environ.get(
+            "LIVE_CANDIDATE_MIN_LOTS",
+            "3000.0",
+        )
+    ),
+)
+
+CANDIDATE_EXCLUDE_ETF = os.environ.get(
+    "LIVE_CANDIDATE_EXCLUDE_ETF",
+    "1",
+) in ("1", "true", "True")
+
+
+def is_etf(symbol: str, name: str = "", category: str = "") -> bool:
+    """判斷標的是否為 ETF、ETN、境外指數或非 4 位普通股。"""
+    s = str(symbol).strip()
+    n = str(name).strip().upper()
+    c = str(category).strip().upper()
+    if s.startswith(("00", "01", "02", "91")) or not re.match(r"^[1-8]\d{3}$", s):
+        return True
+    if any(k in n or k in c for k in ("ETF", "ETN", "境外指數", "反1", "正2", "期信")):
+        return True
+    return False
+
 # 每日最多 5 檔，可由環境設定更低上限。
 paper_wallet = PaperWallet()
 
@@ -1505,23 +1553,43 @@ def load_candidates_from_firebase(
         ):
             continue
 
+        name = str(
+            stock.get("name")
+            or symbol
+        )
+        category = str(
+            stock.get("category")
+            or ""
+        )
+
+        if CANDIDATE_EXCLUDE_ETF and is_etf(symbol, name, category):
+            continue
+
         price = num(
             stock.get("price")
         )
 
         # 沒價格也不是絕對不能訂閱，
         # 但 summary 裡完全沒 symbol / price 的資料通常不是股票列。
-        if price is not None and price <= 0:
+        if price is None or price <= 0:
             continue
+
+        if CANDIDATE_MIN_PRICE > 0 and price < CANDIDATE_MIN_PRICE:
+            continue
+        if CANDIDATE_MAX_PRICE > 0 and price > CANDIDATE_MAX_PRICE:
+            continue
+
+        vol = num(stock.get("volume"))
+        if vol is not None and CANDIDATE_MIN_LOTS > 0:
+            lots = vol / 1000.0 if vol >= 50000 else vol
+            if lots < CANDIDATE_MIN_LOTS:
+                continue
 
         seen.add(symbol)
 
         item = dict(stock)
         item["symbol"] = symbol
-        item["name"] = str(
-            stock.get("name")
-            or symbol
-        )
+        item["name"] = name
 
         output.append(item)
 
@@ -2051,12 +2119,31 @@ def scan_market_activity_universe(
             if symbol.startswith("28"):
                 continue
 
+            name = str(
+                row.get("name")
+                or symbol
+            ).strip()
+
+            if CANDIDATE_EXCLUDE_ETF and is_etf(symbol, name):
+                continue
+
             close = num(
                 row.get("close")
             )
 
             if close is None or close <= 0:
                 continue
+
+            if CANDIDATE_MIN_PRICE > 0 and close < CANDIDATE_MIN_PRICE:
+                continue
+            if CANDIDATE_MAX_PRICE > 0 and close > CANDIDATE_MAX_PRICE:
+                continue
+
+            raw_vol = num(row.get("yesterday_volume")) or num(row.get("total_volume"))
+            if raw_vol is not None and CANDIDATE_MIN_LOTS > 0 and raw_vol > 0:
+                lots = raw_vol / 1000.0 if raw_vol >= 50000 else raw_vol
+                if lots < CANDIDATE_MIN_LOTS:
+                    continue
 
             target = merged.setdefault(
                 symbol,
