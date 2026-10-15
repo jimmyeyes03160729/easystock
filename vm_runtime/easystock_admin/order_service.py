@@ -3,6 +3,7 @@ import os
 import re
 import time
 import threading
+import inspect
 from functools import wraps
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -33,6 +34,24 @@ LIVE_ORDERING_CONFIRMATION_VALUE = "I_UNDERSTAND_LIVE_ORDERING"
 MAX_COMMON_LOTS = 499
 MAX_ODD_SHARES = 999
 MAX_NOTIONAL_TWD = float(os.environ.get("LIVE_ORDER_MAX_NOTIONAL_TWD", "1000000"))
+
+
+class OrderNotSubmitted(RuntimeError):
+    """Only raised before the broker's place_order method is invoked."""
+    def __init__(self, stage, code, message):
+        self.stage,self.code=stage,code
+        super().__init__(message)
+
+
+def preflight_error(stage, exc):
+    text=str(exc).lower()
+    if re.search(r'\b401\b',text) or 'permission' in text or 'unauthorized' in text:
+        return OrderNotSubmitted(stage,'broker_auth_rejected','永豐登入／授權遭拒（401或權限不足）。請重新驗證券商連線，並核對 API Key 的交易、正式環境與帳戶權限。')
+    labels={'ready':'券商連線','certificate_path':'憑證檔案','account':'交易帳戶',
+            'certificate':'憑證啟用','contract':'股票合約','order_build':'委託建立',
+            'before_submit':'送出前驗證','enabled':'實單入口設定'}
+    suffix='請核對憑證密碼、檔案及有效期限。' if stage=='certificate' else '請重新驗證券商連線與設定。'
+    return OrderNotSubmitted(stage,'preflight_'+stage,labels.get(stage,'送出前檢查')+'失敗；尚未呼叫送單 API。'+suffix)
 
 
 def validate_order(symbol, action, price, quantity, is_odd_lot):
@@ -110,11 +129,22 @@ class OrderService:
                     self.api.logout()
                 except Exception:
                     pass
-            self.api = sj.Shioaji()
+            # This component is the owner's real broker console. New SDKs may
+            # default to simulation; never depend on that changing default.
+            # The separate two-factor live-order switch still guards submission.
+            self.api = sj.Shioaji(simulation=False)
 
         try:
-            self.api.login(api_key=api_key, secret_key=secret_key)
+            kwargs={'api_key':api_key,'secret_key':secret_key}
+            # Rust-backed SDKs cache tokens across instances. Explicit manual
+            # re-authentication must refresh that token, not just the Python object.
+            try:
+                if force_new and 'force_refresh' in inspect.signature(self.api.login).parameters:
+                    kwargs['force_refresh']=True
+            except (TypeError,ValueError):pass
+            self.api.login(**kwargs)
             acc = self.api.stock_account
+            if not acc:raise RuntimeError('stock_account_unavailable')
             if acc:
                 self.api.set_default_account(acc)
 
@@ -153,10 +183,7 @@ class OrderService:
             self.login(force_new=True)
         elif time.time() - self._last_login_time > 600:
             # 超過 10 分鐘無操作，主動重建連線防 Solace 靜默斷線
-            try:
-                self.reconnect()
-            except Exception:
-                pass
+            self.reconnect()  # Failed refresh must not fall through with a dead API.
 
     def _find_contract(self, symbol: str):
         sym = str(symbol).strip()
@@ -271,83 +298,57 @@ class OrderService:
     @synchronized
     def place_order(self, symbol: str, action: str, price: float, quantity: int, is_odd_lot: bool, ca_passwd: str, before_submit=None):
         if not live_ordering_enabled():
-            raise PermissionError(
-                "真實下單入口目前已隔離；需由伺服器明確啟用 LIVE_ORDERING_ENABLED "
-                "及 LIVE_ORDERING_CONFIRMATION 才能送出委託。"
-            )
-        order = validate_order(symbol, action, price, quantity, is_odd_lot)
-        symbol, price, quantity = order["symbol"], order["price"], order["quantity"]
-        self.ensure_ready()
-
-        # The certificate location is server configuration, never request input.
-        ca_path = CA_DEFAULT_PATH
-        if not Path(ca_path).exists():
-            raise FileNotFoundError(f"找不到憑證檔案: {ca_path}，請確認憑證已上傳至指定目錄")
-
-        person_id = self.account_info.get("person_id") or os.environ.get("PERSON_ID", "")
-        if not person_id:
-            raise ValueError("尚未取得身分證字號，請先執行步驟 1 連線驗證或於環境變數配置 PERSON_ID")
-
+            raise preflight_error('enabled',PermissionError('live_ordering_disabled'))
+        stage='ready'
         try:
-            self.api.activate_ca(ca_path=ca_path, ca_passwd=ca_passwd, person_id=person_id)
-        except Exception as e:
-            raise RuntimeError(f"憑證簽章啟用失敗 (請核對憑證密碼或確認憑證有效性): {e}")
+            order = validate_order(symbol, action, price, quantity, is_odd_lot)
+            symbol, price, quantity = order['symbol'], order['price'], order['quantity']
+            self.ensure_ready()
+            stage='certificate_path'
+            ca_path=CA_DEFAULT_PATH
+            if not Path(ca_path).is_file():raise FileNotFoundError('certificate_missing')
+            stage='account'
+            person_id=self.account_info.get('person_id') or os.environ.get('PERSON_ID','')
+            if not person_id or self.api.stock_account is None:raise ValueError('account_unavailable')
+            stage='contract'
+            contract=self._find_contract(symbol)
+            if not contract:raise ValueError('contract_unavailable')
+            stage='certificate'
+            if self.api.activate_ca(ca_path=ca_path,ca_passwd=ca_passwd,person_id=person_id) is not True:
+                raise ValueError('certificate_not_activated')
+            stage='order_build'
+            act=sj.constant.Action.Buy if action=='BUY' else sj.constant.Action.Sell
+            lot_type=getattr(sj.constant.StockOrderLot,'IntradayOdd','IntradayOdd') if is_odd_lot else getattr(sj.constant.StockOrderLot,'Common','Common')
+            order_type=getattr(sj.constant,'OrderType',None) or getattr(sj.constant,'StockOrderType',None)
+            rod_type=getattr(order_type,'ROD','ROD')
+            order=self.api.Order(price=float(price),quantity=int(quantity),action=act,
+                price_type=sj.constant.StockPriceType.LMT,order_type=rod_type,
+                order_lot=lot_type,account=self.api.stock_account)
+            stage='before_submit'
+            if before_submit is not None:before_submit()
+            stage='enabled'
+            if not live_ordering_enabled():raise PermissionError('live_ordering_disabled')
+        except Exception as exc:
+            error=preflight_error(stage,exc)
+            if error.code=='broker_auth_rejected':self.is_logged_in=False
+            raise error from None
 
-        trade = None
-        last_exc = None
+        # The uncertainty boundary is exactly this call. Never retry it, including
+        # on 401/timeouts: an exception here cannot prove non-acceptance.
+        try:
+            trade=self.api.place_order(contract,order)
+        except Exception as exc:
+            if preflight_error('submit',exc).code=='broker_auth_rejected':self.is_logged_in=False
+            raise
+        if trade is None:raise RuntimeError('broker_receipt_missing')
+        order_id=getattr(getattr(trade,'order',None),'id',None)
+        if not order_id:raise RuntimeError('broker_order_id_missing')
+        return {'order_id':str(order_id),
+            'status':str(getattr(getattr(trade,'status',None),'status','PendingSubmit')),
+            'symbol':symbol,'price':price,'quantity':quantity,
+            'lot_type':'盤中零股' if is_odd_lot else '整張',
+            'action':'買進' if action=='BUY' else '賣出'}
 
-        # A broker submission exception is ambiguous: never retry a potentially accepted order.
-        for attempt in range(1):
-            try:
-                contract = self._find_contract(symbol)
-                if not contract:
-                    self.reconnect()
-                    contract = self._find_contract(symbol)
-                if not contract:
-                    raise ValueError(f"查無標的代號: {symbol}")
-
-                act = sj.constant.Action.Buy if action == "BUY" else sj.constant.Action.Sell
-                lot_type = getattr(sj.constant.StockOrderLot, "IntradayOdd", "IntradayOdd") if is_odd_lot else getattr(sj.constant.StockOrderLot, "Common", "Common")
-                stock_order_type = getattr(sj.constant, "StockOrderType", None) or getattr(sj.constant, "StockOrderLot", None)
-                rod_type = getattr(stock_order_type, "ROD", "ROD")
-
-                order = self.api.Order(
-                    price=float(price),
-                    quantity=int(quantity),
-                    action=act,
-                    price_type=sj.constant.StockPriceType.LMT,
-                    order_type=rod_type,
-                    order_lot=lot_type,
-                    account=self.api.stock_account
-                )
-
-                if before_submit is not None:
-                    before_submit()
-                if not live_ordering_enabled():
-                    raise PermissionError('live_ordering_disabled')
-                trade = self.api.place_order(contract, order)
-                break
-            except Exception as e:
-                last_exc = e
-                break
-
-        if trade is None:
-            err_msg = str(last_exc) if last_exc else "未知錯誤"
-            if "doesn't have permission" in err_msg or "401" in err_msg:
-                raise RuntimeError("永豐金證券回應權限不足 (401: Token doesn't have permission)。您的 API 金鑰尚未開通【下單交易權限】，請先向永豐證券營業員或於官網 Python API 專區申請開通下單權限。")
-            if "SessionNotEstablished" in err_msg or "NotReady" in err_msg:
-                raise RuntimeError("永豐交易通道連線尚未就緒 (Session Not Established)，非交易時段（盤後或休市）永豐下單伺服器通道不開放，請於交易日開盤時段 (08:30~13:30) 測試。")
-            raise RuntimeError(f"委託送出失敗: {err_msg}")
-
-        return {
-            "order_id": getattr(getattr(trade, "order", None), "id", "已送出"),
-            "status": str(getattr(getattr(trade, "status", None), "status", "SUBMITTED")),
-            "symbol": symbol,
-            "price": price,
-            "quantity": quantity,
-            "lot_type": "盤中零股" if is_odd_lot else "整張",
-            "action": "買進" if action == "BUY" else "賣出"
-        }
 
 
 order_service = OrderService()

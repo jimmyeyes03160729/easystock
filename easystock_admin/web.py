@@ -276,7 +276,7 @@ def register_admin(app, store=None, verifier=None):
     # --------------------------------------------------------
     # 永豐證券下單 API (包含完整例外捕捉與 JSON 格式錯誤處理)
     # --------------------------------------------------------
-    from .order_service import order_service, validate_order, live_ordering_enabled
+    from .order_service import order_service, validate_order, live_ordering_enabled, OrderNotSubmitted
     from .live_console import LiveConsole
     live = LiveConsole(store, order_service, OWNER)
     ORDER_FIELDS = {'client_order_id', 'symbol', 'action', 'price', 'quantity', 'is_odd_lot', 'ca_passwd'}
@@ -369,10 +369,15 @@ def register_admin(app, store=None, verifier=None):
             try:
                 kwargs = {'before_submit': lambda: live.before_submit(order)} if sell else {}
                 res = order_service.place_order(ca_passwd=ca_passwd, **order, **kwargs)
+            except OrderNotSubmitted as exc:
+                result={'message':str(exc),'code':exc.code,'stage':exc.stage,'submission_status':'not_submitted'}
+                store.finish_order(data['client_order_id'],'not_submitted',result)
+                live.result(data['client_order_id'],order,{},'not_submitted')
+                return jsonify(ok=False,**result),400
             except Exception:
                 store.finish_order(data['client_order_id'], 'failed', {'message': 'broker_submission_unknown'})
                 live.result(data['client_order_id'], order, {}, 'unknown')
-                return jsonify({'ok': False, 'message': '委託結果尚未確認，請對帳，勿重送。'}), 400
+                return jsonify({'ok': False, 'message': '委託結果尚未確認，請對帳，勿重送。','submission_status':'unknown'}), 400
             store.finish_order(data['client_order_id'], 'submitted', res)
             live.result(data['client_order_id'], order, res, 'submitted')
         return jsonify({'ok': True, 'trade': res})

@@ -77,6 +77,14 @@ test('broker rejection and ambiguous submission show distinct results; unknown o
   f.get('btnOrderSubmit').click();await settle();assert.match(f.get('orderResult').textContent,/尚未確認/);assert(f.get('btnOrderSubmit').disabled);assert.equal(f.get('orderCaPasswd').value,'');
   const count=f.calls.filter(c=>c.url.endsWith('/place')).length;f.get('btnOrderSubmit').click();await settle();assert.equal(f.calls.filter(c=>c.url.endsWith('/place')).length,count);
 });
+
+test('known preflight failure explains no order was sent and never automatically retries',async t=>{
+  const f=fixture(t);await f.login();f.fill();
+  f.setOutcome({ok:false,submission_status:'not_submitted',message:'永豐登入／授權遭拒（401）。'},400);
+  f.get('btnOrderSubmit').click();await settle();
+  assert.match(f.get('orderResult').textContent,/委託未送出.*401/);
+  assert.equal(f.get('orderCaPasswd').value,'');assert.equal(f.calls.filter(c=>c.url.endsWith('/place')).length,1);
+});
 test('failed reads clear old holdings; logout clears private data and certificate password',async t=>{
   const f=fixture(t);await f.login();f.failNetwork();await f.w.loadManualOrders();
   assert.equal(f.get('orderPositions').children.length,0);assert(f.get('btnOrderSubmit').disabled);
