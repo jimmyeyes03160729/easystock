@@ -162,7 +162,7 @@ def test_main_decides_after_slow_reads_and_never_backdates_after_cutoff(tmp_path
     monkeypatch.setattr('market_data.opening_observations.merge_indices',lambda *_:[])
     monkeypatch.setattr('market_calendar.is_market_open',lambda *_:(False,'test'))
     class Clock:
-        ticks=iter([at('13:24:00'),at('13:24:22'),at('13:25:01')])
+        ticks=iter([at('13:24:00'),at('13:24:22'),at('13:25:00'),at('13:25:01')])
         @classmethod
         def now(cls,*_):return next(cls.ticks)
     monkeypatch.setattr(F,'datetime',Clock);monkeypatch.setattr(sys,'argv',['feed'])

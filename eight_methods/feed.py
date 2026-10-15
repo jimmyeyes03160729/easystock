@@ -145,6 +145,14 @@ def main():
     diagnostics += enrich(rows, market/'equity-snapshot.json', OUT/'company-shares.json', now,
                           snapshot=snapshot,shares=shares)
     diagnostics += enrich_daily(rows, DAILY, now)
+    # Daily history can be slow on the VM. Refresh only live inputs afterward;
+    # newly appearing symbols without history remain insufficient.
+    context=read_json(market/'context.json')
+    snapshot=read_json(market/'equity-snapshot.json')
+    now=datetime.now(TPE)
+    merge_current_indices(rows,context,now)
+    diagnostics += enrich(rows, market/'equity-snapshot.json', OUT/'company-shares.json', now,
+                          snapshot=snapshot,shares=shares)
     now=datetime.now(TPE)  # Evaluate freshness and phase at the actual decision.
     feeds = build(rows, now, diagnostics,opening_symbols=opening_symbols)
     feeds["closing_eight"]["summary"]=summarize(feeds["closing_eight"])
