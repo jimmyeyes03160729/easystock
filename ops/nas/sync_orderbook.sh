@@ -17,6 +17,8 @@ REMOTE_PY="${REMOTE_PY:-/home/ubuntu/easystock/.venv/bin/python}"
 REMOTE_REPO="${REMOTE_REPO:-/home/ubuntu/easystock}"
 
 log() { printf '%s [orderbook] %s\n' "$(date -Iseconds)" "$*"; }
+# Optional uid:gid (e.g. the NAS login account) so copies are readable without root; unset keeps VM ownership.
+RSYNC_OWNER=(); [[ -n "${BACKUP_CHOWN:-}" ]] && RSYNC_OWNER=(--chown="$BACKUP_CHOWN" --chmod=D750,F640)
 die() { log "ERROR: $*" >&2; exit 1; }
 
 # The NAS scheduler bind-mounts only /data/backup/vm and /data/backup/orderbook, so /data itself is not a mount.
@@ -36,7 +38,7 @@ for day in "${DAYS[@]}"; do
   [[ "$day" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || { log "skip odd name $day"; continue; }
   dest="$ORDERBOOK_ROOT/raw/$day"
   mkdir -p "$dest"
-  rsync -a -e "ssh ${SSH_OPTS[*]}" "$REMOTE:$REMOTE_ORDERBOOK_DIR/raw/$day/" "$dest/" || { log "rsync failed $day"; failed=1; continue; }
+  rsync -a "${RSYNC_OWNER[@]}" -e "ssh ${SSH_OPTS[*]}" "$REMOTE:$REMOTE_ORDERBOOK_DIR/raw/$day/" "$dest/" || { log "rsync failed $day"; failed=1; continue; }
   if ! python3 - "$dest" <<'PY'
 import hashlib, json, sys
 from pathlib import Path

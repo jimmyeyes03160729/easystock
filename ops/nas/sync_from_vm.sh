@@ -19,6 +19,8 @@ REMOTE_ADMIN_DB="${REMOTE_ADMIN_DB:-/home/ubuntu/easystock-admin/state.sqlite}"
 REMOTE_SNAPSHOT_ROOT="${REMOTE_SNAPSHOT_ROOT:-/home/ubuntu/easystock-sync-snapshots}"
 
 log() { printf '%s [sync] %s\n' "$(date -Iseconds)" "$*"; }
+# Optional uid:gid (e.g. the NAS login account) so copies are readable without root; unset keeps VM ownership.
+RSYNC_OWNER=(); [[ -n "${BACKUP_CHOWN:-}" ]] && RSYNC_OWNER=(--chown="$BACKUP_CHOWN" --chmod=D750,F640)
 die() { log "ERROR: $*" >&2; exit 1; }
 
 [[ -r "$SSH_KEY" ]] || die "SSH key is not readable: $SSH_KEY"
@@ -51,7 +53,7 @@ ssh "${SSH_OPTS[@]}" "$REMOTE" 'true' || die 'Oracle VM SSH check failed'
 
 log 'Synchronizing non-SQLite learning data'
 # No --delete: a transient remote problem can never remove an NAS backup copy.
-rsync -a --human-readable --partial \
+rsync -a "${RSYNC_OWNER[@]}" --human-readable --partial \
   --exclude='*.sqlite' --exclude='*.sqlite-wal' --exclude='*.sqlite-shm' \
   -e "ssh ${SSH_OPTS[*]}" \
   "$REMOTE:$REMOTE_LEARNING_DIR/" "$BACKUP_ROOT/learning-data/"
@@ -107,7 +109,7 @@ REMOTE_PY
 
 log "Copying SQLite snapshot to $TARGET_DIR"
 mkdir -p "$TARGET_DIR"
-rsync -a --human-readable --partial -e "ssh ${SSH_OPTS[*]}" \
+rsync -a "${RSYNC_OWNER[@]}" --human-readable --partial -e "ssh ${SSH_OPTS[*]}" \
   "$REMOTE:$REMOTE_SNAPSHOT_DIR/" "$TARGET_DIR/" || die 'SQLite snapshot transfer failed'
 
 log 'Validating copied SQLite snapshots'

@@ -143,6 +143,12 @@ docker compose -p easystock-nas -f compose.example.yaml run --rm easystock-nas-b
 - 首次同步約 3–4 GB，之後每天只傳新增檔案與資料庫變動。
 - 不需要修改 compose：資料寫在既有的 `/data/backup/vm` 掛載下。部署時重新 build 並 `up -d --no-deps easystock-scheduler` 即可。
 
+## 備份檔案的擁有者（BACKUP_CHOWN）
+
+rsync `-a` 會保留 VM 上的擁有者（ubuntu，uid 1001）與權限；錄製檔、逐筆、學習資料與五檔在 VM 上多為 `0600`／`0700`，因此 NAS 的登入帳號無法讀取備份。
+
+在 NAS 的 `nas.env` 加上 `BACKUP_CHOWN=<uid>:<gid>`（在 NAS 上執行 `id` 取得），三支同步腳本會以 `--chown` 與 `--chmod=D750,F640` 寫入，該帳號即可直接讀取（例如從 Tailscale 連線回測）。已存在的檔案會在下一次同步時一併更正擁有者，不需重新傳輸。未設定時維持原行為。
+
 ## 五檔委託簿（BidAsk）封存搬移
 
 VM 實盤引擎每收到一筆五檔報價，就由 `market_data/bidask_archive.py` 以背景執行緒寫入

@@ -20,6 +20,8 @@ REMOTE_SNAPSHOT_ROOT="${REMOTE_SNAPSHOT_ROOT:-/home/ubuntu/easystock-sync-snapsh
 DATASET_SNAPSHOT_KEEP_DAYS="${DATASET_SNAPSHOT_KEEP_DAYS:-7}"
 
 log() { printf '%s [datasets] %s\n' "$(date -Iseconds)" "$*"; }
+# Optional uid:gid (e.g. the NAS login account) so copies are readable without root; unset keeps VM ownership.
+RSYNC_OWNER=(); [[ -n "${BACKUP_CHOWN:-}" ]] && RSYNC_OWNER=(--chown="$BACKUP_CHOWN" --chmod=D750,F640)
 die() { log "ERROR: $*" >&2; exit 1; }
 
 [[ -r "$SSH_KEY" ]] || die "SSH key is not readable: $SSH_KEY"
@@ -42,11 +44,11 @@ ssh "${SSH_OPTS[@]}" "$REMOTE" 'true' || die 'Oracle VM SSH check failed'
 # Recordings and tick archives are immutable per day; rsync is incremental and never uses --delete,
 # so a VM-side cleanup can never remove the NAS copy.
 log 'Copying B-lane input recordings'
-rsync -a --human-readable --partial --exclude='*.tmp' -e "$RSYNC_SSH" \
+rsync -a "${RSYNC_OWNER[@]}" --human-readable --partial --exclude='*.tmp' -e "$RSYNC_SSH" \
   "$REMOTE:$REMOTE_RECORDINGS_DIR/" "$DATASETS_ROOT/runway-recordings/" || die 'recordings rsync failed'
 
 log 'Copying expanded tick and 1-minute history (completed files only)'
-rsync -a --human-readable --partial --exclude='*.tmp' --exclude='*.lock' --exclude='parts/' -e "$RSYNC_SSH" \
+rsync -a "${RSYNC_OWNER[@]}" --human-readable --partial --exclude='*.tmp' --exclude='*.lock' --exclude='parts/' -e "$RSYNC_SSH" \
   "$REMOTE:$REMOTE_HISTORY_DIR/" "$DATASETS_ROOT/history-expanded/" || die 'history rsync failed'
 
 log 'Creating consistent SQLite snapshots on the VM'
@@ -94,7 +96,7 @@ STAGING="$DATASETS_ROOT/sqlite/.staging"
 TARGET_DIR="$DATASETS_ROOT/sqlite/$STAMP"
 mkdir -p "$STAGING"
 log "Copying SQLite snapshots to $TARGET_DIR"
-rsync -a --human-readable --partial --inplace --no-whole-file -e "$RSYNC_SSH" \
+rsync -a "${RSYNC_OWNER[@]}" --human-readable --partial --inplace --no-whole-file -e "$RSYNC_SSH" \
   "$REMOTE:$REMOTE_SNAPSHOT_DIR/" "$STAGING/" || die 'SQLite snapshot transfer failed'
 python3 - "$STAGING" <<'PY'
 import pathlib, sqlite3, sys
@@ -112,6 +114,8 @@ PY
 mkdir -p "$TARGET_DIR"
 cp --reflink=auto "$STAGING/market-daily.sqlite" "$STAGING/rebound-dataset-v2.sqlite" "$TARGET_DIR/"
 touch "$TARGET_DIR/.complete"
+# cp runs as root, so hand the dated copy to the configured reader as well.
+[[ -n "${BACKUP_CHOWN:-}" ]] && chown -R "$BACKUP_CHOWN" "$TARGET_DIR"
 
 log 'Removing this run'"'"'s VM snapshot after NAS validation'
 ssh "${SSH_OPTS[@]}" "$REMOTE" "$REMOTE_COMMAND" <<'REMOTE_CLEANUP' || die 'VM snapshot cleanup failed; LAST_SUCCESS not updated'
