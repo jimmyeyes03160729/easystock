@@ -4,10 +4,13 @@ Separation of Concerns:
 1. Universe / Scanner / load_candidates_from_firebase (資料採樣與盤後學習層):
    - 金額無上限、價格無上限（高價千金股如創意 3443 等皆保留供採樣與特徵學習）。
    - 扣除 ETF (00, 01, 02, 91 開頭、非4位代碼、ETF/ETN 關鍵字)。
-2. Paper Trade Entry (模擬當沖開倉層):
-   - 嚴格限制股價 30~200 元 (DAYTRADE_MIN_PRICE, DAYTRADE_MAX_PRICE)。
-   - 嚴格限制成交張數 >= 3000 張 (DAYTRADE_MIN_LOTS)。
-   - 嚴格排除 ETF (is_etf)。
+2. A Watchlist (A 候選觀察名單):
+   - 股價無上限！所有達標活躍股（含千金股）皆列入 A 觀察名單。
+   - 排除 ETF。
+3. Paper Trade Buying (當沖模擬金購買層):
+   - 嚴格限制股價 30~200 元 (DAYTRADE_BUY_MIN_PRICE, DAYTRADE_BUY_MAX_PRICE)。
+   - 嚴格限制成交張數 >= 3000 張 (DAYTRADE_BUY_MIN_LOTS)。
+   - 嚴格排除 ETF。
 """
 import sys
 import types
@@ -40,6 +43,7 @@ except ImportError:
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from intraday_live import is_etf, load_candidates_from_firebase
 from market_data.a_candidates import candidate as a_candidate
+from easystock_admin.store import defaults as admin_defaults
 
 TPE = timezone(timedelta(hours=8))
 
@@ -127,13 +131,32 @@ def test_universe_allows_unlimited_price_and_excludes_etf():
         assert "0050" not in symbols
 
 
-def test_a_candidates_watchlist_excludes_etf():
-    """A 候選推薦觀察名單嚴格排除 ETF。"""
+def test_a_candidates_watchlist_allows_unlimited_price_and_excludes_etf():
+    """A 候選推薦觀察名單：股價無上限皆可列入（含千金股），但嚴格排除 ETF。"""
     now = datetime(2026, 10, 16, 9, 30, 0, tzinfo=TPE)
-    stock_etf = {"name": "元大台灣50", "previous_close": 178.0, "daytrade_eligibility": "Yes"}
-    result_ok = {"daytrade_score": 85, "eligible": True, "reasons": ["突破"]}
+    settings = admin_defaults()  # 預設 max_price 為 1,000,000 (無上限)
+    result_ok = {"daytrade_score": 85, "eligible": True, "reasons": ["突破", "爆量"]}
 
-    # ETF 0050 should return None
+    # 1) 千金股 3443 (1670元) 股價無上限，必須順利列入 A 觀察名單，且為 rule_ready
+    stock_high = {"name": "創意", "previous_close": 1650.0, "daytrade_eligibility": "Yes"}
+    item_high = a_candidate(
+        symbol="3443",
+        stock=stock_high,
+        result=result_ok,
+        price=1670.0,
+        now=now,
+        quote_at=now,
+        limits=settings,
+        market_pass=True,
+        entry_window=True,
+        mode="rules",
+    )
+    assert item_high is not None
+    assert item_high["symbol"] == "3443"
+    assert item_high["state"] == "rule_ready"
+
+    # 2) ETF 0050 必須排除 (返回 None)
+    stock_etf = {"name": "元大台灣50", "previous_close": 178.0, "daytrade_eligibility": "Yes"}
     item_etf = a_candidate(
         symbol="0050",
         stock=stock_etf,
@@ -141,14 +164,14 @@ def test_a_candidates_watchlist_excludes_etf():
         price=180.0,
         now=now,
         quote_at=now,
-        limits={"min_price": 30, "max_price": 200, "max_gain_pct": 5},
+        limits=settings,
         market_pass=True,
         entry_window=True,
         mode="rules",
     )
     assert item_etf is None
 
-    # 普通股 2303 應可通過
+    # 3) 普通股 2303 正常列入 A 觀察名單
     stock_common = {"name": "聯電", "previous_close": 130.0, "daytrade_eligibility": "Yes"}
     item_common = a_candidate(
         symbol="2303",
@@ -157,10 +180,11 @@ def test_a_candidates_watchlist_excludes_etf():
         price=133.0,
         now=now,
         quote_at=now,
-        limits={"min_price": 30, "max_price": 200, "max_gain_pct": 5},
+        limits=settings,
         market_pass=True,
         entry_window=True,
         mode="rules",
     )
     assert item_common is not None
     assert item_common["symbol"] == "2303"
+    assert item_common["state"] == "rule_ready"

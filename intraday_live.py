@@ -379,36 +379,39 @@ RADAR_MAX_WARM_QUERIES = max(
     ),
 )
 
-# 當沖模擬進場門檻 (Day Trading Entry Filters - 模擬當沖限制 30~200 元，Universe 跑與採樣學習金額無上限)
-DAYTRADE_MIN_PRICE = max(
+# 當沖模擬金購買門檻 (Day Trading Paper Buying Limits - 模擬金購買限制 30~200 元、量>=3000張；A 觀察池與盤後學習金額無上限)
+DAYTRADE_BUY_MIN_PRICE = max(
     0.0,
     float(
         os.environ.get(
-            "DAYTRADE_MIN_PRICE",
-            "30.0",
+            "DAYTRADE_BUY_MIN_PRICE",
+            os.environ.get("DAYTRADE_MIN_PRICE", "30.0"),
         )
     ),
 )
+DAYTRADE_MIN_PRICE = DAYTRADE_BUY_MIN_PRICE
 
-DAYTRADE_MAX_PRICE = max(
+DAYTRADE_BUY_MAX_PRICE = max(
     0.0,
     float(
         os.environ.get(
-            "DAYTRADE_MAX_PRICE",
-            "200.0",
+            "DAYTRADE_BUY_MAX_PRICE",
+            os.environ.get("DAYTRADE_MAX_PRICE", "200.0"),
         )
     ),
 )
+DAYTRADE_MAX_PRICE = DAYTRADE_BUY_MAX_PRICE
 
-DAYTRADE_MIN_LOTS = max(
+DAYTRADE_BUY_MIN_LOTS = max(
     0.0,
     float(
         os.environ.get(
-            "DAYTRADE_MIN_LOTS",
-            "3000.0",
+            "DAYTRADE_BUY_MIN_LOTS",
+            os.environ.get("DAYTRADE_MIN_LOTS", "3000.0"),
         )
     ),
 )
+DAYTRADE_MIN_LOTS = DAYTRADE_BUY_MIN_LOTS
 
 CANDIDATE_EXCLUDE_ETF = os.environ.get(
     "LIVE_CANDIDATE_EXCLUDE_ETF",
@@ -4430,7 +4433,7 @@ class IntradayLiveEngine:
             or symbol
         )
 
-        # 模擬當沖邊界防線（Paper Trade Entry 門檻）：
+        # 模擬當沖購買邊界防線（Paper Trade Buying Gate）：
         # 1) 排除 ETF / ETN
         _is_etf = globals().get('is_etf')
         if callable(_is_etf) and _is_etf(symbol, name):
@@ -4438,23 +4441,23 @@ class IntradayLiveEngine:
             self.manager.observe_entry_predicate(symbol, False, strategy_time)
             return
 
-        # 2) 股價限制 30~200 元（模擬當沖限制；Universe 盤後學習金額無上限）
-        _min_p = float(globals().get('DAYTRADE_MIN_PRICE', 30.0))
-        _max_p = float(globals().get('DAYTRADE_MAX_PRICE', 200.0))
+        # 2) 模擬金購買價格嚴格限制 30~200 元（A 觀察名單與盤後學習金額無上限，模擬金僅買 30~200 元）
+        _min_p = float(globals().get('DAYTRADE_BUY_MIN_PRICE', globals().get('DAYTRADE_MIN_PRICE', 30.0)))
+        _max_p = float(globals().get('DAYTRADE_BUY_MAX_PRICE', globals().get('DAYTRADE_MAX_PRICE', 200.0)))
         if price < _min_p or price > _max_p:
             self._entry_reject(symbol, 'price_out_of_range',
-                               f'price={price:.2f} 不在當沖限制範圍 [{_min_p:.0f}, {_max_p:.0f}]')
+                               f'模擬金購買限制30~200元 (price={price:.2f} 不在 [{_min_p:.0f}, {_max_p:.0f}])')
             self.manager.observe_entry_predicate(symbol, False, strategy_time)
             return
 
-        # 3) 成交張數門檻 >= 3000 張
+        # 3) 模擬金購買成交張數門檻 >= 3000 張
         _num = globals().get('num', lambda v: float(v) if v is not None and str(v).replace('.','',1).isdigit() else None)
-        _min_lots = float(globals().get('DAYTRADE_MIN_LOTS', 3000.0))
+        _min_lots = float(globals().get('DAYTRADE_BUY_MIN_LOTS', globals().get('DAYTRADE_MIN_LOTS', 3000.0)))
         vol = _num(stock.get("volume")) or _num(stock.get("yesterday_volume")) or _num(stock.get("total_volume"))
         if vol is not None and vol > 0:
             lots = vol / 1000.0 if vol >= 50000 else vol
             if lots < _min_lots:
-                self._entry_reject(symbol, 'low_volume', f'lots={lots:.0f} < {_min_lots:.0f}')
+                self._entry_reject(symbol, 'low_volume', f'模擬金購買需量>=3000張 (lots={lots:.0f} < {_min_lots:.0f})')
                 self.manager.observe_entry_predicate(symbol, False, strategy_time)
                 return
 
