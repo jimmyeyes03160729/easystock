@@ -35,7 +35,7 @@
     let data;
     try { data = await response.json(); }
     catch { throw Object.assign(new Error('伺服器回應無法確認，請同步券商檢查。'), {status: response.status}); }
-    if (!response.ok || data.ok === false) throw Object.assign(new Error(data.message || data.error || '券商操作失敗。'), {status: response.status});
+    if (!response.ok || data.ok === false) throw Object.assign(new Error(data.message || data.error || '券商操作失敗。'), {status: response.status,submissionStatus:data.submission_status});
     return data;
   }
   function table(id, rows, columns, sell = false) {
@@ -215,7 +215,7 @@
       say('orderResult', `${value.action === 'BUY' ? '買進' : '賣出'}委託：${statusName(trade.status)} · 委託書號 ${text(trade.order_id)}。成交結果請查看「今日委託與成交結果」。`, failed);
       await refresh();
     } catch (error) {
-      uncertain = !error.status || error.status >= 500 || /尚未確認|無法確認/.test(error.message);
+      uncertain = error.submissionStatus === 'unknown' || (error.submissionStatus !== 'not_submitted' && (!error.status || error.status >= 500 || /尚未確認|無法確認/.test(error.message)));
       say('orderResult', uncertain ? `委託結果尚未確認：${error.message} 請同步券商／對帳，勿重送。` : `委託未送出：${error.message}`, true);
     } finally { value.ca_passwd = ''; busy = false; invalidate(); }
   });

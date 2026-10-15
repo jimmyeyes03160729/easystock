@@ -201,7 +201,8 @@ def test_broker_submit_not_ready_is_not_retried():
     constants=NS(Action=NS(Buy='Buy',Sell='Sell'),StockOrderLot=NS(Common='Common',IntradayOdd='IntradayOdd'),StockOrderType=NS(ROD='ROD'),StockPriceType=NS(LMT='LMT'))
     service=OrderService();service.api=Mock(stock_account=NS());service.is_logged_in=True;service._last_login_time=time.time();service.account_info={'person_id':'FAKE'}
     service.api.place_order.side_effect=RuntimeError('NotReady accepted but response lost')
-    with patch.object(module,'sj',NS(constant=constants)),patch.dict(os.environ,LIVE),patch.object(module.Path,'exists',return_value=True),patch.object(service,'_find_contract',return_value=NS()):
+    service.api.activate_ca.return_value=True
+    with patch.object(module,'sj',NS(constant=constants)),patch.dict(os.environ,LIVE),patch.object(module.Path,'is_file',return_value=True),patch.object(service,'_find_contract',return_value=NS()):
         try:service.place_order('2330','SELL',100,1,False,'fake')
         except RuntimeError:pass
     service.api.place_order.assert_called_once()

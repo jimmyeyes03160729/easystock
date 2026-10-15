@@ -61,6 +61,8 @@ class LiveConsole:
             local_positions = sorted((r[0], json.loads(r[1]).get('quantity')) for r in db.execute('SELECT symbol,body FROM live_trade_positions'))
             broker_positions = sorted((r['symbol'], r['quantity']) for r in data.get('positions', []) if r['quantity'])
             local_orders = {r[0]: json.loads(r[1]) for r in db.execute('SELECT client_order_id,body FROM live_trade_orders')}
+            # Keep the audit row, but a proven preflight failure has no remote order.
+            local_orders={k:v for k,v in local_orders.items() if v.get('status')!='not_submitted'}
             known_ids = {r.get('broker_order_id') for r in local_orders.values()}
             unmatched_orders = any(r['order_id'] not in known_ids for r in data.get('orders', []))
             broker_orders = {r['order_id']:r for r in data.get('orders', [])}

@@ -128,6 +128,16 @@ class AdminOrderWebTests(unittest.TestCase):
         audit = json.loads(self.rows("SELECT body FROM audit WHERE action='pipeline_settings' ORDER BY id")[0][0])
         self.assertEqual(audit['profile_changed'], ['fee_rate'])
 
+    def test_known_preflight_failure_is_saved_as_not_submitted_and_still_deduplicated(self):
+        from easystock_admin.order_service import preflight_error
+        with patch.dict(os.environ,LIVE),patch.object(order_service,'place_order',side_effect=preflight_error('certificate',RuntimeError('401 secret-pw'))) as submit:
+            response=self.post('api/order/place',order(),self.csrf)
+            assert response.status_code==400 and response.json['submission_status']=='not_submitted'
+            assert response.json['stage']=='certificate' and 'secret-pw' not in response.get_data(as_text=True)
+            assert self.post('api/order/place',order(),self.csrf).status_code==409
+            submit.assert_called_once()
+        assert self.rows('SELECT status FROM order_requests')==[('not_submitted',)]
+
     def test_manual_order_and_holdings_require_google_owner_session(self):
         routes = [('api/order/verify', {}), ('api/order/quote', {'symbol': '2330'}),
                   ('api/order/place', order()), ('api/live-console/sell-verify', {})]
