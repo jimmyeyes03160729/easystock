@@ -10,9 +10,15 @@ SCRIPT = NAS / 'sync_datasets.sh'
 
 
 @pytest.mark.skipif(shutil.which('bash') is None, reason='bash not available')
-@pytest.mark.parametrize('name', ['sync_datasets.sh', 'healthcheck.sh', 'docker-entrypoint.sh'])
+@pytest.mark.parametrize('name', ['sync_datasets.sh', 'sync_orderbook.sh', 'healthcheck.sh', 'docker-entrypoint.sh'])
 def test_scripts_parse(name):
     subprocess.run(['bash', '-n', str(NAS / name)], check=True)
+
+
+def test_orderbook_accepts_bind_mounted_root():
+    # The NAS scheduler mounts /data/backup/orderbook, not /data, so either must satisfy the check.
+    text = (NAS / 'sync_orderbook.sh').read_text(encoding='utf-8')
+    assert 'mountpoint -q /data || mountpoint -q "$ORDERBOOK_ROOT" || die' in text
 
 
 def test_copy_only_and_scoped_cleanup():
