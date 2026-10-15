@@ -179,6 +179,7 @@ class EngineTests(unittest.TestCase):
         self.manager=PositionManager(research_mode=True, before_open=Mock(return_value=dict(status='skipped',skip_reason='daily_buy_limit_exceeded',shares=0)))
         self.engine=types.SimpleNamespace(bars=types.SimpleNamespace(rows5=lambda _: [{}],rows15=lambda _:[{}]),
             candidates={'TEST':{}},market_level='GREEN',market_valid_until=NOW.timestamp()+30,
+            market_gate={'gate_action':'PASS'},refresh_rebound_guard=Mock(),
             entry_mode='rules',collect_only=False,last_prices={'TEST':100},manager=self.manager,scanner_top_symbols={'TEST'},
             fresh_entry_quote=Mock(return_value=(100,NOW)),_previous_closes={'TEST':(None,100)},
             _lock=threading.RLock(),radar_ticks={'TEST':[]},daytrade_model=DaytradeModel(path=''),
@@ -188,6 +189,22 @@ class EngineTests(unittest.TestCase):
             setattr(self.engine,name,types.MethodType(self.ns[name],self.engine))
 
     def run_engine(self):self.ns['evaluate_symbol'](self.engine,'TEST',NOW)
+
+    def test_new_red_at_final_rebound_check_prevents_a_entry(self):
+        def refresh():
+            if self.engine.refresh_rebound_guard.call_count>=3:
+                self.engine.market_gate={'gate_action':'BLOCK','gate_reason':'rebound_fast_drop'}
+                self.engine.market_valid_until=0
+        self.engine.refresh_rebound_guard.side_effect=refresh
+        self.run_engine()
+        self.manager.before_open.assert_not_called()
+
+    def test_a_rebound_rejects_lot_above_small_notional(self):
+        self.engine.market_gate={'gate_action':'PASS','rebound_mode':True}
+        self.engine.last_prices={'TEST':101}
+        self.ns['evaluate_daytrade'].return_value['price']=101
+        self.run_engine()
+        self.manager.before_open.assert_not_called()
 
     def captured(self,fn):
         from contextlib import redirect_stdout
