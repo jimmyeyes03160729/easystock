@@ -7,7 +7,7 @@ RED={'valid':True,'level':'RED','gate_action':'BLOCK','gate_reason':'market_risk
 def inputs(now,price=100,volume=1000,stock_price=100):
     at=now.isoformat()
     context={'indices':{k:{'price':price,'quote_at':at} for k in ('taiex','otc')}}
-    equity={'day':now.date().isoformat(),'generated_at':at,'rows':{str(2000+i):{'price':stock_price,'day_volume':volume,'quote_at':at,'received_at':at} for i in range(600)}}
+    equity={'day':now.date().isoformat(),'generated_at':at,'rows':{str(2000+i):{'exchange':'TWSE' if i<300 else 'TPEX','price':stock_price,'day_volume':volume,'quote_at':at,'received_at':at} for i in range(600)}}
     worker={'checked_at':at,'connected':True,'authenticated':True,'parser_ok':True}
     return context,equity,worker
 

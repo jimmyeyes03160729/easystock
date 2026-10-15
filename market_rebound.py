@@ -74,13 +74,14 @@ class ReboundGuard:
         at=clock(equity.get('generated_at'))
         if not at or equity.get('day')!=day or not 0<=(now-at).total_seconds()<=90:return blocked('rebound_snapshot_stale')
         good={}
-        receipts=[]
+        receipts=[];exchanges=set()
         for symbol,q in equity.get('rows',{}).items():
             qt=clock(q.get('quote_at'));received=clock(q.get('received_at'))
             if (qt and received and qt.date()==now.date() and qt<=received<=now and
                 0<=(now-qt).total_seconds()<=90 and finite(q.get('price')) and q['price']>0 and
                 finite(q.get('day_volume')) and q['day_volume']>=0):
-                good[symbol]=(q['price'],q['day_volume']);receipts.append(received.timestamp())
+                good[symbol]=(q['price'],q['day_volume']);receipts.append(received.timestamp());exchanges.add(q.get('exchange'))
+        if not {'TWSE','TPEX'}<=exchanges:return blocked('rebound_breadth_incomplete')
         # Poll receipts, not regenerated output timestamps, identify a new sample.
         sample_at=min(receipts) if receipts else 0
         if len(good)>=500 and (not self.snapshots or sample_at>self.snapshots[-1][0]):self.snapshots.append((sample_at,good))
