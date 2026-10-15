@@ -4,18 +4,27 @@ import types
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-# Offline stubs for packages not installed in local regression test environment
-for mod in ["shioaji", "firebase_admin", "firebase_admin.credentials", "firebase_admin.db"]:
-    if mod not in sys.modules:
-        m = types.ModuleType(mod)
-        if mod == "shioaji":
-            m.ScannerType = types.SimpleNamespace()
-            m.TickType = types.SimpleNamespace()
-        elif mod == "firebase_admin":
-            m._apps = []
-        elif mod == "firebase_admin.db":
-            m.reference = lambda path: None
-        sys.modules[mod] = m
+# Only provide minimal stub for shioaji if not installed
+try:
+    import shioaji
+except ImportError:
+    shioaji = types.ModuleType("shioaji")
+    shioaji.ScannerType = types.SimpleNamespace()
+    shioaji.TickType = types.SimpleNamespace()
+    sys.modules["shioaji"] = shioaji
+
+# Only provide minimal stub for firebase_admin if not installed
+try:
+    import firebase_admin
+    from firebase_admin import db
+except ImportError:
+    firebase_admin = types.ModuleType("firebase_admin")
+    firebase_admin._apps = []
+    db = types.ModuleType("firebase_admin.db")
+    db.reference = lambda path: None
+    firebase_admin.db = db
+    sys.modules["firebase_admin"] = firebase_admin
+    sys.modules["firebase_admin.db"] = db
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from intraday_live import is_etf, load_candidates_from_firebase

@@ -568,8 +568,9 @@ class DaytradeModelIdentityTests(unittest.TestCase):
             path = Path(folder) / 'model.json'
             payload = artifact(version='v-test', trained_through='2026-09-28', profile='p1')
             path.write_text(json.dumps(payload), encoding='utf-8')
-            model = DaytradeModel(path=path)
-            identity = model.identity()
+            with unittest.mock.patch.dict(os.environ, {'LIVE_MODEL_MAX_AGE_TRADING_DAYS': '9999'}):
+                model = DaytradeModel(path=path)
+                identity = model.identity()
             self.assertEqual(identity['version'], 'v-test')
             self.assertEqual(identity['trained_through'], '2026-09-28')
             self.assertEqual(identity['profile'], 'p1')
