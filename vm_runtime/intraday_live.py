@@ -2804,7 +2804,7 @@ class IntradayLiveEngine:
             atomic(root/'market-rebound.json',payload)
             with (root/('market-rebound-'+current.date().isoformat()+'.jsonl')).open('a') as f:
                 f.write(json.dumps(payload,ensure_ascii=False)+'\n')
-            save_gate(gate,now=current,premarket_date=getattr(self,'premarket_brief',{}).get('scan_date'),
+            save_gate(gate,now=current,premarket_date=(getattr(self,'premarket_brief',{}) or {}).get('scan_date'),
                 model_ready=self.daytrade_model.artifact is not None,
                 radar_candidate_count=len(self.scanner_top_symbols),block_counts=self._market_block_counts)
         except OSError:pass
