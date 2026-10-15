@@ -67,6 +67,16 @@ def enrich_daily(rows, path, now):
         db.close()
     return []
 
+def summarize(feed):
+    rows=feed.get("rows", [])
+    complete=[r for r in rows if r.get("complete") is True]
+    return {"observed_at":feed.get("updated_at"), "observed":len(rows),
+            "complete":len(complete), "insufficient":len(rows)-len(complete),
+            "all_pass":sum(r.get("passed")==8 for r in complete),
+            "failed":sum(r.get("passed",0)<8 for r in complete),
+            "diagnostics":feed.get("diagnostics", [])}
+
+
 def build(rows, now, diagnostics=(), opening_symbols=None):
     opened, closed, markets = [], [], []
     for r in rows.values():
@@ -124,11 +134,28 @@ def main():
     from market_data.opening_observations import merge_indices
     market = Path(os.getenv('EASYSTOCK_MARKET_DATA_DIR', '/home/ubuntu/easystock-market-data'))
     diagnostics += merge_indices(rows, market / 'dataset' / (now.date().isoformat()+'.jsonl'), now)
-    from .closing_inputs import enrich
+    from .closing_inputs import enrich,read_json,merge_current_indices
     opening_symbols=set(rows)
-    diagnostics += enrich(rows, market/'equity-snapshot.json', OUT/'company-shares.json', now)
+    # Read input bytes BEFORE assigning their cutoff; journal/Firebase takes seconds.
+    context=read_json(market/'context.json')
+    snapshot=read_json(market/'equity-snapshot.json')
+    shares=read_json(OUT/'company-shares.json').get('rows',{})
+    now=datetime.now(TPE)
+    merge_current_indices(rows,context,now)
+    diagnostics += enrich(rows, market/'equity-snapshot.json', OUT/'company-shares.json', now,
+                          snapshot=snapshot,shares=shares)
     diagnostics += enrich_daily(rows, DAILY, now)
+    # Daily history can be slow on the VM. Refresh only live inputs afterward;
+    # newly appearing symbols without history remain insufficient.
+    context=read_json(market/'context.json')
+    snapshot=read_json(market/'equity-snapshot.json')
+    now=datetime.now(TPE)
+    merge_current_indices(rows,context,now)
+    diagnostics += enrich(rows, market/'equity-snapshot.json', OUT/'company-shares.json', now,
+                          snapshot=snapshot,shares=shares)
+    now=datetime.now(TPE)  # Evaluate freshness and phase at the actual decision.
     feeds = build(rows, now, diagnostics,opening_symbols=opening_symbols)
+    feeds["closing_eight"]["summary"]=summarize(feeds["closing_eight"])
     from runway_v2.closing_pool import observe,freeze,next_session
     trial_root=Path(os.getenv('B1_CLOSING_POOL_DIR','/home/ubuntu/easystock-b1-closing'))
     observe(feeds['closing_eight'],trial_root,now)
@@ -136,6 +163,9 @@ def main():
     if now.strftime('%H:%M:%S')>='13:25:00' and is_market_open(now.date().isoformat())[0]:
         pool=freeze(trial_root,now.date().isoformat(),next_session(now.date().isoformat()),now)
         feeds['closing_eight']['next_b1_pool']={k:pool[k] for k in ('source_day','target_day','symbols','status','reason','observation_at','frozen_at')}
+    observation=read_json(trial_root/'observations'/(now.date().isoformat()+'.json'))
+    if observation.get('day')==now.date().isoformat():
+        feeds['closing_eight']['last_observation_summary']=summarize(observation)
     OUT.mkdir(parents=True, exist_ok=True)
     for key, feed in feeds.items():
         path = OUT / (key + '.json')

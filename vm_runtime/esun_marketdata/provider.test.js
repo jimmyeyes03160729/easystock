@@ -134,3 +134,17 @@ test('opening boundary stores the last preceding index quote once, excluding the
   assert.equal(Date.parse(rows[0].received_at),clock);
  }finally{fs.rmSync(directory,{recursive:true,force:true});}
 });
+
+test('closing window refreshes existing breadth within 15s, normal schedule is unchanged',async()=>{
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'closing-poll-'));
+ let clock=Date.parse('2026-10-15T13:00:00+08:00'),calls=0;
+ const p=new Provider({directory,clock:()=>clock});
+ const client={restClient:{stock:{intraday:{quote:async({symbol})=>({symbol,index:100,lastUpdated:clock*1000})},snapshot:{quotes:async()=>{calls++;return {};}}}}};
+ try{
+   await p.poll(client);assert.equal(calls,2);
+   clock+=14000;await p.poll(client);assert.equal(calls,2);
+   clock+=1000;await p.poll(client);assert.equal(calls,4);
+   clock=Date.parse('2026-10-15T13:25:00+08:00');assert.equal(p.closingWindow(),false);
+   p.lastBreadthPoll=clock;clock+=15000;await p.poll(client);assert.equal(calls,4);
+ }finally{fs.rmSync(directory,{recursive:true,force:true});}
+});

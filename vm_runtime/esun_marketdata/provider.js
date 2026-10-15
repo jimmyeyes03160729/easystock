@@ -133,6 +133,10 @@ class Provider {
       }
     }
   }
+  closingWindow() {
+    const clock=tpe(this.clock()).slice(11,19);
+    return clock>='13:00:00' && clock<'13:25:00';
+  }
   async poll(client) {
     if(this.inFlight)return;this.inFlight=true;
     try {
@@ -140,7 +144,7 @@ class Provider {
         try {this.accept(await deadline(client.restClient.stock.intraday.quote({symbol:mapping.symbol}),6000));}
         catch(_){this.error('quote_request_failed');}
       }
-      if(this.clock()-this.lastBreadthPoll>=60000) {
+      if(this.clock()-this.lastBreadthPoll>=(this.closingWindow()?15000:60000)) {
         for(const market of ['TSE','OTC']) {
           try {this.breadthSnapshots[market]=await deadline(client.restClient.stock.snapshot.quotes({market}),6000);this.breadthReceivedAt[market]=this.clock();}
           catch(_) {delete this.breadthSnapshots[market];delete this.breadthReceivedAt[market];}
@@ -178,7 +182,7 @@ class Provider {
         if(this.stopped)break;
         if(this.clock()-(Date.parse(this.diagnostic.last_heartbeat_at)||sessionStarted)>90000) {sessionError='heartbeat_timeout';break;}
         stock.ping({});
-        if(this.clock()-this.lastPoll>=30000) await this.poll(client);
+        if(this.clock()-this.lastPoll>=(this.closingWindow()?15000:30000)) await this.poll(client);
         this.flush();
       }
       if(sessionError && !this.stopped)throw Error(sessionError);
