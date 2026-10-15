@@ -41,18 +41,33 @@
   if(!global.document)return;
   const get=id=>global.document.getElementById(id);
   if(!get('eightMethodsModule'))return;
-  let feeds={},busy=false,lastRender='';
+  const openingPageSize=5;
+  let feeds={},busy=false,lastRender='',openingPage=0,openingDay=null;
+  function paginateOpening(rows,day){
+    if(day!==openingDay){openingPage=0;openingDay=day;}
+    const pages=Math.max(1,Math.ceil(rows.length/openingPageSize));
+    openingPage=Math.min(openingPage,pages-1);
+    const start=openingPage*openingPageSize;
+    for(const id of ['openingPagination','openingPaginationBottom']){
+      const nav=get(id);if(!nav)continue;nav.hidden=rows.length<=openingPageSize;
+      nav.querySelector('[data-opening-page-status]').textContent=`第 ${openingPage+1} / ${pages} 頁 · ${start+1}–${Math.min(start+openingPageSize,rows.length)} / ${rows.length} 檔`;
+      nav.querySelector('[data-opening-page="-1"]').disabled=openingPage===0;
+      nav.querySelector('[data-opening-page="1"]').disabled=openingPage===pages-1;
+    }
+    return rows.slice(start,start+openingPageSize);
+  }
   function render(){
     const now=new Date();
-    const key=JSON.stringify([Math.floor(+now/30000),feeds.opening_eight?.updated_at,feeds.closing_eight?.updated_at]);
+    const key=JSON.stringify([Math.floor(+now/30000),openingPage,feeds.opening_eight?.updated_at,feeds.closing_eight?.updated_at]);
     if(key===lastRender)return;lastRender=key;
     if(get('closingPoolStatus'))get('closingPoolStatus').textContent=poolText(feeds.closing_eight?.next_b1_pool,now)+' '+observationText(feeds.closing_eight?.last_observation_summary);
     let messages=[];
     for(const [key,version,container,renderRow] of [['opening_eight','OPENING_EIGHT_METHODS_V1','openingRows',openingRow],['closing_eight','CLOSING_EIGHT_METHODS_V1','closingRows',closingRow]]){
       const f=feeds[key],ok=valid(f,version,now)&&(key!=='closing_eight'||f.ruleset==='TW_CLOSING_RULES_V1');
-      if(!ok){get(container).innerHTML='<p>資料不足：今日觀察 feed 尚未發布或已過期。</p>';if(key==='opening_eight')get('openingMarkets').innerHTML='<p>加權／櫃買：資料不足，尚無有效指數成交時點。</p>';messages.push('資料不足／尚未發布');continue;}
+      if(!ok){get(container).innerHTML='<p>資料不足：今日觀察 feed 尚未發布或已過期。</p>';if(key==='opening_eight'){get('openingMarkets').innerHTML='<p>加權／櫃買：資料不足，尚無有效指數成交時點。</p>';for(const id of ['openingPagination','openingPaginationBottom'])if(get(id))get(id).hidden=true;}messages.push('資料不足／尚未發布');continue;}
       const rows=Array.isArray(f.rows)?f.rows:[];
-      get(container).innerHTML=rows.map(r=>renderRow(r,now)).join('')||'<p>目前沒有觀察資料。</p>';
+      const visible=key==='opening_eight'?paginateOpening(rows,f.day):rows;
+      get(container).innerHTML=visible.map(r=>renderRow(r,now)).join('')||'<p>目前沒有觀察資料。</p>';
       if(key==='opening_eight')get('openingMarkets').innerHTML=(f.markets||[]).map(r=>openingRow(r,now)).join('');
       messages.push(`${f.source||''} · 更新 ${f.updated_at} · ${f.scope||''} ${(f.diagnostics||[]).join('；')}`);
     }
@@ -60,6 +75,13 @@
   }
   function tab(name){for(const n of ['opening','closing']){const selected=n===name;get(n+'Tab').setAttribute('aria-selected',String(selected));get(n+'Tab').tabIndex=selected?0:-1;get(n+'Panel').hidden=!selected;}}
   for(const n of ['opening','closing']){get(n+'Tab').addEventListener('click',()=>tab(n));get(n+'Tab').addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?'opening':e.key==='End'?'closing':n==='opening'?'closing':'opening';tab(next);get(next+'Tab').focus();}});}
+  for(const button of global.document.querySelectorAll('#openingPanel [data-opening-page]')){
+    button.addEventListener('click',()=>{
+      openingPage=Math.max(0,openingPage+Number(button.dataset.openingPage));
+      lastRender='';render();
+      if(button.closest('#openingPaginationBottom'))get('openingPanel').scrollIntoView?.({block:'start',behavior:'smooth'});
+    });
+  }
   async function load(){
     if(busy)return;busy=true;
     const root=String(global.FIREBASE_ROOT||'https://easystock-c237a-default-rtdb.firebaseio.com/market_data').replace(/\/$/,'');

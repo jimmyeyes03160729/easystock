@@ -42,3 +42,28 @@ test('missing inputs are distinct from evaluated failures and historical coverag
  assert.match(E.closingRow({...r,conditions:[{state:'fail',label:'量'}]},now),/完整判定/);
  assert.match(E.observationText({observed_at:now.toISOString(),observed:328,insufficient:328,complete:0,all_pass:0,failed:0}),/資料不足 328 檔.*完整判定 0 檔/);
 });
+
+
+test('opening pagination bounds DOM size and retains page across live refreshes and list shrinkage',async()=>{
+ const dom=new JSDOM(fs.readFileSync('index.html','utf8'),{runScripts:'outside-only'}),w=dom.window;
+ let clock=Date.parse('2026-10-15T10:00:00+08:00'),count=12,stale=false,scrolls=0;const timers={};
+ w.Date=class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}};
+ w.setInterval=(fn,ms)=>{timers[ms]=fn;return ms;};
+ w.document.getElementById('openingPanel').scrollIntoView=()=>scrolls++;
+ w.fetch=async url=>({ok:true,json:async()=>({schema_version:1,version:url.includes('opening_eight')?'OPENING_EIGHT_METHODS_V1':'CLOSING_EIGHT_METHODS_V1',ruleset:'TW_CLOSING_RULES_V1',day:'2026-10-15',updated_at:new Date(clock-(stale?100000:0)).toISOString(),rows:Array.from({length:count},(_,i)=>({symbol:String(2300+i),name:'測試',quote_at:new Date(clock).toISOString(),conditions:[]})),markets:[{symbol:'IX0001'}]})});
+ try{
+ w.eval(fs.readFileSync('assets/eight-methods.js','utf8'));await new Promise(r=>setImmediate(r));
+ const nav=w.document.getElementById('openingPagination'),bottom=w.document.getElementById('openingPaginationBottom');
+ const cards=()=>[...w.document.querySelectorAll('#openingRows .eight-card h3')].map(n=>n.textContent);
+ const next=nav.querySelector('[data-opening-page="1"]'),prev=nav.querySelector('[data-opening-page="-1"]');
+ assert.equal(cards().length,5);assert.equal(prev.disabled,true);assert.match(nav.textContent,/第 1 \/ 3 頁/);
+ bottom.querySelector('[data-opening-page="1"]').click();assert.match(cards()[0],/2305/);assert.equal(scrolls,1);
+ clock+=1000;await timers[30000]();assert.match(cards()[0],/2305/);
+ next.click();assert.equal(cards().length,2);assert.equal(next.disabled,true);assert.match(nav.textContent,/11–12 \/ 12 檔/);
+ count=6;clock+=1000;await timers[30000]();assert.equal(cards().length,1);assert.match(cards()[0],/2305/);assert.match(nav.textContent,/第 2 \/ 2 頁/);
+ prev.click();assert.equal(cards().length,5);assert.equal(prev.disabled,true);
+ count=2;clock+=1000;await timers[30000]();assert(nav.hidden&&bottom.hidden);assert.equal(cards().length,2);
+ count=0;clock+=1000;await timers[30000]();assert.equal(cards().length,0);assert.match(w.document.getElementById('openingRows').textContent,/沒有觀察資料/);
+ count=12;stale=true;clock+=1000;await timers[30000]();assert(nav.hidden&&bottom.hidden);assert.equal(cards().length,0);
+ }finally{w.close();}
+});
