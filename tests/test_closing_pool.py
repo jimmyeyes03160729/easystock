@@ -51,7 +51,7 @@ def test_freeze_is_immutable_hash_verified_and_never_fills_missing_candidates(tm
     with pytest.raises(ValueError,match='invalid_pool_receipt'):P.load(tmp_path,'2026-10-15')
     with patch('runway_v2.closing_pool.next_session',return_value='2026-10-15'),patch('market_calendar.is_market_open',return_value=(True,'test')):
         empty=P.freeze(tmp_path/'empty','2026-10-14','2026-10-15',at('14:00:00'))
-    assert empty['symbols']==[] and empty['status']=='EMPTY_DATA_OR_NO_MATCH'
+    assert empty['symbols']==[] and empty['status']=='EMPTY_DATA_INSUFFICIENT'
     with pytest.raises(ValueError):P.freeze(tmp_path,'2026-10-14','2026-10-15',at('13:24:59'))
 
 def test_official_share_sources_use_issued_common_not_capital_or_par():
@@ -118,3 +118,57 @@ def test_audit_excludes_missing_source_without_claiming_zero_profit(tmp_path):
     from runway_v2.closing_audit import audit
     result=audit(tmp_path,'2026-10-15')
     assert result['status']=='EXCLUDED' and result['arms']=={} and 'net_pnl_difference' not in result
+
+
+def test_frozen_missing_data_and_complete_failures_are_distinct(tmp_path):
+    missing=candidate();missing['conditions'][0]['state']='insufficient';missing['complete']=False
+    a=freeze(tmp_path/'missing',[missing])
+    assert a['status']=='EMPTY_DATA_INSUFFICIENT' and a['assessment']['insufficient']==1
+    failed=candidate();failed['conditions'][0]['state']='fail';failed['passed']=7
+    b=freeze(tmp_path/'failed',[failed])
+    assert b['status']=='EMPTY_NO_MATCH' and b['assessment']['failed']==1
+
+
+def test_snapshot_loaded_before_cutoff_survives_file_replacement_and_future_still_rejected(tmp_path):
+    from eight_methods.closing_inputs import read_json,merge_current_indices
+    sp=tmp_path/'s.json';mp=tmp_path/'m.json'
+    snapshot={'schema_version':1,'day':'2026-10-14','generated_at':at('13:24:21').isoformat(),
+              'rows':{'2330':{'price':104,'exchange':'TWSE','quote_at':at('13:24:20').isoformat(),
+                              'received_at':at('13:24:21').isoformat()}}}
+    P.write(sp,snapshot);loaded=read_json(sp)
+    P.write(sp,dict(snapshot,generated_at=at('13:24:31').isoformat()))
+    rows={};assert not enrich(rows,sp,mp,at('13:24:30'),snapshot=loaded,shares={'unused':{}})
+    assert rows['2330']['price']==104
+    assert enrich({},sp,mp,at('13:24:30'))  # True future is still rejected.
+    context={'indices':{'taiex':{'price':100,'quote_at':at('13:24:29').isoformat(),'received_at':at('13:24:30').isoformat()}}}
+    merge_current_indices(rows,context,at('13:24:30'))
+    assert rows['IX0001']['price']==100 and rows['IX0001']['quotes']==[]
+    later={};merge_current_indices(later,context,at('13:24:29'))
+    assert 'IX0001' not in later
+
+
+def test_main_decides_after_slow_reads_and_never_backdates_after_cutoff(tmp_path,monkeypatch):
+    from eight_methods import feed as F
+    import sys
+    market=tmp_path/'market';out=tmp_path/'out';out.mkdir()
+    trial=tmp_path/'trial'
+    monkeypatch.setenv('EASYSTOCK_MARKET_DATA_DIR',str(market));monkeypatch.setenv('B1_CLOSING_POOL_DIR',str(trial))
+    monkeypatch.setattr(F,'OUT',out)
+    row=candidate()
+    P.write(market/'equity-snapshot.json',{'schema_version':1,'day':'2026-10-14','generated_at':at('13:24:21').isoformat(),
+        'rows':{'2330':dict(row,exchange='TWSE',received_at=at('13:24:21').isoformat())}})
+    monkeypatch.setattr(F,'read_journal',lambda *_:({'2330':dict(row,quotes=[])},[]))
+    monkeypatch.setattr(F,'enrich_daily',lambda *_:[])
+    monkeypatch.setattr('market_data.opening_observations.merge_indices',lambda *_:[])
+    monkeypatch.setattr('market_calendar.is_market_open',lambda *_:(False,'test'))
+    class Clock:
+        ticks=iter([at('13:24:00'),at('13:24:22'),at('13:25:01')])
+        @classmethod
+        def now(cls,*_):return next(cls.ticks)
+    monkeypatch.setattr(F,'datetime',Clock);monkeypatch.setattr(sys,'argv',['feed'])
+    F.main()
+    result=json.loads((out/'closing_eight.json').read_text())
+    assert result['updated_at']==at('13:25:01').isoformat()
+    assert '缺當日有效尾盤行情快照' not in result['diagnostics']
+    assert result['rows'][0]['phase']=='auction'
+    assert not (trial/'observations/2026-10-14.json').exists()

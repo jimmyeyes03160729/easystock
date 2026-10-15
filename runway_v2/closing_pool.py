@@ -65,13 +65,17 @@ def freeze(root,day,target,now):
     feed=json.loads(observed.read_text(encoding='utf-8')) if observed.exists() else {}
     if feed and (feed.get('day')!=day or stamp(feed['updated_at'])>now):raise ValueError('invalid_observation_day')
     rows=select(feed)
+    from eight_methods.feed import summarize
+    assessment=summarize(feed)
+    empty_status='EMPTY_DATA_INSUFFICIENT' if not feed or not assessment['observed'] or assessment['insufficient'] else 'EMPTY_NO_MATCH'
     reason='' if rows else ('13:25前沒有有效尾盤觀察資料；不補選' if not feed else
-                            '沒有八項完整通過且適用B1單筆額度的尾盤候選；不補選')
+                            f"資料不足 {assessment['insufficient']}/{assessment['observed']} 檔；完整判定 {assessment['complete']} 檔，沒有適用B1單筆額度且八項全過的候選；不補選" if assessment['insufficient'] else
+                            '完整判定後沒有八項全過且適用B1單筆額度的候選；不補選')
     value={'schema_version':1,'trial':TRIAL,'source_day':day,'target_day':target,
         'frozen_at':now.isoformat(),'observation_at':feed.get('updated_at'),
         'source_snapshot_sha256':digest(feed),'ruleset':'TW_CLOSING_RULES_V1',
         'ranking':'day_volume_shares_desc_then_symbol','max_symbols':MAX_SYMBOLS,
-        'rows':rows,'symbols':[r['symbol'] for r in rows],'status':'READY' if rows else 'EMPTY_DATA_OR_NO_MATCH',
+        'rows':rows,'symbols':[r['symbol'] for r in rows],'status':'READY' if rows else empty_status,'assessment':assessment,
         'reason':reason,'production_effect':'B1_SHADOW_ONLY'}
     value['receipt_sha256']=digest(value);write(path,value)
     return value

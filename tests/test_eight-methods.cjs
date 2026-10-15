@@ -34,3 +34,11 @@ test('old UI publisher and scheduler entrypoints retired; shared helpers indepen
  for(const f of ['index.html','assets/dashboard-layout.js','assets/eight-methods.js'])assert(!/short_term|shortTerm|short-term|short_term_full|REVENUE_SHORT_V1/.test(fs.readFileSync(f,'utf8')),f);
  assert(fs.existsSync('docs/research_governance/preregistrations/REVENUE_SHORT_V1.yaml'));
 });
+
+test('missing inputs are distinct from evaluated failures and historical coverage remains explicit',()=>{
+ const r={symbol:'2330',quote_at:now.toISOString(),conditions:[{state:'insufficient',label:'量',reason:'缺資料'}]};
+ assert.match(E.closingRow(r,now),/資料不足，尚未完成八項判定/);
+ assert(!E.closingRow(r,now).includes('通過 0/8'));
+ assert.match(E.closingRow({...r,conditions:[{state:'fail',label:'量'}]},now),/完整判定/);
+ assert.match(E.observationText({observed_at:now.toISOString(),observed:328,insufficient:328,complete:0,all_pass:0,failed:0}),/資料不足 328 檔.*完整判定 0 檔/);
+});

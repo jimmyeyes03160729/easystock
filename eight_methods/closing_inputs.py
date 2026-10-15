@@ -5,14 +5,19 @@ from pathlib import Path
 from .rules import stamp,number
 
 
-def enrich(rows,snapshot_path,shares_path,now):
+def read_json(path):
+    try:return json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError,ValueError,TypeError):return {}
+
+
+def enrich(rows,snapshot_path,shares_path,now,*,snapshot=None,shares=None):
     try:
-        snapshot=json.loads(Path(snapshot_path).read_text(encoding='utf-8'))
+        snapshot=read_json(snapshot_path) if snapshot is None else snapshot
         received=stamp(snapshot['generated_at'])
         if snapshot.get('schema_version')!=1 or snapshot.get('day')!=now.date().isoformat() or not 0<=(now-received).total_seconds()<=90:
             return ['缺當日有效尾盤行情快照']
     except (OSError,ValueError,KeyError,TypeError):return ['缺尾盤行情快照']
-    try:shares=json.loads(Path(shares_path).read_text(encoding='utf-8')).get('rows',{})
+    try:shares=read_json(shares_path).get('rows',{}) if shares is None else shares
     except (OSError,ValueError,TypeError):shares={}
     for symbol,q in snapshot.get('rows',{}).items():
         try:
@@ -35,3 +40,16 @@ def enrich(rows,snapshot_path,shares_path,now):
                     r['turnover_pct']=q['day_volume']/issued*100
         except (KeyError,ValueError,TypeError):continue
     return [] if shares else ['缺可靠發行普通股數；換手率與市值不放行']
+
+
+def merge_current_indices(rows,context,now):
+    """Latest existing context for closing strength; opening boundary history is untouched."""
+    for key,symbol in [('taiex','IX0001'),('otc','IX0043')]:
+        try:
+            q=context['indices'][key]
+            at,received=stamp(q['quote_at']),stamp(q['received_at'])
+            if not at<=received<=now or not 0<=(now-at).total_seconds()<=30 or not number(q.get('price'),True):continue
+            r=rows.setdefault(symbol,{'symbol':symbol,'name':key,'quotes':[]})
+            if not r.get('quote_at') or at>=stamp(r['quote_at']):
+                r.update(price=q['price'],quote_at=q['quote_at'])
+        except (KeyError,ValueError,TypeError):continue

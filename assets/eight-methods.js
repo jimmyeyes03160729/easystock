@@ -25,14 +25,18 @@
     const stale=!Number.isFinite(Date.parse(r.quote_at))||now-new Date(r.quote_at)>30000||now<new Date(r.quote_at);
     const disabled=ended||waiting||stale;
     const cs=Array.isArray(r.conditions)?r.conditions:[];
-    return `<article class="eight-card"><h3>${esc(r.symbol)} ${esc(r.name)}</h3><p>股價 ${value(r.price)} · 漲跌 ${value(r.gain_pct)}% · 符合 ${disabled?0:cs.filter(c=>c.state==='pass').length}/8</p><p>${ended?'連續交易訊號已截止；13:25～13:30 收盤集合競價':waiting?'等待 13:00':stale?'資料不足：行情過期':esc(r.reason)}</p><ul>${cs.map(c=>`<li>${esc(c.label)}：<strong>${disabled?'資料不足':state[c.state]||'資料不足'}</strong> ${esc(c.reason)}</li>`).join('')}</ul><small>成交時間：${esc(r.quote_at||'無行情')}</small></article>`;
+    return `<article class="eight-card"><h3>${esc(r.symbol)} ${esc(r.name)}</h3><p>股價 ${value(r.price)} · 漲跌 ${value(r.gain_pct)}% · ${disabled||cs.some(c=>c.state==='insufficient')?'資料不足，尚未完成八項判定':`完整判定：通過 ${cs.filter(c=>c.state==='pass').length}/8`}</p><p>${ended?'連續交易訊號已截止；13:25～13:30 收盤集合競價':waiting?'等待 13:00':stale?'資料不足：行情過期':esc(r.reason)}</p><ul>${cs.map(c=>`<li>${esc(c.label)}：<strong>${disabled?'資料不足':state[c.state]||'資料不足'}</strong> ${esc(c.reason)}</li>`).join('')}</ul><small>成交時間：${esc(r.quote_at||'無行情')}</small></article>`;
+  }
+  function observationText(s){
+    if(!s||!Number.isFinite(Date.parse(s.observed_at)))return '';
+    return `最後尾盤觀察 ${s.observed_at}：共 ${s.observed} 檔，資料不足 ${s.insufficient} 檔；完整判定 ${s.complete} 檔，其中八項全過 ${s.all_pass} 檔、條件未通過 ${s.failed} 檔。${(s.diagnostics||[]).join('；')}`;
   }
   function poolText(p,now=new Date()){
     if(!p||!p.target_day||!Number.isFinite(Date.parse(p.frozen_at))||new Date(p.frozen_at)>now)return '次交易日 B1 尾盤比較：尚未凍結名單。';
     const symbols=Array.isArray(p.symbols)?p.symbols:[];
     return `次交易日 ${p.target_day} B1 獨立模擬比較：${p.status==='READY'?symbols.join('、')+'（'+symbols.length+'/10 檔）':p.reason||'沒有完整通過的候選，不補選'}。凍結時間 ${p.frozen_at}；原 B1 與尾盤組各最多10檔，共用既有五檔額度。`;
   }
-  const api={esc,valid,openingRow,closingRow,chart,poolText};
+  const api={esc,valid,openingRow,closingRow,chart,poolText,observationText};
   if(typeof module!=='undefined')module.exports=api;
   if(!global.document)return;
   const get=id=>global.document.getElementById(id);
@@ -42,7 +46,7 @@
     const now=new Date();
     const key=JSON.stringify([Math.floor(+now/30000),feeds.opening_eight?.updated_at,feeds.closing_eight?.updated_at]);
     if(key===lastRender)return;lastRender=key;
-    if(get('closingPoolStatus'))get('closingPoolStatus').textContent=poolText(feeds.closing_eight?.next_b1_pool,now);
+    if(get('closingPoolStatus'))get('closingPoolStatus').textContent=poolText(feeds.closing_eight?.next_b1_pool,now)+' '+observationText(feeds.closing_eight?.last_observation_summary);
     let messages=[];
     for(const [key,version,container,renderRow] of [['opening_eight','OPENING_EIGHT_METHODS_V1','openingRows',openingRow],['closing_eight','CLOSING_EIGHT_METHODS_V1','closingRows',closingRow]]){
       const f=feeds[key],ok=valid(f,version,now)&&(key!=='closing_eight'||f.ruleset==='TW_CLOSING_RULES_V1');
