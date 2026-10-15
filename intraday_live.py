@@ -379,32 +379,32 @@ RADAR_MAX_WARM_QUERIES = max(
     ),
 )
 
-# 當沖標的篩選門檻 (Day Trading Candidate Filters)
-CANDIDATE_MIN_PRICE = max(
+# 當沖模擬進場門檻 (Day Trading Entry Filters - 模擬當沖限制 30~200 元，Universe 跑與採樣學習金額無上限)
+DAYTRADE_MIN_PRICE = max(
     0.0,
     float(
         os.environ.get(
-            "LIVE_CANDIDATE_MIN_PRICE",
+            "DAYTRADE_MIN_PRICE",
             "30.0",
         )
     ),
 )
 
-CANDIDATE_MAX_PRICE = max(
+DAYTRADE_MAX_PRICE = max(
     0.0,
     float(
         os.environ.get(
-            "LIVE_CANDIDATE_MAX_PRICE",
+            "DAYTRADE_MAX_PRICE",
             "200.0",
         )
     ),
 )
 
-CANDIDATE_MIN_LOTS = max(
+DAYTRADE_MIN_LOTS = max(
     0.0,
     float(
         os.environ.get(
-            "LIVE_CANDIDATE_MIN_LOTS",
+            "DAYTRADE_MIN_LOTS",
             "3000.0",
         )
     ),
@@ -1574,17 +1574,6 @@ def load_candidates_from_firebase(
         if price is None or price <= 0:
             continue
 
-        if CANDIDATE_MIN_PRICE > 0 and price < CANDIDATE_MIN_PRICE:
-            continue
-        if CANDIDATE_MAX_PRICE > 0 and price > CANDIDATE_MAX_PRICE:
-            continue
-
-        vol = num(stock.get("volume"))
-        if vol is not None and CANDIDATE_MIN_LOTS > 0:
-            lots = vol / 1000.0 if vol >= 50000 else vol
-            if lots < CANDIDATE_MIN_LOTS:
-                continue
-
         seen.add(symbol)
 
         item = dict(stock)
@@ -2133,17 +2122,6 @@ def scan_market_activity_universe(
 
             if close is None or close <= 0:
                 continue
-
-            if CANDIDATE_MIN_PRICE > 0 and close < CANDIDATE_MIN_PRICE:
-                continue
-            if CANDIDATE_MAX_PRICE > 0 and close > CANDIDATE_MAX_PRICE:
-                continue
-
-            raw_vol = num(row.get("yesterday_volume")) or num(row.get("total_volume"))
-            if raw_vol is not None and CANDIDATE_MIN_LOTS > 0 and raw_vol > 0:
-                lots = raw_vol / 1000.0 if raw_vol >= 50000 else raw_vol
-                if lots < CANDIDATE_MIN_LOTS:
-                    continue
 
             target = merged.setdefault(
                 symbol,
@@ -4451,6 +4429,29 @@ class IntradayLiveEngine:
             stock.get("name")
             or symbol
         )
+
+        # 模擬當沖邊界防線（Paper Trade Entry 門檻）：
+        # 1) 排除 ETF / ETN
+        if is_etf(symbol, name):
+            self._entry_reject(symbol, 'etf_ineligible', f'{symbol} {name} 為 ETF/ETN 排除標的')
+            self.manager.observe_entry_predicate(symbol, False, strategy_time)
+            return
+
+        # 2) 股價限制 30~200 元（模擬當沖限制；Universe 盤後學習金額無上限）
+        if price < DAYTRADE_MIN_PRICE or price > DAYTRADE_MAX_PRICE:
+            self._entry_reject(symbol, 'price_out_of_range',
+                               f'price={price:.2f} 不在當沖限制範圍 [{DAYTRADE_MIN_PRICE:.0f}, {DAYTRADE_MAX_PRICE:.0f}]')
+            self.manager.observe_entry_predicate(symbol, False, strategy_time)
+            return
+
+        # 3) 成交張數門檻 >= 3000 張
+        vol = num(stock.get("volume")) or num(stock.get("yesterday_volume")) or num(stock.get("total_volume"))
+        if vol is not None and vol > 0:
+            lots = vol / 1000.0 if vol >= 50000 else vol
+            if lots < DAYTRADE_MIN_LOTS:
+                self._entry_reject(symbol, 'low_volume', f'lots={lots:.0f} < {DAYTRADE_MIN_LOTS:.0f}')
+                self.manager.observe_entry_predicate(symbol, False, strategy_time)
+                return
 
         # 把「瞬間爆量」資訊附加到 ENTRY reasons。
         buy_pct = (

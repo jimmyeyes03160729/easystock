@@ -18,6 +18,9 @@ def candidate(*, symbol, stock, result, price, now, quote_at, limits,
     score, price = numeric(result.get('daytrade_score')), numeric(price)
     if score is None or score < 50 or not price or not quote_at:
         return None
+    s = str(symbol).strip()
+    if s.startswith(('00', '01', '02', '91')) or len(s) != 4:
+        return None
     now, quote_at = now.astimezone(TPE), quote_at.astimezone(TPE)
     age = (now - quote_at).total_seconds()
     if quote_at.date() != now.date() or not 0 <= age <= 30:
