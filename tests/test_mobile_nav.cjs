@@ -31,6 +31,9 @@ test('M1-M7: real anchors, four labels, desktop/mobile safe-area, active and gua
   assert(!w.document.querySelector('#ai-picks, #aiPicksModule, a[href="#ai-picks"]'));
   run('assets/mobile-nav.js');links[1].dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true}));
   assert.equal(links[1].getAttribute('aria-current'),'location');assert(!links[0].hasAttribute('aria-current'));
+  // The desktop header nav mirrors the active section; its external admin link is never marked.
+  const headerLinks=[...w.document.querySelectorAll('header .section-nav a')];
+  assert.equal(headerLinks[1].getAttribute('aria-current'),'location');assert(!headerLinks[0].hasAttribute('aria-current'));assert(!headerLinks[3].hasAttribute('aria-current'));
   w.location.hash='#learningSection';w.dispatchEvent(new w.Event('hashchange'));assert.equal(links[2].getAttribute('aria-current'),'location');
   w.close();
 });

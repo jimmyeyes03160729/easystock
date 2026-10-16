@@ -15,3 +15,7 @@ for(const file of ['module-share.js','learning-status.js','dashboard-layout.js',
 console.log('PASS asset digests: HTML requests the current scripts');
 const cssHash=crypto.createHash('sha256').update(fs.readFileSync('assets/dashboard-ux.css','utf8').replace(/\r\n/g,'\n')).digest('hex').slice(0,12);
 assert(html.includes(`href="assets/dashboard-ux.css?v=${cssHash}"`),'Dashboard CSS must be versioned by content');
+const glassHash=crypto.createHash('sha256').update(fs.readFileSync('assets/liquid-glass.css','utf8').replace(/\r\n/g,'\n')).digest('hex').slice(0,12);
+assert(html.includes(`href="assets/liquid-glass.css?v=${glassHash}"`),`【請將 liquid-glass.css 改為】?v=${glassHash}`);
+// Theme tokens must load after the inline legacy styles so equal-specificity rules resolve to the glass layer.
+assert(html.indexOf('href="assets/liquid-glass.css')>html.lastIndexOf('</style>',html.indexOf('</head>')),'liquid-glass.css must follow the inline <style>');
