@@ -1,6 +1,7 @@
 # Chrome Extension 2.0 — Release Candidate 技術說明
 
 - 版本：`1.0.5 / 1.05` → `2.0.0 / 2.0`
+  - Chrome Web Store 目前已發布為 **1.06**：Owner 確認內容與 1.05 相同，只因當初上傳問題而改版號重傳，repo 中沒有另外的 1.06 原始碼。2.0.0 大於 1.06，可正常升級。
 - Base：`origin/main` @ `c2eabac`（2026-10-16），分支 `feat/chrome-extension-2.0`
 - 狀態定義：`IMPLEMENTED`（程式完成）／`CODE_VERIFIED`（自動化測試通過）／`MOCK_VERIFIED`（以模擬 Google / Firebase 驗證）／`LIVE_VERIFIED`（真實環境驗證）／`BLOCKED`／`NOT_STARTED`
 
