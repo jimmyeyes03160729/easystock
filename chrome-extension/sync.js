@@ -12,7 +12,7 @@ import { SYMBOL, GROUPS, plain, finite, BROKERS, defaultState } from './core.js'
 
 export const SYNC_SCHEMA = 1;
 export const ALERT_KEYS = ['daytrade', 'allDaytradeAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct'];
-export const PREF_KEYS = ['darkMode', 'colorMode', 'fontSize', 'pageSize', 'cardDensity', 'windowHeight', 'showSparkline', 'preferredBroker'];
+export const PREF_KEYS = ['darkMode', 'colorMode', 'fontSize', 'pageSize', 'cardDensity', 'windowHeight', 'showSparkline', 'preferredBroker', 'autoPageSize'];
 export const SYNC_KEYS = [...ALERT_KEYS, ...PREF_KEYS];
 export const MAX_STOCKS = 100;
 export const TOMBSTONE_TTL_MS = 90 * 86400000;
@@ -27,7 +27,8 @@ const VALIDATORS = {
   minPrice: numOrNull, maxPrice: numOrNull, minChangePct: numOrNull,
   pageSize: v => Number.isInteger(v) && v >= 3 && v <= 10,
   cardDensity: v => v === 'compact' || v === 'normal',
-  windowHeight: v => finite(v) && v >= 380 && v <= 580,
+  windowHeight: v => finite(v) && v >= 380 && v <= 600,
+  autoPageSize: isBool,
   fontSize: v => ['small', 'standard', 'large'].includes(v),
   preferredBroker: v => BROKERS.some(b => b.id === v),
   colorMode: v => v === 'redgreen' || v === 'mono'

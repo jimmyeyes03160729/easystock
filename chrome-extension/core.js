@@ -782,6 +782,7 @@ export function defaultState() {
       colorMode: 'redgreen',
       fontSize: 'standard',
       windowHeight: 500,
+      autoPageSize: true,
       showSparkline: true,
       preferredBroker: 'sinopac'
     }, vipHash: '' };

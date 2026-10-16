@@ -346,6 +346,23 @@ test('duplicate shows 已在自選 inline and does not add a row; invalid input 
   dom.window.close();
 });
 
+test('window height really sizes the popup (420–600, Chrome limit) and fixed page size still works', async () => {
+  const stocks = ['2330', '2317', '2454', '2308', '2382'].map(symbol => ({ symbol, market: 'TW', name: symbol, groups: ['watchlist'] }));
+  const tall = await popup({ stocks, extra: { settings: { ...defaultState().settings, windowHeight: 900, autoPageSize: false, pageSize: 3 } } });
+  assert.equal(tall.w.document.documentElement.style.height, '600px', 'clamped to the Chrome popup maximum');
+  assert.equal(tall.w.document.body.style.height, '600px');
+  assert.equal(tall.w.document.getElementById('popup-container').style.height, '600px');
+  assert.equal(tall.w.document.querySelectorAll('.stock-row').length, 3, 'auto-fill off: fixed 3 per page');
+  assert.equal(tall.w.document.getElementById('range-page-size').disabled, false);
+  assert.ok(tall.w.document.getElementById('btn-open-standalone'), 'standalone window offered for longer views');
+  tall.dom.window.close();
+  const short = await popup({ stocks, extra: { settings: { ...defaultState().settings, windowHeight: 300 } } });
+  assert.equal(short.w.document.documentElement.style.height, '420px');
+  assert.equal(short.w.document.getElementById('toggle-auto-page-size').checked, true, 'auto-fill is the default');
+  assert.equal(short.w.document.getElementById('range-page-size').disabled, true);
+  short.dom.window.close();
+});
+
 test('rows show 暫無行情 / 資料過期 and never draw a synthetic sparkline', async () => {
   // 00878 attempted with no data, 1102 only has yesterday's 09:00 snapshot (production case).
   const { w, dom } = await popup({ stocks: [

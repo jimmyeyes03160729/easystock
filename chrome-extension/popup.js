@@ -415,24 +415,44 @@ function createSparklineSvg(sparkPoints, trendClass) {
   svg.append(area, path, dot); return svg;
 }
 
-// 動態列表高度設定 (真實改變整體視窗尺寸：同時設定 html, body 與 container，預設 500px 即 +20px，上限至 +100px 即 580px)
+// 視窗高度：Chrome 依頁面大小調整小工具視窗（上限 600px），所以直接設定 html/body/container 高度
+// 就是真正的視窗長度。獨立視窗模式則填滿瀏覽器視窗，可自由拖曳拉高。
+const POPUP_MIN_HEIGHT = 420;
+const POPUP_MAX_HEIGHT = 600; // Chrome extension popup hard limit
+const STANDALONE = typeof location !== 'undefined' && new URLSearchParams(location.search).get('standalone') === '1';
+let fitRows = 0;
+
 function applyWindowHeight(h) {
-  const val = Math.max(380, Math.min(580, Number(h) || 500));
-  if (document.documentElement) document.documentElement.style.height = `${val}px`;
-  if (document.body) document.body.style.height = `${val}px`;
+  const val = Math.max(POPUP_MIN_HEIGHT, Math.min(POPUP_MAX_HEIGHT, Number(h) || 500));
+  const size = STANDALONE ? '100vh' : `${val}px`;
+  if (document.documentElement) document.documentElement.style.height = size;
+  if (document.body) { document.body.style.height = size; document.body.style.minHeight = STANDALONE ? '0' : `${POPUP_MIN_HEIGHT}px`; }
   const container = $('popup-container');
   if (container) {
-    container.style.height = `${val}px`;
-    container.style.minHeight = `${val}px`;
-    container.style.maxHeight = `${val}px`;
+    container.style.height = size;
+    container.style.minHeight = STANDALONE ? '0' : size;
+    container.style.maxHeight = size;
   }
-  const diff = val - 480;
-  const tagText = diff === 0 ? '預設 (0px)' : (diff > 0 ? `+${diff}px` : `${diff}px`);
+  const tagText = STANDALONE ? '獨立視窗' : `${val}px`;
   if ($('window-height-val')) $('window-height-val').textContent = tagText;
   if ($('density-status-tag')) $('density-status-tag').textContent = tagText;
   if ($('range-window-height') && document.activeElement !== $('range-window-height')) {
     $('range-window-height').value = String(val);
   }
+}
+
+// How many watchlist rows fit in the list area without a scrollbar (auto mode).
+function measureFitRows() {
+  const list = $('stock-list-container');
+  const row = list?.querySelector('.stock-row');
+  const avail = list?.clientHeight || 0;
+  const rowH = row?.offsetHeight || 0;
+  if (avail <= 0 || rowH <= 0) return 0;
+  return Math.max(3, Math.min(60, Math.floor(avail / rowH)));
+}
+function effectivePageSize() {
+  const base = Math.max(3, Math.min(10, Number(view?.settings?.pageSize) || 5));
+  return view?.settings?.autoPageSize !== false && fitRows > 0 ? fitRows : base;
 }
 
 // 顯示文字大小設定 (Stitch 設計：小 / 標準 / 大，字重與字級從小到大階梯顯著清晰，支援膠囊按鈕與預覽列)
@@ -1018,14 +1038,18 @@ function render() {
   if ($('toggle-sparkline')) $('toggle-sparkline').checked = showSparkline;
 
   // 顯示排版與每頁筆數同步
-  const pageSize = Math.max(3, Math.min(10, Number(view.settings?.pageSize) || 5));
+  const basePageSize = Math.max(3, Math.min(10, Number(view.settings?.pageSize) || 5));
+  const autoPage = view.settings?.autoPageSize !== false;
+  const pageSize = effectivePageSize();
   const cardDensity = view.settings?.cardDensity || 'compact';
   const isCompact = cardDensity === 'compact';
 
   if ($('range-page-size')) {
-    $('range-page-size').value = pageSize;
-    if ($('range-page-size-val')) $('range-page-size-val').textContent = String(pageSize);
+    $('range-page-size').value = basePageSize;
+    $('range-page-size').disabled = autoPage;
+    if ($('range-page-size-val')) $('range-page-size-val').textContent = autoPage ? (fitRows ? `自動 ${fitRows}` : '自動') : `${basePageSize} 檔`;
   }
+  if ($('toggle-auto-page-size')) $('toggle-auto-page-size').checked = autoPage;
   if ($('radio-density-normal') && $('radio-density-compact')) {
     $('radio-density-normal').checked = !isCompact;
     $('radio-density-compact').checked = isCompact;
@@ -1089,6 +1113,17 @@ function render() {
   }
   // 預設為 'watchlist' 自選看股
   renderWatchlist(list, isCompact, pageSize);
+  // Auto mode: measure how many rows really fit this window height and re-render once if different,
+  // so a taller window shows more stocks instead of empty space or an inner scrollbar.
+  if (autoPage) {
+    const measured = measureFitRows();
+    if (measured && measured !== fitRows && !render.refitting) {
+      fitRows = measured;
+      render.refitting = true;
+      try { render(); } finally { render.refitting = false; }
+      return;
+    }
+  }
 
   const stamp = view.updatedAt ? new Date(view.updatedAt).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '尚未更新';
   status(view.error || `${view.vm ? 'VM 隔離測試' : view.marketOpen ? '盤中' : '休市'} · ${stamp}`, !!view.error);
@@ -1153,8 +1188,7 @@ async function handleAddStock(item) {
   const row = { symbol, market: item.market === 'TWO' ? 'TWO' : 'TW', name: String(item.name || symbol).trim().slice(0, 60) || symbol, groups: ['watchlist'] };
   optimistic.set(symbol, row);
   view.stocks = [...(view.stocks || []), row];
-  const pageSize = Math.max(3, Math.min(10, Number(view.settings?.pageSize) || 5));
-  currentWatchlistPage = Math.ceil(view.stocks.length / pageSize);
+  currentWatchlistPage = Math.ceil(view.stocks.length / effectivePageSize());
   render();
   try {
     const result = await send({ type: 'ADD', stock: row });
@@ -1301,6 +1335,36 @@ $('range-window-height')?.addEventListener('input', e => {
   if (view?.settings) view.settings.windowHeight = val;
   applyWindowHeight(val);
 });
+$('toggle-auto-page-size')?.addEventListener('change', async e => {
+  const enabled = e.target.checked;
+  if (view?.settings) view.settings.autoPageSize = enabled;
+  render();
+  await act({ type: 'SETTINGS', strategy: 'autoPageSize', enabled });
+});
+
+// 獨立視窗：Chrome 小工具最高 600px，要更長就開成一般視窗（可拖曳邊緣自由拉高）。
+$('btn-open-standalone')?.addEventListener('click', async () => {
+  const url = chrome.runtime.getURL('popup.html?standalone=1');
+  const avail = (typeof screen !== 'undefined' && screen.availHeight) || 900;
+  const height = Math.max(POPUP_MAX_HEIGHT, Math.min(avail - 40, 900));
+  try {
+    if (chrome.windows?.create) await chrome.windows.create({ url, type: 'popup', width: 470, height, focused: true });
+    else await chrome.tabs.create({ url });
+    window.close();
+  } catch (e) { status('無法開啟獨立視窗', true); }
+});
+if (STANDALONE) {
+  document.body.classList.add('standalone');
+  const slider = $('range-window-height');
+  if (slider) slider.disabled = true;
+  $('btn-open-standalone')?.setAttribute('hidden', '');
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (view) render(); }, 120);
+  });
+}
+
 $('range-window-height')?.addEventListener('change', async e => {
   const val = Number(e.target.value);
   if (view?.settings) view.settings.windowHeight = val;

@@ -829,7 +829,7 @@ export async function handle(message) {
       break;
     }
     case 'SETTINGS': {
-      const allowed = [...GROUPS, 'allDaytradeAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'darkMode', 'colorMode', 'pageSize', 'cardDensity', 'fontSize', 'windowHeight', 'showSparkline', 'preferredBroker'];
+      const allowed = [...GROUPS, 'allDaytradeAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'darkMode', 'colorMode', 'pageSize', 'cardDensity', 'fontSize', 'windowHeight', 'showSparkline', 'preferredBroker', 'autoPageSize'];
       if (!allowed.includes(message.strategy)) throw new Error('開關格式不正確');
       const value = message.enabled !== undefined ? message.enabled : message.value;
       if (message.strategy === 'colorMode' && !COLOR_MODES.includes(value)) throw new Error('漲跌配色格式不正確');

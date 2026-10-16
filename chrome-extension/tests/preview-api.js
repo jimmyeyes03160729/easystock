@@ -32,6 +32,12 @@ const fixture = {
       ? { configured: true, status: 'READY', missing: [], signedIn: false, sync: { status: 'signed_out' } }
       : { configured: false, status: 'BLOCKED_BY_OAUTH_CONFIGURATION', missing: ['oauth2.client_id', 'firebase_api_key'], signedIn: false, sync: { status: 'signed_out' } })
 };
+// ?many=1 adds extra watchlist rows to check how many fit per window height; ?h=600 sets windowHeight.
+if (q.get('many') === '1') {
+  const extra = [['2317', '鴻海'], ['2454', '聯發科'], ['2308', '台達電'], ['2382', '廣達'], ['2303', '聯電'], ['2603', '長榮'], ['2412', '中華電'], ['2881', '富邦金'], ['2882', '國泰金'], ['2891', '中信金'], ['3231', '緯創'], ['2357', '華碩'], ['2002', '中鋼'], ['1301', '台塑']];
+  for (const [symbol, name] of extra) fixture.stocks.push({ symbol, name, market: 'TW', groups: ['watchlist'] });
+}
+if (q.get('h')) fixture.settings.windowHeight = Number(q.get('h'));
 window.chrome = {
   storage: { local: { get: async () => ({ state: { version: 2, stocks: fixture.stocks, settings: fixture.settings } }) } },
   runtime: { onMessage: { addListener: () => {} }, sendMessage: async m => {
