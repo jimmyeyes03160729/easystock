@@ -60,13 +60,17 @@ for (const mode of ['production', 'vm']) {
     if (CLIENT_ID.test(String(authCfg.oauth_client_id || ''))) {
       manifest.oauth2 = { client_id: authCfg.oauth_client_id, scopes: ['openid', 'email', 'profile'] };
     }
-    // Optional: pin an unpacked test build to the Web Store extension ID (the OAuth client is bound to it).
-    // Never set for the Web Store upload ZIP (the store rejects a "key" field).
+    // The source manifest carries the store public key so loading the source folder unpacked gets the
+    // Web Store ID (the OAuth client is bound to it). The store rejects a "key" field, so the production
+    // build drops it unless an unpacked test build is requested with EASYSTOCK_PIN_KEY=1.
+    delete manifest.key;
     if (process.env.EASYSTOCK_PIN_KEY === '1' && /^[A-Za-z0-9+/=]{200,}$/.test(String(authCfg.extension_public_key || ''))) manifest.key = authCfg.extension_public_key;
     await writeFile(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
   }
   if (mode === 'vm') {
     const manifest = JSON.parse(await readFile(join(root, 'manifest.json'), 'utf8'));
+    // The isolated VM build is a different extension: no store key (its own ID), no sign-in.
+    delete manifest.key; delete manifest.oauth2;
     manifest.permissions = manifest.permissions.filter(p => p !== 'identity');
     manifest.name = 'EasyStock VM 隔離測試'; manifest.host_permissions = [];
     await writeFile(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');

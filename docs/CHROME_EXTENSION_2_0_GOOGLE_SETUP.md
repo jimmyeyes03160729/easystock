@@ -72,7 +72,7 @@
 - Console：選擇「當沖吧！牛馬仔」→ 套件（Package）
 - 要確認：Item ID = `khidbieahmnnandhkcmjceideljgjfid`（OAuth Client 綁定此 ID；ID 不同登入一定失敗）。
 - 本機測試用（選用）：同頁「公開金鑰（Public key）」可提供給開發者，填入 `auth-config.json` 的 `extension_public_key`。
-  以 `EASYSTOCK_PIN_KEY=1 pnpm build` 產生的 `dist/production` 以「載入未封裝項目」安裝時，ID 會與商店版相同，才能測真實登入。
+  已填入：原始碼 `chrome-extension/manifest.json` 與 `dist/oauth-test` 都帶這把公開金鑰，以「載入未封裝項目」安裝任一資料夾，ID 都會與商店版相同，才能測真實登入（或以 `EASYSTOCK_PIN_KEY=1 pnpm build` 產生帶金鑰的 `dist/production`）。
   **上傳商店的 ZIP 不可含 `key`**（`package.mjs` 會檢查並拒絕）。
 - 完成確認：未封裝測試版在 `chrome://extensions` 顯示的 ID 與商店版相同。
 

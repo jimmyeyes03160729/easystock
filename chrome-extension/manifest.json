@@ -18,6 +18,7 @@
     "https://query1.finance.yahoo.com/*",
     "https://query2.finance.yahoo.com/*"
   ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr1++9mJViVWYgT4rPhICRSaeOPJ5CLz5ecD2BfLKj1cZAiZsE8qF7l6ZsK5oWe5hZYqj9dlgKrzHLgoCQG4wia+h+5xwEtuoWjXkVrQ+qnkRjl59nDT0UFbTAA0RB/N89i7gabYopbW/FrptDeRtCwn8YDsiGKyZ2Ls9ew7qd+yIAz2ZNF1RovK1d3PL4lc/c6dx1IYqr+2/WSy+1kTMR7U8lMa/2FY7zhWugsy0VwbT+AWFhXF9omtz2ja7Mf03sTBL5PH6EsqRbZrEvcj1cjT9HmhmMGglp2buz0SsM0zryUaiju8DhluTpludOp484+pvd60mxJajceIK1G0vcwIDAQAB",
   "oauth2": {
     "client_id": "179809300331-6i8sfhcbp07o6ngsk3qnspebp0ublleh.apps.googleusercontent.com",
     "scopes": [

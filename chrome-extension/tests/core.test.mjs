@@ -112,7 +112,8 @@ test('production has narrow permissions, packaged resources, no test VIP', async
   assert.deepEqual(m.permissions, ['storage', 'alarms', 'notifications', 'identity']);
   assert.equal(m.host_permissions.some(x => x.includes('<all_urls>')), false);
   assert.equal(m.host_permissions.length, 6);
-  assert.equal('key' in m, false, 'Web Store manifests must not contain "key"');
+  // The source manifest may carry the public store key (unpacked loads get the store ID); the
+  // production build strips it — verified on dist/production in vm.test and by package.mjs.
   assert.equal(m.content_security_policy.extension_pages, "script-src 'self'; object-src 'none'; base-uri 'none'");
   // auth-config.json may only hold public identifiers.
   const auth = JSON.parse(await readFile(new URL('../auth-config.json', import.meta.url), 'utf8'));
@@ -123,6 +124,7 @@ test('production has narrow permissions, packaged resources, no test VIP', async
     assert.equal(m.oauth2.client_id, auth.oauth_client_id);
     assert.deepEqual(m.oauth2.scopes, ['openid', 'email', 'profile']);
   }
+  if (m.key) assert.equal(m.key, auth.extension_public_key, 'source key is the store public key');
   const { _comment, ...values } = auth;
   assert.doesNotMatch(JSON.stringify(values), /secret|PRIVATE KEY|refresh_token/i);
   const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
