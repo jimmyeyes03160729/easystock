@@ -1,0 +1,108 @@
+# Stage 0 freezes the Taiwan adaptation contract, NOT a runnable performance trial.
+preregistration_id: TW_A_LEARNING_V1_STAGE0
+created_at: "2026-10-16T18:57:34+08:00"
+status: DESIGN_PREFLIGHT_ONLY
+research_only: true
+production_effect: NONE
+training_authorized: false
+performance_trial_preregistered: false
+stage1_preregistration_required_before_any_training_or_evaluation: true
+
+purpose: >
+  Prepare a Taiwan-only, causal comparison of the existing logistic model,
+  LightGBM, an explicitly licensed TabPFN-v2 checkpoint and a frozen Kronos-mini
+  forecast feature. No US/China labeled examples are pooled with Taiwan labels.
+  Foreign/global pretraining is only an external prior, not Taiwan evidence.
+
+scope:
+  market: TW
+  venues: [TWSE, TPEX]
+  instrument_type: COMMON_STOCK
+  direction: LONG
+  session_timezone: "Asia/Taipei (+08:00)"
+  session: "09:00..13:30; preserve official calendar and session boundaries"
+  entry_window: "09:30 <= t < 12:30 (existing A window)"
+  latest_exit: "12:55 (existing A cutoff)"
+  universe: "point-in-time A eligible candidates; not today's survivors"
+  execution: "existing A gates, executable ask/bid and recorded share depth; no last-price fill fallback"
+  risk_allocation: "existing versioned A settings; no parameter or five-entry-budget changes"
+  borrowed_stock_and_short_extension: EXCLUDED
+  historical_latest_allowed: "2026-10-02"
+  data_access_now: NONE
+  protected: [PHASE2C_FUTURE_CONFIRMATION_60D, REBOUND_V2_FUTURE_CONFIRMATION_60D, RUNWAY_RESERVED_CONFIRMATION]
+  copied_renamed_or_rebuilt_holdout_data: ALSO_FORBIDDEN
+
+point_in_time_contract:
+  tabular: research/tw_a_learning_v1/contract.py:feature_row
+  features: [gain_pct, return_5m_pct, surge_60s, buy_ratio_60s, amount_60s,
+             market_return_60s_pct, market_return_5m_pct, relative_return_5m_pct,
+             market_drawdown_from_high_pct, minutes_since_open, spread_pct, day_volume_lots]
+  index: "TWSE -> TAIEX; TPEX -> TPEX_INDEX; official timestamped index, no ETF/US/China substitution"
+  freshness: "decision-time feature/quote/index <=30s; book <=15s; future data rejected"
+  volume: "explicit LOT or SHARES; 1000 shares per ordinary-stock lot; no magnitude guessing"
+  candles: "completed available 1m OHLCV+TWD amount, same Taiwan instrument; no partial/future/zero-filled candles"
+  session_gaps: "keep actual timestamps; no fictitious lunch break, after-hours bars or continuous overnight minutes"
+  price: "ordinary-stock TW tick schedule; observed official session references/limits, never infer all limits as +/-10%"
+  market_context_semantics: >
+    Return horizons are backward-looking features, not a new green/red-light rule.
+    Session high must be the high known then, not the final day's high. Parser
+    checks alone cannot authenticate point-in-time lineage; that remains a dataset gate.
+  eligibility: "official session and security/eligibility metadata must have been known at the decision"
+
+candidate_budget:
+  baseline: logistic_tw
+  experimental: [lightgbm_tw, tabpfn_v2_tw, logistic_tw_plus_kronos_mini]
+  model_search_executed: 0
+  comparison_rule: >
+    Same Taiwan event population, label definition, policy, costs and chronological
+    folds across arms. Primary tabular arms share the exact Taiwan feature vector.
+    Kronos arm adds one forecast feature to the same baseline; it does not replace
+    entries/exits or infer an automatically tradable future price.
+  tabpfn_checkpoint: Prior-Labs/TabPFN-v2-clf
+  tabpfn_newer_noncommercial_weights: NOT_SUBSTITUTABLE_WITHOUT_LICENSE_REVIEW
+  kronos_checkpoint: NeoQuasar/Kronos-mini
+  kronos_mode: FROZEN_ZERO_SHOT_EXTERNAL_PRIOR
+  kronos_taiwan_finetuning_now: false
+  weight_revision_hashes_and_training_cutoffs: NOT_VERIFIED
+  weight_download_or_remote_code_execution_now: false
+  pretrained_evaluation_overlap: MUST_AUDIT_BEFORE_USE
+
+monitor:
+  proposed: river_adwin
+  role: "research alerts on feature/error drift; delayed outcome only after maturity"
+  installed_or_running: false
+  may_change_a_or_b_or_market_gate: false
+
+cost_label_gate:
+  issue: >
+    daytrade_learning/settings.json currently specifies fee_rate=0.0015,
+    sell_tax_rate=0.003 and 10bps slippage as a conservative research scenario.
+    A paper_execution uses 0.001425*0.28 fees with TWD20 minimum and eligible
+    same-day tax=0.0015, ROUND_HALF_UP. They are different label semantics.
+  action: "separate profiles; source audit before any reconstruction; never relabel or pool silently"
+  primary_cost_profile: "pinned A paper_execution source+effective account/eligibility metadata"
+  slippage: "count adverse execution once; exact stress design frozen in Stage 1"
+  current_1200_labels: "not automatically admitted; recent dates also outside this study's historical cutoff"
+
+stage1_requirements:
+  - "Registered non-reserved Taiwan dataset and explicit date slices; access/exposure ledger before reads"
+  - "Verified historical security master, references, calendar, contemporaneous A settings and quotes/depth"
+  - "Consistent label/profile, features_as_of and label_available_at; all days grouped chronologically"
+  - "Embargo and purge through label maturity, fit transforms on training only; no random row split"
+  - "Immutable source/checkpoint revisions, hashes, license terms, pretraining cutoff and overlap audit"
+  - "Fixed lookback, horizon, inference sampling/seed, training params and all attempted candidates counted"
+  - "Primary delta_net_return_pct vs identical unfiltered A events; explicit execution feasibility and drawdown checks"
+  - "Numeric criteria/folds/sensitivity design committed before training; existing A upgrade gates stay unchanged"
+  - "Disclose earlier archive exposure and the 10/16 loss review; never call them pristine confirmation"
+  - "No independent-confirmation claim until separately governed unseen data is available"
+
+references:
+  - https://www.twse.com.tw/zh/products/system/trading.html
+  - https://www.twse.com.tw/zh/products/system/day-trading.html
+  - https://github.com/PriorLabs/TabPFN
+  - https://huggingface.co/NeoQuasar/Kronos-mini
+  - https://github.com/lightgbm-org/LightGBM
+  - https://riverml.xyz/dev/api/drift/ADWIN/
+  - docs/research_governance/PRISTINE_HOLDOUT_POLICY_v1.yaml
+  - docs/research_governance/OBJECTIVE_FUNCTION_SPEC_v1.yaml
+  - research/meta_b_filter_v1/README.md
