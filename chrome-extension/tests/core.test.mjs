@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { taipei, marketOpen, fresh, normalizeQuoteTimestamp, formatTaipeiQuoteTime, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, matchFilter, BUILTIN_STOCKS, searchStocks, searchOnlineStocks, calcChangePct, BROKERS, getBroker, sparklineSessionX, buildPartialDailyBar } from '../core.js';
+import { taipei, marketOpen, fresh, normalizeQuoteTimestamp, formatTaipeiQuoteTime, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, matchFilter, BUILTIN_STOCKS, searchStocks, searchOnlineStocks, calcChangePct, BROKERS, getBroker, sparklineSessionX, buildPartialDailyBar, resolveStockInput, sparkForQuote } from '../core.js';
 const at = s => Date.parse(s);
 const now = at('2026-09-17T09:30:00+08:00');
 const sample = { id: 'a', symbol: '2330', market: 'TW', name: '台積電', price: 1000, change_pct: 1, reason: '爆量', generated_at: '2026-09-17T09:29:00+08:00', quote_at: '2026-09-17T09:29:00+08:00' };
@@ -35,6 +35,24 @@ test('1.05 sparkline uses fixed Taiwan 09:00-13:30 time axis', () => {
   assert.equal(sparklineSessionX({ timestamp: ts('2026-09-30T13:30:00+08:00') }), 54);
   assert.equal(sparklineSessionX({ timestamp: ts('2026-09-30T08:59:00+08:00') }), null);
 });
+test('list sparkline follows the clock: 10:00 data stays on the left part of a 09:00–13:30 axis', () => {
+  const ts = value => Date.parse(value) / 1000;
+  const q = { price: 103, quote_at: '2026-09-30T10:07:00+08:00', spark: [
+    { close: 101, timestamp: ts('2026-09-30T09:30:00+08:00') },
+    { close: 100, timestamp: ts('2026-09-30T09:00:00+08:00') },
+    { close: 102, timestamp: ts('2026-09-30T09:45:00+08:00') }
+  ] };
+  const pts = sparkForQuote(q);
+  assert.deepEqual(pts.map(p => p.close), [100, 101, 102, 103], 'sorted by time, ends at the current quote');
+  const xs = pts.map(p => sparklineSessionX(p));
+  assert.equal(xs[0], 2, '09:00 at the left edge');
+  assert.ok(xs.at(-1) < 15, `10:07 is ~25% across, not stretched to the right edge (x=${xs.at(-1)})`);
+  for (let i = 1; i < xs.length; i++) assert.ok(xs[i] > xs[i - 1], 'x increases with time');
+  // After the close, the line ends at 13:30 at most.
+  const closed = sparkForQuote({ ...q, quote_at: '2026-09-30T14:05:00+08:00' });
+  assert.equal(closed.length, 3, 'a quote outside the session adds no point');
+});
+
 test('1.05 partial daily K only aggregates valid bars from Taiwan today', () => {
   const rows = [
     { date: '2026-09-29', open: 99, high: 100, low: 98, close: 99, volume: 10 },
@@ -94,13 +112,17 @@ test('production has narrow permissions, packaged resources, no test VIP', async
   assert.deepEqual(m.permissions, ['storage', 'alarms', 'notifications', 'identity']);
   assert.equal(m.host_permissions.some(x => x.includes('<all_urls>')), false);
   assert.equal(m.host_permissions.length, 6);
-  assert.equal('oauth2' in m, false, 'source manifest has no placeholder OAuth client');
-  assert.equal('key' in m, false);
+  assert.equal('key' in m, false, 'Web Store manifests must not contain "key"');
   assert.equal(m.content_security_policy.extension_pages, "script-src 'self'; object-src 'none'; base-uri 'none'");
   // auth-config.json may only hold public identifiers.
   const auth = JSON.parse(await readFile(new URL('../auth-config.json', import.meta.url), 'utf8'));
   assert.deepEqual(Object.keys(auth).sort(), ['_comment', 'database_url', 'extension_id', 'extension_public_key', 'firebase_api_key', 'firebase_project_id', 'oauth_client_id']);
   assert.match(auth.oauth_client_id, /^$|^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/);
+  // The source manifest carries the same real client ID (never a placeholder), so any build can sign in.
+  if (m.oauth2) {
+    assert.equal(m.oauth2.client_id, auth.oauth_client_id);
+    assert.deepEqual(m.oauth2.scopes, ['openid', 'email', 'profile']);
+  }
   const { _comment, ...values } = auth;
   assert.doesNotMatch(JSON.stringify(values), /secret|PRIVATE KEY|refresh_token/i);
   const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
@@ -168,6 +190,20 @@ test('matchFilter supports all-pass, price-range, and change-percentage criteria
   assert.equal(matchFilter(250, 2.5, customSettings), false);
   assert.equal(matchFilter(100, 1.5, customSettings), false);
 });
+test('resolveStockInput: only real Taiwan stocks; lookup outage is not treated as "no such stock"', async () => {
+  const yahoo = async q => ({ ok: true, results: q === '6505' ? [{ symbol: '6505', market: 'TW', name: '台塑化' }] : [] });
+  assert.equal((await resolveStockInput('2330', {}, yahoo)).stock.name, '台積電');
+  const found = await resolveStockInput('6505', {}, yahoo);
+  assert.equal(found.status, 'found'); assert.equal(found.stock.market, 'TW');
+  assert.equal((await resolveStockInput('1000', {}, yahoo)).status, 'notFound');
+  assert.equal((await resolveStockInput('不存在的公司', {}, yahoo)).status, 'notFound');
+  const down = async () => ({ ok: false, results: [] });
+  const unverified = await resolveStockInput('00878', {}, down);
+  assert.equal(unverified.status, 'unverified');
+  assert.equal(unverified.stock.symbol, '00878');
+  assert.equal((await resolveStockInput('台積', {}, down)).stock.symbol, '2330', 'built-in names work offline');
+});
+
 test('searchStocks finds stocks by Chinese name, code, prefix, and dynamic codes', () => {
   assert.ok(BUILTIN_STOCKS.length >= 70);
   const byName = searchStocks('台積電');
@@ -181,13 +217,13 @@ test('searchStocks finds stocks by Chinese name, code, prefix, and dynamic codes
   assert.ok(partial.some(s => s.symbol === '2454' && s.name === '聯發科'));
   assert.ok(partial.some(s => s.symbol === '2303' && s.name === '聯電'));
 
-  const unknownStock = searchStocks('1101');
-  assert.equal(unknownStock[0].symbol, '1101');
-  assert.equal(unknownStock[0].market, 'TW');
-
-  const otcStock = searchStocks('6285');
-  assert.equal(otcStock[0].symbol, '6285');
-  assert.equal(otcStock[0].market, 'TWO');
+  // 2.0: numbers that match no known Taiwan stock are not invented as suggestions.
+  assert.equal(searchStocks('1000').some(s => s.symbol === '1000'), false);
+  assert.equal(searchStocks('9999').length, 0);
+  // Symbols seen in the public feed count as known stocks.
+  const fromFeed = searchStocks('1101', { '1101': { name: '台泥' } });
+  assert.equal(fromFeed[0].symbol, '1101');
+  assert.equal(fromFeed[0].market, 'TW');
 
   const withExtra = searchStocks('微星', { '2377': { name: '微星' } });
   assert.equal(withExtra[0].symbol, '2377');

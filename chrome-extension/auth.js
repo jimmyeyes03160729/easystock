@@ -13,13 +13,26 @@ export const AUTH_BLOCKED = 'BLOCKED_BY_OAUTH_CONFIGURATION';
 const PLACEHOLDER = /YOUR_|REPLACE|example/i;
 const ID_TOKEN_MARGIN_MS = 2 * 60 * 1000;
 
-export function authConfigStatus(cfg, manifest = {}) {
+export function authConfigStatus(cfg, manifest = {}, runtimeId = '') {
   const missing = [];
   const clientId = String(manifest?.oauth2?.client_id || '');
   if (!clientId || PLACEHOLDER.test(clientId) || !/\.apps\.googleusercontent\.com$/.test(clientId)) missing.push('oauth2.client_id');
   if (!cfg?.firebase_api_key || PLACEHOLDER.test(cfg.firebase_api_key)) missing.push('firebase_api_key');
   if (!/^https:\/\/[a-z0-9-]+(-default-rtdb)?\.(firebaseio\.com|[a-z0-9-]+\.firebasedatabase\.app)$/.test(String(cfg?.database_url || ''))) missing.push('database_url');
-  return { ready: missing.length === 0, missing, status: missing.length ? AUTH_BLOCKED : 'READY' };
+  // The OAuth client is bound to the Web Store item ID; an unpacked copy with another ID cannot sign in.
+  const expectedId = String(cfg?.extension_id || '');
+  const idMismatch = !!(expectedId && runtimeId && runtimeId !== expectedId);
+  if (idMismatch) missing.push('extension_id');
+  return { ready: missing.length === 0, missing, status: missing.length ? AUTH_BLOCKED : 'READY', runtimeId: runtimeId || '', expectedId, idMismatch };
+}
+
+// One readable sentence for the popup; the ID case says exactly what is wrong and what to load.
+export function describeBlocked(cfg) {
+  if (cfg?.idMismatch) {
+    return `目前擴充功能 ID 是 ${cfg.runtimeId}，Google 登入只認商店 ID ${cfg.expectedId}。請改載入已固定 ID 的測試版（dist/oauth-test）或商店版。`;
+  }
+  const names = { 'oauth2.client_id': 'OAuth Client ID（manifest oauth2）', firebase_api_key: 'Firebase Web API Key', database_url: 'Realtime Database 網址' };
+  return `Google 登入待設定：缺少 ${(cfg?.missing || []).map(m => names[m] || m).join('、')}`;
 }
 
 export class AuthError extends Error {
@@ -36,7 +49,7 @@ function friendlyIdentityError(e) {
 }
 
 // Dependencies are injected so the flow is testable without Chrome or the network.
-export function createAuth({ identity, fetchImpl = fetch, config, manifest, sessionStore, localStore, now = () => Date.now() }) {
+export function createAuth({ identity, fetchImpl = fetch, config, manifest, sessionStore, localStore, runtimeId = '', now = () => Date.now() }) {
   let memorySession = null;
 
   async function readSession() {
@@ -55,7 +68,7 @@ export function createAuth({ identity, fetchImpl = fetch, config, manifest, sess
     try { return (await localStore.get('authProfile'))?.authProfile || null; } catch (_) { return null; }
   }
 
-  function status() { return authConfigStatus(config, manifest); }
+  function status() { return authConfigStatus(config, manifest, runtimeId); }
 
   async function googleToken(interactive) {
     let result;
@@ -98,7 +111,7 @@ export function createAuth({ identity, fetchImpl = fetch, config, manifest, sess
   // retried once — that is how an expired OAuth token recovers without bothering the user.
   async function signIn({ interactive = false } = {}) {
     const cfg = status();
-    if (!cfg.ready) throw new AuthError(AUTH_BLOCKED, `Google 登入待設定：缺少 ${cfg.missing.join('、')}`);
+    if (!cfg.ready) throw new AuthError(AUTH_BLOCKED, describeBlocked(cfg));
     let token = await googleToken(interactive);
     let body;
     try {

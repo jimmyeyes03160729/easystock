@@ -37,10 +37,13 @@ test('popup v2.0 renders safely and wires current controls', async () => {
 });
 
 
-test('1.05 keeps rebound tab and renders shared rebound results', async () => {
+test('2.0 removes 觸底反彈 from Chrome: no tab, no render path, no rebound downloads', async () => {
   const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
   const source = await readFile(new URL('../popup.js', import.meta.url), 'utf8');
-  assert.match(html, /data-group="rebound"/);
-  assert.match(source, /function renderRebound\(list, isCompact\)/);
-  assert.match(source, /view\.bounce/);
+  const bg = await readFile(new URL('../background.js', import.meta.url), 'utf8');
+  const build = await readFile(new URL('../build.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(html, /data-group="rebound"|觸底反彈/);
+  assert.doesNotMatch(source, /renderRebound|view\.bounce/);
+  assert.doesNotMatch(bg, /rebound_feed\.json|rebound-engine|RangeRebound|summary\.json/);
+  assert.doesNotMatch(build, /rebound-engine\.js/);
 });

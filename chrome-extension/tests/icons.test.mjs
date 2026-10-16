@@ -35,27 +35,28 @@ function decodePng(buf) {
   return { width, height, px: (x, y) => [...out.subarray(y * stride + x * 4, y * stride + x * 4 + 4)] };
 }
 
-test('T34 icon16/48/128 decode, match their size, monochrome with a light glyph on a dark tile', async () => {
+test('T34 icon16/48/128 decode, match their size, and show the official 沖 mark large', async () => {
   const manifest = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url), 'utf8'));
   for (const size of [16, 48, 128]) {
     assert.equal(manifest.icons[size], `assets/icon${size}.png`);
     assert.equal(manifest.action.default_icon[size], `assets/icon${size}.png`);
     const img = decodePng(await readFile(new URL(`../assets/icon${size}.png`, import.meta.url)));
     assert.equal(img.width, size); assert.equal(img.height, size);
-    let light = 0, dark = 0, maxChroma = 0;
+    let opaque = 0, white = 0, red = 0;
     for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
       const [r, g, b, a] = img.px(x, y);
-      if (a < 32) continue;
-      maxChroma = Math.max(maxChroma, Math.max(r, g, b) - Math.min(r, g, b));
-      const lum = (r + g + b) / 3;
-      if (lum > 200) light++; else if (lum < 60) dark++;
+      if (a < 128) continue;
+      opaque++;
+      if (r > 190 && g > 190 && b > 190) white++;
+      if (r > 170 && g < 110 && b < 110) red++;
     }
-    assert.ok(maxChroma <= 16, `icon${size} must be black/white (max chroma ${maxChroma})`);
-    assert.ok(light > size * size * 0.05, `icon${size} has a visible glyph`);
-    assert.ok(dark > size * size * 0.2, `icon${size} has a dark tile`);
+    // Tight crop of the official logo: the tile fills the icon (only rounded corners are transparent).
+    assert.ok(opaque > size * size * 0.85, `icon${size} fills the canvas`);
+    // The white 沖 strokes are large, and the red candle from the official mark is present.
+    assert.ok(white > size * size * 0.12, `icon${size} glyph is large (${white} white px)`);
+    assert.ok(red > 0, `icon${size} keeps the red candle`);
   }
-  // 128 px follows the Web Store guidance of transparent padding around ~96 px artwork.
   const big = decodePng(await readFile(new URL('../assets/icon128.png', import.meta.url)));
-  assert.equal(big.px(2, 2)[3], 0);
-  assert.equal(big.px(125, 125)[3], 0);
+  assert.ok(big.px(0, 0)[3] < 64, 'rounded corner');
+  assert.ok(big.px(64, 64)[3] >= 250, 'opaque centre');
 });

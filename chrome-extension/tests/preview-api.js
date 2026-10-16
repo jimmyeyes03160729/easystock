@@ -25,7 +25,7 @@ const fixture = {
   taiex: { price: 47111.26, change: 141.39, change_pct: 0.3, otc_price: 400.26, otc_change: 3.36, otc_change_pct: 0.85, quote_at: iso(now - 20000), source: 'TWSE_MIS' },
   taiexQuality: { status: 'LIVE', source: 'TWSE_MIS', age_seconds: 20, fresh: true },
   settings: { daytrade: true, allDaytradeAlerts: true, filterMode: 'all', pageSize: 5, darkMode: q.get('theme') === 'dark', colorMode: q.get('color') === 'mono' ? 'mono' : 'redgreen', fontSize: 'standard', windowHeight: 500, showSparkline: true, preferredBroker: 'observe' },
-  holidays: [], used: 0, vip: false, vm: false, marketOpen: true, updatedAt: now, paymentURL: '', error: '', live: {}, bounce: [],
+  holidays: [], used: 0, vip: false, vm: false, marketOpen: true, updatedAt: now, paymentURL: '', error: '', live: {},
   account: q.get('account') === 'signedin'
     ? { configured: true, status: 'READY', missing: [], signedIn: true, email: 'demo.user@example.test', uidShort: 'aB3dE9…', sync: { status: 'synced', lastSyncAt: iso(now - 120000), lastError: '', pending: false } }
     : (q.get('account') === 'signedout'

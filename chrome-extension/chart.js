@@ -53,7 +53,7 @@ setText('badge-market', market === 'TWO' ? '上櫃' : '上市');
 const stBadge = document.getElementById('badge-strategy');
 if (stBadge) {
   if (strategyType) {
-    stBadge.textContent = strategyType === 'daytrade' ? '量能觀察' : (strategyType === 'rebound' ? '觸底反彈觀察' : strategyType);
+    stBadge.textContent = strategyType === 'daytrade' ? '量能觀察' : strategyType;
     stBadge.style.display = 'inline-block';
   } else {
     stBadge.style.display = 'none';

@@ -128,13 +128,21 @@ users/{uid}/
 | T30–T31 | 帳號隔離、不可寫公開行情／Admin | CODE_VERIFIED（規則模擬）／LIVE NOT_STARTED（規則未發布） | test_rules.cjs |
 | T32 | 舊深色不被白色預設覆蓋 | CODE_VERIFIED | upgrade.test、sync.test |
 | T33 | 重複同步不多寫 | MOCK_VERIFIED | sync.test：只 GET、不 PUT |
-| T34 | ICON 16/48/128 | CODE_VERIFIED | icons.test（RGBA、尺寸、單色） |
+| T34 | ICON 16/48/128 | CODE_VERIFIED | icons.test（RGBA、尺寸；依 Owner 2026-10-17 指示改用官網 `icon/LOGO.png` 的「沖」字並放大） |
 | T35–T38 | 白色預設、黑白／紅綠、深色＋黑白 | CODE_VERIFIED＋UI 預覽截圖 | upgrade.test、preview fixture |
 | T39–T40 | 「架構」、量多進攻／量減退守 | CODE_VERIFIED | core.test 文案掃描 |
 | T41 | 既有提醒與設定 | CODE_VERIFIED | background.test（原有 18 項）＋upgrade.test |
 | T42 | Popup 版面 | UI 預覽（四種組合、登入狀態）未見溢出；**未在真實 Chrome 安裝驗證** | — |
 
-## 7. Chrome Web Store 準備
+## 7. Owner 2026-10-17 回饋後的調整
+
+- 觸底反彈：自 Chrome 移除（頁籤、清單、`rebound_feed`／`summary`／K 線下載與 `rebound-engine.js` 打包）。後端與官網的 Rebound 策略未更動；`chrome-extension/rebound-engine.js` 保留給 repo 根目錄的 `tests/test_rebound.cjs`。同時減少 Firebase 下載。
+- 搜尋：只列出已知存在的台股（內建清單、Yahoo 台股自動完成、公開行情中的代號）；輸入「1000」等不存在的代號不再出現建議，按新增會顯示「查無此台股」。查詢服務暫時連不上時，格式正確的代號仍可加入並標示「無法驗證」。
+- 走勢：清單迷你走勢依實際時間落在 09:00–13:30 固定軸，並以目前報價收尾；線圖頁分時本來就依時間定位。
+- ICON：改用官網 LOGO 的「沖」字，裁切放大填滿圖示（取代原先的黑白版）。
+- 登入：原始碼 manifest 也帶入真正的 OAuth Client ID；目前擴充功能 ID 不是商店 ID 時，設定頁會直接說明並指示載入 `dist/oauth-test`。
+
+## 8. Chrome Web Store 準備
 
 - ZIP：`pnpm --dir chrome-extension package` → `easystock-chrome-extension-v2.0.0.zip`（可重現建置，SHA-256 寫入 `dist/`），自動檢查必要檔案、無測試／金鑰／`key` 欄位、CSP 只允許 `'self'`。
 - 未設定 OAuth 時的 ZIP 可安裝，但登入顯示「待設定」——**不應以此版上架宣稱支援 Google 同步**。

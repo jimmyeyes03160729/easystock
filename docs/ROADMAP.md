@@ -181,7 +181,9 @@
   - [x] **P0 自選股 BUG**（CODE_VERIFIED）：根因為 popup 丟棄進行中的點擊、舊 snapshot 覆蓋新清單、public_feed 缺 00878 且 1102 為前日 09:00 快照、跨日欄位混用；已修正並以 2330／1102／00878 測試。
   - [x] **P0 指數刷新延遲**（CODE_VERIFIED）：`feeds()` 指數 TTL 分支仍回舊 cache、提醒關閉時背景不刷新、遠端設定失敗與 public_feed 失敗連帶阻擋；已改為獨立 30 秒刷新並標示 STALE。
   - [ ] **Google 登入 + Firebase 同步**（IMPLEMENTED／MOCK_VERIFIED；真實登入 BLOCKED_BY_OAUTH_CONFIGURATION；`users/{uid}` Rules 已提案未發布）：Owner 依 `docs/CHROME_EXTENSION_2_0_GOOGLE_SETUP.md` 完成設定後做 LIVE 驗收。
-  - [x] **黑白「沖」字 ICON**（CODE_VERIFIED）：16/48/128 單色 RGBA PNG，上架包一致。
+  - [x] **「沖」字 ICON**（CODE_VERIFIED）：依 Owner 2026-10-17 指示改用官網 LOGO 的「沖」字並放大，16/48/128 與上架包一致。
+  - [x] **移除觸底反彈**（CODE_VERIFIED，Owner 2026-10-17）：Chrome 不再顯示或下載反彈資料；後端／官網策略不變。
+  - [x] **搜尋只顯示存在的台股**（CODE_VERIFIED，Owner 2026-10-17）：不存在的代號（如 1000）不再出現。
   - [x] **新增股票無確認彈窗**（CODE_VERIFIED）：直接加入；重複顯示「已在自選」、無效代碼 inline 錯誤。
   - [x] **文案調整**（CODE_VERIFIED）：量多進攻／量減退守、「架構」；底層訊號未改。用詞調整不等於完成法遵審查。
   - [x] **漲跌兩種色彩設定**（CODE_VERIFIED）：紅綠／黑白低調，保留 ▲▼ 與 +/-。

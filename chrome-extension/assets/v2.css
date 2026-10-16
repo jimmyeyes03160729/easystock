@@ -68,6 +68,7 @@ body.color-mono .es-spark .es-spark-area { opacity: 0.08; }
 .es-account-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
 .es-account-email { font-size: 11px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .es-account-meta { font-size: 10px; color: var(--es-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.es-account-meta.es-wrap { white-space: normal; overflow: visible; line-height: 1.4; }
 .es-btn { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; color: #0f172a; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
 .es-btn:hover { background: #f1f5f9; }
 .es-btn[disabled] { opacity: 0.5; cursor: not-allowed; }

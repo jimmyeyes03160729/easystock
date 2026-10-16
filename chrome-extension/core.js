@@ -193,31 +193,30 @@ export function searchStocks(query, extraQuotes = {}) {
   const hasName = all.filter(s => s.name.toUpperCase().includes(q) && !exactName.includes(s) && !startName.includes(s));
   const hasSym = all.filter(s => s.symbol.includes(q) && !exactSym.includes(s) && !startSym.includes(s));
 
+  // 2.0: only stocks known to exist (built-in list, Yahoo TW autocomplete results, symbols seen in the
+  // public feed). A typed number that matches nothing (e.g. "1000") is no longer invented as a suggestion.
   const results = [...exactSym, ...exactName, ...startName, ...startSym, ...hasName, ...hasSym];
-
-  const match = /^(\d{4,6}[A-Z]?)(?:\.(TW|TWO))?$/i.exec(q);
-  if (match) {
-    const rawSym = match[1];
-    const m = (match[2] || (rawSym.length === 4 && (rawSym.startsWith('5') || rawSym.startsWith('6') || rawSym.startsWith('8')) ? 'TWO' : 'TW')).toUpperCase();
-    if (!results.some(x => x.symbol === rawSym)) {
-      results.unshift({ symbol: rawSym, name: rawSym, market: m });
-    }
-  }
   return results.slice(0, 15);
 }
 
 export async function searchOnlineStocks(query) {
+  return (await lookupOnlineStocks(query)).results;
+}
+
+// Yahoo TW autocomplete. `ok: false` means the lookup itself failed (network / service), which is
+// different from "looked up, no such Taiwan stock" (`ok: true`, empty results).
+export async function lookupOnlineStocks(query) {
   const q = String(query || '').trim();
-  if (!q) return [];
+  if (!q) return { ok: true, results: [] };
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
   try {
     const url = `https://tw.stock.yahoo.com/_td-stock/api/resource/AutocompleteService;query=${encodeURIComponent(q)}`;
     const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-    if (!res.ok) return [];
+    if (!res.ok) return { ok: false, results: [] };
     const json = await res.json();
     const rawList = json?.ResultSet?.Result;
-    if (!Array.isArray(rawList)) return [];
+    if (!Array.isArray(rawList)) return { ok: false, results: [] };
 
     const results = [];
     const seen = new Set();
@@ -252,12 +251,36 @@ export async function searchOnlineStocks(query) {
       });
     }
     if (results.length > 0) registerStocks(results);
-    return results.slice(0, 15);
+    return { ok: true, results: results.slice(0, 15) };
   } catch {
-    return [];
+    return { ok: false, results: [] };
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Resolve what the user typed into one real Taiwan stock.
+// found: a listed/OTC stock or ETF; notFound: looked up and it does not exist; unverified: the
+// lookup service was unreachable, so a well-formed code is accepted rather than rejected.
+export async function resolveStockInput(input, extraQuotes = {}, lookup = lookupOnlineStocks) {
+  const raw = String(input || '').trim();
+  const upper = raw.toUpperCase();
+  const code = /^(\d{4,6}[A-Z]?)(?:\.(TW|TWO))?$/i.exec(raw);
+  const symbol = code ? code[1].toUpperCase() : '';
+  const localList = searchStocks(raw, extraQuotes);
+  const local = localList.find(s => s.symbol === (symbol || upper) || s.name === raw);
+  if (local) return { status: 'found', stock: local };
+  // A partial name (e.g. "台積") may match a known stock even without the online service.
+  const localName = !code ? localList[0] : null;
+  const online = await lookup(code ? symbol : raw);
+  if (online.ok) {
+    const hit = online.results.find(s => s.symbol === symbol || s.name === raw) || (!code ? (online.results[0] || localName) : null);
+    return hit ? { status: 'found', stock: hit } : { status: 'notFound' };
+  }
+  if (localName) return { status: 'found', stock: localName };
+  if (!code) return { status: 'unverified' };
+  const market = (code[2] || (symbol.length === 4 && /^[568]/.test(symbol) ? 'TWO' : 'TW')).toUpperCase();
+  return { status: 'unverified', stock: { symbol, market, name: symbol } };
 }
 
 // 2.0: a missing or unparseable source time returns null. It must never become "now",
@@ -386,9 +409,17 @@ export function sparkForQuote(q) {
   const ms = quoteStampMs(q);
   if (!finite(ms) || points.length < 2) return null;
   const day = taipei(ms).date;
+  const toMs = t => Number(t) * (Number(t) > 1e12 ? 1 : 1000);
   const rows = points.filter(p => plain(p) && finite(Number(p.close)) && finite(Number(p.timestamp)) &&
-    taipei(Number(p.timestamp) * (Number(p.timestamp) > 1e12 ? 1 : 1000)).date === day);
-  return rows.length >= 2 ? rows : null;
+    taipei(toMs(p.timestamp)).date === day).sort((a, b) => toMs(a.timestamp) - toMs(b.timestamp));
+  if (rows.length < 2) return null;
+  // Spark data comes in 15-minute buckets; end the line at the current quote, at its real time,
+  // so the curve stops where the price is (never stretched to the right edge).
+  const quoteMinute = taipei(ms).minute;
+  if (validQuote(q) && ms > toMs(rows.at(-1).timestamp) && quoteMinute >= TW_SESSION_START_MINUTE && quoteMinute <= TW_SESSION_END_MINUTE) {
+    rows.push({ close: q.price, timestamp: Math.floor(ms / 1000) });
+  }
+  return rows;
 }
 
 // Index data quality: source / quote_at / received_at / age_seconds / fresh / market_status / status.

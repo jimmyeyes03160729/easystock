@@ -18,6 +18,14 @@
     "https://query1.finance.yahoo.com/*",
     "https://query2.finance.yahoo.com/*"
   ],
+  "oauth2": {
+    "client_id": "179809300331-6i8sfhcbp07o6ngsk3qnspebp0ublleh.apps.googleusercontent.com",
+    "scopes": [
+      "openid",
+      "email",
+      "profile"
+    ]
+  },
   "background": {
     "service_worker": "background.js",
     "type": "module"

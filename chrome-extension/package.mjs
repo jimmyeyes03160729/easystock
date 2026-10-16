@@ -28,7 +28,7 @@ export function validatePackage(names, manifestJson) {
   const required = ['manifest.json', manifestJson.background?.service_worker, manifestJson.action?.default_popup, ...Object.values(manifestJson.icons || {}), 'auth.js', 'sync.js', 'core.js', 'assets/v2.css', 'assets/popup.css'];
   for (const r of required) if (!names.includes(r)) errors.push(`missing ${r}`);
   for (const n of names) {
-    if (/(^|\/)(tests?|node_modules|\.git)\//.test(n) || /\.(test\.mjs|map|ps1|zip)$/.test(n) || n === 'vm-config.json') errors.push(`unexpected file ${n}`);
+    if (/(^|\/)(tests?|node_modules|\.git)\//.test(n) || /\.(test\.mjs|map|ps1|zip)$/.test(n) || ['vm-config.json', 'rebound-engine.js'].includes(n)) errors.push(`unexpected file ${n}`);
   }
   if (manifestJson.manifest_version !== 3) errors.push('manifest_version must be 3');
   if ('key' in manifestJson) errors.push('Web Store upload must not contain "key"');

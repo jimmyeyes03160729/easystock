@@ -1,7 +1,7 @@
 // Chrome 2.0 Stage B/C: Google sign-in (mock OAuth) and Firebase sync (mock RTDB REST). Synthetic data only.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createAuth, authConfigStatus, AUTH_BLOCKED } from '../auth.js';
+import { createAuth, authConfigStatus, describeBlocked, AUTH_BLOCKED } from '../auth.js';
 import { createSync, mergeAll, emptyMeta, legacyMeta, touchStocks, touchSettings, readCloud, sameContent, LEGACY_T } from '../sync.js';
 import { defaultState, migrateState, watchlist } from '../core.js';
 
@@ -129,6 +129,18 @@ test('T23 missing OAuth client / API key: BLOCKED_BY_OAUTH_CONFIGURATION, never 
   await assert.rejects(a.signIn({ interactive: true }), e => e.code === AUTH_BLOCKED);
   assert.equal(await a.profile(), null);
   assert.equal(w.requests.length, 0);
+});
+
+test('an unpacked copy with a different Extension ID is blocked with a plain explanation', async () => {
+  const cfg = { ...CFG, extension_id: 'khidbieahmnnandhkcmjceideljgjfid' };
+  const wrong = authConfigStatus(cfg, MANIFEST, 'abcdefghijklmnopabcdefghijklmnop');
+  assert.equal(wrong.ready, false);
+  assert.deepEqual(wrong.missing, ['extension_id']);
+  assert.match(describeBlocked(wrong), /abcdefghijklmnopabcdefghijklmnop/);
+  assert.match(describeBlocked(wrong), /khidbieahmnnandhkcmjceideljgjfid/);
+  assert.match(describeBlocked(wrong), /oauth-test/);
+  assert.equal(authConfigStatus(cfg, MANIFEST, 'khidbieahmnnandhkcmjceideljgjfid').ready, true);
+  assert.match(describeBlocked(authConfigStatus(cfg, {}, 'khidbieahmnnandhkcmjceideljgjfid')), /OAuth Client ID/);
 });
 
 test('T18 Google sign-in yields a Firebase UID; tokens are not written to chrome.storage.local', async () => {

@@ -1,6 +1,5 @@
 import { VM_MODE, CONFIG_URL, FIREBASE_ROOT } from './environment.js';
-import './rebound-engine.js';
-import { createAuth } from './auth.js';
+import { createAuth, describeBlocked } from './auth.js';
 import { createSync, emptyMeta, legacyMeta, touchStocks, touchSettings } from './sync.js';
 import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes, buildPartialDailyBar, mergeQuote, quoteStampMs, quoteStatus, indexQuality, migrateState, COLOR_MODES, SIGNAL_LABELS } from './core.js';
 
@@ -65,7 +64,8 @@ async function auth() {
     config: cfg,
     manifest: manifestInfo(),
     sessionStore: chrome.storage.session,
-    localStore: chrome.storage.local
+    localStore: chrome.storage.local,
+    runtimeId: chrome.runtime?.id || ''
   });
   return authInstance;
 }
@@ -124,7 +124,7 @@ async function accountView() {
   const profile = await a.profile();
   const meta = await readMeta();
   return {
-    configured: cfg.ready, status: cfg.status, missing: cfg.missing,
+    configured: cfg.ready, status: cfg.status, missing: cfg.missing, blockedMessage: cfg.ready ? '' : describeBlocked(cfg),
     signedIn: !!profile?.uid, email: profile?.email || '', displayName: profile?.displayName || '',
     uidShort: profile?.uid ? `${profile.uid.slice(0, 6)}…` : '',
     sync: { status: profile?.uid ? meta.status : 'signed_out', lastSyncAt: meta.lastSyncAt || null, lastError: meta.lastError || '', pending: !!meta.dirty }
@@ -257,143 +257,6 @@ export async function fetchTaiexIndex() {
 }
 
 
-async function computeSharedReboundFallback(now = Date.now()) {
-  const R = globalThis.RangeRebound;
-  if (!R || typeof R.financial !== 'function' || typeof R.technical !== 'function') return [];
-  const [meta, summary] = await Promise.all([
-    json(`${FIREBASE_ROOT}/meta.json`, 300000),
-    json(`${FIREBASE_ROOT}/summary.json`, 3000000)
-  ]);
-  if (!plain(meta) || !plain(summary)) return [];
-  const asof = String(meta.updated_at || '');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(asof)) return [];
-  const releaseId = typeof meta.release_id === 'string' && /^[0-9A-Za-z_-]+$/.test(meta.release_id) ? meta.release_id : '';
-  const generatedAt = meta.published_at || meta.generated_at_utc || new Date(now).toISOString();
-  const candidates = [];
-  for (const [symbol, raw] of Object.entries(summary)) {
-    if (!/^\d{4}$/.test(String(symbol)) || !plain(raw)) continue;
-    const stockRow = { ...raw, symbol: String(symbol) };
-    if (String(stockRow.updated_at || '') !== asof) continue;
-    if (!finite(Number(stockRow.amount)) || Number(stockRow.amount) < 5000000) continue;
-    if (finite(Number(stockRow.kline_count)) && Number(stockRow.kline_count) < R.RULES.minBars) continue;
-    const financial = R.financial(stockRow, asof);
-    if (!financial || ['failed','unsupported'].includes(financial.status)) continue;
-    candidates.push({symbol:String(symbol),stockRow,financial});
-  }
-  const rows=[]; let cursor=0;
-  async function worker(){
-    while(cursor<candidates.length){
-      const item=candidates[cursor++];
-      const base=releaseId ? `${FIREBASE_ROOT}/releases/${releaseId}` : FIREBASE_ROOT;
-      let bars;
-      try { bars=await json(`${base}/kline/${encodeURIComponent(item.symbol)}.json`,900000); }
-      catch(_){
-        if(!releaseId) continue;
-        try { bars=await json(`${FIREBASE_ROOT}/kline/${encodeURIComponent(item.symbol)}.json`,900000); }
-        catch(_){ continue; }
-      }
-      const technical=R.technical(bars,asof,item.stockRow.price);
-      if(!technical?.eligible || item.financial.status!=='passed') continue;
-      const exchange=String(item.stockRow.exchange||'').toUpperCase();
-      rows.push({
-        id:`range-rebound:${asof}:${item.symbol}`,symbol:item.symbol,
-        market:['TPEX','TWO','OTC'].includes(exchange)?'TWO':'TW',
-        name:String(item.stockRow.name||item.symbol),price:Number(item.stockRow.price),
-        change_pct:finite(technical.dailyChangePct)?technical.dailyChangePct:0,
-        reason:Array.isArray(technical.reasons)?technical.reasons.join(' · '):'底部反彈觀察',
-        score:finite(technical.score)?technical.score:undefined,
-        confirmation:technical.confirmation||'pullback',generated_at:generatedAt,
-        quote_at:`${asof}T13:30:00+08:00`,strategy_version:'range-rebound-0.3'
-      });
-    }
-  }
-  await Promise.all([worker(),worker(),worker(),worker()]);
-  rows.sort((a,b)=>Number(a.confirmation!=='breakout')-Number(b.confirmation!=='breakout')||
-    (Number(b.score)||0)-(Number(a.score)||0)||a.symbol.localeCompare(b.symbol));
-  return rows.slice(0,3);
-}
-
-export async function fetchSummaryRebound(now = Date.now()) {
-  if (VM_MODE) {
-    return [
-      { id: 'rebound_5439_vm', symbol: '5439', market: 'TWO', name: '高技', price: 253, change_pct: 2.85, reason: '底部突破確認 · 回測支撐守穩 · 評分 86', generated_at: new Date(now).toISOString(), quote_at: new Date(now).toISOString(), score: 86, confirmation: 'breakout' }
-    ];
-  }
-  const cache = await read('summaryReboundCache', null);
-  if (cache && now >= cache.at && now - cache.at < 1800000 && Array.isArray(cache.items) && cache.items.length > 0) {
-    return cache.items;
-  }
-
-  // 1.03: prefer the published feed; if it is unreadable, compute the same range-rebound rules as the web UI.
-  try {
-    const feed = await json(`${FIREBASE_ROOT}/rebound_feed.json`, 900000);
-    if (plain(feed) && Array.isArray(feed.signals)) {
-      const items = feed.signals.filter(x => plain(x) && typeof x.symbol === 'string').map(x => ({
-        id: String(x.id || `range-rebound:${x.symbol}:${feed.as_of || ''}`),
-        symbol: String(x.symbol),
-        market: x.market === 'TWO' ? 'TWO' : 'TW',
-        name: String(x.name || x.symbol),
-        price: Number(x.price),
-        change_pct: finite(x.change_pct) ? x.change_pct : 0,
-        reason: String(x.reason || '底部反彈觀察'),
-        score: finite(x.score) ? x.score : undefined,
-        confirmation: x.confirmation || 'pullback',
-        generated_at: x.generated_at || feed.generated_at,
-        quote_at: x.quote_at || x.generated_at || feed.generated_at,
-        strategy_version: x.strategy_version || feed.strategy_version
-      })).filter(x => finite(x.price) && x.price > 0);
-      if (items.length || feed.as_of) {
-        await write('summaryReboundCache', { at: now, items });
-        return items;
-      }
-    }
-  } catch (_) {}
-
-
-  // The website already falls back to local range-rebound calculation when the
-  // published feed cannot be read. Chrome must do the same instead of showing empty.
-  try {
-    const computed = await computeSharedReboundFallback(now);
-    if (computed.length) {
-      await write('summaryReboundCache', { at: now, items: computed });
-      return computed;
-    }
-  } catch (_) {}
-
-  // Compatibility fallback for a not-yet-updated backend. No hard-coded symbols.
-  try {
-    const summary = await json(`${FIREBASE_ROOT}/summary.json`, 2500000);
-    if (!plain(summary)) return cache?.items || [];
-    const items = [];
-    for (const [sym, row] of Object.entries(summary)) {
-      const reb = row?.selection?.strategies?.REBOUND;
-      if (!reb?.eligible || !finite(row.price) || row.price <= 0) continue;
-      const market = (sym.length === 4 && (sym.startsWith('5') || sym.startsWith('6') || sym.startsWith('8'))) ? 'TWO' : 'TW';
-      const day = /^\d{4}-\d{2}-\d{2}$/.test(String(row.updated_at || '')) ? row.updated_at : taipei(now).date;
-      items.push({
-        id: `legacy-rebound:${sym}:${day}`,
-        symbol: sym,
-        market,
-        name: row.name ? row.name.replace(/股份有限公司|企業股份有限公司|科技股份有限公司/g, '') : sym,
-        price: row.price,
-        change_pct: finite(row.intraday_ret) ? row.intraday_ret * 100 : (finite(row.change_pct) ? row.change_pct : 0),
-        reason: Array.isArray(reb.reasons) ? reb.reasons.join(' · ') : '日線回踩轉強',
-        score: finite(reb.score) ? reb.score : 80,
-        confirmation: 'pullback',
-        generated_at: `${day}T13:30:00+08:00`,
-        quote_at: `${day}T13:30:00+08:00`,
-        strategy_version: 'legacy-rebound'
-      });
-    }
-    items.sort((x, y) => (y.score || 0) - (x.score || 0));
-    const picked = items.slice(0, 3);
-    if (picked.length) await write('summaryReboundCache', { at: now, items: picked });
-    return picked.length ? picked : (cache?.items || []);
-  } catch (_) {
-    return cache?.items || [];
-  }
-}
-
 // The index has its own TTL and its own cache fields; failure keeps the last value and marks the error.
 export async function refreshTaiexOnly(now = Date.now()) {
   const taiex = await fetchTaiexIndex().catch(() => null);
@@ -475,7 +338,7 @@ export async function handleAccount(message) {
   const a = await auth();
   if (message.type === 'AUTH_SIGN_IN') {
     const cfg = a.status();
-    if (!cfg.ready) throw new Error(`Google 登入待設定（${cfg.status}）：缺少 ${cfg.missing.join('、')}`);
+    if (!cfg.ready) throw new Error(`${describeBlocked(cfg)}（${cfg.status}）`);
     await a.signIn({ interactive: true });
     const result = await (await syncEngine()).syncNow();
     return { ...(await snapshot(false, false, true)), syncResult: result };
@@ -552,9 +415,6 @@ async function feeds(now, forced = false) {
     if (l.status === 'fulfilled' && plain(l.value)) live = l.value;
   }
 
-  let summaryRebound = cache?.summaryRebound || [];
-  try { summaryRebound = await fetchSummaryRebound(now); } catch (_) {}
-
   let closingMap = {}, sparkMap = {}, targets = [];
   if (!VM_MODE) {
     const st = await state().catch(() => null);
@@ -590,7 +450,7 @@ async function feeds(now, forced = false) {
     }
     for (const s of targets) cur.quoteAttempts[s.symbol] = { at: now, ok: !!closingMap[s.symbol] };
     if (live) cur.live = live;
-    cur.summaryRebound = summaryRebound;
+    delete cur.summaryRebound; // 2.0: 觸底反彈 removed from Chrome; drop the old cache field
     if (quotesRaw) cur.at = now;
     cur.watchAt = now;
     return cur;
@@ -790,22 +650,6 @@ async function notify(s, { test = false, vip = false, now = Date.now() } = {}) {
     return true;
   } catch (e) { await write('ledger', original); throw e; }
 }
-function buildBounceView(c, data, now) {
-  const remoteBounce = (c?.bounce_strategy_signals || []).map(x => signal(x, 'rebound', now, false, true)).filter(Boolean);
-  const summaryBounce = (data.summaryRebound || []).map(x => signal(x, 'rebound', now, false, true)).filter(Boolean);
-  const bounceMap = new Map();
-  for (const b of [...summaryBounce, ...remoteBounce]) {
-    if (bounceMap.has(b.symbol)) continue;
-    const q = data.quotes?.[b.symbol];
-    bounceMap.set(b.symbol, {
-      ...b,
-      price: (q && finite(q.price) && q.price > 0) ? q.price : b.price,
-      change_pct: calcChangePct(q) ?? b.change_pct
-    });
-  }
-  return [...bounceMap.values()];
-}
-
 async function snapshot(refresh = false, taiexOnly = false, localOnly = false) {
   let now = Date.now();
   let c = null, configError = '';
@@ -853,7 +697,6 @@ async function snapshot(refresh = false, taiexOnly = false, localOnly = false) {
     error: configError || data.error || '',
     marketOpen: marketOpen(now, holidays),
     used: day.count,
-    bounce: buildBounceView(c, data, now),
     paymentURL: c?.payment_gateway_url || ''
   };
 }

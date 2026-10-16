@@ -261,7 +261,10 @@ test('T17 no real intraday points means no line (no synthetic sparkline or back-
   const otherDay = [{ close: 1, timestamp: at('2026-10-14T09:00:00+08:00') / 1000 }, { close: 2, timestamp: at('2026-10-14T09:15:00+08:00') / 1000 }];
   assert.equal(sparkForQuote({ price: 1, quote_at: new Date(now).toISOString(), spark: otherDay }), null);
   const sameDay = otherDay.map(p => ({ ...p, timestamp: p.timestamp + 86400 }));
-  assert.equal(sparkForQuote({ price: 1, quote_at: new Date(now).toISOString(), spark: sameDay }).length, 2);
+  const line = sparkForQuote({ price: 3, quote_at: new Date(now).toISOString(), spark: sameDay });
+  assert.equal(line.length, 3, 'two real points plus the current quote at its own time');
+  assert.equal(line.at(-1).close, 3);
+  assert.equal(line.at(-1).timestamp, Math.floor(now / 1000));
   const intraday = await bg.fetchIntradayData('1102', 'TW');
   assert.equal(intraday.bars[0].close, 38.0, 'leading empty minutes are skipped, not filled with the previous close');
   assert.equal(intraday.bars.length, 2);
