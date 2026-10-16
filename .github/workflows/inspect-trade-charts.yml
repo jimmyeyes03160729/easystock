@@ -1,0 +1,44 @@
+name: Inspect trade chart data on VM
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Exact verified main commit to synchronize
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: easystock-chart-inspection
+  cancel-in-progress: false
+jobs:
+  homepage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+      - name: Inspect available market chart data
+        env:
+          TARGET_COMMIT: ${{ inputs.commit }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_PORT: ${{ secrets.VM_PORT }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$TARGET_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          key="$RUNNER_TEMP/homepage-key"
+          known="$RUNNER_TEMP/homepage-known-hosts"
+          trap 'rm -f "$key" "$known"' EXIT
+          umask 077
+          printf '%s\n' "$VM_SSH_KEY" > "$key"
+          # Existing trusted VM key; alias avoids publishing the VM address.
+          printf '%s\n' 'easystock-homepage ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE51ETARIdHhLyoYqxBn4E6uZOYUIBgzG2rcv0mQFjLl' > "$known"
+          ssh -p "${VM_PORT:-22}" -i "$key" -o IdentitiesOnly=yes \
+            -o HostKeyAlias=easystock-homepage -o UserKnownHostsFile="$known" \
+            -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=25 \
+            "$VM_USER@$VM_HOST" "python3 -" < deploy/inspect_trade_charts.py
