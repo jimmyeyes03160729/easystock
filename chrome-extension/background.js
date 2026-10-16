@@ -1,14 +1,39 @@
 import { VM_MODE, CONFIG_URL, FIREBASE_ROOT } from './environment.js';
 import './rebound-engine.js';
-import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes, buildPartialDailyBar } from './core.js';
+import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes, buildPartialDailyBar, mergeQuote, quoteStampMs, quoteStatus, indexQuality } from './core.js';
 
 const ALARM = 'easystock-five-minutes';
 let tail = Promise.resolve();
-// All mutations, including simultaneous alarms/messages/clicks, share one queue.
+// All state mutations, including simultaneous alarms/messages/clicks, share one queue.
 export function serial(fn) {
   const task = tail.then(fn);
   tail = task.catch(() => {});
   return task;
+}
+// Market-data cache writes have their own short queue. Network I/O happens outside it, so a
+// slow quote refresh can never delay adding a stock (2.0 fix for "click add, nothing happens").
+let feedTail = Promise.resolve();
+export function feedSerial(fn) {
+  const task = feedTail.then(fn);
+  feedTail = task.catch(() => {});
+  return task;
+}
+function emptyFeed() { return { quotes: {}, live: {}, quoteAttempts: {} }; }
+async function commitFeed(patch) {
+  return feedSerial(async () => {
+    const current = (await read('feedCache', null)) || emptyFeed();
+    const next = await patch(structuredClone(current));
+    await write('feedCache', next);
+    return next;
+  });
+}
+async function cachedHolidays() {
+  const cached = await read('configCache', null);
+  return Array.isArray(cached?.value?.market_holidays) ? cached.value.market_holidays : [];
+}
+const quoteInflight = new Set();
+function broadcast(message) {
+  try { chrome.runtime.sendMessage?.(message)?.catch?.(() => {}); } catch (_) { /* popup closed */ }
 }
 async function read(key, fallback) { return (await chrome.storage.local.get(key))[key] ?? fallback; }
 async function write(key, value) { await chrome.storage.local.set({ [key]: value }); }
@@ -54,8 +79,19 @@ export async function remoteConfig(now = Date.now()) {
   await write('configCache', { at: now, value });
   return value;
 }
+// TWSE MIS gives an epoch-ms `tlong` and a Taipei `d`/`t`; both are source time, never receive time.
+export function misQuoteAt(row) {
+  const tlong = Number(row?.tlong);
+  if (Number.isFinite(tlong) && tlong > 1e12) return new Date(tlong).toISOString();
+  const d = String(row?.d || ''), t = String(row?.t || '');
+  if (/^\d{8}$/.test(d) && /^\d{2}:\d{2}(:\d{2})?$/.test(t)) {
+    return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T${t.length === 5 ? `${t}:00` : t}+08:00`;
+  }
+  return null;
+}
 export async function fetchTaiexIndex() {
   if (VM_MODE) {
+    const stamp = new Date().toISOString();
     return {
       price: 22800.00,
       change: 120.50,
@@ -63,7 +99,8 @@ export async function fetchTaiexIndex() {
       time: '13:30:00',
       otc_price: 268.50,
       otc_change: 1.20,
-      otc_change_pct: 0.45
+      otc_change_pct: 0.45,
+      source: 'VM_SAMPLE', quote_at: stamp, received_at: stamp
     };
   }
   const controller = new AbortController();
@@ -93,6 +130,7 @@ export async function fetchTaiexIndex() {
           change,
           change_pct,
           time: tse.t || '',
+          quote_at: misQuoteAt(tse),
           high: parseFloat(tse.h) || price,
           low: parseFloat(tse.l) || price
         };
@@ -123,7 +161,10 @@ export async function fetchTaiexIndex() {
       low: tseData.low,
       otc_price: otcData?.price,
       otc_change: otcData?.change,
-      otc_change_pct: otcData?.change_pct
+      otc_change_pct: otcData?.change_pct,
+      source: 'TWSE_MIS',
+      quote_at: tseData.quote_at,
+      received_at: new Date().toISOString()
     };
   } catch {
     return null;
@@ -270,103 +311,173 @@ export async function fetchSummaryRebound(now = Date.now()) {
   }
 }
 
-async function refreshTaiexOnly(now = Date.now()) {
-  const cache = await read('feedCache', null);
+// The index has its own TTL and its own cache fields; failure keeps the last value and marks the error.
+export async function refreshTaiexOnly(now = Date.now()) {
   const taiex = await fetchTaiexIndex().catch(() => null);
-  if (!taiex) return cache || { quotes: {}, live: {}, taiex: null, at: now };
-  const value = { ...(cache || { quotes: {}, live: {} }), taiex, taiexAt: now, at: cache?.at || now };
-  await write('feedCache', value);
+  const value = await commitFeed(cur => {
+    cur.taiexAttemptAt = now;
+    if (taiex) {
+      const oldMs = quoteStampMs(cur.taiex), newMs = quoteStampMs(taiex);
+      if (!cur.taiex || !finite(oldMs) || !finite(newMs) || newMs >= oldMs) cur.taiex = taiex;
+      cur.taiexAt = now;
+      cur.taiexError = '';
+    } else {
+      cur.taiexError = '指數來源暫時無法連線';
+    }
+    return cur;
+  });
   safe(updateMarketStatusIcon(value, now));
   return value;
+}
+function taiexDue(cache, now) {
+  return !cache?.taiexAttemptAt || now < cache.taiexAttemptAt || now - cache.taiexAttemptAt >= TAIEX_TTL;
+}
+
+// Watchlist quotes (Yahoo) and real sparklines for specific stocks; persisted, never popup-memory only.
+export async function refreshSymbolQuotes(stocks, now = Date.now()) {
+  const list = (Array.isArray(stocks) ? stocks : []).filter(s => s && SYMBOL.test(s.symbol));
+  if (!list.length || VM_MODE) return read('feedCache', null);
+  for (const s of list) quoteInflight.add(s.symbol);
+  try {
+    const [closingMap, sparkMap] = await Promise.all([
+      fetchQuotesWithMarketFallback(list),
+      fetchStockSparklines(list).catch(() => ({}))
+    ]);
+    const value = await commitFeed(cur => {
+      cur.quotes ||= {}; cur.quoteAttempts ||= {};
+      for (const s of list) {
+        const item = closingMap[s.symbol];
+        if (item) cur.quotes[s.symbol] = mergeQuote(cur.quotes[s.symbol], item);
+        if (cur.quotes[s.symbol] && Array.isArray(sparkMap[s.symbol])) cur.quotes[s.symbol] = { ...cur.quotes[s.symbol], spark: sparkMap[s.symbol] };
+        cur.quoteAttempts[s.symbol] = { at: now, ok: !!item };
+      }
+      cur.watchAt = now;
+      return cur;
+    });
+    broadcast({ type: 'QUOTES_UPDATED', symbols: list.map(s => s.symbol) });
+    return value;
+  } finally {
+    for (const s of list) quoteInflight.delete(s.symbol);
+  }
+}
+// Correct a guessed market (TW/TWO) or a placeholder name once a real quote proves otherwise.
+async function reconcileStocks(fixes) {
+  if (!fixes.length) return;
+  await serial(async () => {
+    const st = await state();
+    let changed = false;
+    for (const fix of fixes) {
+      const row = st.stocks.find(x => x.symbol === fix.symbol);
+      if (!row) continue;
+      if (fix.market && ['TW', 'TWO'].includes(fix.market) && row.market !== fix.market) { row.market = fix.market; changed = true; }
+      const name = typeof fix.name === 'string' ? fix.name.trim().slice(0, 60) : '';
+      if (name && /^\d{4,6}[A-Z]?$/.test(row.name) && name !== row.name) { row.name = name; changed = true; }
+    }
+    if (changed) { st.rev = (st.rev || 0) + 1; await write('state', st); broadcast({ type: 'STATE_UPDATED' }); }
+  });
+}
+export async function fetchQuotesWithMarketFallback(list) {
+  const map = await fetchStockClosingQuotes(list).catch(() => ({}));
+  const fixes = [];
+  const missing = list.filter(s => !map[s.symbol]);
+  if (missing.length) {
+    const flipped = missing.map(s => ({ symbol: s.symbol, market: s.market === 'TWO' ? 'TW' : 'TWO' }));
+    const alt = await fetchStockClosingQuotes(flipped).catch(() => ({}));
+    for (const s of flipped) if (alt[s.symbol]) { map[s.symbol] = alt[s.symbol]; fixes.push({ symbol: s.symbol, market: s.market }); }
+  }
+  for (const s of list) {
+    const name = map[s.symbol]?.name;
+    if (name && /^\d{4,6}[A-Z]?$/.test(String(s.name || '')) && name !== s.symbol) fixes.push({ symbol: s.symbol, name });
+  }
+  // Not awaited: callers may already be inside the state queue (poll), which would deadlock.
+  if (fixes.length) safe(reconcileStocks(fixes));
+  return map;
+}
+function queueQuoteRefresh(stocks) {
+  const list = (stocks || []).filter(s => s && !quoteInflight.has(s.symbol));
+  if (list.length) safe(refreshSymbolQuotes(list));
 }
 
 async function feeds(now, forced = false) {
   const cache = await read('feedCache', null);
+  const open = marketOpen(now);
 
-  if (!forced && cache && now >= cache.at && now - cache.at < TTL) {
-    // The broad feed may be cached for five minutes, but the market index is not.
-    if (marketOpen(now) && (!cache.taiexAt || now - cache.taiexAt >= TAIEX_TTL)) {
-      return cache;
-    }
+  if (!forced && cache?.at && now >= cache.at && now - cache.at < TTL) {
+    // The broad feed may be cached for five minutes, but the market index is not (2.0 fix:
+    // 1.05 returned the old cache in both branches, so the index waited for the 5-minute feed).
+    if (open && taiexDue(cache, now)) return refreshTaiexOnly(now);
     return cache;
   }
 
   const at = await read('feedAttempt', 0);
   if (!forced && at && now >= at && now - at < TTL) {
-    return { ...(cache || { quotes: {}, live: {} }), error: '行情暫時無法更新' };
+    const base = open && taiexDue(cache, now) ? await refreshTaiexOnly(now) : (cache || emptyFeed());
+    return { ...base, error: '行情暫時無法更新' };
   }
-  if (!forced && !marketOpen(now)) return cache || { quotes: {}, live: {} };
+  if (!forced && !open) return cache || emptyFeed();
 
   await write('feedAttempt', now);
-  try {
-    const [quotesRaw, live, taiex] = VM_MODE ?
-      [{ '2330': { name: '台積電（VM 示例）', price: 1000, change_pct: 1.25, updated_at: new Date(now).toISOString(), quote_at: new Date(now).toISOString() } }, {}, { price: 22800.00, change: 120.50, change_pct: 0.53, time: '13:30:00' }] :
-      await Promise.all([
-        json(`${FIREBASE_ROOT}/public_feed.json`),
-        json(`${FIREBASE_ROOT}/intraday_live.json`),
-        fetchTaiexIndex().catch(() => null)
-      ]);
-    if (!plain(quotesRaw) || !plain(live)) throw new Error('行情格式不符');
+  // Index refresh runs independently: a broken public feed must not discard a good index value.
+  const indexTask = refreshTaiexOnly(now).catch(() => null);
+  let quotesRaw = null, live = null, feedError = '';
+  if (VM_MODE) {
+    const stamp = new Date(now).toISOString();
+    quotesRaw = { '2330': { name: '台積電（VM 示例）', price: 1000, change_pct: 1.25, updated_at: stamp, quote_at: stamp } };
+    live = {};
+  } else {
+    const [q, l] = await Promise.allSettled([
+      json(`${FIREBASE_ROOT}/public_feed.json`),
+      json(`${FIREBASE_ROOT}/intraday_live.json`)
+    ]);
+    if (q.status === 'fulfilled' && plain(q.value)) quotesRaw = q.value; else feedError = '行情暫時無法更新；舊報價僅供檢視';
+    if (l.status === 'fulfilled' && plain(l.value)) live = l.value;
+  }
 
-    const quotes = structuredClone(quotesRaw);
-    let summaryRebound = cache?.summaryRebound || [];
-    try { summaryRebound = await fetchSummaryRebound(now); } catch (_) {}
+  let summaryRebound = cache?.summaryRebound || [];
+  try { summaryRebound = await fetchSummaryRebound(now); } catch (_) {}
 
-    if (!VM_MODE) {
-      const st = await state().catch(() => null);
-      if (st?.stocks?.length) {
-        const targets = st.stocks.filter(stockRow => {
-          const q = quotes[stockRow.symbol];
-          const stamp = q?.quote_at || q?.updated_at;
-          return forced || !q || !finite(q.price) || !finite(calcChangePct(q)) || !fresh(stamp, now, QUOTE_FRESH_MS);
-        });
-        if (targets.length) {
-          try {
-            const closingMap = await fetchStockClosingQuotes(targets);
-            for (const [sym, item] of Object.entries(closingMap)) {
-              const old = quotes[sym];
-              const oldStamp = old?.quote_at || old?.updated_at;
-              if (forced || !old || !fresh(oldStamp, now, QUOTE_FRESH_MS)) {
-                quotes[sym] = { ...(old || {}), ...item, name: old?.name || item.name };
-              } else {
-                if (!finite(calcChangePct(old))) {
-                  old.change_pct = item.change_pct;
-                  old.change = item.change;
-                  old.previous_close = item.previous_close;
-                }
-                if (!old.high && item.high) old.high = item.high;
-                if (!old.low && item.low) old.low = item.low;
-                if (!old.open && item.open) old.open = item.open;
-                if (!old.time && item.time) old.time = item.time;
-                if (!old.quote_at && item.quote_at) old.quote_at = item.quote_at;
-              }
-            }
-          } catch (_) {}
-        }
-
-        try {
-          const sparkMap = await fetchStockSparklines(st.stocks);
-          for (const [sym, points] of Object.entries(sparkMap)) {
-            if (quotes[sym]) quotes[sym].spark = points;
-          }
-        } catch (_) {}
+  let closingMap = {}, sparkMap = {}, targets = [];
+  if (!VM_MODE) {
+    const st = await state().catch(() => null);
+    const holidays = await cachedHolidays();
+    if (st?.stocks?.length) {
+      const known = { ...(cache?.quotes || {}) };
+      if (quotesRaw) for (const [sym, q] of Object.entries(quotesRaw)) known[sym] = mergeQuote(known[sym], q);
+      targets = st.stocks.filter(row => {
+        const q = known[row.symbol];
+        const status = quoteStatus(q, now, { holidays }).state;
+        return forced || !['live', 'close'].includes(status) || !finite(calcChangePct(q)) ||
+          (open && !fresh(q?.quote_at || q?.updated_at, now, QUOTE_FRESH_MS));
+      });
+      for (const s of targets) quoteInflight.add(s.symbol);
+      try {
+        [closingMap, sparkMap] = await Promise.all([
+          targets.length ? fetchQuotesWithMarketFallback(targets) : {},
+          fetchStockSparklines(st.stocks).catch(() => ({}))
+        ]);
+      } finally {
+        for (const s of targets) quoteInflight.delete(s.symbol);
       }
     }
-
-    const value = {
-      at: now,
-      quotes,
-      live,
-      taiex: taiex || cache?.taiex || null,
-      taiexAt: taiex ? now : (cache?.taiexAt || null),
-      summaryRebound
-    };
-    await write('feedCache', value);
-    safe(updateMarketStatusIcon(value, now));
-    return value;
-  } catch {
-    return { ...(cache || { quotes: {}, live: {} }), error: '行情暫時無法更新；舊報價僅供檢視' };
   }
+  await indexTask;
+
+  const value = await commitFeed(cur => {
+    cur.quotes ||= {}; cur.quoteAttempts ||= {};
+    if (quotesRaw) for (const [sym, q] of Object.entries(quotesRaw)) cur.quotes[sym] = mergeQuote(cur.quotes[sym], q);
+    for (const [sym, item] of Object.entries(closingMap)) cur.quotes[sym] = mergeQuote(cur.quotes[sym], item);
+    for (const [sym, points] of Object.entries(sparkMap)) {
+      if (cur.quotes[sym] && Array.isArray(points)) cur.quotes[sym] = { ...cur.quotes[sym], spark: points };
+    }
+    for (const s of targets) cur.quoteAttempts[s.symbol] = { at: now, ok: !!closingMap[s.symbol] };
+    if (live) cur.live = live;
+    cur.summaryRebound = summaryRebound;
+    if (quotesRaw) cur.at = now;
+    cur.watchAt = now;
+    return cur;
+  });
+  safe(updateMarketStatusIcon(value, now));
+  return feedError ? { ...value, error: feedError } : value;
 }
 
 export async function updateMarketStatusIcon(data, now = Date.now(), explicitTaiex = null) {
@@ -577,7 +688,7 @@ function buildBounceView(c, data, now) {
 }
 
 async function snapshot(refresh = false, taiexOnly = false, localOnly = false) {
-  const now = Date.now(), st = await state();
+  let now = Date.now();
   let c = null, configError = '';
 
   if (localOnly) {
@@ -590,22 +701,32 @@ async function snapshot(refresh = false, taiexOnly = false, localOnly = false) {
   let data;
   if (taiexOnly) data = await refreshTaiexOnly(now);
   else if (refresh) data = await feeds(now, true);
-  else data = await read('feedCache', { quotes: {}, live: {} });
+  else data = (await read('feedCache', null)) || emptyFeed();
 
+  // State is read after network I/O: a refresh that started before an ADD must not return
+  // (and let the popup render) the older watchlist.
+  now = Date.now();
+  const st = await state();
+  const holidays = c?.market_holidays || await cachedHolidays();
   const day = ledger(await read('ledger', null), now);
   safe(updateMarketStatusIcon(data, now));
 
   return {
+    rev: st.rev || 0,
     stocks: st.stocks,
     settings: st.settings,
     vip: isVIP(c, st.vipHash),
     vm: VM_MODE,
     quotes: data.quotes || {},
+    quoteAttempts: data.quoteAttempts || {},
+    pendingQuotes: [...quoteInflight],
     live: data.live || {},
     taiex: data.taiex || null,
+    taiexQuality: indexQuality(data.taiex, now, { holidays, lastError: data.taiexError || '' }),
+    holidays,
     updatedAt: data.at || null,
     error: configError || data.error || '',
-    marketOpen: marketOpen(now, c?.market_holidays),
+    marketOpen: marketOpen(now, holidays),
     used: day.count,
     bounce: buildBounceView(c, data, now),
     paymentURL: c?.payment_gateway_url || ''
@@ -615,10 +736,19 @@ async function snapshot(refresh = false, taiexOnly = false, localOnly = false) {
 export async function poll() {
   const now = Date.now();
   if (VM_MODE || !marketOpen(now)) return; // VM mode never auto-generates trading signals.
+  let c = null, configError = null;
+  try { c = await remoteConfig(now); } catch (e) { configError = e; }
+  const holidays = c?.market_holidays || await cachedHolidays();
+  if (!marketOpen(now, holidays)) return;
+  // 2.0: the index refresh no longer depends on alert settings or on the remote config fetch.
+  if (taiexDue(await read('feedCache', null), now)) await refreshTaiexOnly(now).catch(() => null);
   const st = await state();
-  if (!st.settings.daytrade) return;
-  const c = await remoteConfig(now);
-  if (!marketOpen(now, c.market_holidays)) return;
+  if (!st.settings.daytrade) {
+    const cache = await read('feedCache', null);
+    if (st.stocks.length && (!cache?.watchAt || now - cache.watchAt >= TTL)) await refreshSymbolQuotes(st.stocks, now).catch(() => null);
+    return;
+  }
+  if (configError) throw configError;
   const data = await feeds(now);
   safe(updateMarketStatusIcon(data, now));
   const allDaytrade = st.settings.allDaytradeAlerts !== false;
@@ -669,9 +799,13 @@ export async function processLiveData(live) {
     }
   }
 }
+// Read-only / network-only messages never enter the state mutation queue.
+export const READ_ONLY_MESSAGES = new Set(['BOOTSTRAP', 'SNAPSHOT', 'FETCH_INTRADAY', 'FETCH_DAILY']);
 export async function handle(message) {
   if (!plain(message)) throw new Error('訊息格式不正確');
   const st = await state();
+  let notice = '';
+  let quoteTargets = [];
   switch (message.type) {
     case 'BOOTSTRAP': return snapshot(false, false, true);
     case 'SNAPSHOT': return snapshot(message.refresh === true, message.taiexOnly === true, false);
@@ -681,12 +815,15 @@ export async function handle(message) {
       if (existing) {
         const combined = [...new Set([...existing.groups, ...row.groups])];
         if (combined.length === existing.groups.length) {
-          throw new Error('此股票已在自選清單');
+          // Duplicate is a notice, not a failure, and does not write.
+          return { ...(await snapshot()), notice: 'DUPLICATE' };
         }
         existing.groups = combined;
       } else {
         st.stocks = watchlist([...st.stocks, row]);
+        quoteTargets = [row];
       }
+      notice = 'ADDED';
       break;
     }
     case 'ADD_BATCH': {
@@ -703,6 +840,7 @@ export async function handle(message) {
           }
         } else {
           st.stocks.push(item);
+          quoteTargets.push(item);
           addedCount++;
         }
       }
@@ -725,7 +863,7 @@ export async function handle(message) {
       st.settings[message.strategy] = message.enabled !== undefined ? message.enabled : message.value;
       break;
     }
-    case 'IMPORT': st.stocks = watchlist(message.stocks); break;
+    case 'IMPORT': st.stocks = watchlist(message.stocks); quoteTargets = st.stocks; break;
     case 'VIP': {
       if (typeof message.key !== 'string' || !message.key.trim() || message.key.length > 128) throw new Error('授權碼格式不正確');
       const hash = await sha256(message.key.trim());
@@ -770,8 +908,12 @@ export async function handle(message) {
     }
     default: throw new Error('不支援的操作');
   }
+  st.rev = (st.rev || 0) + 1;
   await write('state', st);
-  return snapshot();
+  // Saved first, shown first; the quote is fetched afterwards and pushed via QUOTES_UPDATED.
+  if (quoteTargets.length) queueQuoteRefresh(quoteTargets);
+  const result = await snapshot();
+  return notice ? { ...result, notice } : result;
 }
 
 export async function fetchIntradayData(sym, mkt) {
@@ -800,7 +942,8 @@ export async function fetchIntradayData(sym, mkt) {
 
       const bars = [];
       let cumAmount = 0, cumVol = 0;
-      let lastValidPrice = previousClose || regularPrice || 0;
+      // Minutes before the first real trade are skipped, not back-filled from the previous close.
+      let lastValidPrice = null;
 
       for (let i = 0; i < timestamps.length; i++) {
         const ts = timestamps[i];
@@ -890,7 +1033,7 @@ export async function fetchDailyData(sym, mkt) {
         const quotes = result.indicators?.quote?.[0];
         if (!Array.isArray(timestamps) || !quotes) continue;
 
-        const bars = [];
+        let bars = [];
         let lastValidPrice = null;
         for (let i = 0; i < timestamps.length; i++) {
           const ts = timestamps[i];
@@ -1037,7 +1180,8 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   }
   const allowed = [chrome.runtime.getURL('popup.html'), chrome.runtime.getURL('chart.html')];
   if (!allowed.some(u => sender.url?.startsWith(u))) return false;
-  serial(() => handle(message)).then(value => respond({ ok: true, value }), e => respond({ ok: false, error: e.message || '操作失敗' }));
+  const run = READ_ONLY_MESSAGES.has(message?.type) ? handle(message) : serial(() => handle(message));
+  run.then(value => respond({ ok: true, value }), e => respond({ ok: false, error: e.message || '操作失敗' }));
   return true;
 });
 chrome.alarms.onAlarm.addListener(a => { if (a.name === ALARM) safe(serial(poll)); });

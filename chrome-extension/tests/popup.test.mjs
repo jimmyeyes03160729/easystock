@@ -18,7 +18,7 @@ test('popup v1.05 renders safely and wires current controls', async () => {
     if (message.type === 'SETTINGS') state.settings[message.strategy] = message.enabled ?? message.value;
     return structuredClone(state);
   } }, tabs: { create: async () => {} } };
-  for (const key of ['SYMBOL','GROUPS','QUOTE_FRESH_MS','finite','fresh','formatTaipeiQuoteTime','watchlist','chartURL','searchStocks','searchOnlineStocks','calcChangePct','fetchStockClosingQuotes','formatTelegramEntry','formatTelegramExit','BROKERS','getBroker']) w[key] = core[key];
+  for (const [key, value] of Object.entries(core)) w[key] = value;
   w.icons = () => {};
   await w.eval(`(async()=>{${source.replace(/^import .*;\r?\n/gm, '')}})()`);
   await new Promise(resolve => setTimeout(resolve, 10));

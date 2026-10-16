@@ -1,12 +1,21 @@
-import { SYMBOL, GROUPS, QUOTE_FRESH_MS, finite, fresh, formatTaipeiQuoteTime, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, fetchStockClosingQuotes, formatTelegramEntry, formatTelegramExit, BROKERS, getBroker, sparklineSessionX } from './core.js';
+import { SYMBOL, GROUPS, finite, formatTaipeiQuoteTime, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, formatTelegramEntry, formatTelegramExit, BROKERS, getBroker, sparklineSessionX, quoteStatus, quoteStampMs, sparkForQuote, taipei } from './core.js';
 import { icons } from './icons.js';
 
 const $ = id => (typeof document !== 'undefined' && document ? document.getElementById(id) : null);
-let view, group = 'watchlist', pending = false;
+let view, group = 'watchlist';
 let searchDebounce = null;
-let enriching = false;
 let toastTimer = null;
+let feedbackTimer = null;
 let currentWatchlistPage = 1;
+let busy = 0;
+// Rows shown immediately after "新增" while the background confirms the save.
+const optimistic = new Map();
+const inflight = new Map();
+
+// Up / down / flat as CSS classes; the actual colors come from the colorMode theme (v2.css).
+function tone(value) {
+  return finite(value) && value > 0 ? 'es-up' : (finite(value) && value < 0 ? 'es-down' : 'es-flat');
+}
 
 function el(tag, text, className = '') {
   const node = document.createElement(tag); node.textContent = text; node.className = className; return node;
@@ -20,14 +29,21 @@ function status(text, error = false) {
   $('action-message').classList.toggle('text-red-600', error);
 }
 
-function quoteDisplayTime(q) {
-  const stamp = q?.quote_at || q?.updated_at;
-  if (typeof stamp === 'string' && /(Z|[+-]\d{2}:\d{2})$/.test(stamp) && Number.isFinite(Date.parse(stamp))) {
-    return formatTaipeiQuoteTime(stamp);
-  }
-  const raw = String(q?.time || '').trim();
-  const match = raw.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
-  return match ? `${String(match[1]).padStart(2, '0')}:${match[2]}` : '--:--';
+// Time column: HH:MM for today's quotes, MM/DD for an earlier session, "資料過期" when stale.
+function quoteTimeCell(q, qs, now = Date.now()) {
+  if (qs.state === 'loading' || qs.state === 'unavailable') return '--:--';
+  if (qs.state === 'stale') return '資料過期';
+  const ms = quoteStampMs(q);
+  if (!finite(ms)) return '--:--';
+  const day = taipei(ms).date;
+  if (day !== taipei(now).date) return `${day.slice(5, 7)}/${day.slice(8, 10)}`;
+  return formatTaipeiQuoteTime(new Date(ms).toISOString());
+}
+
+function quoteTitle(q, qs) {
+  const ms = quoteStampMs(q);
+  const when = finite(ms) ? new Date(ms).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '無來源時間';
+  return `${qs.label}｜報價時間 ${when}（台北）${q?.source ? `｜來源 ${q.source}` : ''}`;
 }
 
 // 即時 In-App 彈窗通知 (雙重保險：即使 Windows 吃掉通知，小工具內也絕對能看見彈窗！)
@@ -97,28 +113,45 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
   });
 }
 
+function taiexTimeText(tInfo) {
+  const ms = quoteStampMs(tInfo);
+  if (finite(ms)) return new Date(ms).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
+  return String(tInfo?.time || '').match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/)?.[0] || '--:--:--';
+}
+
 function renderTaiex() {
   const tInfo = view?.taiex;
+  const quality = view?.taiexQuality || null;
   const banner = $('taiex-banner');
+  const timeEl = $('taiex-data-time');
   if (!tInfo || !finite(tInfo.price)) {
     $('taiex-price').textContent = '-';
-    $('taiex-price').className = 'font-bold text-slate-900';
-    $('taiex-change').textContent = '-';
+    $('taiex-price').className = 'font-bold es-flat';
+    $('taiex-change').textContent = quality?.status === 'UNAVAILABLE' && view?.marketOpen ? '暫無資料' : '-';
     $('otc-price').textContent = '-';
-    $('otc-price').className = 'font-medium text-slate-700';
+    $('otc-price').className = 'font-medium es-flat';
     $('otc-change').textContent = '-';
-    if ($('taiex-data-time')) $('taiex-data-time').textContent = '資料時間 --:--:--';
-    if (banner) banner.className = 'flex items-center justify-between px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[11px]';
+    if (timeEl) { timeEl.textContent = '資料時間 --:--:--'; timeEl.className = 'text-[9px] font-mono shrink-0 es-muted'; }
+    if (banner) banner.className = 'flex items-center justify-between px-3 py-1.5 border-b border-slate-100 text-[11px] es-banner';
     return;
   }
   const isUp = tInfo.change > 0;
   const isDown = tInfo.change < 0;
   const arrow = isUp ? '▲ ' : (isDown ? '▼ ' : '');
   const sign = isUp ? '+' : '';
-  const colorClass = isUp ? 'text-red-600' : (isDown ? 'text-emerald-600' : 'text-slate-600');
+  const colorClass = tone(tInfo.change);
 
-  const sourceTime = String(tInfo.time || '').match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/)?.[0] || '--:--:--';
-  if ($('taiex-data-time')) $('taiex-data-time').textContent = `資料時間 ${sourceTime}`;
+  // Index data quality: an old value stays visible but is never presented as live.
+  const stale = quality?.status === 'STALE';
+  if (timeEl) {
+    timeEl.textContent = `${stale ? '資料過期 ' : (quality?.status === 'CLOSE' ? '收盤 ' : '資料時間 ')}${taiexTimeText(tInfo)}`;
+    timeEl.className = `text-[9px] font-mono shrink-0 ${stale ? 'es-stale' : 'es-muted'}`;
+    timeEl.title = [
+      `來源 ${quality?.source || tInfo.source || 'TWSE_MIS'}`,
+      quality?.age_seconds != null ? `資料年齡 ${quality.age_seconds} 秒` : '',
+      quality?.lastError || ''
+    ].filter(Boolean).join(' · ');
+  }
   $('taiex-price').textContent = tInfo.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   $('taiex-price').className = `font-bold ${colorClass}`;
   $('taiex-change').textContent = `${arrow}${sign}${tInfo.change.toFixed(2)} (${sign}${tInfo.change_pct.toFixed(2)}%)`;
@@ -129,17 +162,17 @@ function renderTaiex() {
     const otcDown = tInfo.otc_change < 0;
     const oArrow = otcUp ? '▲ ' : (otcDown ? '▼ ' : '');
     const oSign = otcUp ? '+' : (otcDown ? '-' : '');
-    const oColorClass = otcUp ? 'text-red-600' : (otcDown ? 'text-emerald-600' : 'text-slate-600');
+    const oColorClass = tone(tInfo.otc_change);
+    const oPct = finite(tInfo.otc_change_pct) ? Math.abs(tInfo.otc_change_pct) : Math.abs(tInfo.otc_change);
 
     $('otc-price').textContent = tInfo.otc_price.toFixed(2);
     $('otc-price').className = `font-medium ${oColorClass}`;
-    $('otc-change').textContent = `${oArrow}${oSign}${Math.abs(tInfo.otc_change).toFixed(2)}%`;
+    $('otc-change').textContent = `${oArrow}${oSign}${oPct.toFixed(2)}%`;
     $('otc-change').className = `font-medium ${oColorClass}`;
   }
 
   if (banner) {
-    const bgClass = isUp ? 'bg-red-50/40 border-red-100' : 'bg-emerald-50/40 border-emerald-100';
-    banner.className = `flex items-center justify-between px-3 py-1.5 ${bgClass} border-b text-[11px] transition-colors cursor-pointer`;
+    banner.className = `flex items-center justify-between px-3 py-1.5 border-b text-[11px] transition-colors cursor-pointer es-banner ${isUp ? 'es-banner-up' : (isDown ? 'es-banner-down' : '')}`;
     banner.title = '點擊查看 Yahoo 大盤加權指數即時走勢';
     banner.onclick = () => {
       chrome.tabs.create({ url: 'https://tw.stock.yahoo.com/quote/%5ETWII' });
@@ -148,21 +181,72 @@ function renderTaiex() {
 }
 
 async function send(message) {
-  const response = await chrome.runtime.sendMessage(message);
+  let response;
+  try {
+    response = await chrome.runtime.sendMessage(message);
+  } catch (e) {
+    // A suspended MV3 worker can miss the first message while it restarts; retry once.
+    await new Promise(resolve => setTimeout(resolve, 150));
+    response = await chrome.runtime.sendMessage(message);
+  }
   if (!response?.ok) throw new Error(response?.error || '背景服務沒有回應，請重新載入擴充功能');
   return response.value;
 }
 
+const MARKET_FIELDS = ['quotes', 'quoteAttempts', 'pendingQuotes', 'live', 'taiex', 'taiexQuality', 'holidays', 'updatedAt', 'error', 'marketOpen', 'bounce', 'used'];
+function withOptimistic(stocks) {
+  const rows = [...(stocks || [])];
+  for (const [symbol, row] of optimistic) if (!rows.some(x => x.symbol === symbol)) rows.push(row);
+  return rows;
+}
+// Responses can arrive out of order. A snapshot taken before a newer state revision only
+// contributes market data, so an older watchlist can never replace a just-added stock.
+function applyResult(result) {
+  if (!result || !Array.isArray(result.stocks)) return;
+  if (view && (result.rev ?? 0) < (view.rev ?? 0)) {
+    for (const key of MARKET_FIELDS) if (key in result) view[key] = result[key];
+  } else {
+    view = { ...result };
+  }
+  view.stocks = withOptimistic(view.stocks);
+  render();
+}
+
+// Never silently drops a request (1.05 ignored clicks while any request was pending).
+// Identical read requests share one in-flight promise; errors are shown, not thrown.
 async function act(message, success = '') {
-  if (pending) return;
-  pending = true; document.body.setAttribute('aria-busy', 'true');
-  try {
-    const result = await send(message);
-    if (result.stocks) { view = result; render(); }
-    if (success) status(success);
-    return result;
-  } catch (e) { status(e.message, true); }
-  finally { pending = false; document.body.removeAttribute('aria-busy'); }
+  const readKey = ['SNAPSHOT', 'BOOTSTRAP'].includes(message.type) ? JSON.stringify(message) : '';
+  if (readKey && inflight.has(readKey)) return inflight.get(readKey);
+  const task = (async () => {
+    busy += 1; document.body.setAttribute('aria-busy', 'true');
+    try {
+      const result = await send(message);
+      applyResult(result);
+      if (success) status(success);
+      return result;
+    } catch (e) {
+      status(e.message, true);
+      return null;
+    } finally {
+      busy -= 1;
+      if (!busy) document.body.removeAttribute('aria-busy');
+    }
+  })();
+  if (readKey) {
+    inflight.set(readKey, task);
+    task.finally(() => inflight.delete(readKey));
+  }
+  return task;
+}
+
+function addFeedback(text, kind = 'ok') {
+  const node = $('add-feedback');
+  if (!node) { status(text, kind === 'error'); return; }
+  clearTimeout(feedbackTimer);
+  node.textContent = text;
+  node.className = `add-feedback ${kind === 'error' ? 'es-error' : (kind === 'info' ? 'es-muted' : 'es-ok')}`;
+  node.hidden = false;
+  feedbackTimer = setTimeout(() => { node.hidden = true; node.textContent = ''; }, kind === 'error' ? 6000 : 3500);
 }
 
 // 黑暗 / 光明主題模式
@@ -253,52 +337,30 @@ function openBrokerOrder(symbol, market = 'TW', name = '') {
   }
 }
 
-// 平滑 SVG 迷你折線走勢圖 (Sparkline：優先使用真實分時陣列，漲紅跌綠，帶半透明面積漸層)
-function createSparklineSvg(open, high, low, close, prevClose, isUp, sparkPoints = null) {
+// 迷你走勢圖：只畫真實分時點（同一台北交易日、至少 2 點），沒有就顯示「—」，不再用 OHLC 捏造折線。
+function createSparklineSvg(sparkPoints, trendClass) {
   const w = 56, h = 20;
-  const pClose = (finite(close) && close > 0) ? close : 100;
-  const pPrev = (finite(prevClose) && prevClose > 0) ? prevClose : pClose;
-  const pOpen = (finite(open) && open > 0) ? open : pPrev;
-  let pts = [];
-  if (Array.isArray(sparkPoints) && sparkPoints.length >= 2) {
-    const normalized = sparkPoints.map((item, idx) => {
-      const value = typeof item === 'number' ? item : Number(item?.close ?? item?.value);
-      if (!finite(value)) return null;
-      const timedX = typeof item === 'object' ? sparklineSessionX(item, w, 2) : null;
-      return { value, timedX, idx };
-    }).filter(Boolean);
-    const timed = normalized.filter(row => finite(row.timedX));
-    const rows = timed.length >= 2 ? timed : normalized;
-    if (rows.length >= 2) {
-      const minVal = Math.min(...rows.map(row => row.value));
-      const maxVal = Math.max(...rows.map(row => row.value));
-      const span = Math.max(0.01, maxVal - minVal);
-      const getY = val => Math.max(2, Math.min(h - 2, (h - 2) - ((val - minVal) / span) * (h - 6)));
-      pts = rows.map((row, idx) => {
-        const x = timed.length >= 2 ? row.timedX : 2 + (idx / (rows.length - 1)) * (w - 4);
-        return { x: Number(x.toFixed(1)), y: Number(getY(row.value).toFixed(1)) };
-      });
-    }
-  }
-  if (pts.length < 2) {
-    const pHigh = (finite(high) && high > 0) ? Math.max(high, pOpen, pClose, pPrev) : Math.max(pOpen, pClose, pPrev) * 1.002;
-    const pLow = (finite(low) && low > 0) ? Math.min(low, pOpen, pClose, pPrev) : Math.min(pOpen, pClose, pPrev) * 0.998;
-    const span = Math.max(0.01, pHigh - pLow);
-    const getY = val => Math.max(2, Math.min(h - 2, (h - 2) - ((val - pLow) / span) * (h - 6)));
-    const y0 = getY(pOpen), y1 = getY(isUp ? (pOpen * 0.6 + pHigh * 0.4) : (pOpen * 0.6 + pLow * 0.4));
-    const y2 = getY(isUp ? pHigh : pLow), y3 = getY(isUp ? (pHigh * 0.5 + pClose * 0.5) : (pLow * 0.5 + pClose * 0.5)), y4 = getY(pClose);
-    pts = [{x:2,y:Number(y0.toFixed(1))},{x:15,y:Number(y1.toFixed(1))},{x:28,y:Number(y2.toFixed(1))},{x:42,y:Number(y3.toFixed(1))},{x:54,y:Number(y4.toFixed(1))}];
-  }
-  const lastPt = pts.at(-1) || { x: 54, y: h / 2 };
+  const rows = (Array.isArray(sparkPoints) ? sparkPoints : []).map(item => ({
+    value: Number(item?.close),
+    x: sparklineSessionX(item, w, 2)
+  })).filter(row => finite(row.value) && finite(row.x));
+  if (rows.length < 2) return null;
+  const minVal = Math.min(...rows.map(row => row.value));
+  const maxVal = Math.max(...rows.map(row => row.value));
+  const span = Math.max(0.01, maxVal - minVal);
+  const getY = val => Math.max(2, Math.min(h - 2, (h - 2) - ((val - minVal) / span) * (h - 6)));
+  const pts = rows.map(row => ({ x: Number(row.x.toFixed(1)), y: Number(getY(row.value).toFixed(1)) }));
+  const lastPt = pts.at(-1);
   const pathD = `M ${pts[0].x} ${pts[0].y} ` + pts.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
   const areaD = `${pathD} L ${lastPt.x} ${h} L ${pts[0].x} ${h} Z`;
-  const strokeColor = isUp ? '#ef4444' : '#22c55e';
-  const fillColor = isUp ? 'rgba(239, 68, 68, 0.18)' : 'rgba(34, 197, 94, 0.18)';
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.setAttribute('width', String(w)); svg.setAttribute('height', String(h)); svg.setAttribute('class', 'overflow-visible inline-block');
-  const area = document.createElementNS('http://www.w3.org/2000/svg', 'path'); area.setAttribute('d', areaD); area.setAttribute('fill', fillColor);
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', pathD); path.setAttribute('fill', 'none'); path.setAttribute('stroke', strokeColor); path.setAttribute('stroke-width', '1.5'); path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round');
-  const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); dot.setAttribute('cx', String(lastPt.x)); dot.setAttribute('cy', String(lastPt.y)); dot.setAttribute('r', '2'); dot.setAttribute('fill', strokeColor);
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.setAttribute('width', String(w)); svg.setAttribute('height', String(h));
+  svg.setAttribute('class', `overflow-visible inline-block es-spark ${trendClass}`);
+  svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', '當日真實分時走勢');
+  const area = document.createElementNS(ns, 'path'); area.setAttribute('d', areaD); area.setAttribute('class', 'es-spark-area');
+  const path = document.createElementNS(ns, 'path'); path.setAttribute('d', pathD); path.setAttribute('class', 'es-spark-line'); path.setAttribute('fill', 'none'); path.setAttribute('stroke-width', '1.5'); path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round');
+  const dot = document.createElementNS(ns, 'circle'); dot.setAttribute('cx', String(lastPt.x)); dot.setAttribute('cy', String(lastPt.y)); dot.setAttribute('r', '2'); dot.setAttribute('class', 'es-spark-dot');
   svg.append(area, path, dot); return svg;
 }
 
@@ -347,18 +409,18 @@ function applyFontSize(size) {
     if (validSize === 'small') {
       if (symSpan) symSpan.className = 'preview-sym font-bold font-mono text-sky-600 text-[11px]';
       if (nameSpan) nameSpan.className = 'preview-name text-slate-700 font-medium text-[10px]';
-      if (priceSpan) priceSpan.className = 'preview-price font-bold font-mono text-red-600 text-[12px]';
-      if (chgSpan) chgSpan.className = 'preview-chg font-mono font-semibold text-red-600 text-[9.5px] bg-red-50 border border-red-100 px-1 py-0.2 rounded';
+      if (priceSpan) priceSpan.className = 'preview-price font-bold font-mono es-up text-[12px]';
+      if (chgSpan) chgSpan.className = 'preview-chg font-mono font-semibold es-up es-chip-up text-[9.5px] border px-1 py-0.2 rounded';
     } else if (validSize === 'standard') {
       if (symSpan) symSpan.className = 'preview-sym font-bold font-mono text-sky-600 text-[12.5px]';
       if (nameSpan) nameSpan.className = 'preview-name text-slate-700 font-medium text-[11px]';
-      if (priceSpan) priceSpan.className = 'preview-price font-bold font-mono text-red-600 text-[13.5px]';
-      if (chgSpan) chgSpan.className = 'preview-chg font-mono font-semibold text-red-600 text-[10px] bg-red-50 border border-red-100 px-1.5 py-0.5 rounded';
+      if (priceSpan) priceSpan.className = 'preview-price font-bold font-mono es-up text-[13.5px]';
+      if (chgSpan) chgSpan.className = 'preview-chg font-mono font-semibold es-up es-chip-up text-[10px] border px-1.5 py-0.5 rounded';
     } else if (validSize === 'large') {
       if (symSpan) symSpan.className = 'preview-sym font-bold font-mono text-sky-600 text-[14.5px]';
       if (nameSpan) nameSpan.className = 'preview-name text-slate-700 font-medium text-[12px]';
-      if (priceSpan) priceSpan.className = 'preview-price font-bold font-mono text-red-600 text-[15.5px]';
-      if (chgSpan) chgSpan.className = 'preview-chg font-mono font-semibold text-red-600 text-[11px] bg-red-50 border border-red-100 px-1.5 py-0.5 rounded';
+      if (priceSpan) priceSpan.className = 'preview-price font-bold font-mono es-up text-[15.5px]';
+      if (chgSpan) chgSpan.className = 'preview-chg font-mono font-semibold es-up es-chip-up text-[11px] border px-1.5 py-0.5 rounded';
     }
   }
   ['small', 'standard', 'large'].forEach(s => {
@@ -503,15 +565,10 @@ function renderStrategyBar() {
     btn.className = 'px-2 py-0.5 bg-sky-600 hover:bg-sky-700 text-white rounded text-[11px] font-semibold flex items-center gap-1 shrink-0 transition cursor-pointer';
     btnText.textContent = `⚡ 一鍵全部加入 (${missingTargets.length})`;
     btn.onclick = async () => {
-      await act({ type: 'ADD_BATCH', stocks: missingTargets }, `已將 ${missingTargets.length} 檔策略標的加入自選名單`);
+      const result = await act({ type: 'ADD_BATCH', stocks: missingTargets });
       group = 'watchlist';
       render();
-      showInAppToast({
-        badgeText: '⭐ 批次加入',
-        badgeColor: 'bg-sky-600',
-        titleText: '策略標的已加入自選',
-        bodyText: `已成功將 ${missingTargets.length} 檔策略標的加入您的自選看股清單。`
-      });
+      if (result) addFeedback(`已將 ${missingTargets.length} 檔加入自選`, 'ok');
     };
   }
 }
@@ -539,18 +596,25 @@ function renderWatchlist(list, isCompact, pageSize) {
     else header.classList.add('no-sparkline');
   }
 
+  const now = Date.now();
+  const pendingSet = new Set(view.pendingQuotes || []);
   for (const s of rows) {
-    const q = view.quotes?.[s.symbol], validPrice = finite(q?.price) && q.price > 0;
-    const changePctVal = calcChangePct(q);
+    const q = view.quotes?.[s.symbol];
+    const neverTried = !view.quoteAttempts?.[s.symbol];
+    const qs = quoteStatus(q, now, { holidays: view.holidays || [], pending: pendingSet.has(s.symbol) || optimistic.has(s.symbol) || neverTried });
+    const validPrice = qs.state !== 'loading' && qs.state !== 'unavailable';
+    const changePctVal = validPrice ? calcChangePct(q) : null;
     const validPct = finite(changePctVal);
     const isUp = validPct && changePctVal > 0;
     const isDown = validPct && changePctVal < 0;
     const arrow = isUp ? '▲ ' : (isDown ? '▼ ' : '');
     const pctPrefix = isUp ? '+' : (isDown ? '-' : '');
-    const pct = validPct ? `${pctPrefix}${Math.abs(changePctVal).toFixed(2)}%` : '0.00%';
-    const pctColor = validPct ? (isUp ? 'text-red-600' : (isDown ? 'text-emerald-600' : 'text-slate-500')) : 'text-slate-400';
+    const pct = validPct ? `${pctPrefix}${Math.abs(changePctVal).toFixed(2)}%` : '--';
+    const pctColor = validPct ? tone(changePctVal) : 'es-muted';
 
-    const card = el('article', '', `stock-row stock-card stock-table-grid ${showSparkline ? '' : 'no-sparkline'}`);
+    const card = el('article', '', `stock-row stock-card stock-table-grid ${showSparkline ? '' : 'no-sparkline'} quote-${qs.state}`);
+    card.dataset.symbol = s.symbol;
+    card.dataset.quoteState = qs.state;
 
     // 系統狀態提示標籤
     const activePos = view.live?.open_positions?.[s.symbol];
@@ -575,8 +639,9 @@ function renderWatchlist(list, isCompact, pageSize) {
     card.append(col1);
 
     // 欄位 2：今價 (等寬對齊、大字清晰)
-    const col2 = el('div', '', `text-right font-mono font-bold stock-price pr-1 ${validPrice ? pctColor : 'text-slate-400'}`);
-    col2.textContent = validPrice ? (q.price >= 1000 ? q.price.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) : q.price.toFixed(2)) : '--';
+    // Quote unavailable is not an add failure: the row stays, with a truthful status instead of a price.
+    const col2 = el('div', '', `text-right font-mono font-bold stock-price pr-1 ${validPrice ? pctColor : 'es-muted quote-status-text'}`);
+    col2.textContent = validPrice ? (q.price >= 1000 ? q.price.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) : q.price.toFixed(2)) : qs.label;
     card.append(col2);
 
     // 欄位 3：漲跌 (雙行：上為標準箭頭與點數，下為百分比)
@@ -589,8 +654,8 @@ function renderWatchlist(list, isCompact, pageSize) {
 
     // 欄位 4：高 / 低 (雙行：上為最高價，下為最低價)
     const col4 = el('div', '', 'text-right font-mono flex flex-col justify-center pr-1');
-    const highVal = finite(q?.high) && q.high > 0 ? (q.high >= 1000 ? q.high.toFixed(1) : q.high.toFixed(2)) : (validPrice ? q.price.toFixed(1) : '--');
-    const lowVal = finite(q?.low) && q.low > 0 ? (q.low >= 1000 ? q.low.toFixed(1) : q.low.toFixed(2)) : (validPrice ? q.price.toFixed(1) : '--');
+    const highVal = validPrice && finite(q?.high) && q.high > 0 ? (q.high >= 1000 ? q.high.toFixed(1) : q.high.toFixed(2)) : '--';
+    const lowVal = validPrice && finite(q?.low) && q.low > 0 ? (q.low >= 1000 ? q.low.toFixed(1) : q.low.toFixed(2)) : '--';
     const highSpan = el('span', highVal, 'stock-sub font-medium text-slate-700 leading-tight');
     const lowSpan = el('span', lowVal, 'stock-sub font-medium text-slate-500 leading-tight');
     col4.append(highSpan, lowSpan);
@@ -599,15 +664,20 @@ function renderWatchlist(list, isCompact, pageSize) {
     // 欄位 5：走勢 (迷你 SVG Sparkline，優先傳入真實 spark 陣列)
     const col5 = el('div', '', 'col-sparkline flex items-center justify-center');
     if (showSparkline) {
-      const spark = createSparklineSvg(q?.open, q?.high, q?.low, q?.price, q?.previous_close, isUp, q?.spark);
-      col5.append(spark);
+      const spark = validPrice ? createSparklineSvg(sparkForQuote(q), tone(changePctVal)) : null;
+      if (spark) col5.append(spark);
+      else {
+        const none = el('span', '—', 'es-nospark es-muted');
+        none.title = '暫無真實分時資料';
+        col5.append(none);
+      }
     }
     card.append(col5);
 
     // 欄位 6：時間 (平時顯示時間，Hover 時切換為紅色刪除按鈕，空間互斥絕不重疊)
     const col6 = el('div', '', 'text-right flex items-center justify-end relative pr-0.5');
-    const timeText = quoteDisplayTime(q);
-    const timeSpan = el('span', timeText, 'col-time-text stock-sub font-mono text-slate-400');
+    const timeSpan = el('span', quoteTimeCell(q, qs, now), `col-time-text stock-sub font-mono ${qs.state === 'stale' ? 'es-stale' : 'es-muted'}`);
+    timeSpan.title = quoteTitle(q, qs);
     const delBtn = el('button', '×', 'btn-row-delete text-slate-400 hover:text-red-600 font-bold text-base px-1 leading-none cursor-pointer bg-slate-100 hover:bg-red-50 rounded');
     delBtn.title = `從自選刪除 ${s.symbol}`;
     delBtn.onclick = (e) => {
@@ -687,7 +757,7 @@ function renderDaytrade(list, isCompact) {
     const pnlPct = entryPrice > 0 ? ((curPrice - entryPrice) / entryPrice) * 100 : (finite(p.pnl_pct) ? p.pnl_pct : 0);
     const isUp = pnlPct >= 0;
     const sign = isUp ? '+' : '';
-    const pnlColor = isUp ? 'text-red-600' : 'text-emerald-600';
+    const pnlColor = tone(pnlPct);
 
     const card = el('article', '', `stock-card border border-sky-300 bg-sky-50/40 rounded-lg ${isCompact ? 'p-2' : 'p-3'} space-y-1.5 shadow-2xs`);
 
@@ -772,7 +842,7 @@ function renderDaytrade(list, isCompact) {
     const pnlPct = finite(c.pnl_pct) ? c.pnl_pct : (entryPrice > 0 ? ((exitPrice - entryPrice) / entryPrice) * 100 : 0);
     const isUp = pnlPct >= 0;
     const sign = isUp ? '+' : '';
-    const pnlColor = isUp ? 'text-red-600' : 'text-emerald-600';
+    const pnlColor = tone(pnlPct);
 
     let exitTimeStr = '';
     if (c.exit_time) {
@@ -882,7 +952,7 @@ function renderRebound(list, isCompact) {
     const changePctVal = calcChangePct(q) ?? b.change_pct;
     const validPct = finite(changePctVal);
     const pct = validPct ? `${changePctVal >= 0 ? '+' : ''}${changePctVal.toFixed(2)}%` : '-';
-    const pctColor = validPct ? (changePctVal >= 0 ? 'text-red-600' : 'text-emerald-600') : 'text-slate-400';
+    const pctColor = validPct ? tone(changePctVal) : 'es-muted';
 
     const card = el('article', '', `stock-card border border-purple-200 bg-purple-50/20 rounded-lg ${isCompact ? 'p-2' : 'p-3'} space-y-1.5 shadow-2xs`);
 
@@ -1083,47 +1153,8 @@ function render() {
 
   const stamp = view.updatedAt ? new Date(view.updatedAt).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '尚未更新';
   status(view.error || `${view.vm ? 'VM 隔離測試' : view.marketOpen ? '盤中' : '休市'} · ${stamp}`, !!view.error);
-
-  if (!view.vm && view.stocks?.length) {
-    enrichMissingQuotes();
-  }
-}
-
-async function enrichMissingQuotes() {
-  if (!view || enriching || view.vm) return;
-  const now = Date.now();
-  const missing = view.stocks.filter(s => {
-    const q = view.quotes?.[s.symbol];
-    const stamp = q?.quote_at || q?.updated_at;
-    return !q || !finite(calcChangePct(q)) || !finite(q.price) || (view.marketOpen && !fresh(stamp, now, QUOTE_FRESH_MS));
-  });
-  if (!missing.length) return;
-  enriching = true;
-  try {
-    const closingMap = await fetchStockClosingQuotes(missing);
-    if (closingMap && Object.keys(closingMap).length > 0) {
-      if (!view.quotes) view.quotes = {};
-      let updated = false;
-      for (const [sym, item] of Object.entries(closingMap)) {
-        const old = view.quotes[sym];
-        const oldStamp = old?.quote_at || old?.updated_at;
-        if (!old || !finite(old.price) || (view.marketOpen && !fresh(oldStamp, Date.now(), QUOTE_FRESH_MS))) {
-          view.quotes[sym] = { ...(old || {}), ...item, name: old?.name || item.name };
-          updated = true;
-        } else if (!finite(calcChangePct(old))) {
-          old.change_pct = item.change_pct;
-          old.change = item.change;
-          old.previous_close = item.previous_close;
-          old.quote_at = item.quote_at || old.quote_at;
-          old.updated_at = item.updated_at || old.updated_at;
-          old.time = item.time || old.time;
-          updated = true;
-        }
-      }
-      if (updated && !pending) render();
-    }
-  } catch (_) {}
-  finally { enriching = false; }
+  // 2.0: quotes are fetched and persisted by the background worker only (no popup-memory-only
+  // enrichment that vanished when the popup closed).
 }
 
 // 搜尋建議清單渲染：深色背景、鮮明高對比、點擊保證加入自選
@@ -1162,50 +1193,40 @@ function renderSuggestionItems(list) {
     row.addEventListener('click', async () => {
       box.classList.add('hidden');
       $('input-search').value = '';
-      if (!isAdded) {
-        await handleAddStock(item);
-      } else {
-        group = 'watchlist';
-        render();
-        showInAppToast({
-          badgeText: '⭐ 自選清單',
-          badgeColor: 'bg-slate-700',
-          titleText: `${item.symbol} ${item.name}`,
-          bodyText: '此股票已在您的自選看股清單中。',
-          symbol: item.symbol,
-          market: item.market,
-          name: item.name
-        });
-      }
+      await handleAddStock(item);
     });
     box.append(row);
   }
 }
 
+// 新增即生效：先顯示（本機確認中），背景寫入 chrome.storage.local 後確認；行情另外載入。
+// 不跳確認視窗；重複顯示「已在自選」，錯誤以 inline 訊息呈現。
 async function handleAddStock(item) {
-  try {
-    await act({
-      type: 'ADD',
-      stock: {
-        symbol: item.symbol,
-        market: item.market,
-        name: item.name,
-        groups: ['watchlist']
-      }
-    });
-    group = 'watchlist';
+  if (!view) return;
+  const symbol = String(item?.symbol || '').trim().toUpperCase();
+  if (!SYMBOL.test(symbol)) { addFeedback('股票代號格式不正確，例: 2330 或 00878', 'error'); return; }
+  group = 'watchlist';
+  if ((view.stocks || []).some(x => x.symbol === symbol)) {
+    addFeedback(`${symbol} 已在自選`, 'info');
     render();
-    showInAppToast({
-      badgeText: '✅ 新增成功',
-      badgeColor: 'bg-emerald-600',
-      titleText: `已加入自選：${item.symbol} ${item.name}`,
-      bodyText: `股票已成功加入自選看股清單，可點擊「線圖」查看當日分時走勢。`,
-      symbol: item.symbol,
-      market: item.market,
-      name: item.name
-    });
+    return;
+  }
+  const row = { symbol, market: item.market === 'TWO' ? 'TWO' : 'TW', name: String(item.name || symbol).trim().slice(0, 60) || symbol, groups: ['watchlist'] };
+  optimistic.set(symbol, row);
+  view.stocks = [...(view.stocks || []), row];
+  const pageSize = Math.max(3, Math.min(10, Number(view.settings?.pageSize) || 5));
+  currentWatchlistPage = Math.ceil(view.stocks.length / pageSize);
+  render();
+  try {
+    const result = await send({ type: 'ADD', stock: row });
+    optimistic.delete(symbol);
+    applyResult(result);
+    addFeedback(result?.notice === 'DUPLICATE' ? `${symbol} 已在自選` : `已加入 ${symbol} ${row.name}`, result?.notice === 'DUPLICATE' ? 'info' : 'ok');
   } catch (err) {
-    status(err.message, true);
+    optimistic.delete(symbol);
+    view.stocks = (view.stocks || []).filter(x => x !== row);
+    render();
+    addFeedback(`${symbol} 未加入：${err.message}`, 'error');
   }
 }
 
@@ -1265,11 +1286,11 @@ async function add() {
   }
 
   if (!symbol || !SYMBOL.test(symbol)) {
-    status('請輸入代號或名稱，例: 2330 或 台積電', true);
+    addFeedback('查無此代號或名稱，例: 2330、00878 或 台積電', 'error');
     return;
   }
-  await handleAddStock({ symbol, market, name: name || symbol });
   $('input-search').value = '';
+  await handleAddStock({ symbol, market, name: name || symbol });
 }
 
 function drawer(open) {
@@ -1551,11 +1572,19 @@ try {
   applyDarkMode(true);
   applyWindowHeight(500);
 }
+// Background pushes: a new stock's quote arrived, or a guessed market/name was corrected.
+if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+  chrome.runtime.onMessage.addListener(msg => {
+    if (msg?.type === 'QUOTES_UPDATED' || msg?.type === 'STATE_UPDATED') void act({ type: 'BOOTSTRAP' });
+  });
+}
+
 await act({ type: 'BOOTSTRAP' });
 void act({ type: 'SNAPSHOT', refresh: true });
 
-// Index data is intentionally refreshed more often than the broad five-minute feed.
+// Index data is intentionally refreshed more often than the broad five-minute feed, and is not
+// blocked by other in-flight requests (identical requests are de-duplicated instead).
 const taiexRefreshTimer = setInterval(() => {
-  if (!pending && view?.marketOpen) void act({ type: 'SNAPSHOT', taiexOnly: true });
+  if (view?.marketOpen) void act({ type: 'SNAPSHOT', taiexOnly: true });
 }, 30000);
 window.addEventListener('unload', () => clearInterval(taiexRefreshTimer));

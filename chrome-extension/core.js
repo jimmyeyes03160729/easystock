@@ -260,8 +260,10 @@ export async function searchOnlineStocks(query) {
   }
 }
 
+// 2.0: a missing or unparseable source time returns null. It must never become "now",
+// otherwise an old quote would look live.
 export function normalizeQuoteTimestamp(raw, now = Date.now()) {
-  if (typeof raw === 'number' && Number.isFinite(raw)) {
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) {
     const ms = raw < 1e12 ? raw * 1000 : raw;
     return new Date(ms).toISOString();
   }
@@ -277,14 +279,133 @@ export function normalizeQuoteTimestamp(raw, now = Date.now()) {
     const ss = String(Math.min(59, Number(clock[3] || 0))).padStart(2, '0');
     return `${taipei(now).date}T${hh}:${mm}:${ss}+08:00`;
   }
-  return new Date(now).toISOString();
+  return null;
 }
 
 export function formatTaipeiQuoteTime(raw, now = Date.now()) {
   const iso = normalizeQuoteTimestamp(raw, now);
+  if (!iso) return '--:--';
   return new Date(iso).toLocaleTimeString('zh-TW', {
     timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false
   });
+}
+
+// ---- 2.0 quote freshness model -------------------------------------------------
+export const QUOTE_STALE_MS = 10 * 60 * 1000;
+export const INDEX_STALE_MS = 3 * 60 * 1000;
+export const QUOTE_LABELS = { loading: '載入中', unavailable: '暫無行情', stale: '資料過期', live: '即時', close: '收盤' };
+
+export function quoteStampMs(q) {
+  if (!plain(q)) return null;
+  for (const key of ['quote_at', 'updated_at']) {
+    const stamp = q[key];
+    if (typeof stamp === 'string' && /(Z|[+-]\d{2}:\d{2})$/.test(stamp)) {
+      const ms = Date.parse(stamp);
+      if (Number.isFinite(ms)) return ms;
+    }
+  }
+  return null;
+}
+
+export function isTradingDay(date, holidays = []) {
+  const weekday = new Date(`${date}T12:00:00+08:00`).getUTCDay();
+  return weekday > 0 && weekday < 6 && !holidays.includes(date);
+}
+
+// The Taipei date of the most recent session that has started (today after 09:00 on a trading day).
+export function lastSessionDate(now = Date.now(), holidays = []) {
+  const t = taipei(now);
+  if (isTradingDay(t.date, holidays) && t.minute >= TW_SESSION_START_MINUTE) return t.date;
+  let ms = Date.parse(`${t.date}T12:00:00+08:00`);
+  for (let i = 0; i < 30; i++) {
+    ms -= 86400000;
+    const date = taipei(ms).date;
+    if (isTradingDay(date, holidays)) return date;
+  }
+  return t.date;
+}
+
+export function validQuote(q) {
+  return plain(q) && finite(q.price) && q.price > 0;
+}
+
+// loading / unavailable / stale / live / close. A quote from an earlier session is stale,
+// a quote from a closed market is "close" only when it belongs to the latest session.
+export function quoteStatus(q, now = Date.now(), { holidays = [], pending = false } = {}) {
+  const make = state => ({ state, label: QUOTE_LABELS[state], stale: state === 'stale' });
+  if (!validQuote(q)) return make(pending ? 'loading' : 'unavailable');
+  const ms = quoteStampMs(q);
+  if (!finite(ms) || ms > now + 60000) return make('stale');
+  const today = taipei(now).date, quoteDay = taipei(ms).date;
+  if (marketOpen(now, holidays)) {
+    return make(quoteDay === today && now - ms <= QUOTE_STALE_MS ? 'live' : 'stale');
+  }
+  const session = lastSessionDate(now, holidays);
+  if (quoteDay < session) return make('stale');
+  // After today's close, an intraday snapshot (e.g. 09:00) is not today's closing quote.
+  if (quoteDay === today && session === today && taipei(now).minute >= TW_SESSION_END_MINUTE + 5 && taipei(ms).minute < TW_SESSION_END_MINUTE - 5) {
+    return make('stale');
+  }
+  return make('close');
+}
+
+function quoteCompleteness(q) {
+  return ['previous_close', 'change', 'change_pct', 'high', 'low', 'open'].filter(k => finite(q?.[k])).length;
+}
+
+// Newest source time wins as a whole record; fields are never mixed across different quotes,
+// except the day-constant previous close when both records belong to the same Taipei date.
+export function mergeQuote(old, incoming) {
+  if (!validQuote(incoming)) return plain(old) ? { ...old } : null;
+  if (!validQuote(old)) {
+    const out = { ...incoming };
+    if (plain(old) && Array.isArray(old.spark) && !out.spark) out.spark = old.spark;
+    return out;
+  }
+  const a = quoteStampMs(old), b = quoteStampMs(incoming);
+  const aa = finite(a) ? a : -Infinity, bb = finite(b) ? b : -Infinity;
+  const incomingWins = bb > aa || (bb === aa && quoteCompleteness(incoming) >= quoteCompleteness(old));
+  const newer = incomingWins ? incoming : old, other = incomingWins ? old : incoming;
+  const out = { ...newer };
+  const ms = quoteStampMs(newer), otherMs = quoteStampMs(other);
+  const sameDay = finite(ms) && finite(otherMs) && taipei(ms).date === taipei(otherMs).date;
+  if (sameDay && !finite(out.previous_close) && finite(other.previous_close) && other.previous_close > 0) {
+    out.previous_close = other.previous_close;
+    out.change = out.price - other.previous_close;
+    out.change_pct = (out.change / other.previous_close) * 100;
+  }
+  const isPlaceholder = n => !n || /^\d{4,6}[A-Z]?$/.test(String(n));
+  if (isPlaceholder(out.name) && !isPlaceholder(other.name)) out.name = other.name;
+  if (!Array.isArray(out.spark) && Array.isArray(other.spark)) out.spark = other.spark;
+  return out;
+}
+
+// Only real intraday points from the same Taipei date as the quote; otherwise no line at all.
+export function sparkForQuote(q) {
+  const points = Array.isArray(q?.spark) ? q.spark : [];
+  const ms = quoteStampMs(q);
+  if (!finite(ms) || points.length < 2) return null;
+  const day = taipei(ms).date;
+  const rows = points.filter(p => plain(p) && finite(Number(p.close)) && finite(Number(p.timestamp)) &&
+    taipei(Number(p.timestamp) * (Number(p.timestamp) > 1e12 ? 1 : 1000)).date === day);
+  return rows.length >= 2 ? rows : null;
+}
+
+// Index data quality: source / quote_at / received_at / age_seconds / fresh / market_status / status.
+export function indexQuality(taiex, now = Date.now(), { holidays = [], lastError = '' } = {}) {
+  const open = marketOpen(now, holidays);
+  const market_status = open ? 'OPEN' : 'CLOSED';
+  if (!plain(taiex) || !finite(taiex.price)) {
+    return { source: taiex?.source || 'TWSE_MIS', quote_at: null, received_at: taiex?.received_at || null, age_seconds: null, fresh: false, market_status, status: 'UNAVAILABLE', lastError };
+  }
+  const ms = quoteStampMs(taiex);
+  const age = finite(ms) ? Math.max(0, Math.round((now - ms) / 1000)) : null;
+  let status;
+  if (!finite(ms)) status = 'STALE';
+  else if (open) status = taipei(ms).date === taipei(now).date && now - ms <= INDEX_STALE_MS ? 'LIVE' : 'STALE';
+  else status = taipei(ms).date >= lastSessionDate(now, holidays) ? 'CLOSE' : 'STALE';
+  return { source: taiex.source || 'TWSE_MIS', quote_at: taiex.quote_at || null, received_at: taiex.received_at || null,
+    age_seconds: age, fresh: status === 'LIVE' || status === 'CLOSE', market_status, status, lastError };
 }
 
 export async function fetchStockClosingQuotes(symbols) {
@@ -317,21 +438,24 @@ export async function fetchStockClosingQuotes(symbols) {
       const high = finite(item.regularMarketDayHigh?.sort) ? item.regularMarketDayHigh.sort : (price !== null ? price : 0);
       const low = finite(item.regularMarketDayLow?.sort) ? item.regularMarketDayLow.sort : (price !== null ? price : 0);
       const open = finite(item.regularMarketOpen?.sort) ? item.regularMarketOpen.sort : (prev !== null ? prev : price);
+      if (!finite(price) || price <= 0) continue;
       const quoteAt = normalizeQuoteTimestamp(item.regularMarketTime, Date.now());
-      const timeStr = formatTaipeiQuoteTime(quoteAt);
+      if (change_pct === null && prev !== null && prev > 0) change_pct = ((price - prev) / prev) * 100;
       map[sym] = {
         name: item.symbolName || sym,
-        price: price || 0,
+        price,
         change: change || 0,
-        change_pct: change_pct !== null ? change_pct : 0,
+        change_pct,
         previous_close: prev,
         high: high || 0,
         low: low || 0,
         open: open || 0,
-        time: timeStr || '13:30',
+        time: quoteAt ? formatTaipeiQuoteTime(quoteAt) : '',
         volume: finite(item.volume) ? Math.round(item.volume / 1000) : 0,
         quote_at: quoteAt,
-        updated_at: quoteAt
+        updated_at: quoteAt,
+        source: 'YAHOO_TW',
+        received_at: new Date().toISOString()
       };
     }
     return map;
