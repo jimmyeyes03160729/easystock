@@ -48,3 +48,22 @@ test('summary follows actual learning fields and never claims missing or invalid
  w.DashboardUX.update({live:{session:'closed',open_positions:{X:{}}},health:{current:false,label:'連線失敗'},meta:{}});
  assert.equal(d.getElementById('homeOpenCount').textContent,'—');
 });
+
+test('inactive strategy panels stay visually hidden despite legacy flex styles and live refreshes',async t=>{
+ const {w}=setup(t),d=w.document;
+ const styles=d.createElement('style');
+ styles.textContent='#daytradeModule .home-strategy-pane{display:flex}\n'+fs.readFileSync('assets/glass-home.css','utf8');d.head.append(styles);
+ const check=selected=>{
+  for(const lane of ['A','B1','B2','B3']){
+   const pane=d.getElementById('homePane'+lane),display=w.getComputedStyle(pane).display;
+   assert.equal(pane.hidden,lane!==selected,lane+' hidden state');
+   assert.equal(display==='none',lane!==selected,lane+' actual CSS visibility while '+selected+' selected');
+  }
+ };
+ for(const lane of ['A','B1','B2','B3','A']){
+  d.getElementById('homeTab'+lane).click();check(lane);
+  w.HomePresentation.update({live:{session:'closed'},health:{current:true}});
+  const record=d.createElement('div');record.className='trade-detail-card';record.dataset.homePrice='100';record.dataset.homeStatus='CLOSED';
+  d.getElementById('intradayPickList').append(record);await settle();check(lane);
+ }
+});
