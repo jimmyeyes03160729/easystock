@@ -289,10 +289,28 @@ async function popup({ hangRefresh = false, stocks = [], extra = {} } = {}) {
     if (message.type === 'SNAPSHOT' && message.refresh && hangRefresh) {
       const before = structuredClone(state); await refreshGate; return { ok: true, value: before };
     }
+    // Same rules as background.handle: one row per stock, group membership merged.
     if (message.type === 'ADD') {
-      if (state.stocks.some(s => s.symbol === message.stock.symbol)) return { ok: true, value: { ...structuredClone(state), notice: 'DUPLICATE' } };
-      state.stocks.push(message.stock); state.rev += 1;
+      const lists = message.stock.lists || ['g1'];
+      const existing = state.stocks.find(s => s.symbol === message.stock.symbol);
+      if (existing) {
+        const have = existing.lists || ['g1'];
+        if (lists.every(l => have.includes(l))) return { ok: true, value: { ...structuredClone(state), notice: 'DUPLICATE' } };
+        existing.lists = [...new Set([...have, ...lists])]; state.rev += 1;
+        return { ok: true, value: { ...structuredClone(state), notice: 'ADDED' } };
+      }
+      state.stocks.push({ ...message.stock, lists }); state.rev += 1;
       return { ok: true, value: { ...structuredClone(state), notice: 'ADDED', pendingQuotes: [message.stock.symbol] } };
+    }
+    if (message.type === 'DELETE') {
+      const row = state.stocks.find(s => s.symbol === message.symbol);
+      if (row && (row.lists || ['g1']).length > 1 && message.list) row.lists = row.lists.filter(l => l !== message.list);
+      else state.stocks = state.stocks.filter(s => s.symbol !== message.symbol);
+      state.rev += 1;
+    }
+    if (message.type === 'RENAME_GROUP') {
+      state.watchGroups = (state.watchGroups || defaultState().watchGroups).map(g => g.id === message.id ? { ...g, name: message.name } : g);
+      state.rev += 1;
     }
     return { ok: true, value: structuredClone(state) };
   } }, tabs: { create: async () => {} } };
@@ -312,7 +330,7 @@ test('T08 typing 2330 + 新增 adds directly: no confirm dialog, inline success,
   assert.equal(confirms.length, 0);
   assert.ok(messages.some(m => m.type === 'ADD' && m.stock.symbol === '2330'));
   assert.deepEqual(rows(w), ['2330']);
-  assert.match(w.document.getElementById('add-feedback').textContent, /已加入 2330/);
+  assert.match(w.document.getElementById('add-feedback').textContent, /已加入「1」：2330/);
   assert.equal(w.document.getElementById('input-search').value, '');
   assert.equal(w.document.querySelector('[data-symbol="2330"]').dataset.quoteState, 'loading');
   dom.window.close();
@@ -336,7 +354,7 @@ test('duplicate shows 已在自選 inline and does not add a row; invalid input 
   w.document.getElementById('input-search').value = '2330';
   w.document.getElementById('btn-add').click();
   await new Promise(r => setTimeout(r, 20));
-  assert.match(w.document.getElementById('add-feedback').textContent, /已在自選/);
+  assert.match(w.document.getElementById('add-feedback').textContent, /2330 已在「1」/);
   assert.equal(messages.filter(m => m.type === 'ADD').length, 0);
   assert.deepEqual(rows(w), ['2330']);
   w.document.getElementById('input-search').value = '!!';
@@ -346,31 +364,59 @@ test('duplicate shows 已在自選 inline and does not add a row; invalid input 
   dom.window.close();
 });
 
-test('window height really sizes the popup (420–600, Chrome limit) and fixed page size still works', async () => {
-  const stocks = ['2330', '2317', '2454', '2308', '2382'].map(symbol => ({ symbol, market: 'TW', name: symbol, groups: ['watchlist'] }));
-  const tall = await popup({ stocks, extra: { settings: { ...defaultState().settings, windowHeight: 900, autoPageSize: false, pageSize: 3 } } });
-  assert.equal(tall.w.document.documentElement.style.height, '600px', 'clamped to the Chrome popup maximum');
-  assert.equal(tall.w.document.body.style.height, '600px');
-  assert.equal(tall.w.document.getElementById('popup-container').style.height, '600px');
-  assert.equal(tall.w.document.querySelectorAll('.stock-row').length, 3, 'auto-fill off: fixed 3 per page');
-  assert.equal(tall.w.document.getElementById('range-page-size').disabled, false);
-  assert.ok(tall.w.document.getElementById('btn-open-standalone'), 'standalone window offered for longer views');
-  tall.dom.window.close();
-  // A screen that cannot fit the requested height: the page shrinks to the real visible height
-  // (no outer scrollbar) and the settings explain the limit.
-  const capped = await popup({ stocks, extra: { settings: { ...defaultState().settings, windowHeight: 600 } } });
-  Object.defineProperty(capped.w, 'innerHeight', { value: 470, configurable: true });
-  await new Promise(r => setTimeout(r, 320));
-  assert.equal(capped.w.document.documentElement.style.height, '470px');
-  assert.equal(capped.w.document.getElementById('window-height-note').hidden, false);
-  assert.match(capped.w.document.getElementById('window-height-note').textContent, /470px/);
-  assert.equal(capped.w.document.getElementById('window-height-val').textContent, '470px');
-  capped.dom.window.close();
-  const short = await popup({ stocks, extra: { settings: { ...defaultState().settings, windowHeight: 300 } } });
-  assert.equal(short.w.document.documentElement.style.height, '420px');
-  assert.equal(short.w.document.getElementById('toggle-auto-page-size').checked, true, 'auto-fill is the default');
-  assert.equal(short.w.document.getElementById('range-page-size').disabled, true);
-  short.dom.window.close();
+test('fixed 470px popup, 7 stocks per page, no window-height controls', async () => {
+  const stocks = Array.from({ length: 10 }, (_, i) => ({ symbol: String(2301 + i), market: 'TW', name: `股${i}`, groups: ['watchlist'] }));
+  const { w, dom } = await popup({ stocks, extra: { settings: { ...defaultState().settings, windowHeight: 580, pageSize: 3 } } });
+  assert.equal(w.document.documentElement.style.height, '470px', 'saved 1.05 height is ignored');
+  assert.equal(w.document.body.style.height, '470px');
+  assert.equal(w.document.getElementById('popup-container').style.height, '470px');
+  assert.equal(w.document.querySelectorAll('.stock-row').length, 7, '7 per page at the standard font');
+  assert.equal(w.document.getElementById('watchlist-page-info').textContent, '1/2');
+  for (const id of ['range-window-height', 'btn-open-standalone', 'range-page-size', 'toggle-auto-page-size']) {
+    assert.equal(w.document.getElementById(id), null, `${id} removed`);
+  }
+  assert.ok(w.document.getElementById('stock-list-container').classList.contains('es-fit'), 'watchlist list does not scroll');
+  dom.window.close();
+});
+
+test('watchlist groups: 5 tabs, add goes to the active group, delete removes from that group, rename max 3 chars', async () => {
+  const stocks = [
+    { symbol: '2330', market: 'TW', name: '台積電', groups: ['watchlist'], lists: ['g1', 'g2'] },
+    { symbol: '2317', market: 'TW', name: '鴻海', groups: ['watchlist'], lists: ['g1'] }
+  ];
+  const { w, messages, state, dom } = await popup({ stocks });
+  const tab = id => w.document.querySelector(`[data-list="${id}"]`);
+  assert.deepEqual([...w.document.querySelectorAll('[data-list]')].map(b => b.textContent), ['1', '2', '3', '4', '5']);
+  tab('g2').click();
+  await new Promise(r => setTimeout(r, 10));
+  assert.deepEqual(rows(w), ['2330'], 'group 2 shows only its stocks');
+  // Add 2317 (already in group 1) to group 2: same stock, extra membership, no confirm.
+  w.document.getElementById('input-search').value = '2317';
+  w.document.getElementById('btn-add').click();
+  await new Promise(r => setTimeout(r, 20));
+  const add = messages.find(m => m.type === 'ADD');
+  assert.deepEqual([...add.stock.lists], ['g2']);
+  assert.deepEqual(rows(w).sort(), ['2317', '2330']);
+  assert.match(w.document.getElementById('add-feedback').textContent, /已加入「2」/);
+  // Delete inside group 2 sends the group, so the stock stays in group 1.
+  w.document.querySelector('[data-symbol="2330"] .btn-row-delete').click();
+  await new Promise(r => setTimeout(r, 10));
+  assert.deepEqual({ ...messages.find(m => m.type === 'DELETE') }, { type: 'DELETE', symbol: '2330', list: 'g2' });
+  // Rename group 3 from settings.
+  const inputs = w.document.querySelectorAll('#group-name-editor input');
+  assert.equal(inputs.length, 5);
+  assert.equal(inputs[2].maxLength, 3);
+  inputs[2].value = '電子股';
+  inputs[2].dispatchEvent(new w.Event('change'));
+  await new Promise(r => setTimeout(r, 20));
+  assert.deepEqual({ ...messages.find(m => m.type === 'RENAME_GROUP') }, { type: 'RENAME_GROUP', id: 'g3', name: '電子股' });
+  assert.equal(tab('g3').textContent, '電子股');
+  inputs[3].value = '四個字的';
+  inputs[3].dispatchEvent(new w.Event('change'));
+  await new Promise(r => setTimeout(r, 10));
+  assert.equal(messages.filter(m => m.type === 'RENAME_GROUP').length, 1, 'over 3 characters is rejected locally');
+  assert.equal(state.watchGroups.find(g => g.id === 'g3').name, '電子股');
+  dom.window.close();
 });
 
 test('rows show 暫無行情 / 資料過期 and never draw a synthetic sparkline', async () => {

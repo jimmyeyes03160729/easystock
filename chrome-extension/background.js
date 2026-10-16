@@ -1,7 +1,7 @@
 import { VM_MODE, CONFIG_URL, FIREBASE_ROOT } from './environment.js';
 import { createAuth, describeBlocked } from './auth.js';
-import { createSync, emptyMeta, legacyMeta, touchStocks, touchSettings } from './sync.js';
-import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes, buildPartialDailyBar, mergeQuote, quoteStampMs, quoteStatus, indexQuality, migrateState, COLOR_MODES, SIGNAL_LABELS } from './core.js';
+import { createSync, emptyMeta, legacyMeta, touchStocks, touchSettings, touchGroups } from './sync.js';
+import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes, buildPartialDailyBar, mergeQuote, quoteStampMs, quoteStatus, indexQuality, migrateState, COLOR_MODES, SIGNAL_LABELS, WATCH_GROUP_IDS, GROUP_NAME_MAX, groupNameValid } from './core.js';
 
 const ALARM = 'easystock-five-minutes';
 let tail = Promise.resolve();
@@ -683,6 +683,7 @@ async function snapshot(refresh = false, taiexOnly = false, localOnly = false) {
     account,
     version: manifestInfo().version_name || manifestInfo().version || '',
     stocks: st.stocks,
+    watchGroups: st.watchGroups,
     settings: st.settings,
     vip: isVIP(c, st.vipHash),
     vm: VM_MODE,
@@ -774,6 +775,7 @@ export async function handle(message) {
   const st = await state();
   const beforeStocks = structuredClone(st.stocks);
   const changedSettings = [];
+  const changedGroups = [];
   let notice = '';
   let quoteTargets = [];
   switch (message.type) {
@@ -784,12 +786,15 @@ export async function handle(message) {
       const row = stock(message.stock);
       const existing = st.stocks.find(x => x.symbol === row.symbol);
       if (existing) {
+        // Same stock, another watchlist group: add the membership, never a second row.
         const combined = [...new Set([...existing.groups, ...row.groups])];
-        if (combined.length === existing.groups.length) {
+        const lists = [...new Set([...(existing.lists || ['g1']), ...row.lists])];
+        if (combined.length === existing.groups.length && lists.length === (existing.lists || ['g1']).length) {
           // Duplicate is a notice, not a failure, and does not write.
           return { ...(await snapshot()), notice: 'DUPLICATE' };
         }
         existing.groups = combined;
+        existing.lists = lists;
       } else {
         st.stocks = watchlist([...st.stocks, row]);
         quoteTargets = [row];
@@ -819,7 +824,27 @@ export async function handle(message) {
       st.stocks = watchlist(st.stocks);
       break;
     }
-    case 'DELETE': st.stocks = st.stocks.filter(x => x.symbol !== message.symbol); break;
+    case 'DELETE': {
+      // Deleting inside a group removes it from that group; the stock goes away when no group is left.
+      const row = st.stocks.find(x => x.symbol === message.symbol);
+      const lists = row?.lists || ['g1'];
+      if (row && WATCH_GROUP_IDS.includes(message.list) && lists.length > 1 && lists.includes(message.list)) {
+        row.lists = lists.filter(x => x !== message.list);
+      } else {
+        st.stocks = st.stocks.filter(x => x.symbol !== message.symbol);
+      }
+      break;
+    }
+    case 'RENAME_GROUP': {
+      const target = st.watchGroups.find(g => g.id === message.id);
+      if (!target) throw new Error('群組不存在');
+      const name = String(message.name ?? '').trim();
+      if (!groupNameValid(name)) throw new Error(`群組名稱需為 1–${GROUP_NAME_MAX} 個字`);
+      if (target.name === name) return snapshot();
+      target.name = name;
+      changedGroups.push(target.id);
+      break;
+    }
     case 'GROUP': {
       if (!GROUPS.includes(message.group) || typeof message.enabled !== 'boolean') throw new Error('群組格式不正確');
       const row = st.stocks.find(x => x.symbol === message.symbol);
@@ -829,7 +854,7 @@ export async function handle(message) {
       break;
     }
     case 'SETTINGS': {
-      const allowed = [...GROUPS, 'allDaytradeAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'darkMode', 'colorMode', 'pageSize', 'cardDensity', 'fontSize', 'windowHeight', 'showSparkline', 'preferredBroker', 'autoPageSize'];
+      const allowed = [...GROUPS, 'allDaytradeAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'darkMode', 'colorMode', 'pageSize', 'cardDensity', 'fontSize', 'windowHeight', 'showSparkline', 'preferredBroker'];
       if (!allowed.includes(message.strategy)) throw new Error('開關格式不正確');
       const value = message.enabled !== undefined ? message.enabled : message.value;
       if (message.strategy === 'colorMode' && !COLOR_MODES.includes(value)) throw new Error('漲跌配色格式不正確');
@@ -887,7 +912,7 @@ export async function handle(message) {
   // Local-first: record what changed for the cloud replica, then sync later (debounced, outside the queue).
   const meta = await readMeta();
   const now = Date.now();
-  const touched = touchStocks(meta, beforeStocks, st.stocks, now) | touchSettings(meta, changedSettings, now);
+  const touched = touchStocks(meta, beforeStocks, st.stocks, now) | touchSettings(meta, changedSettings, now) | touchGroups(meta, changedGroups, now);
   if (touched) { await write('syncMeta', meta); scheduleSync(); }
   // Saved first, shown first; the quote is fetched afterwards and pushed via QUOTES_UPDATED.
   if (quoteTargets.length) queueQuoteRefresh(quoteTargets);

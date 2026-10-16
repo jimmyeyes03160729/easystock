@@ -79,6 +79,38 @@ body.dark-mode .es-btn:hover { background: #273449; }
 body.dark-mode .es-btn-primary { background: #e2e8f0; color: #0f172a; border-color: #e2e8f0; }
 .es-sync-badge { font-size: 10px; padding: 1px 6px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; flex-shrink: 0; }
 
+/* ---- Fixed 470px popup: 7 stocks visible at the standard font, no scrollbar (Owner 2026-10-17) ---- */
+header { padding: 8px 12px 6px !important; }
+header > div:first-child { margin-bottom: 6px !important; }
+#taiex-banner { padding-top: 4px !important; padding-bottom: 4px !important; }
+#group-tabs { padding-top: 4px !important; padding-bottom: 4px !important; align-items: center; }
+#stock-table-header { padding-top: 3px !important; padding-bottom: 3px !important; }
+#stock-list-container .stock-row { padding-top: 3px !important; padding-bottom: 3px !important; }
+footer { padding-top: 4px !important; padding-bottom: 4px !important; }
+#disclaimer-bar { padding-top: 2px !important; padding-bottom: 2px !important; }
+/* Watchlist pages are sized to fit (no scrollbar); 量能觀察 / 架構 keep scrolling. */
+#stock-list-container.es-fit { overflow-y: hidden !important; }
+
+/* Watchlist group tabs (5 slots, names up to 3 characters) */
+.es-group-tabs { display: inline-flex; gap: 2px; }
+#group-tabs .es-group-tab { min-width: 30px; padding: 3px 7px !important; text-align: center; white-space: nowrap; }
+.es-tab-sep { width: 1px; align-self: stretch; margin: 2px 4px; background: rgba(148, 163, 184, 0.35); }
+#group-tabs .tab-btn { padding: 3px 7px !important; }
+
+/* Pager inside the footer line */
+.es-pager { display: inline-flex; align-items: center; gap: 4px; }
+.es-pager.hidden { display: none !important; }
+.es-pager-btn { width: 20px; height: 18px; line-height: 16px; border-radius: 4px; border: 1px solid #cbd5e1; background: transparent; color: inherit; cursor: pointer; font-size: 13px; padding: 0; }
+.es-pager-btn[disabled] { opacity: 0.35; cursor: not-allowed; }
+.es-pager-info { font-variant-numeric: tabular-nums; min-width: 28px; text-align: center; }
+body.dark-mode .es-pager-btn { border-color: #334155; }
+
+/* Group name editor (settings) */
+.es-group-editor { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.es-group-input { width: 100%; min-width: 0; text-align: center; font-size: 12px; font-weight: 600; padding: 4px 2px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; color: #0f172a; }
+.es-group-input:focus { outline: 2px solid #0ea5e9; outline-offset: 1px; }
+body.dark-mode .es-group-input { background: #0f172a; color: #f1f5f9; border-color: #334155; }
+
 .es-segment { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; border-radius: 8px; background: rgba(148, 163, 184, 0.15); }
 .es-segment label { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 0; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
 .es-segment input { position: absolute; opacity: 0; pointer-events: none; }

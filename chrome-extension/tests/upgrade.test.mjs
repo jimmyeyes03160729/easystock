@@ -50,7 +50,9 @@ test('1.05 upgrade: watchlist, groups, alerts and an explicit light choice are a
     settings: { daytrade: false, allDaytradeAlerts: false, filterMode: 'custom', minPrice: 50, darkMode: false, fontSize: 'large', preferredBroker: 'fubon' }, vipHash: 'h' };
   const before = structuredClone(db.state);
   await bg.onInstalledMigration({ reason: 'update', previousVersion: '1.0.5' });
-  assert.deepEqual(db.state.stocks, before.stocks);
+  // Same stocks and alert groups; each lands in watchlist group 1.
+  assert.deepEqual(db.state.stocks, before.stocks.map(s => ({ ...s, lists: ['g1'] })));
+  assert.deepEqual(db.state.watchGroups.map(g => g.name), ['1', '2', '3', '4', '5']);
   for (const [k, v] of Object.entries(before.settings)) assert.equal(db.state.settings[k], v, k);
   assert.equal(db.state.settings.colorMode, 'redgreen');
   assert.equal(db.state.vipHash, 'h');
@@ -87,6 +89,28 @@ test('local edits are queued for sync (dirty + timestamps) even while signed out
   assert.equal(db.syncMeta.stocks['2330'].deleted, true);
   assert.ok(db.syncMeta.settings.colorMode > 1);
   await assert.rejects(bg.serial(() => bg.handle({ type: 'SETTINGS', strategy: 'colorMode', value: 'purple' })));
+});
+
+test('watchlist groups in the worker: membership merge, delete within a group, rename rules, sync queue', async () => {
+  reset(); db.state = defaultState(); db.syncMeta = { ...(await import('../sync.js')).emptyMeta() };
+  const add = (symbol, lists) => bg.serial(() => bg.handle({ type: 'ADD', stock: { symbol, market: 'TW', name: symbol, groups: ['watchlist'], lists } }));
+  await add('2317', ['g2']);
+  await add('2330', ['g3']); // 2330 already in g1 → one row, two groups
+  assert.equal(db.state.stocks.filter(s => s.symbol === '2330').length, 1);
+  assert.deepEqual(db.state.stocks.find(s => s.symbol === '2330').lists, ['g1', 'g3']);
+  assert.equal((await add('2330', ['g3'])).notice, 'DUPLICATE');
+  await bg.serial(() => bg.handle({ type: 'DELETE', symbol: '2330', list: 'g3' }));
+  assert.deepEqual(db.state.stocks.find(s => s.symbol === '2330').lists, ['g1'], 'removed from g3 only');
+  await bg.serial(() => bg.handle({ type: 'DELETE', symbol: '2330', list: 'g1' }));
+  assert.equal(db.state.stocks.some(s => s.symbol === '2330'), false, 'last group → stock deleted');
+  await bg.serial(() => bg.handle({ type: 'RENAME_GROUP', id: 'g2', name: '半導體' }));
+  assert.equal(db.state.watchGroups.find(g => g.id === 'g2').name, '半導體');
+  assert.ok(db.syncMeta.groups.g2 > 1, 'rename queued for sync');
+  await assert.rejects(bg.serial(() => bg.handle({ type: 'RENAME_GROUP', id: 'g2', name: '四個字的' })), /1–3/);
+  await assert.rejects(bg.serial(() => bg.handle({ type: 'RENAME_GROUP', id: 'g9', name: 'x' })));
+  await assert.rejects(bg.serial(() => bg.handle({ type: 'RENAME_GROUP', id: 'g2', name: '  ' })));
+  const snap = await bg.handle({ type: 'BOOTSTRAP' });
+  assert.deepEqual(snap.watchGroups.map(g => g.name), ['1', '半導體', '3', '4', '5']);
 });
 
 test('T41 existing alert settings and test notifications still work in 2.0', async () => {

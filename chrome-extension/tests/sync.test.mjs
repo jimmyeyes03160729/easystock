@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAuth, authConfigStatus, describeBlocked, AUTH_BLOCKED } from '../auth.js';
-import { createSync, mergeAll, emptyMeta, legacyMeta, touchStocks, touchSettings, readCloud, sameContent, LEGACY_T } from '../sync.js';
+import { createSync, mergeAll, emptyMeta, legacyMeta, touchStocks, touchSettings, touchGroups, readCloud, sameContent, LEGACY_T } from '../sync.js';
 import { defaultState, migrateState, watchlist } from '../core.js';
 
 const DB = 'https://easystock-c237a-default-rtdb.firebaseio.com';
@@ -378,6 +378,36 @@ test('T32 settings: a 1.05 dark theme survives; a fresh device restores the clou
   await d2.sync.syncNow(); await d1.sync.syncNow();
   assert.equal(d1.state().settings.darkMode, false);
   assert.equal(d1.state().settings.colorMode, 'mono');
+});
+
+test('watchlist groups follow the Google account: names and membership sync across devices', async () => {
+  const w = world();
+  const d1 = device(w, { state: { ...defaultState(), stocks: [{ ...S('2330', '台積電'), lists: ['g1', 'g2'] }] } });
+  await d1.auth.signIn({ interactive: true });
+  w.clock += 1000;
+  await d1.edit(st => { st.watchGroups = st.watchGroups.map(g => (g.id === 'g2' ? { ...g, name: '半導體' } : g)); });
+  touchGroups(d1.local.data.syncMeta, ['g2'], w.clock);
+  await d1.sync.syncNow();
+  assert.equal(w.cloud['uid-A'].groups.g2.name, '半導體');
+  assert.deepEqual(w.cloud['uid-A'].watchlist['2330'].lists, { g1: true, g2: true });
+  // A fresh computer gets the names and memberships back after sign-in.
+  const d2 = device(w);
+  await d2.auth.signIn({ interactive: true }); await d2.sync.syncNow();
+  assert.equal(d2.state().watchGroups.find(g => g.id === 'g2').name, '半導體');
+  assert.deepEqual(d2.state().stocks.find(s => s.symbol === '2330').lists, ['g1', 'g2']);
+  // Moving a stock between groups on one computer shows up on the other.
+  w.clock += 60000;
+  await d2.edit(st => { st.stocks = st.stocks.map(s => (s.symbol === '2330' ? { ...s, lists: ['g3'] } : s)); });
+  await d2.sync.syncNow(); await d1.sync.syncNow();
+  assert.deepEqual(d1.state().stocks.find(s => s.symbol === '2330').lists, ['g3']);
+});
+
+test('cloud rows written before groups existed land in group 1; invalid group names are ignored', () => {
+  const cloud = readCloud({ watchlist: { '2330': { market: 'TW', name: '台積電', groups: { watchlist: true }, updatedAt: 1 } },
+    groups: { g1: { name: '自選股', t: 5 }, g2: { name: '太長的名字', t: 5 }, g9: { name: 'x', t: 5 } } });
+  assert.deepEqual(cloud.watchlist['2330'].lists, ['g1']);
+  assert.deepEqual(Object.keys(cloud.groups), ['g1']);
+  assert.equal(cloud.groups.g1.name, '自選股');
 });
 
 test('malformed cloud data is ignored, never trusted', () => {

@@ -8,11 +8,11 @@
 // - Short REST requests only (no long-lived listeners): GET with ETag, conditional PUT (if-match),
 //   bounded retry with exponential backoff, debounced writes, a dirty flag as the offline queue.
 // - Never uploaded: quote / K-line caches, tokens, VIP hash, notification ledger, broker data.
-import { SYMBOL, GROUPS, plain, finite, BROKERS, defaultState } from './core.js';
+import { SYMBOL, GROUPS, plain, finite, BROKERS, defaultState, WATCH_GROUP_IDS, groupNameValid, normalizeWatchGroups, defaultWatchGroups } from './core.js';
 
 export const SYNC_SCHEMA = 1;
 export const ALERT_KEYS = ['daytrade', 'allDaytradeAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct'];
-export const PREF_KEYS = ['darkMode', 'colorMode', 'fontSize', 'pageSize', 'cardDensity', 'windowHeight', 'showSparkline', 'preferredBroker', 'autoPageSize'];
+export const PREF_KEYS = ['darkMode', 'colorMode', 'fontSize', 'cardDensity', 'showSparkline', 'preferredBroker'];
 export const SYNC_KEYS = [...ALERT_KEYS, ...PREF_KEYS];
 export const MAX_STOCKS = 100;
 export const TOMBSTONE_TTL_MS = 90 * 86400000;
@@ -39,7 +39,7 @@ export function validSetting(key, value) { return !!VALIDATORS[key] && VALIDATOR
 
 export function emptyMeta() {
   return { schema: SYNC_SCHEMA, ownerUid: null, stocks: {}, settings: {}, dirty: false, changeSeq: 0,
-    lastSyncAt: null, lastPullAt: null, failures: 0, nextRetryAt: 0, status: 'signed_out', lastError: '', stash: {} };
+    lastSyncAt: null, lastPullAt: null, failures: 0, nextRetryAt: 0, status: 'signed_out', lastError: '', stash: {}, groups: {} };
 }
 
 // Meta for a device that already had 1.05 data: every existing value counts as a real (legacy) choice.
@@ -59,7 +59,7 @@ export function touchStocks(meta, before, after, now) {
   let changed = false;
   for (const [sym, s] of next) {
     const p = prev.get(sym);
-    if (!p || p.market !== s.market || p.name !== s.name || !sameGroups(p.groups, s.groups)) {
+    if (!p || p.market !== s.market || p.name !== s.name || !sameGroups(p.groups, s.groups) || !sameGroups(p.lists || ['g1'], s.lists || ['g1'])) {
       meta.stocks[sym] = { updatedAt: now, ...(p ? { addedAt: meta.stocks[sym]?.addedAt } : { addedAt: now }) };
       changed = true;
     }
@@ -76,8 +76,23 @@ export function touchSettings(meta, keys, now) {
   if (synced.length) markDirty(meta);
   return synced.length > 0;
 }
+// Watchlist group renames (group ids g1–g5).
+export function touchGroups(meta, ids, now) {
+  const valid = (ids || []).filter(id => WATCH_GROUP_IDS.includes(id));
+  meta.groups ||= {};
+  for (const id of valid) meta.groups[id] = now;
+  if (valid.length) markDirty(meta);
+  return valid.length > 0;
+}
 export function markDirty(meta) { meta.dirty = true; meta.changeSeq = (meta.changeSeq || 0) + 1; }
 
+// Watchlist group membership (g1–g5); older cloud rows without it belong to group 1.
+function listIds(raw) {
+  const ids = Array.isArray(raw) ? raw : (plain(raw) ? Object.keys(raw).filter(k => raw[k] === true) : []);
+  const clean = WATCH_GROUP_IDS.filter(id => ids.includes(id));
+  return clean.length ? clean : ['g1'];
+}
+const listMap = lists => Object.fromEntries(listIds(lists).map(id => [id, true]));
 function groupList(raw) {
   if (Array.isArray(raw)) return raw.filter(g => GROUPS.includes(g));
   if (plain(raw)) return GROUPS.filter(g => raw[g] === true);
@@ -85,10 +100,10 @@ function groupList(raw) {
 }
 // Defensive read of the cloud document: anything malformed is ignored, never trusted.
 export function readCloud(doc) {
-  const out = { watchlist: {}, alerts: {}, settings: {}, extra: {} };
+  const out = { watchlist: {}, alerts: {}, settings: {}, groups: {}, extra: {} };
   if (!plain(doc)) return out;
   for (const [key, value] of Object.entries(doc)) {
-    if (!['watchlist', 'alerts', 'settings', 'profile'].includes(key)) out.extra[key] = value;
+    if (!['watchlist', 'alerts', 'settings', 'profile', 'groups'].includes(key)) out.extra[key] = value;
   }
   if (plain(doc.watchlist)) {
     for (const [sym, raw] of Object.entries(doc.watchlist)) {
@@ -98,7 +113,14 @@ export function readCloud(doc) {
       const groups = groupList(raw.groups);
       const name = typeof raw.name === 'string' ? raw.name.trim().slice(0, 60) : '';
       if (!['TW', 'TWO'].includes(raw.market) || !groups.length || !name) continue;
-      out.watchlist[sym] = { symbol: sym, market: raw.market, name, groups, updatedAt, addedAt: finite(raw.addedAt) ? raw.addedAt : updatedAt };
+      out.watchlist[sym] = { symbol: sym, market: raw.market, name, groups, lists: listIds(raw.lists), updatedAt, addedAt: finite(raw.addedAt) ? raw.addedAt : updatedAt };
+    }
+  }
+  // Watchlist group names: { g1: { name, t } } — only the five known slots, only valid names.
+  if (plain(doc.groups)) {
+    for (const id of WATCH_GROUP_IDS) {
+      const raw = doc.groups[id];
+      if (plain(raw) && groupNameValid(raw.name)) out.groups[id] = { name: String(raw.name).trim(), t: finite(raw.t) ? raw.t : 0 };
     }
   }
   for (const section of ['alerts', 'settings']) {
@@ -149,7 +171,7 @@ export function mergeAll({ local, meta, cloudDoc, mode = 'sync', now = Date.now(
       if (lm?.deleted && lT >= cT && mode !== 'migration') {
         nextMeta.stocks[sym] = { updatedAt: lT, deleted: true };
       } else {
-        kept.set(sym, { symbol: sym, market: c.market, name: c.name, groups: [...c.groups] });
+        kept.set(sym, { symbol: sym, market: c.market, name: c.name, groups: [...c.groups], lists: [...c.lists] });
         nextMeta.stocks[sym] = { updatedAt: Math.max(cT, 0), addedAt: c.addedAt };
       }
     } else if (l && c && !c.deleted) {
@@ -158,10 +180,11 @@ export function mergeAll({ local, meta, cloudDoc, mode = 'sync', now = Date.now(
         // Same stock on both sides: one row, groups united, best known name.
         const newer = cT > lT ? c : l;
         row = { symbol: sym, market: newer.market, name: isPlaceholderName(newer.name, sym) ? (isPlaceholderName(l.name, sym) ? c.name : l.name) : newer.name,
-          groups: [...new Set([...l.groups, ...c.groups])].filter(g => GROUPS.includes(g)) };
+          groups: [...new Set([...l.groups, ...c.groups])].filter(g => GROUPS.includes(g)),
+          lists: listIds([...listIds(l.lists), ...c.lists]) };
       } else {
         const newer = cT > lT ? c : l;
-        row = { symbol: sym, market: newer.market, name: newer.name, groups: [...newer.groups] };
+        row = { symbol: sym, market: newer.market, name: newer.name, groups: [...newer.groups], lists: listIds(newer.lists) };
         if (isPlaceholderName(row.name, sym)) row.name = isPlaceholderName(l.name, sym) ? c.name : l.name;
       }
       kept.set(sym, row);
@@ -191,13 +214,25 @@ export function mergeAll({ local, meta, cloudDoc, mode = 'sync', now = Date.now(
       const s = kept.get(sym);
       const prevSource = typeof cloudDoc?.watchlist?.[sym]?.source === 'string' ? cloudDoc.watchlist[sym].source : '';
       cloudOut[sym] = { symbol: sym, market: s.market, name: s.name, groups: Object.fromEntries(s.groups.map(g => [g, true])),
-        updatedAt: m.updatedAt, addedAt: m.addedAt ?? m.updatedAt,
+        lists: listMap(s.lists), updatedAt: m.updatedAt, addedAt: m.addedAt ?? m.updatedAt,
         source: prevSource === 'local_migration' || prevSource === 'chrome' ? prevSource : (mode === 'migration' && localMap.has(sym) ? 'local_migration' : 'chrome') };
     }
   }
   // Rows that did not fit locally stay in the cloud untouched.
   for (const [sym, c] of Object.entries(cloud.watchlist)) {
-    if (!(sym in cloudOut) && !c.deleted) cloudOut[sym] = { symbol: sym, market: c.market, name: c.name, groups: Object.fromEntries(c.groups.map(g => [g, true])), updatedAt: c.updatedAt, addedAt: c.addedAt };
+    if (!(sym in cloudOut) && !c.deleted) cloudOut[sym] = { symbol: sym, market: c.market, name: c.name, groups: Object.fromEntries(c.groups.map(g => [g, true])), lists: listMap(c.lists), updatedAt: c.updatedAt, addedAt: c.addedAt };
+  }
+
+  // Group names: per-group last-writer-wins. A name never renamed on this device (no timestamp) yields
+  // to the cloud, so another computer's names come back after sign-in.
+  nextMeta.groups ||= {};
+  const watchGroups = normalizeWatchGroups(local.watchGroups);
+  const groupsOut = {};
+  for (const g of watchGroups) {
+    const c = cloud.groups[g.id];
+    const lT = nextMeta.groups[g.id] ?? -1;
+    if (c && c.t > lT) { g.name = c.name; nextMeta.groups[g.id] = c.t; }
+    groupsOut[g.id] = { name: g.name, t: Math.max(nextMeta.groups[g.id] ?? 0, 0) };
   }
 
   // Settings: field-level last-writer-wins. Never-set local defaults (no timestamp) lose to any cloud value,
@@ -218,9 +253,9 @@ export function mergeAll({ local, meta, cloudDoc, mode = 'sync', now = Date.now(
   const doc = {
     ...cloud.extra,
     profile: { schema: SYNC_SCHEMA, client: 'chrome-extension', updatedAt: now },
-    watchlist: cloudOut, alerts: alertsOut, settings: settingsOut
+    watchlist: cloudOut, alerts: alertsOut, settings: settingsOut, groups: groupsOut
   };
-  return { stocks, settings, meta: nextMeta, doc, overflow, removedLocally };
+  return { stocks, settings, watchGroups, meta: nextMeta, doc, overflow, removedLocally };
 }
 
 function stable(value) {
@@ -302,7 +337,7 @@ export function createSync({ auth, dbUrl, fetchImpl = fetch, transact, readMeta,
       let plan = null;
       await transact(async (state, meta) => {
         let mode = 'sync';
-        let localState = { stocks: state.stocks, settings: state.settings };
+        let localState = { stocks: state.stocks, settings: state.settings, watchGroups: state.watchGroups };
         let workMeta = meta;
         if (!meta.ownerUid) mode = 'migration';
         else if (meta.ownerUid !== token.uid) {
@@ -310,20 +345,21 @@ export function createSync({ auth, dbUrl, fetchImpl = fetch, transact, readMeta,
           // this account's own parked copy (if any). Data never crosses between UIDs.
           workMeta = structuredClone(meta);
           workMeta.stash ||= {};
-          workMeta.stash[meta.ownerUid] = { stocks: state.stocks, settings: Object.fromEntries(SYNC_KEYS.filter(k => k in state.settings).map(k => [k, state.settings[k]])), metaStocks: meta.stocks, metaSettings: meta.settings, at: now() };
+          workMeta.stash[meta.ownerUid] = { stocks: state.stocks, settings: Object.fromEntries(SYNC_KEYS.filter(k => k in state.settings).map(k => [k, state.settings[k]])), metaStocks: meta.stocks, metaSettings: meta.settings, watchGroups: state.watchGroups, metaGroups: meta.groups || {}, at: now() };
           const own = workMeta.stash[token.uid];
           const defaults = Object.fromEntries(SYNC_KEYS.map(k => [k, defaultState().settings[k]]).filter(([, v]) => v !== undefined));
-          localState = { stocks: own?.stocks || [], settings: { ...state.settings, ...defaults, ...(own?.settings || {}) } };
+          localState = { stocks: own?.stocks || [], settings: { ...state.settings, ...defaults, ...(own?.settings || {}) }, watchGroups: own?.watchGroups || defaultWatchGroups() };
           workMeta.stocks = own?.metaStocks || {};
           workMeta.settings = own?.metaSettings || {};
+          workMeta.groups = own?.metaGroups || {};
           delete workMeta.stash[token.uid];
           mode = own ? 'migration' : 'sync';
         }
         const merged = mergeAll({ local: localState, meta: workMeta, cloudDoc, mode, now: now() });
         merged.meta.ownerUid = token.uid;
         plan = { doc: merged.doc, seq: merged.meta.changeSeq, overflow: merged.overflow, mode };
-        const nextState = { ...state, stocks: merged.stocks, settings: merged.settings };
-        const localChanged = JSON.stringify(nextState.stocks) !== JSON.stringify(state.stocks) || JSON.stringify(nextState.settings) !== JSON.stringify(state.settings);
+        const nextState = { ...state, stocks: merged.stocks, settings: merged.settings, watchGroups: merged.watchGroups };
+        const localChanged = JSON.stringify(nextState.stocks) !== JSON.stringify(state.stocks) || JSON.stringify(nextState.settings) !== JSON.stringify(state.settings) || JSON.stringify(nextState.watchGroups) !== JSON.stringify(state.watchGroups);
         return { state: localChanged ? nextState : undefined, meta: merged.meta };
       });
 

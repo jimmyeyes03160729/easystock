@@ -16,7 +16,7 @@ test('popup v2.0 renders safely and wires current controls', async () => {
   w.chrome = { storage: { local: { get: async () => ({ state }) } }, runtime: { onMessage: { addListener: () => {} }, sendMessage: async message => {
     messages.push(message);
     if (message.type === 'SETTINGS') state.settings[message.strategy] = message.enabled ?? message.value;
-    return structuredClone(state);
+    return { ok: true, value: structuredClone(state) };
   } }, tabs: { create: async () => {} } };
   for (const [key, value] of Object.entries(core)) w[key] = value;
   w.icons = () => {};
@@ -25,7 +25,8 @@ test('popup v2.0 renders safely and wires current controls', async () => {
   assert.ok(w.document.getElementById('stock-list-container'));
   assert.equal(w.document.querySelectorAll('.stock-card img').length, 0);
   assert.equal(w.document.getElementById('brand-tag').textContent, 'v2.0');
-  assert.ok(w.document.querySelector('[data-group="watchlist"]'));
+  // Five watchlist group tabs (default names 1–5) replace the single 自選 tab.
+  assert.deepEqual([...w.document.querySelectorAll('[data-group="watchlist"][data-list]')].map(b => b.textContent), ['1', '2', '3', '4', '5']);
   assert.ok(w.document.querySelector('[data-group="daytrade"]'));
   assert.ok(w.document.querySelector('[data-group="ai_matrix"]'));
   assert.ok(w.document.getElementById('btn-theme-toggle'));

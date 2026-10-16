@@ -1,4 +1,4 @@
-import { SYMBOL, GROUPS, finite, formatTaipeiQuoteTime, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, formatTelegramEntry, formatTelegramExit, BROKERS, getBroker, sparklineSessionX, quoteStatus, quoteStampMs, sparkForQuote, taipei, migrateState, resolveStockInput } from './core.js';
+import { SYMBOL, GROUPS, finite, formatTaipeiQuoteTime, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, formatTelegramEntry, formatTelegramExit, BROKERS, getBroker, sparklineSessionX, quoteStatus, quoteStampMs, sparkForQuote, taipei, migrateState, resolveStockInput, WATCH_GROUP_IDS, GROUP_NAME_MAX, groupNameValid } from './core.js';
 import { icons } from './icons.js';
 
 const $ = id => (typeof document !== 'undefined' && document ? document.getElementById(id) : null);
@@ -8,6 +8,10 @@ let toastTimer = null;
 let feedbackTimer = null;
 let currentWatchlistPage = 1;
 let busy = 0;
+// Active watchlist group (g1–g5); remembered on this computer only.
+let activeList = (() => {
+  try { const v = localStorage.getItem('es-active-list'); return ['g1', 'g2', 'g3', 'g4', 'g5'].includes(v) ? v : 'g1'; } catch (_) { return 'g1'; }
+})();
 // Rows shown immediately after "新增" while the background confirms the save.
 const optimistic = new Map();
 const inflight = new Map();
@@ -415,88 +419,35 @@ function createSparklineSvg(sparkPoints, trendClass) {
   svg.append(area, path, dot); return svg;
 }
 
-// 視窗高度：Chrome 依頁面大小調整小工具視窗（上限 600px），所以直接設定 html/body/container 高度
-// 就是真正的視窗長度。獨立視窗模式則填滿瀏覽器視窗，可自由拖曳拉高。
-const POPUP_MIN_HEIGHT = 420;
-const POPUP_MAX_HEIGHT = 600; // Chrome extension popup hard limit
-const STANDALONE = typeof location !== 'undefined' && new URLSearchParams(location.search).get('standalone') === '1';
+// 固定視窗高度 470px（Owner 2026-10-17：不提供調整，不要出現捲軸）。標準字體下列表放滿 7 檔；
+// 較大字體時自動少放幾檔，仍不出現捲軸。
+const POPUP_HEIGHT = 470;
+const ROWS_PER_PAGE = 7;
 let fitRows = 0;
 
-let desiredHeight = 500;
-let screenCap = 0;
-let capTimer = null;
-
-function setPopupSize(size) {
+function applyWindowHeight() {
+  const size = `${POPUP_HEIGHT}px`;
   if (document.documentElement) document.documentElement.style.height = size;
-  if (document.body) { document.body.style.height = size; document.body.style.minHeight = STANDALONE ? '0' : `${Math.min(POPUP_MIN_HEIGHT, parseInt(size, 10) || POPUP_MIN_HEIGHT)}px`; }
+  if (document.body) { document.body.style.height = size; document.body.style.minHeight = size; }
   const container = $('popup-container');
   if (container) {
     container.style.height = size;
-    container.style.minHeight = STANDALONE ? '0' : size;
+    container.style.minHeight = size;
     container.style.maxHeight = size;
   }
 }
 
-function showHeightState(val) {
-  const capped = !STANDALONE && screenCap > 0 && screenCap < val;
-  const tagText = STANDALONE ? '獨立視窗' : (capped ? `${screenCap}px` : `${val}px`);
-  if ($('window-height-val')) $('window-height-val').textContent = tagText;
-  if ($('density-status-tag')) $('density-status-tag').textContent = tagText;
-  const note = $('window-height-note');
-  if (note) {
-    note.hidden = !capped;
-    note.textContent = capped ? `這個螢幕最多只能顯示 ${screenCap}px 高的小工具（Chrome 不讓小工具超出螢幕），要更長請用「獨立視窗開啟」。` : '';
-  }
-}
-
-// Chrome grows the popup to the page height, but never past 600px or the bottom of the screen. If the
-// window could not reach the requested height, shrink the page to the real visible height so there is
-// no outer scrollbar, and say so.
-function fitPopupToScreen() {
-  if (STANDALONE || typeof window === 'undefined') return;
-  const vh = Math.floor(window.innerHeight || 0);
-  if (vh > 0 && vh + 2 < desiredHeight) {
-    screenCap = Math.max(300, vh);
-    setPopupSize(`${screenCap}px`);
-  } else {
-    screenCap = 0;
-  }
-  showHeightState(desiredHeight);
-  if (view && group === 'watchlist') render();
-}
-
-let heightApplied = false;
-function applyWindowHeight(h, { force = false } = {}) {
-  const val = Math.max(POPUP_MIN_HEIGHT, Math.min(POPUP_MAX_HEIGHT, Number(h) || 500));
-  // render() calls this on every refresh: only re-size when the requested height really changes.
-  if (heightApplied && !force && val === desiredHeight) { showHeightState(val); return; }
-  heightApplied = true;
-  desiredHeight = val;
-  // Ask for the full height first; the screen check below trims it if Chrome could not grow that far.
-  screenCap = 0;
-  setPopupSize(STANDALONE ? '100vh' : `${val}px`);
-  showHeightState(val);
-  if ($('range-window-height') && document.activeElement !== $('range-window-height')) {
-    $('range-window-height').value = String(val);
-  }
-  if (!STANDALONE && typeof window !== 'undefined') {
-    clearTimeout(capTimer);
-    capTimer = setTimeout(fitPopupToScreen, 250);
-  }
-}
-
-// How many watchlist rows fit in the list area without a scrollbar (auto mode).
+// How many watchlist rows fit in the list area without a scrollbar (at most 7 per page).
 function measureFitRows() {
   const list = $('stock-list-container');
   const row = list?.querySelector('.stock-row');
   const avail = list?.clientHeight || 0;
   const rowH = row?.offsetHeight || 0;
   if (avail <= 0 || rowH <= 0) return 0;
-  return Math.max(3, Math.min(60, Math.floor(avail / rowH)));
+  return Math.max(1, Math.min(ROWS_PER_PAGE, Math.floor(avail / rowH)));
 }
 function effectivePageSize() {
-  const base = Math.max(3, Math.min(10, Number(view?.settings?.pageSize) || 5));
-  return view?.settings?.autoPageSize !== false && fitRows > 0 ? fitRows : base;
+  return fitRows > 0 ? fitRows : ROWS_PER_PAGE;
 }
 
 // 顯示文字大小設定 (Stitch 設計：小 / 標準 / 大，字重與字級從小到大階梯顯著清晰，支援膠囊按鈕與預覽列)
@@ -683,9 +634,11 @@ function renderStrategyBar() {
 
 // 渲染自選看股清單 (圖片2精緻表格列：個股 | 今價 | 漲跌 | 高 / 低 | 走勢 | 時間)
 function renderWatchlist(list, isCompact, pageSize) {
-  const allRows = view.stocks || [];
+  // Only the stocks in the active watchlist group (g1–g5).
+  const allRows = (view.stocks || []).filter(s => (s.lists || ['g1']).includes(activeList));
   if (!allRows.length) {
-    list.append(el('p', '目前尚無自選股票，請於上方輸入代號或名稱新增。', 'text-xs text-slate-500 p-3'));
+    list.append(el('p', `「${groupName(activeList)}」群組還沒有股票，請於上方輸入代號或名稱新增。`, 'text-xs text-slate-500 p-3'));
+    $('watchlist-pagination-bar')?.classList.add('hidden');
     return;
   }
 
@@ -789,7 +742,8 @@ function renderWatchlist(list, isCompact, pageSize) {
     delBtn.title = `從自選刪除 ${s.symbol}`;
     delBtn.onclick = (e) => {
       e.stopPropagation();
-      act({ type: 'DELETE', symbol: s.symbol }, `已刪除自選股票 ${s.symbol}`);
+      const inOthers = (s.lists || ['g1']).length > 1;
+      act({ type: 'DELETE', symbol: s.symbol, list: activeList }, inOthers ? `已從「${groupName(activeList)}」移除 ${s.symbol}` : `已刪除自選股票 ${s.symbol}`);
     };
     col6.append(timeSpan, delBtn);
     card.append(col6);
@@ -803,16 +757,17 @@ function renderWatchlist(list, isCompact, pageSize) {
     if (totalPages > 1) {
       paginationBar.classList.remove('hidden');
       const pageInfo = $('watchlist-page-info');
-      if (pageInfo) pageInfo.textContent = `第 ${currentWatchlistPage} / ${totalPages} 頁 (共 ${totalCount} 檔)`;
+      if (pageInfo) {
+        pageInfo.textContent = `${currentWatchlistPage}/${totalPages}`;
+        pageInfo.title = `第 ${currentWatchlistPage} / ${totalPages} 頁（共 ${totalCount} 檔）`;
+      }
       const prevBtn = $('btn-page-prev');
       const nextBtn = $('btn-page-next');
       if (prevBtn) {
-        prevBtn.className = `px-2 py-0.5 rounded text-[11px] border border-slate-200 ${currentWatchlistPage > 1 ? 'hover:bg-slate-100 text-slate-700 cursor-pointer' : 'opacity-40 cursor-not-allowed'}`;
         prevBtn.disabled = currentWatchlistPage <= 1;
         prevBtn.onclick = () => { if (currentWatchlistPage > 1) { currentWatchlistPage--; render(); } };
       }
       if (nextBtn) {
-        nextBtn.className = `px-2 py-0.5 rounded text-[11px] border border-slate-200 ${currentWatchlistPage < totalPages ? 'hover:bg-slate-100 text-slate-700 cursor-pointer' : 'opacity-40 cursor-not-allowed'}`;
         nextBtn.disabled = currentWatchlistPage >= totalPages;
         nextBtn.onclick = () => { if (currentWatchlistPage < totalPages) { currentWatchlistPage++; render(); } };
       }
@@ -1069,9 +1024,8 @@ function render() {
   applyColorMode(view.settings?.colorMode);
   renderAccount();
 
-  // 視窗高度自定義 (比照截圖：預設 500px 即 +20px)
-  const windowHeight = Number(view.settings?.windowHeight) || 500;
-  applyWindowHeight(windowHeight);
+  // 固定 470px 視窗
+  applyWindowHeight();
 
   // 顯示大小自定義 (圖片1效果)
   const fontSize = view.settings?.fontSize || 'standard';
@@ -1081,19 +1035,12 @@ function render() {
   const showSparkline = view.settings?.showSparkline !== false;
   if ($('toggle-sparkline')) $('toggle-sparkline').checked = showSparkline;
 
-  // 顯示排版與每頁筆數同步
-  const basePageSize = Math.max(3, Math.min(10, Number(view.settings?.pageSize) || 5));
-  const autoPage = view.settings?.autoPageSize !== false;
+  // 每頁筆數：標準字體 7 檔，依實際可用高度自動調整，不出現捲軸
   const pageSize = effectivePageSize();
   const cardDensity = view.settings?.cardDensity || 'compact';
   const isCompact = cardDensity === 'compact';
-
-  if ($('range-page-size')) {
-    $('range-page-size').value = basePageSize;
-    $('range-page-size').disabled = autoPage;
-    if ($('range-page-size-val')) $('range-page-size-val').textContent = autoPage ? (fitRows ? `自動 ${fitRows}` : '自動') : `${basePageSize} 檔`;
-  }
-  if ($('toggle-auto-page-size')) $('toggle-auto-page-size').checked = autoPage;
+  renderGroupTabs();
+  renderGroupEditor();
   if ($('radio-density-normal') && $('radio-density-compact')) {
     $('radio-density-normal').checked = !isCompact;
     $('radio-density-compact').checked = isCompact;
@@ -1126,8 +1073,9 @@ function render() {
 
   // Tabs 切換高亮
   document.querySelectorAll('.tab-btn').forEach(b => {
-    b.setAttribute('aria-selected', String(b.dataset.group === group));
-    b.classList.toggle('tab-active', b.dataset.group === group);
+    const active = b.dataset.group === group && (!b.dataset.list || b.dataset.list === activeList);
+    b.setAttribute('aria-selected', String(active));
+    b.classList.toggle('tab-active', active);
   });
 
   renderTaiex();
@@ -1146,6 +1094,7 @@ function render() {
 
   const paginationBar = $('watchlist-pagination-bar');
   if (paginationBar) paginationBar.classList.add('hidden');
+  list.classList.toggle('es-fit', group === 'watchlist');
 
   if (group === 'ai_matrix') {
     renderAiMatrix(list);
@@ -1157,16 +1106,14 @@ function render() {
   }
   // 預設為 'watchlist' 自選看股
   renderWatchlist(list, isCompact, pageSize);
-  // Auto mode: measure how many rows really fit this window height and re-render once if different,
-  // so a taller window shows more stocks instead of empty space or an inner scrollbar.
-  if (autoPage) {
-    const measured = measureFitRows();
-    if (measured && measured !== fitRows && !render.refitting) {
-      fitRows = measured;
-      render.refitting = true;
-      try { render(); } finally { render.refitting = false; }
-      return;
-    }
+  // Measure how many rows really fit (7 at the standard font) and re-render once if different, so the
+  // list never needs an inner scrollbar, whatever the font size.
+  const measured = measureFitRows();
+  if (measured && measured !== fitRows && !render.refitting) {
+    fitRows = measured;
+    render.refitting = true;
+    try { render(); } finally { render.refitting = false; }
+    return;
   }
 
   const stamp = view.updatedAt ? new Date(view.updatedAt).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '尚未更新';
@@ -1187,7 +1134,7 @@ function renderSuggestionItems(list) {
   }
   box.classList.remove('hidden');
   for (const item of list) {
-    const isAdded = view.stocks.some(x => x.symbol === item.symbol);
+    const isAdded = view.stocks.some(x => x.symbol === item.symbol && (x.lists || ['g1']).includes(activeList));
     const row = el('div', '', 'px-3 py-2 hover:bg-slate-800 flex items-center justify-between cursor-pointer border-b border-slate-800/80 last:border-0 transition');
     const left = el('div', '', 'flex items-center gap-2 min-w-0');
     left.append(el('span', item.symbol, 'font-bold text-sky-400 text-xs font-mono'));
@@ -1196,9 +1143,9 @@ function renderSuggestionItems(list) {
     row.append(left);
 
     if (isAdded) {
-      row.append(el('span', '✓ 已在自選', 'text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded font-medium shrink-0'));
+      row.append(el('span', `✓ 已在「${groupName(activeList)}」`, 'text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded font-medium shrink-0'));
     } else {
-      const addBtn = el('button', '＋加入自選', 'text-[11px] font-bold text-white bg-sky-600 hover:bg-sky-500 px-2.5 py-1 rounded shadow-xs shrink-0 transition cursor-pointer');
+      const addBtn = el('button', `＋加入「${groupName(activeList)}」`, 'text-[11px] font-bold text-white bg-sky-600 hover:bg-sky-500 px-2.5 py-1 rounded shadow-xs shrink-0 transition cursor-pointer');
       addBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         box.classList.add('hidden');
@@ -1224,27 +1171,89 @@ async function handleAddStock(item) {
   const symbol = String(item?.symbol || '').trim().toUpperCase();
   if (!SYMBOL.test(symbol)) { addFeedback('股票代號格式不正確，例: 2330 或 00878', 'error'); return; }
   group = 'watchlist';
-  if ((view.stocks || []).some(x => x.symbol === symbol)) {
-    addFeedback(`${symbol} 已在自選`, 'info');
+  const target = activeList;
+  const label = groupName(target);
+  const existing = (view.stocks || []).find(x => x.symbol === symbol);
+  if (existing && (existing.lists || ['g1']).includes(target)) {
+    addFeedback(`${symbol} 已在「${label}」`, 'info');
     render();
     return;
   }
-  const row = { symbol, market: item.market === 'TWO' ? 'TWO' : 'TW', name: String(item.name || symbol).trim().slice(0, 60) || symbol, groups: ['watchlist'] };
+  if (existing) {
+    // Already in another group: add this group to the same stock (never a second row).
+    try {
+      const result = await send({ type: 'ADD', stock: { symbol, market: existing.market, name: existing.name, groups: existing.groups, lists: [target] } });
+      applyResult(result);
+      addFeedback(`已加入「${label}」：${symbol} ${existing.name}`, 'ok');
+    } catch (err) { addFeedback(`${symbol} 未加入：${err.message}`, 'error'); }
+    return;
+  }
+  const row = { symbol, market: item.market === 'TWO' ? 'TWO' : 'TW', name: String(item.name || symbol).trim().slice(0, 60) || symbol, groups: ['watchlist'], lists: [target] };
   optimistic.set(symbol, row);
   view.stocks = [...(view.stocks || []), row];
-  currentWatchlistPage = Math.ceil(view.stocks.length / effectivePageSize());
+  const inGroup = view.stocks.filter(x => (x.lists || ['g1']).includes(target)).length;
+  currentWatchlistPage = Math.ceil(inGroup / effectivePageSize());
   render();
   try {
     const result = await send({ type: 'ADD', stock: row });
     optimistic.delete(symbol);
     applyResult(result);
-    addFeedback(result?.notice === 'DUPLICATE' ? `${symbol} 已在自選` : `已加入 ${symbol} ${row.name}`, result?.notice === 'DUPLICATE' ? 'info' : 'ok');
+    addFeedback(result?.notice === 'DUPLICATE' ? `${symbol} 已在「${label}」` : `已加入「${label}」：${symbol} ${row.name}`, result?.notice === 'DUPLICATE' ? 'info' : 'ok');
   } catch (err) {
     optimistic.delete(symbol);
     view.stocks = (view.stocks || []).filter(x => x !== row);
     render();
     addFeedback(`${symbol} 未加入：${err.message}`, 'error');
   }
+}
+
+// ---- 自選群組（5 組，名稱可改，最多 3 個字） ----
+function watchGroups() {
+  const groups = Array.isArray(view?.watchGroups) ? view.watchGroups : [];
+  return WATCH_GROUP_IDS.map((id, i) => ({ id, name: groups.find(g => g.id === id)?.name || String(i + 1) }));
+}
+function groupName(id) {
+  return watchGroups().find(g => g.id === id)?.name || '1';
+}
+function renderGroupTabs() {
+  const box = $('watch-group-tabs');
+  if (!box) return;
+  const counts = Object.fromEntries(WATCH_GROUP_IDS.map(id => [id, (view?.stocks || []).filter(s => (s.lists || ['g1']).includes(id)).length]));
+  box.replaceChildren(...watchGroups().map(g => {
+    const b = el('button', g.name, 'tab-btn es-group-tab');
+    b.type = 'button';
+    b.dataset.group = 'watchlist';
+    b.dataset.list = g.id;
+    b.title = `${g.name}（${counts[g.id]} 檔）`;
+    b.setAttribute('aria-label', `自選群組 ${g.name}，${counts[g.id]} 檔`);
+    return b;
+  }));
+}
+function renderGroupEditor() {
+  const box = $('group-name-editor');
+  if (!box || box.contains(document.activeElement)) return; // do not reset what is being typed
+  box.replaceChildren(...watchGroups().map((g, i) => {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = g.name;
+    input.maxLength = GROUP_NAME_MAX;
+    input.className = 'es-group-input';
+    input.setAttribute('aria-label', `第 ${i + 1} 組名稱`);
+    const commit = async () => {
+      const name = input.value.trim();
+      if (name === g.name) return;
+      if (!groupNameValid(name)) {
+        input.value = g.name;
+        status(`群組名稱需為 1–${GROUP_NAME_MAX} 個字`, true);
+        return;
+      }
+      const result = await act({ type: 'RENAME_GROUP', id: g.id, name });
+      if (result) status(`第 ${i + 1} 組已改名為「${name}」`);
+    };
+    input.addEventListener('change', commit);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } });
+    return input;
+  }));
 }
 
 function updateSuggestions() {
@@ -1316,7 +1325,14 @@ $('input-search').placeholder = '代號／中文，例 2330 或 台積電';
 $('input-search').maxLength = 60;
 $('group-tabs').addEventListener('click', e => {
   const button = e.target.closest('[data-group]');
-  if (button && view) { group = button.dataset.group; render(); }
+  if (!button || !view) return;
+  group = button.dataset.group;
+  if (button.dataset.list && button.dataset.list !== activeList) {
+    activeList = button.dataset.list;
+    currentWatchlistPage = 1;
+    try { localStorage.setItem('es-active-list', activeList); } catch (_) {}
+  }
+  render();
 });
 $('btn-refresh').addEventListener('click', () => act({ type: 'SNAPSHOT', refresh: true }));
 
@@ -1373,50 +1389,7 @@ $('toggle-all-daytrade')?.addEventListener('change', async e => {
   await act({ type: 'SETTINGS', strategy: 'allDaytradeAlerts', enabled: e.target.checked }); if (view) render();
 });
 
-// 視窗高度滑桿監聽 (圖片1效果：即時拉動調整 body 高度與儲存)
-$('range-window-height')?.addEventListener('input', e => {
-  const val = Number(e.target.value);
-  if (view?.settings) view.settings.windowHeight = val;
-  applyWindowHeight(val);
-});
-$('toggle-auto-page-size')?.addEventListener('change', async e => {
-  const enabled = e.target.checked;
-  if (view?.settings) view.settings.autoPageSize = enabled;
-  render();
-  await act({ type: 'SETTINGS', strategy: 'autoPageSize', enabled });
-});
-
-// 獨立視窗：Chrome 小工具最高 600px，要更長就開成一般視窗（可拖曳邊緣自由拉高）。
-$('btn-open-standalone')?.addEventListener('click', async () => {
-  const url = chrome.runtime.getURL('popup.html?standalone=1');
-  const avail = (typeof screen !== 'undefined' && screen.availHeight) || 900;
-  const height = Math.max(POPUP_MAX_HEIGHT, Math.min(avail - 40, 900));
-  try {
-    if (chrome.windows?.create) await chrome.windows.create({ url, type: 'popup', width: 470, height, focused: true });
-    else await chrome.tabs.create({ url });
-    window.close();
-  } catch (e) { status('無法開啟獨立視窗', true); }
-});
-if (STANDALONE) {
-  document.body.classList.add('standalone');
-  const slider = $('range-window-height');
-  if (slider) slider.disabled = true;
-  $('btn-open-standalone')?.setAttribute('hidden', '');
-  let resizeTimer = null;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { if (view) render(); }, 120);
-  });
-}
-
-$('range-window-height')?.addEventListener('change', async e => {
-  const val = Number(e.target.value);
-  if (view?.settings) view.settings.windowHeight = val;
-  applyWindowHeight(val);
-  await act({ type: 'SETTINGS', strategy: 'windowHeight', value: val });
-  if (view?.settings) view.settings.windowHeight = val;
-  applyWindowHeight(val);
-});
+// (視窗高度設定已移除：固定 470px)
 
 // 顯示大小單選監聽 (小 / 標準 / 大 + 預覽)
 for (const size of ['small', 'standard', 'large']) {
@@ -1427,6 +1400,8 @@ for (const size of ['small', 'standard', 'large']) {
       await act({ type: 'SETTINGS', strategy: 'fontSize', value: size });
       if (view?.settings) view.settings.fontSize = size;
       applyFontSize(size);
+      fitRows = 0; // row height changed: re-measure how many fit
+      if (view) render();
     }
   });
 }
@@ -1440,25 +1415,8 @@ $('toggle-sparkline')?.addEventListener('change', async e => {
   render();
 });
 
-// 顯示排版與卡片自定義監聽 (拉動滑桿即時反應)
-$('range-page-size')?.addEventListener('input', e => {
-  const val = Number(e.target.value);
-  if ($('range-page-size-val')) $('range-page-size-val').textContent = String(val);
-  if (view) {
-    if (!view.settings) view.settings = {};
-    view.settings.pageSize = val;
-    render();
-  }
-});
-$('range-page-size')?.addEventListener('change', async e => {
-  const val = Number(e.target.value);
-  await act({ type: 'SETTINGS', strategy: 'pageSize', value: val });
-  if (view) {
-    if (!view.settings) view.settings = {};
-    view.settings.pageSize = val;
-    render();
-  }
-});
+// (視窗高度設定已移除：固定 470px)
+
 $('radio-density-normal')?.addEventListener('change', async e => {
   if (e.target.checked) {
     await act({ type: 'SETTINGS', strategy: 'cardDensity', value: 'normal' });
@@ -1642,11 +1600,11 @@ try {
   const settings = migrateState(saved?.state).settings;
   applyDarkMode(settings.darkMode === true);
   applyColorMode(settings.colorMode);
-  applyWindowHeight(Number(settings.windowHeight) || 500);
+  applyWindowHeight();
 } catch (_) {
   applyDarkMode(false);
   applyColorMode('redgreen');
-  applyWindowHeight(500);
+  applyWindowHeight();
 }
 // Background pushes: a new stock's quote arrived, or a guessed market/name was corrected.
 if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {

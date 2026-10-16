@@ -509,12 +509,37 @@ export function fresh(stamp, now, age = TTL) {
   const n = Date.parse(stamp);
   return Number.isFinite(n) && n <= now && now - n <= age && taipei(n).date === taipei(now).date;
 }
+// 2.0 watchlist groups: five fixed slots (like other quote widgets), names editable, max 3 characters.
+export const WATCH_GROUP_IDS = ['g1', 'g2', 'g3', 'g4', 'g5'];
+export const GROUP_NAME_MAX = 3;
+export function defaultWatchGroups() {
+  return WATCH_GROUP_IDS.map((id, i) => ({ id, name: String(i + 1) }));
+}
+export function groupNameValid(name) {
+  const text = String(name ?? '').trim();
+  const length = [...text].length;
+  return length >= 1 && length <= GROUP_NAME_MAX && !/[<>\u0000-\u001f]/.test(text);
+}
+export function normalizeWatchGroups(value) {
+  const byId = new Map((Array.isArray(value) ? value : []).filter(plain).map(g => [g.id, g]));
+  return defaultWatchGroups().map(def => {
+    const name = byId.get(def.id)?.name;
+    return { id: def.id, name: groupNameValid(name) ? String(name).trim() : def.name };
+  });
+}
+function normalizeLists(lists) {
+  const clean = Array.isArray(lists) ? [...new Set(lists.filter(x => WATCH_GROUP_IDS.includes(x)))] : [];
+  return clean.length ? clean : ['g1'];
+}
+
 export function stock(raw) {
   if (!plain(raw) || typeof raw.symbol !== 'string' || !SYMBOL.test(raw.symbol)) throw new Error('股票代號格式不正確');
   if (!['TW', 'TWO'].includes(raw.market)) throw new Error('市場必須是 TW 或 TWO');
   if (typeof raw.name !== 'string' || !raw.name.trim() || raw.name.length > 60) throw new Error('股票名稱需為 1–60 字');
   if (!Array.isArray(raw.groups) || !raw.groups.length || raw.groups.some(x => !GROUPS.includes(x))) throw new Error('群組格式不正確');
-  return { symbol: raw.symbol, market: raw.market, name: raw.name.trim(), groups: [...new Set(raw.groups)] };
+  if (raw.lists !== undefined && (!Array.isArray(raw.lists) || raw.lists.some(x => !WATCH_GROUP_IDS.includes(x)))) throw new Error('自選群組格式不正確');
+  // `groups` = alert memberships (watchlist / daytrade); `lists` = which of the 5 watchlist groups show it.
+  return { symbol: raw.symbol, market: raw.market, name: raw.name.trim(), groups: [...new Set(raw.groups)], lists: normalizeLists(raw.lists) };
 }
 export function watchlist(value) {
   if (!Array.isArray(value) || value.length > 100) throw new Error('最多可匯入 100 檔股票');
@@ -757,18 +782,24 @@ export function migrateState(saved, { reason = 'read' } = {}) {
   }
   if (!COLOR_MODES.includes(settings.colorMode)) settings.colorMode = 'redgreen';
   if (typeof settings.darkMode !== 'boolean') settings.darkMode = defaults.settings.darkMode;
+  // Stocks saved before groups existed belong to group 1.
+  const stocks = Array.isArray(saved.stocks)
+    ? saved.stocks.map(s => (plain(s) && !Array.isArray(s.lists) ? { ...s, lists: ['g1'] } : s))
+    : defaults.stocks;
   return {
     ...defaults,
     ...saved,
     version: STATE_VERSION,
     ...((saved.version ?? 1) < STATE_VERSION ? { migratedFrom: saved.version ?? 1 } : {}),
-    stocks: Array.isArray(saved.stocks) ? saved.stocks : defaults.stocks,
+    stocks,
+    watchGroups: normalizeWatchGroups(saved.watchGroups),
     settings
   };
 }
 
 export function defaultState() {
   return { version: STATE_VERSION, stocks: [stock({ symbol: '2330', name: '台積電', market: 'TW', groups: ['watchlist'] })],
+    watchGroups: defaultWatchGroups(),
     settings: {
       daytrade: true,
       allDaytradeAlerts: true,
