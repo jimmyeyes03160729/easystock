@@ -212,7 +212,7 @@
 .eight-module [role=tablist]{display:flex;gap:10px;margin:14px 0}.eight-module button{padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--text)}.eight-module [aria-selected=true]{border-color:#06b6d4;color:#06b6d4}.eight-card{border:1px solid var(--border);border-radius:10px;padding:14px;margin:10px 0;min-width:0}.eight-card svg{width:100%;max-width:340px;height:100px;color:#06b6d4}.eight-card ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0;list-style:none}.eight-card small{overflow-wrap:anywhere}.eight-pagination{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:14px 0}.eight-pagination button{min-height:44px}.eight-pagination button:disabled{opacity:.45;cursor:not-allowed}.eight-pagination button:focus-visible{outline:2px solid #06b6d4;outline-offset:3px}.eight-pagination span{text-align:center;font-size:14px}.eight-module [hidden]{display:none!important}@media(max-width:600px){.eight-card ul{grid-template-columns:1fr}}
 </style>
 <link rel="stylesheet" href="assets/liquid-glass.css?v=a09885af9bd5" />
-<link rel="stylesheet" href="assets/glass-home.css?v=baadbf9a5482" />
+<link rel="stylesheet" href="assets/glass-home.css?v=ceab2e93dd90" />
 <link rel="icon" type="image/png" sizes="128x128" href="chrome-extension/assets/icon128.png">
 </head>
 
@@ -237,7 +237,7 @@
         </button>
       </div>
 
-      <nav class="hidden lg:flex min-w-0 flex-1 items-center justify-center gap-0.5 bg-[#131A26] p-1 rounded-xl border border-[#232F42] text-xs font-semibold section-nav overflow-hidden" style="border-bottom:none; margin-bottom:0; padding:4px;" aria-label="首頁區域">
+      <nav class="hidden lg:flex min-w-0 flex-1 items-center justify-center gap-0.5 bg-[#131A26] p-1 rounded-xl border border-[#232F42] text-xs font-semibold section-nav overflow-hidden" aria-label="首頁區域">
         <a href="#intraday-strategies" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#F1F5F9] hover:bg-[#1C2B3C] transition-colors whitespace-nowrap">01 盤中摸魚</a>
         <a href="#eight-methods" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">02 開盤八法・尾盤八法</a>
         <a href="#learningSection" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">03 牛馬 AI 加班進修</a>
@@ -2894,6 +2894,12 @@
      INTRADAY HEADER
      ======================================================== */
 
+  // Reuse recorded execution values; missing prices/timestamps stay unknown.
+  function renderHomeTradeExecution(x, entry, exit, isOpen) {
+    const point = (label, price, time) => `<div><span>${label}</span><strong>${price !== null ? fmt(price, 2) : "—"}</strong><small>${escapeHtml(time ? formatTaiwanDateTime(time) : "時間未提供")}</small></div>`;
+    return `<div class="home-trade-execution">${point("進場", entry, x.entry_time)}${isOpen ? '<div><span>狀態</span><strong>持倉中</strong><small>尚未出場</small></div>' : point("出場", exit, x.exit_time)}</div>`;
+  }
+
   function renderLiveIntraday() {
     updateDashboardUX();
     if (window.AWatchlist) window.AWatchlist.render(INTRADAY_LIVE, liveDataState());
@@ -3297,6 +3303,7 @@
                 </div>
 
 
+                ${renderHomeTradeExecution(x, entry, exit, isOpen)}
                 <div class="text-right shrink-0">
                   <div class="text-base sm:text-lg font-bold text-main font-mono">
                     ${
@@ -3651,6 +3658,7 @@
               </div>
             </div>
 
+            ${renderHomeTradeExecution(x, entry, exit, isOpen)}
             <div class="text-right shrink-0">
               <div class="text-base sm:text-lg font-bold text-[#F1F5F9] font-mono">
                 ${displayPrice !== null ? fmt(displayPrice, 2) : "--"}
