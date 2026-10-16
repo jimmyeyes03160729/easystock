@@ -17,6 +17,7 @@ let currentMode = 'intraday'; // 'intraday' (當日分時 1分K) 或 'daily' (�
 let intradayData = [];
 let dailyData = [];
 let previousClose = null;
+let emptyNotice = '';
 let currentStockInfo = {
   price: (finite(initPrice) && initPrice > 0) ? initPrice : 0,
   change_pct: 0,
@@ -52,7 +53,7 @@ setText('badge-market', market === 'TWO' ? '上櫃' : '上市');
 const stBadge = document.getElementById('badge-strategy');
 if (stBadge) {
   if (strategyType) {
-    stBadge.textContent = strategyType === 'daytrade' ? '當沖策略' : strategyType;
+    stBadge.textContent = strategyType === 'daytrade' ? '量能觀察' : strategyType;
     stBadge.style.display = 'inline-block';
   } else {
     stBadge.style.display = 'none';
@@ -283,7 +284,8 @@ async function fetchYahooIntradayDirect() {
     const bars = [];
     let cumAmount = 0;
     let cumVol = 0;
-    let lastValidPrice = prevClose || regularPrice || 0;
+    // Minutes before the first real trade are skipped, not back-filled from the previous close.
+    let lastValidPrice = null;
 
     for (let i = 0; i < timestamps.length; i++) {
       const ts = timestamps[i];
@@ -371,6 +373,7 @@ async function mergeTodayPartialDailyBar(bars) {
 // 載入資料
 async function loadData(force = false) {
   loadingMask.classList.remove('hidden');
+  emptyNotice = '';
   document.getElementById('txt-status-desc').textContent = '資料載入中…';
 
   try {
@@ -426,15 +429,14 @@ async function loadData(force = false) {
         }
         currentStockInfo.vwap = intradayData.at(-1)?.vwap || null;
       } else {
-        // 若完全無法取得分時 K 線，使用個股真實現價生成適應性走勢，絕對不使用硬編碼 1000 元
-        const realBase = (fetched?.price && fetched.price > 0) ? fetched.price :
-                         (currentStockInfo.price > 0 ? currentStockInfo.price : (previousClose > 0 ? previousClose : 50));
-        intradayData = generateMockIntraday(realBase);
-        viewBarsCount = Math.max(270, intradayData.length);
+        // 2.0: no real intraday bars means an empty chart with a notice — never a generated line.
+        intradayData = [];
         viewOffset = 0;
-        currentStockInfo.price = realBase;
-        if (previousClose && previousClose > 0) {
-          currentStockInfo.change_pct = ((realBase - previousClose) / previousClose) * 100;
+        emptyNotice = '暫無真實分時資料';
+        if (finite(fetched?.price) && fetched.price > 0) currentStockInfo.price = fetched.price;
+        if (finite(fetched?.previousClose) && fetched.previousClose > 0) previousClose = fetched.previousClose;
+        if (previousClose > 0 && currentStockInfo.price > 0) {
+          currentStockInfo.change_pct = ((currentStockInfo.price - previousClose) / previousClose) * 100;
         }
       }
     } else {
@@ -488,8 +490,8 @@ async function loadData(force = false) {
           partial: b.partial === true
         })).filter(b => finite(b.open) && finite(b.close) && b.time);
       } else {
-        const realBase = currentStockInfo.price > 0 ? currentStockInfo.price : (previousClose > 0 ? previousClose : 50);
-        dailyData = generateMockDaily(realBase);
+        dailyData = [];
+        emptyNotice = '暫無日 K 資料';
       }
 
       if (dailyData.length > 0) {
@@ -507,7 +509,7 @@ async function loadData(force = false) {
         const live = await liveRes.json();
         const openPos = live?.open_positions?.[symbol];
         if (openPos && openPos.status === 'OPEN') {
-          currentStockInfo.reason = Array.isArray(openPos.entry_reasons) ? openPos.entry_reasons.join('、') : (openPos.reason || '當沖進場持倉中');
+          currentStockInfo.reason = Array.isArray(openPos.entry_reasons) ? openPos.entry_reasons.join('、') : (openPos.reason || '量多進攻觀察中');
           if (openPos.name) stockName = openPos.name;
         }
       }
@@ -540,7 +542,7 @@ function renderInfo() {
   dEl.className = `price-diff ${cls}`;
 
   const noteEl = document.getElementById('txt-signal-note');
-  let note = currentStockInfo.reason ? `訊號：${currentStockInfo.reason}` : '';
+  let note = currentStockInfo.reason ? `觀察：${currentStockInfo.reason}` : '';
   if (currentStockInfo.vwap) note += ` ｜ VWAP: ${Number(currentStockInfo.vwap).toFixed(2)}`;
   noteEl.textContent = note;
 
@@ -636,6 +638,15 @@ function draw() {
   ctx.fillStyle = '#0a0e19';
   ctx.fillRect(0, 0, width, height);
 
+  const empty = currentMode === 'intraday' ? !intradayData?.length : !dailyData?.length;
+  if (empty) {
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(emptyNotice || '資料載入中…', width / 2, height / 2);
+    ctx.textAlign = 'start';
+    return;
+  }
   if (currentMode === 'intraday') {
     drawIntraday(width, height);
   } else {

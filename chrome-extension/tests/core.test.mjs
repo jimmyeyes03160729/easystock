@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { taipei, marketOpen, fresh, normalizeQuoteTimestamp, formatTaipeiQuoteTime, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, matchFilter, BUILTIN_STOCKS, searchStocks, searchOnlineStocks, calcChangePct, BROKERS, getBroker, sparklineSessionX, buildPartialDailyBar } from '../core.js';
+import { taipei, marketOpen, fresh, normalizeQuoteTimestamp, formatTaipeiQuoteTime, config, signal, watchlist, ledger, canNotify, isVIP, sha256, defaultState, chartURL, TTL, formatTelegramEntry, formatTelegramExit, matchFilter, BUILTIN_STOCKS, searchStocks, searchOnlineStocks, calcChangePct, BROKERS, getBroker, sparklineSessionX, buildPartialDailyBar, resolveStockInput, sparkForQuote } from '../core.js';
 const at = s => Date.parse(s);
 const now = at('2026-09-17T09:30:00+08:00');
 const sample = { id: 'a', symbol: '2330', market: 'TW', name: '台積電', price: 1000, change_pct: 1, reason: '爆量', generated_at: '2026-09-17T09:29:00+08:00', quote_at: '2026-09-17T09:29:00+08:00' };
@@ -35,6 +35,24 @@ test('1.05 sparkline uses fixed Taiwan 09:00-13:30 time axis', () => {
   assert.equal(sparklineSessionX({ timestamp: ts('2026-09-30T13:30:00+08:00') }), 54);
   assert.equal(sparklineSessionX({ timestamp: ts('2026-09-30T08:59:00+08:00') }), null);
 });
+test('list sparkline follows the clock: 10:00 data stays on the left part of a 09:00–13:30 axis', () => {
+  const ts = value => Date.parse(value) / 1000;
+  const q = { price: 103, quote_at: '2026-09-30T10:07:00+08:00', spark: [
+    { close: 101, timestamp: ts('2026-09-30T09:30:00+08:00') },
+    { close: 100, timestamp: ts('2026-09-30T09:00:00+08:00') },
+    { close: 102, timestamp: ts('2026-09-30T09:45:00+08:00') }
+  ] };
+  const pts = sparkForQuote(q);
+  assert.deepEqual(pts.map(p => p.close), [100, 101, 102, 103], 'sorted by time, ends at the current quote');
+  const xs = pts.map(p => sparklineSessionX(p));
+  assert.equal(xs[0], 2, '09:00 at the left edge');
+  assert.ok(xs.at(-1) < 15, `10:07 is ~25% across, not stretched to the right edge (x=${xs.at(-1)})`);
+  for (let i = 1; i < xs.length; i++) assert.ok(xs[i] > xs[i - 1], 'x increases with time');
+  // After the close, the line ends at 13:30 at most.
+  const closed = sparkForQuote({ ...q, quote_at: '2026-09-30T14:05:00+08:00' });
+  assert.equal(closed.length, 3, 'a quote outside the session adds no point');
+});
+
 test('1.05 partial daily K only aggregates valid bars from Taiwan today', () => {
   const rows = [
     { date: '2026-09-29', open: 99, high: 100, low: 98, close: 99, volume: 10 },
@@ -60,7 +78,8 @@ test('config is data only; payment URLs cannot execute script', () => {
   assert.throws(() => config({ ...base, vip_keys_hash: ['VIP888'] }));
 });
 test('watchlist is bounded, typed, deduplicated, and export-safe', () => {
-  assert.equal(defaultState().settings.darkMode, true);
+  assert.equal(defaultState().settings.darkMode, false);
+  assert.equal(defaultState().settings.colorMode, 'redgreen');
   const s = defaultState().stocks[0];
   assert.deepEqual(watchlist([s]), [s]);
   for (const input of [[s, s], [{ ...s, symbol: '__proto__' }], [{ ...s, groups: [] }], [{ ...s, market: 'X' }], Array(101).fill(s)]) assert.throws(() => watchlist(input));
@@ -86,10 +105,28 @@ test('VIP revalidated against config, not a stored boolean', async () => {
 test('production has narrow permissions, packaged resources, no test VIP', async () => {
   const m = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url)));
   assert.equal(m.manifest_version, 3);
-  assert.equal(m.version, '1.0.5');
-  assert.equal(m.version_name, '1.05');
-  assert.deepEqual(m.permissions, ['storage', 'alarms', 'notifications']);
+  assert.equal(m.version, '2.0.0');
+  assert.equal(m.version_name, '2.0');
+  // 2.0 adds only `identity` (no install warning); no new host permission, so 1.05 users are not
+  // re-prompted. Identity Toolkit is reached via CORS without a host permission.
+  assert.deepEqual(m.permissions, ['storage', 'alarms', 'notifications', 'identity']);
   assert.equal(m.host_permissions.some(x => x.includes('<all_urls>')), false);
+  assert.equal(m.host_permissions.length, 6);
+  // The source manifest may carry the public store key (unpacked loads get the store ID); the
+  // production build strips it — verified on dist/production in vm.test and by package.mjs.
+  assert.equal(m.content_security_policy.extension_pages, "script-src 'self'; object-src 'none'; base-uri 'none'");
+  // auth-config.json may only hold public identifiers.
+  const auth = JSON.parse(await readFile(new URL('../auth-config.json', import.meta.url), 'utf8'));
+  assert.deepEqual(Object.keys(auth).sort(), ['_comment', 'database_url', 'extension_id', 'extension_public_key', 'firebase_api_key', 'firebase_project_id', 'oauth_client_id']);
+  assert.match(auth.oauth_client_id, /^$|^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/);
+  // The source manifest carries the same real client ID (never a placeholder), so any build can sign in.
+  if (m.oauth2) {
+    assert.equal(m.oauth2.client_id, auth.oauth_client_id);
+    assert.deepEqual(m.oauth2.scopes, ['openid', 'email', 'profile']);
+  }
+  if (m.key) assert.equal(m.key, auth.extension_public_key, 'source key is the store public key');
+  const { _comment, ...values } = auth;
+  assert.doesNotMatch(JSON.stringify(values), /secret|PRIVATE KEY|refresh_token/i);
   const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
   assert.doesNotMatch(html, /<script[^>]+src="https?:/);
   const cfg = JSON.parse(await readFile(new URL('../config.json', import.meta.url)));
@@ -102,28 +139,48 @@ test('telegram format generates matching entry and exit messages', () => {
     entry_vwap: 996.5, entry_reasons: ['量價突破', '站在VWAP之上'],
     stop_price: 985, take_profit_price: 1030
   });
-  assert.match(entryMsg, /🚀【當沖進場訊號】/);
+  // 2.0 wording: observation labels; same numbers from the same fields.
+  assert.match(entryMsg, /▲【量多進攻】/);
   assert.match(entryMsg, /2330 台積電/);
-  assert.match(entryMsg, /訊號價：1000\.00/);
-  assert.match(entryMsg, /分數：0\.88/);
+  assert.match(entryMsg, /觀察價：1000\.00/);
+  assert.match(entryMsg, /量能分數：0\.88/);
   assert.match(entryMsg, /✓ 量價突破/);
-  assert.match(entryMsg, /停損參考：985\.00/);
-  assert.match(entryMsg, /狀態：OPEN/);
+  assert.match(entryMsg, /下緣參考：985\.00/);
+  assert.match(entryMsg, /上緣參考：1030\.00/);
+  assert.match(entryMsg, /非買賣建議/);
 
   const exitMsg = formatTelegramExit({
     symbol: '2330', name: '台積電', entry_price: 1000, exit_price: 1025,
     pnl_pct: 2.5, mfe_pct: 3.0, mae_pct: -0.5, duration_seconds: 1800,
-    exit_reason: '12:55當沖強制出場'
+    exit_reason: '範例：量能轉弱'
   });
-  assert.match(exitMsg, /✅【當沖出場】/);
+  assert.match(exitMsg, /▼【量減退守】/);
   assert.match(exitMsg, /2330 台積電/);
-  assert.match(exitMsg, /訊號進場：1000\.00/);
-  assert.match(exitMsg, /訊號出場：1025\.00/);
-  assert.match(exitMsg, /報酬：\+2\.50%/);
-  assert.match(exitMsg, /最高浮盈：\+3\.00%/);
-  assert.match(exitMsg, /最大浮虧：-0\.50%/);
-  assert.match(exitMsg, /持有時間：30分0秒/);
-  assert.match(exitMsg, /出場原因：12:55當沖強制出場/);
+  assert.match(exitMsg, /觀察起點：1000\.00/);
+  assert.match(exitMsg, /觀察終點：1025\.00/);
+  assert.match(exitMsg, /區間漲跌：\+2\.50%/);
+  assert.match(exitMsg, /區間最高：\+3\.00%/);
+  assert.match(exitMsg, /區間最低：-0\.50%/);
+  assert.match(exitMsg, /觀察時間：30分0秒/);
+  assert.match(exitMsg, /說明：範例：量能轉弱/);
+});
+
+test('T39/T40 user-visible copy: 架構 tab, 量多進攻／量減退守, no buy/sell instruction wording', async () => {
+  const files = ['../popup.html', '../popup.js', '../chart.html', '../chart.js', '../background.js', '../core.js', '../manifest.json'];
+  const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/<!--[\s\S]*?-->/g, '');
+  for (const file of files) {
+    const text = strip(await readFile(new URL(file, import.meta.url), 'utf8'));
+    for (const banned of ['當沖AI架構', '當沖 AI 架構', '當沖標的', '當沖進場', '當沖出場', '建議買入', '建議賣出', '買進訊號', '賣出訊號', '當沖多方訊號', '買進範例', '下單 ↗', '買進推播', '賣出推播']) {
+      assert.equal(text.includes(banned), false, `${file} still shows "${banned}"`);
+    }
+  }
+  const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
+  assert.match(html, /data-group="ai_matrix" aria-label="架構">架構<\/button>/);
+  assert.match(html, /量多進攻/);
+  assert.match(html, /量減退守/);
+  const manifest = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url), 'utf8'));
+  assert.match(manifest.name, /^當沖吧！牛馬仔/, 'brand name kept');
+  assert.doesNotMatch(manifest.name + manifest.description, /AI 量化雷達|突破點火/);
 });
 test('matchFilter supports all-pass, price-range, and change-percentage criteria', () => {
   const allSettings = { filterMode: 'all', minPrice: 100, maxPrice: 500, minChangePct: 3.0 };
@@ -135,6 +192,20 @@ test('matchFilter supports all-pass, price-range, and change-percentage criteria
   assert.equal(matchFilter(250, 2.5, customSettings), false);
   assert.equal(matchFilter(100, 1.5, customSettings), false);
 });
+test('resolveStockInput: only real Taiwan stocks; lookup outage is not treated as "no such stock"', async () => {
+  const yahoo = async q => ({ ok: true, results: q === '6505' ? [{ symbol: '6505', market: 'TW', name: '台塑化' }] : [] });
+  assert.equal((await resolveStockInput('2330', {}, yahoo)).stock.name, '台積電');
+  const found = await resolveStockInput('6505', {}, yahoo);
+  assert.equal(found.status, 'found'); assert.equal(found.stock.market, 'TW');
+  assert.equal((await resolveStockInput('1000', {}, yahoo)).status, 'notFound');
+  assert.equal((await resolveStockInput('不存在的公司', {}, yahoo)).status, 'notFound');
+  const down = async () => ({ ok: false, results: [] });
+  const unverified = await resolveStockInput('00878', {}, down);
+  assert.equal(unverified.status, 'unverified');
+  assert.equal(unverified.stock.symbol, '00878');
+  assert.equal((await resolveStockInput('台積', {}, down)).stock.symbol, '2330', 'built-in names work offline');
+});
+
 test('searchStocks finds stocks by Chinese name, code, prefix, and dynamic codes', () => {
   assert.ok(BUILTIN_STOCKS.length >= 70);
   const byName = searchStocks('台積電');
@@ -148,13 +219,13 @@ test('searchStocks finds stocks by Chinese name, code, prefix, and dynamic codes
   assert.ok(partial.some(s => s.symbol === '2454' && s.name === '聯發科'));
   assert.ok(partial.some(s => s.symbol === '2303' && s.name === '聯電'));
 
-  const unknownStock = searchStocks('1101');
-  assert.equal(unknownStock[0].symbol, '1101');
-  assert.equal(unknownStock[0].market, 'TW');
-
-  const otcStock = searchStocks('6285');
-  assert.equal(otcStock[0].symbol, '6285');
-  assert.equal(otcStock[0].market, 'TWO');
+  // 2.0: numbers that match no known Taiwan stock are not invented as suggestions.
+  assert.equal(searchStocks('1000').some(s => s.symbol === '1000'), false);
+  assert.equal(searchStocks('9999').length, 0);
+  // Symbols seen in the public feed count as known stocks.
+  const fromFeed = searchStocks('1101', { '1101': { name: '台泥' } });
+  assert.equal(fromFeed[0].symbol, '1101');
+  assert.equal(fromFeed[0].market, 'TW');
 
   const withExtra = searchStocks('微星', { '2377': { name: '微星' } });
   assert.equal(withExtra[0].symbol, '2377');

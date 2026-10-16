@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "當沖吧！牛馬仔 - 工位摸魚看盤神器 ｜ 台股 AI 量化雷達",
-  "version": "1.0.5",
+  "name": "當沖吧！牛馬仔 - 工位摸魚看盤神器 ｜ 台股行情觀察",
+  "version": "2.0.0",
   "minimum_chrome_version": "116",
-  "description": "上班摸魚不露餡！台股盤中爆量雷達、突破點火即時推播與自救量化分析，打工人專屬的桌面極速看盤室。",
+  "description": "低調看盤：台股自選行情、加權／櫃買指數與量能變化觀察，可用 Google 帳號同步自選。行情僅供參考，非投資建議。",
   "permissions": [
     "storage",
     "alarms",
-    "notifications"
+    "notifications",
+    "identity"
   ],
   "host_permissions": [
     "https://raw.githubusercontent.com/jimmyeyes03160729/easystock/*",
@@ -17,13 +18,22 @@
     "https://query1.finance.yahoo.com/*",
     "https://query2.finance.yahoo.com/*"
   ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr1++9mJViVWYgT4rPhICRSaeOPJ5CLz5ecD2BfLKj1cZAiZsE8qF7l6ZsK5oWe5hZYqj9dlgKrzHLgoCQG4wia+h+5xwEtuoWjXkVrQ+qnkRjl59nDT0UFbTAA0RB/N89i7gabYopbW/FrptDeRtCwn8YDsiGKyZ2Ls9ew7qd+yIAz2ZNF1RovK1d3PL4lc/c6dx1IYqr+2/WSy+1kTMR7U8lMa/2FY7zhWugsy0VwbT+AWFhXF9omtz2ja7Mf03sTBL5PH6EsqRbZrEvcj1cjT9HmhmMGglp2buz0SsM0zryUaiju8DhluTpludOp484+pvd60mxJajceIK1G0vcwIDAQAB",
+  "oauth2": {
+    "client_id": "179809300331-6i8sfhcbp07o6ngsk3qnspebp0ublleh.apps.googleusercontent.com",
+    "scopes": [
+      "openid",
+      "email",
+      "profile"
+    ]
+  },
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "當沖吧！牛馬仔 - 工位摸魚看盤神器",
+    "default_title": "當沖吧！牛馬仔 - 台股行情觀察",
     "default_icon": {
       "16": "assets/icon16.png",
       "48": "assets/icon48.png",
@@ -51,5 +61,5 @@
       "run_at": "document_idle"
     }
   ],
-  "version_name": "1.05"
+  "version_name": "2.0"
 }

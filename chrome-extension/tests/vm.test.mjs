@@ -7,6 +7,13 @@ test('packaged VM has no host access, public test key only, all assets present',
   const root = new URL('../dist/vm/', import.meta.url);
   const m = JSON.parse(await readFile(new URL('manifest.json', root)));
   assert.deepEqual(m.host_permissions, []);
+  // VM is its own extension: never the store ID, no Google sign-in.
+  assert.equal('key' in m, false); assert.equal('oauth2' in m, false);
+  assert.equal(m.permissions.includes('identity'), false);
+  // The Web Store build never carries the "key" field (the store rejects it).
+  const prod = JSON.parse(await readFile(new URL('../dist/production/manifest.json', import.meta.url)));
+  assert.equal('key' in prod, false);
+  assert.ok(prod.oauth2?.client_id);
   const env = await readFile(new URL('environment.js', root), 'utf8');
   assert.match(env, /VM_MODE = true/); assert.doesNotMatch(env, /https?:/);
   const cfg = JSON.parse(await readFile(new URL('vm-config.json', root)));

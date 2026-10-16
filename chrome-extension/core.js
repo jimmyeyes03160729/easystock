@@ -193,31 +193,30 @@ export function searchStocks(query, extraQuotes = {}) {
   const hasName = all.filter(s => s.name.toUpperCase().includes(q) && !exactName.includes(s) && !startName.includes(s));
   const hasSym = all.filter(s => s.symbol.includes(q) && !exactSym.includes(s) && !startSym.includes(s));
 
+  // 2.0: only stocks known to exist (built-in list, Yahoo TW autocomplete results, symbols seen in the
+  // public feed). A typed number that matches nothing (e.g. "1000") is no longer invented as a suggestion.
   const results = [...exactSym, ...exactName, ...startName, ...startSym, ...hasName, ...hasSym];
-
-  const match = /^(\d{4,6}[A-Z]?)(?:\.(TW|TWO))?$/i.exec(q);
-  if (match) {
-    const rawSym = match[1];
-    const m = (match[2] || (rawSym.length === 4 && (rawSym.startsWith('5') || rawSym.startsWith('6') || rawSym.startsWith('8')) ? 'TWO' : 'TW')).toUpperCase();
-    if (!results.some(x => x.symbol === rawSym)) {
-      results.unshift({ symbol: rawSym, name: rawSym, market: m });
-    }
-  }
   return results.slice(0, 15);
 }
 
 export async function searchOnlineStocks(query) {
+  return (await lookupOnlineStocks(query)).results;
+}
+
+// Yahoo TW autocomplete. `ok: false` means the lookup itself failed (network / service), which is
+// different from "looked up, no such Taiwan stock" (`ok: true`, empty results).
+export async function lookupOnlineStocks(query) {
   const q = String(query || '').trim();
-  if (!q) return [];
+  if (!q) return { ok: true, results: [] };
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
   try {
     const url = `https://tw.stock.yahoo.com/_td-stock/api/resource/AutocompleteService;query=${encodeURIComponent(q)}`;
     const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-    if (!res.ok) return [];
+    if (!res.ok) return { ok: false, results: [] };
     const json = await res.json();
     const rawList = json?.ResultSet?.Result;
-    if (!Array.isArray(rawList)) return [];
+    if (!Array.isArray(rawList)) return { ok: false, results: [] };
 
     const results = [];
     const seen = new Set();
@@ -252,16 +251,42 @@ export async function searchOnlineStocks(query) {
       });
     }
     if (results.length > 0) registerStocks(results);
-    return results.slice(0, 15);
+    return { ok: true, results: results.slice(0, 15) };
   } catch {
-    return [];
+    return { ok: false, results: [] };
   } finally {
     clearTimeout(timer);
   }
 }
 
+// Resolve what the user typed into one real Taiwan stock.
+// found: a listed/OTC stock or ETF; notFound: looked up and it does not exist; unverified: the
+// lookup service was unreachable, so a well-formed code is accepted rather than rejected.
+export async function resolveStockInput(input, extraQuotes = {}, lookup = lookupOnlineStocks) {
+  const raw = String(input || '').trim();
+  const upper = raw.toUpperCase();
+  const code = /^(\d{4,6}[A-Z]?)(?:\.(TW|TWO))?$/i.exec(raw);
+  const symbol = code ? code[1].toUpperCase() : '';
+  const localList = searchStocks(raw, extraQuotes);
+  const local = localList.find(s => s.symbol === (symbol || upper) || s.name === raw);
+  if (local) return { status: 'found', stock: local };
+  // A partial name (e.g. "台積") may match a known stock even without the online service.
+  const localName = !code ? localList[0] : null;
+  const online = await lookup(code ? symbol : raw);
+  if (online.ok) {
+    const hit = online.results.find(s => s.symbol === symbol || s.name === raw) || (!code ? (online.results[0] || localName) : null);
+    return hit ? { status: 'found', stock: hit } : { status: 'notFound' };
+  }
+  if (localName) return { status: 'found', stock: localName };
+  if (!code) return { status: 'unverified' };
+  const market = (code[2] || (symbol.length === 4 && /^[568]/.test(symbol) ? 'TWO' : 'TW')).toUpperCase();
+  return { status: 'unverified', stock: { symbol, market, name: symbol } };
+}
+
+// 2.0: a missing or unparseable source time returns null. It must never become "now",
+// otherwise an old quote would look live.
 export function normalizeQuoteTimestamp(raw, now = Date.now()) {
-  if (typeof raw === 'number' && Number.isFinite(raw)) {
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) {
     const ms = raw < 1e12 ? raw * 1000 : raw;
     return new Date(ms).toISOString();
   }
@@ -277,14 +302,141 @@ export function normalizeQuoteTimestamp(raw, now = Date.now()) {
     const ss = String(Math.min(59, Number(clock[3] || 0))).padStart(2, '0');
     return `${taipei(now).date}T${hh}:${mm}:${ss}+08:00`;
   }
-  return new Date(now).toISOString();
+  return null;
 }
 
 export function formatTaipeiQuoteTime(raw, now = Date.now()) {
   const iso = normalizeQuoteTimestamp(raw, now);
+  if (!iso) return '--:--';
   return new Date(iso).toLocaleTimeString('zh-TW', {
     timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false
   });
+}
+
+// ---- 2.0 quote freshness model -------------------------------------------------
+export const QUOTE_STALE_MS = 10 * 60 * 1000;
+export const INDEX_STALE_MS = 3 * 60 * 1000;
+export const QUOTE_LABELS = { loading: '載入中', unavailable: '暫無行情', stale: '資料過期', live: '即時', close: '收盤' };
+
+export function quoteStampMs(q) {
+  if (!plain(q)) return null;
+  for (const key of ['quote_at', 'updated_at']) {
+    const stamp = q[key];
+    if (typeof stamp === 'string' && /(Z|[+-]\d{2}:\d{2})$/.test(stamp)) {
+      const ms = Date.parse(stamp);
+      if (Number.isFinite(ms)) return ms;
+    }
+  }
+  return null;
+}
+
+export function isTradingDay(date, holidays = []) {
+  const weekday = new Date(`${date}T12:00:00+08:00`).getUTCDay();
+  return weekday > 0 && weekday < 6 && !holidays.includes(date);
+}
+
+// The Taipei date of the most recent session that has started (today after 09:00 on a trading day).
+export function lastSessionDate(now = Date.now(), holidays = []) {
+  const t = taipei(now);
+  if (isTradingDay(t.date, holidays) && t.minute >= TW_SESSION_START_MINUTE) return t.date;
+  let ms = Date.parse(`${t.date}T12:00:00+08:00`);
+  for (let i = 0; i < 30; i++) {
+    ms -= 86400000;
+    const date = taipei(ms).date;
+    if (isTradingDay(date, holidays)) return date;
+  }
+  return t.date;
+}
+
+export function validQuote(q) {
+  return plain(q) && finite(q.price) && q.price > 0;
+}
+
+// loading / unavailable / stale / live / close. A quote from an earlier session is stale,
+// a quote from a closed market is "close" only when it belongs to the latest session.
+export function quoteStatus(q, now = Date.now(), { holidays = [], pending = false } = {}) {
+  const make = state => ({ state, label: QUOTE_LABELS[state], stale: state === 'stale' });
+  if (!validQuote(q)) return make(pending ? 'loading' : 'unavailable');
+  const ms = quoteStampMs(q);
+  if (!finite(ms) || ms > now + 60000) return make('stale');
+  const today = taipei(now).date, quoteDay = taipei(ms).date;
+  if (marketOpen(now, holidays)) {
+    return make(quoteDay === today && now - ms <= QUOTE_STALE_MS ? 'live' : 'stale');
+  }
+  const session = lastSessionDate(now, holidays);
+  if (quoteDay < session) return make('stale');
+  // After today's close, an intraday snapshot (e.g. 09:00) is not today's closing quote.
+  if (quoteDay === today && session === today && taipei(now).minute >= TW_SESSION_END_MINUTE + 5 && taipei(ms).minute < TW_SESSION_END_MINUTE - 5) {
+    return make('stale');
+  }
+  return make('close');
+}
+
+function quoteCompleteness(q) {
+  return ['previous_close', 'change', 'change_pct', 'high', 'low', 'open'].filter(k => finite(q?.[k])).length;
+}
+
+// Newest source time wins as a whole record; fields are never mixed across different quotes,
+// except the day-constant previous close when both records belong to the same Taipei date.
+export function mergeQuote(old, incoming) {
+  if (!validQuote(incoming)) return plain(old) ? { ...old } : null;
+  if (!validQuote(old)) {
+    const out = { ...incoming };
+    if (plain(old) && Array.isArray(old.spark) && !out.spark) out.spark = old.spark;
+    return out;
+  }
+  const a = quoteStampMs(old), b = quoteStampMs(incoming);
+  const aa = finite(a) ? a : -Infinity, bb = finite(b) ? b : -Infinity;
+  const incomingWins = bb > aa || (bb === aa && quoteCompleteness(incoming) >= quoteCompleteness(old));
+  const newer = incomingWins ? incoming : old, other = incomingWins ? old : incoming;
+  const out = { ...newer };
+  const ms = quoteStampMs(newer), otherMs = quoteStampMs(other);
+  const sameDay = finite(ms) && finite(otherMs) && taipei(ms).date === taipei(otherMs).date;
+  if (sameDay && !finite(out.previous_close) && finite(other.previous_close) && other.previous_close > 0) {
+    out.previous_close = other.previous_close;
+    out.change = out.price - other.previous_close;
+    out.change_pct = (out.change / other.previous_close) * 100;
+  }
+  const isPlaceholder = n => !n || /^\d{4,6}[A-Z]?$/.test(String(n));
+  if (isPlaceholder(out.name) && !isPlaceholder(other.name)) out.name = other.name;
+  if (!Array.isArray(out.spark) && Array.isArray(other.spark)) out.spark = other.spark;
+  return out;
+}
+
+// Only real intraday points from the same Taipei date as the quote; otherwise no line at all.
+export function sparkForQuote(q) {
+  const points = Array.isArray(q?.spark) ? q.spark : [];
+  const ms = quoteStampMs(q);
+  if (!finite(ms) || points.length < 2) return null;
+  const day = taipei(ms).date;
+  const toMs = t => Number(t) * (Number(t) > 1e12 ? 1 : 1000);
+  const rows = points.filter(p => plain(p) && finite(Number(p.close)) && finite(Number(p.timestamp)) &&
+    taipei(toMs(p.timestamp)).date === day).sort((a, b) => toMs(a.timestamp) - toMs(b.timestamp));
+  if (rows.length < 2) return null;
+  // Spark data comes in 15-minute buckets; end the line at the current quote, at its real time,
+  // so the curve stops where the price is (never stretched to the right edge).
+  const quoteMinute = taipei(ms).minute;
+  if (validQuote(q) && ms > toMs(rows.at(-1).timestamp) && quoteMinute >= TW_SESSION_START_MINUTE && quoteMinute <= TW_SESSION_END_MINUTE) {
+    rows.push({ close: q.price, timestamp: Math.floor(ms / 1000) });
+  }
+  return rows;
+}
+
+// Index data quality: source / quote_at / received_at / age_seconds / fresh / market_status / status.
+export function indexQuality(taiex, now = Date.now(), { holidays = [], lastError = '' } = {}) {
+  const open = marketOpen(now, holidays);
+  const market_status = open ? 'OPEN' : 'CLOSED';
+  if (!plain(taiex) || !finite(taiex.price)) {
+    return { source: taiex?.source || 'TWSE_MIS', quote_at: null, received_at: taiex?.received_at || null, age_seconds: null, fresh: false, market_status, status: 'UNAVAILABLE', lastError };
+  }
+  const ms = quoteStampMs(taiex);
+  const age = finite(ms) ? Math.max(0, Math.round((now - ms) / 1000)) : null;
+  let status;
+  if (!finite(ms)) status = 'STALE';
+  else if (open) status = taipei(ms).date === taipei(now).date && now - ms <= INDEX_STALE_MS ? 'LIVE' : 'STALE';
+  else status = taipei(ms).date >= lastSessionDate(now, holidays) ? 'CLOSE' : 'STALE';
+  return { source: taiex.source || 'TWSE_MIS', quote_at: taiex.quote_at || null, received_at: taiex.received_at || null,
+    age_seconds: age, fresh: status === 'LIVE' || status === 'CLOSE', market_status, status, lastError };
 }
 
 export async function fetchStockClosingQuotes(symbols) {
@@ -317,21 +469,24 @@ export async function fetchStockClosingQuotes(symbols) {
       const high = finite(item.regularMarketDayHigh?.sort) ? item.regularMarketDayHigh.sort : (price !== null ? price : 0);
       const low = finite(item.regularMarketDayLow?.sort) ? item.regularMarketDayLow.sort : (price !== null ? price : 0);
       const open = finite(item.regularMarketOpen?.sort) ? item.regularMarketOpen.sort : (prev !== null ? prev : price);
+      if (!finite(price) || price <= 0) continue;
       const quoteAt = normalizeQuoteTimestamp(item.regularMarketTime, Date.now());
-      const timeStr = formatTaipeiQuoteTime(quoteAt);
+      if (change_pct === null && prev !== null && prev > 0) change_pct = ((price - prev) / prev) * 100;
       map[sym] = {
         name: item.symbolName || sym,
-        price: price || 0,
+        price,
         change: change || 0,
-        change_pct: change_pct !== null ? change_pct : 0,
+        change_pct,
         previous_close: prev,
         high: high || 0,
         low: low || 0,
         open: open || 0,
-        time: timeStr || '13:30',
+        time: quoteAt ? formatTaipeiQuoteTime(quoteAt) : '',
         volume: finite(item.volume) ? Math.round(item.volume / 1000) : 0,
         quote_at: quoteAt,
-        updated_at: quoteAt
+        updated_at: quoteAt,
+        source: 'YAHOO_TW',
+        received_at: new Date().toISOString()
       };
     }
     return map;
@@ -354,12 +509,37 @@ export function fresh(stamp, now, age = TTL) {
   const n = Date.parse(stamp);
   return Number.isFinite(n) && n <= now && now - n <= age && taipei(n).date === taipei(now).date;
 }
+// 2.0 watchlist groups: five fixed slots (like other quote widgets), names editable, max 3 characters.
+export const WATCH_GROUP_IDS = ['g1', 'g2', 'g3', 'g4', 'g5'];
+export const GROUP_NAME_MAX = 3;
+export function defaultWatchGroups() {
+  return WATCH_GROUP_IDS.map((id, i) => ({ id, name: String(i + 1) }));
+}
+export function groupNameValid(name) {
+  const text = String(name ?? '').trim();
+  const length = [...text].length;
+  return length >= 1 && length <= GROUP_NAME_MAX && !/[<>\u0000-\u001f]/.test(text);
+}
+export function normalizeWatchGroups(value) {
+  const byId = new Map((Array.isArray(value) ? value : []).filter(plain).map(g => [g.id, g]));
+  return defaultWatchGroups().map(def => {
+    const name = byId.get(def.id)?.name;
+    return { id: def.id, name: groupNameValid(name) ? String(name).trim() : def.name };
+  });
+}
+function normalizeLists(lists) {
+  const clean = Array.isArray(lists) ? [...new Set(lists.filter(x => WATCH_GROUP_IDS.includes(x)))] : [];
+  return clean.length ? clean : ['g1'];
+}
+
 export function stock(raw) {
   if (!plain(raw) || typeof raw.symbol !== 'string' || !SYMBOL.test(raw.symbol)) throw new Error('股票代號格式不正確');
   if (!['TW', 'TWO'].includes(raw.market)) throw new Error('市場必須是 TW 或 TWO');
   if (typeof raw.name !== 'string' || !raw.name.trim() || raw.name.length > 60) throw new Error('股票名稱需為 1–60 字');
   if (!Array.isArray(raw.groups) || !raw.groups.length || raw.groups.some(x => !GROUPS.includes(x))) throw new Error('群組格式不正確');
-  return { symbol: raw.symbol, market: raw.market, name: raw.name.trim(), groups: [...new Set(raw.groups)] };
+  if (raw.lists !== undefined && (!Array.isArray(raw.lists) || raw.lists.some(x => !WATCH_GROUP_IDS.includes(x)))) throw new Error('自選群組格式不正確');
+  // `groups` = alert memberships (watchlist / daytrade); `lists` = which of the 5 watchlist groups show it.
+  return { symbol: raw.symbol, market: raw.market, name: raw.name.trim(), groups: [...new Set(raw.groups)], lists: normalizeLists(raw.lists) };
 }
 export function watchlist(value) {
   if (!Array.isArray(value) || value.length > 100) throw new Error('最多可匯入 100 檔股票');
@@ -412,6 +592,11 @@ export function canNotify(s, state, now, vip) {
   return !state.ignored[s.symbol] && !state.seen[`${s.strategy}:${s.id}`] &&
     (!state.last[s.symbol] || now - state.last[s.symbol] >= COOLDOWN) && (vip || state.count < 3);
 }
+// 2.0 wording: market-observation labels, not trade instructions. Underlying signals, triggers and
+// thresholds are unchanged — only the text a user reads.
+export const SIGNAL_LABELS = { entry: '量多進攻', exit: '量減退守' };
+export const OBSERVATION_NOTE = '行情觀察描述，非買賣建議';
+
 export function formatTelegramEntry(p) {
   const symbol = p.symbol || '';
   const name = p.name || symbol;
@@ -425,17 +610,17 @@ export function formatTelegramEntry(p) {
     : (p.reason ? `✓ ${p.reason}` : '');
 
   return [
-    `🚀【當沖進場訊號】`,
+    `▲【${SIGNAL_LABELS.entry}】`,
     ``,
     `${symbol} ${name}`,
-    `訊號價：${price}`,
-    `分數：${score}`,
+    `觀察價：${price}`,
+    `量能分數：${score}`,
     `VWAP：${vwap}`,
     reasons ? `\n${reasons}` : '',
-    `停損參考：${stop}`,
-    `停利參考：${tp}`,
+    `下緣參考：${stop}`,
+    `上緣參考：${tp}`,
     ``,
-    `狀態：OPEN`
+    `狀態：觀察中｜${OBSERVATION_NOTE}`
   ].filter(line => line !== null && line !== undefined).join('\n');
 }
 
@@ -450,25 +635,24 @@ export function formatTelegramExit(t) {
   const mae = finite(t.mae_pct) ? `${t.mae_pct >= 0 ? '+' : ''}${t.mae_pct.toFixed(2)}%` : '-';
   const durSec = t.duration_seconds;
   const durText = finite(durSec) ? `${Math.floor(durSec / 60)}分${durSec % 60}秒` : '-';
-  const reason = t.exit_reason || '平倉出場';
+  const reason = t.exit_reason || '量能轉弱';
 
   return [
-    `✅【當沖出場】`,
+    `▼【${SIGNAL_LABELS.exit}】`,
     ``,
     `${symbol} ${name}`,
     ``,
-    `訊號進場：${entryPrice}`,
-    `訊號出場：${exitPrice}`,
+    `觀察起點：${entryPrice}`,
+    `觀察終點：${exitPrice}`,
     ``,
-    `報酬：${sign}${pnl.toFixed(2)}%`,
-    `最高浮盈：${mfe}`,
-    `最大浮虧：${mae}`,
-    `持有時間：${durText}`,
+    `區間漲跌：${sign}${pnl.toFixed(2)}%`,
+    `區間最高：${mfe}`,
+    `區間最低：${mae}`,
+    `觀察時間：${durText}`,
     ``,
-    `出場原因：${reason}`
+    `說明：${reason}｜${OBSERVATION_NOTE}`
   ].join('\n');
 }
-
 export function matchFilter(price, changePct, settings) {
   if (!settings || settings.filterMode === 'all') return true;
   if (finite(settings.minPrice) && (!finite(price) || price < settings.minPrice)) return false;
@@ -577,8 +761,45 @@ export function getBroker(id) {
   return BROKERS.find(b => b.id === id) || BROKERS.find(b => b.id === 'sinopac') || BROKERS[0];
 }
 
+export const STATE_VERSION = 2;
+export const COLOR_MODES = ['redgreen', 'mono'];
+
+// Upgrade rules (2.0): a new install gets the light theme; anything a 1.05 user already had —
+// including the old dark default — is kept. Price colours default to red/green, independent of theme.
+export function migrateState(saved, { reason = 'read' } = {}) {
+  const defaults = defaultState();
+  if (!plain(saved)) {
+    if (reason === 'update') {
+      // 1.05 rendered dark when no state was saved yet; keep what the user was seeing.
+      return { ...defaults, settings: { ...defaults.settings, darkMode: true }, migratedFrom: 1 };
+    }
+    return defaults;
+  }
+  const savedSettings = plain(saved.settings) ? saved.settings : {};
+  const settings = { ...defaults.settings, ...savedSettings };
+  if ((saved.version ?? 1) < STATE_VERSION) {
+    if (typeof savedSettings.darkMode !== 'boolean') settings.darkMode = true;
+  }
+  if (!COLOR_MODES.includes(settings.colorMode)) settings.colorMode = 'redgreen';
+  if (typeof settings.darkMode !== 'boolean') settings.darkMode = defaults.settings.darkMode;
+  // Stocks saved before groups existed belong to group 1.
+  const stocks = Array.isArray(saved.stocks)
+    ? saved.stocks.map(s => (plain(s) && !Array.isArray(s.lists) ? { ...s, lists: ['g1'] } : s))
+    : defaults.stocks;
+  return {
+    ...defaults,
+    ...saved,
+    version: STATE_VERSION,
+    ...((saved.version ?? 1) < STATE_VERSION ? { migratedFrom: saved.version ?? 1 } : {}),
+    stocks,
+    watchGroups: normalizeWatchGroups(saved.watchGroups),
+    settings
+  };
+}
+
 export function defaultState() {
-  return { version: 1, stocks: [stock({ symbol: '2330', name: '台積電', market: 'TW', groups: ['watchlist'] })],
+  return { version: STATE_VERSION, stocks: [stock({ symbol: '2330', name: '台積電', market: 'TW', groups: ['watchlist'] })],
+    watchGroups: defaultWatchGroups(),
     settings: {
       daytrade: true,
       allDaytradeAlerts: true,
@@ -588,9 +809,11 @@ export function defaultState() {
       minChangePct: null,
       pageSize: 5,
       cardDensity: 'compact',
-      darkMode: true,
+      darkMode: false,
+      colorMode: 'redgreen',
       fontSize: 'standard',
       windowHeight: 500,
+      autoPageSize: true,
       showSparkline: true,
       preferredBroker: 'sinopac'
     }, vipHash: '' };

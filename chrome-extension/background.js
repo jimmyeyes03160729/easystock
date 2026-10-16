@@ -1,25 +1,133 @@
 import { VM_MODE, CONFIG_URL, FIREBASE_ROOT } from './environment.js';
-import './rebound-engine.js';
-import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes, buildPartialDailyBar } from './core.js';
+import { createAuth, describeBlocked } from './auth.js';
+import { createSync, emptyMeta, legacyMeta, touchStocks, touchSettings, touchGroups } from './sync.js';
+import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes, buildPartialDailyBar, mergeQuote, quoteStampMs, quoteStatus, indexQuality, migrateState, COLOR_MODES, SIGNAL_LABELS, WATCH_GROUP_IDS, GROUP_NAME_MAX, groupNameValid } from './core.js';
 
 const ALARM = 'easystock-five-minutes';
 let tail = Promise.resolve();
-// All mutations, including simultaneous alarms/messages/clicks, share one queue.
+// All state mutations, including simultaneous alarms/messages/clicks, share one queue.
 export function serial(fn) {
   const task = tail.then(fn);
   tail = task.catch(() => {});
   return task;
 }
+// Market-data cache writes have their own short queue. Network I/O happens outside it, so a
+// slow quote refresh can never delay adding a stock (2.0 fix for "click add, nothing happens").
+let feedTail = Promise.resolve();
+export function feedSerial(fn) {
+  const task = feedTail.then(fn);
+  feedTail = task.catch(() => {});
+  return task;
+}
+function emptyFeed() { return { quotes: {}, live: {}, quoteAttempts: {} }; }
+async function commitFeed(patch) {
+  return feedSerial(async () => {
+    const current = (await read('feedCache', null)) || emptyFeed();
+    const next = await patch(structuredClone(current));
+    await write('feedCache', next);
+    return next;
+  });
+}
+async function cachedHolidays() {
+  const cached = await read('configCache', null);
+  return Array.isArray(cached?.value?.market_holidays) ? cached.value.market_holidays : [];
+}
+const quoteInflight = new Set();
+function broadcast(message) {
+  try { chrome.runtime.sendMessage?.(message)?.catch?.(() => {}); } catch (_) { /* popup closed */ }
+}
 async function read(key, fallback) { return (await chrome.storage.local.get(key))[key] ?? fallback; }
 async function write(key, value) { await chrome.storage.local.set({ [key]: value }); }
 async function state() {
-  const defaults = defaultState();
+  return migrateState(await read('state', null));
+}
+
+// ---- 2.0 account + cloud sync wiring ---------------------------------------------------------
+let authConfigCache = null;
+async function authConfig() {
+  if (authConfigCache) return authConfigCache;
+  try {
+    const res = await fetch(chrome.runtime.getURL('auth-config.json'), { cache: 'no-store' });
+    authConfigCache = res.ok ? await res.json() : {};
+  } catch (_) { authConfigCache = {}; }
+  return authConfigCache;
+}
+function manifestInfo() {
+  try { return chrome.runtime.getManifest?.() || {}; } catch (_) { return {}; }
+}
+let authInstance = null;
+async function auth() {
+  if (authInstance) return authInstance;
+  const cfg = await authConfig();
+  authInstance = createAuth({
+    identity: chrome.identity || { getAuthToken: async () => { throw new Error('identity API unavailable'); }, removeCachedAuthToken: async () => {} },
+    config: cfg,
+    manifest: manifestInfo(),
+    sessionStore: chrome.storage.session,
+    localStore: chrome.storage.local,
+    runtimeId: chrome.runtime?.id || ''
+  });
+  return authInstance;
+}
+async function readMeta() {
+  const meta = await read('syncMeta', null);
+  if (meta) return meta;
   const saved = await read('state', null);
-  if (!saved) return defaults;
+  return saved ? legacyMeta(migrateState(saved)) : emptyMeta();
+}
+// Runs fn(state, meta) inside the state queue and persists what it returns.
+function transact(fn) {
+  return serial(async () => {
+    const st = await state();
+    const meta = await readMeta();
+    const out = await fn(st, meta);
+    if (out?.state) {
+      out.state.rev = (st.rev || 0) + 1;
+      out.state.stocks = watchlist(out.state.stocks);
+      await write('state', out.state);
+      broadcast({ type: 'STATE_UPDATED' });
+    }
+    if (out?.meta) await write('syncMeta', out.meta);
+    return out;
+  });
+}
+let syncInstance = null;
+async function syncEngine() {
+  if (syncInstance) return syncInstance;
+  const cfg = await authConfig();
+  const a = await auth();
+  syncInstance = createSync({
+    auth: a, dbUrl: String(cfg.database_url || '').replace(/\/$/, ''), transact, readMeta,
+    online: () => (typeof navigator === 'undefined' ? true : navigator.onLine !== false)
+  });
+  return syncInstance;
+}
+async function signedInProfile() {
+  try { return await (await auth()).profile(); } catch (_) { return null; }
+}
+let syncTimer = null;
+// Debounced: several quick edits produce one upload. Never awaited from inside the state queue.
+function scheduleSync(delay = 3000) {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => safe((async () => {
+    if (VM_MODE || !(await signedInProfile())?.uid) return;
+    await (await syncEngine()).syncNow();
+  })()), delay);
+}
+async function periodicSync(maxPullAgeMs) {
+  if (VM_MODE || !(await signedInProfile())?.uid) return null;
+  return (await syncEngine()).maybeSync(maxPullAgeMs ? { maxPullAgeMs } : {});
+}
+async function accountView() {
+  const a = await auth();
+  const cfg = a.status();
+  const profile = await a.profile();
+  const meta = await readMeta();
   return {
-    ...defaults,
-    ...saved,
-    settings: { ...defaults.settings, ...(saved.settings || {}) }
+    configured: cfg.ready, status: cfg.status, missing: cfg.missing, blockedMessage: cfg.ready ? '' : describeBlocked(cfg),
+    signedIn: !!profile?.uid, email: profile?.email || '', displayName: profile?.displayName || '',
+    uidShort: profile?.uid ? `${profile.uid.slice(0, 6)}…` : '',
+    sync: { status: profile?.uid ? meta.status : 'signed_out', lastSyncAt: meta.lastSyncAt || null, lastError: meta.lastError || '', pending: !!meta.dirty }
   };
 }
 async function json(url, maxBytes = 1500000) {
@@ -54,8 +162,19 @@ export async function remoteConfig(now = Date.now()) {
   await write('configCache', { at: now, value });
   return value;
 }
+// TWSE MIS gives an epoch-ms `tlong` and a Taipei `d`/`t`; both are source time, never receive time.
+export function misQuoteAt(row) {
+  const tlong = Number(row?.tlong);
+  if (Number.isFinite(tlong) && tlong > 1e12) return new Date(tlong).toISOString();
+  const d = String(row?.d || ''), t = String(row?.t || '');
+  if (/^\d{8}$/.test(d) && /^\d{2}:\d{2}(:\d{2})?$/.test(t)) {
+    return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T${t.length === 5 ? `${t}:00` : t}+08:00`;
+  }
+  return null;
+}
 export async function fetchTaiexIndex() {
   if (VM_MODE) {
+    const stamp = new Date().toISOString();
     return {
       price: 22800.00,
       change: 120.50,
@@ -63,7 +182,8 @@ export async function fetchTaiexIndex() {
       time: '13:30:00',
       otc_price: 268.50,
       otc_change: 1.20,
-      otc_change_pct: 0.45
+      otc_change_pct: 0.45,
+      source: 'VM_SAMPLE', quote_at: stamp, received_at: stamp
     };
   }
   const controller = new AbortController();
@@ -93,6 +213,7 @@ export async function fetchTaiexIndex() {
           change,
           change_pct,
           time: tse.t || '',
+          quote_at: misQuoteAt(tse),
           high: parseFloat(tse.h) || price,
           low: parseFloat(tse.l) || price
         };
@@ -123,7 +244,10 @@ export async function fetchTaiexIndex() {
       low: tseData.low,
       otc_price: otcData?.price,
       otc_change: otcData?.change,
-      otc_change_pct: otcData?.change_pct
+      otc_change_pct: otcData?.change_pct,
+      source: 'TWSE_MIS',
+      quote_at: tseData.quote_at,
+      received_at: new Date().toISOString()
     };
   } catch {
     return null;
@@ -133,240 +257,206 @@ export async function fetchTaiexIndex() {
 }
 
 
-async function computeSharedReboundFallback(now = Date.now()) {
-  const R = globalThis.RangeRebound;
-  if (!R || typeof R.financial !== 'function' || typeof R.technical !== 'function') return [];
-  const [meta, summary] = await Promise.all([
-    json(`${FIREBASE_ROOT}/meta.json`, 300000),
-    json(`${FIREBASE_ROOT}/summary.json`, 3000000)
-  ]);
-  if (!plain(meta) || !plain(summary)) return [];
-  const asof = String(meta.updated_at || '');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(asof)) return [];
-  const releaseId = typeof meta.release_id === 'string' && /^[0-9A-Za-z_-]+$/.test(meta.release_id) ? meta.release_id : '';
-  const generatedAt = meta.published_at || meta.generated_at_utc || new Date(now).toISOString();
-  const candidates = [];
-  for (const [symbol, raw] of Object.entries(summary)) {
-    if (!/^\d{4}$/.test(String(symbol)) || !plain(raw)) continue;
-    const stockRow = { ...raw, symbol: String(symbol) };
-    if (String(stockRow.updated_at || '') !== asof) continue;
-    if (!finite(Number(stockRow.amount)) || Number(stockRow.amount) < 5000000) continue;
-    if (finite(Number(stockRow.kline_count)) && Number(stockRow.kline_count) < R.RULES.minBars) continue;
-    const financial = R.financial(stockRow, asof);
-    if (!financial || ['failed','unsupported'].includes(financial.status)) continue;
-    candidates.push({symbol:String(symbol),stockRow,financial});
-  }
-  const rows=[]; let cursor=0;
-  async function worker(){
-    while(cursor<candidates.length){
-      const item=candidates[cursor++];
-      const base=releaseId ? `${FIREBASE_ROOT}/releases/${releaseId}` : FIREBASE_ROOT;
-      let bars;
-      try { bars=await json(`${base}/kline/${encodeURIComponent(item.symbol)}.json`,900000); }
-      catch(_){
-        if(!releaseId) continue;
-        try { bars=await json(`${FIREBASE_ROOT}/kline/${encodeURIComponent(item.symbol)}.json`,900000); }
-        catch(_){ continue; }
-      }
-      const technical=R.technical(bars,asof,item.stockRow.price);
-      if(!technical?.eligible || item.financial.status!=='passed') continue;
-      const exchange=String(item.stockRow.exchange||'').toUpperCase();
-      rows.push({
-        id:`range-rebound:${asof}:${item.symbol}`,symbol:item.symbol,
-        market:['TPEX','TWO','OTC'].includes(exchange)?'TWO':'TW',
-        name:String(item.stockRow.name||item.symbol),price:Number(item.stockRow.price),
-        change_pct:finite(technical.dailyChangePct)?technical.dailyChangePct:0,
-        reason:Array.isArray(technical.reasons)?technical.reasons.join(' · '):'底部反彈觀察',
-        score:finite(technical.score)?technical.score:undefined,
-        confirmation:technical.confirmation||'pullback',generated_at:generatedAt,
-        quote_at:`${asof}T13:30:00+08:00`,strategy_version:'range-rebound-0.3'
-      });
-    }
-  }
-  await Promise.all([worker(),worker(),worker(),worker()]);
-  rows.sort((a,b)=>Number(a.confirmation!=='breakout')-Number(b.confirmation!=='breakout')||
-    (Number(b.score)||0)-(Number(a.score)||0)||a.symbol.localeCompare(b.symbol));
-  return rows.slice(0,3);
-}
-
-export async function fetchSummaryRebound(now = Date.now()) {
-  if (VM_MODE) {
-    return [
-      { id: 'rebound_5439_vm', symbol: '5439', market: 'TWO', name: '高技', price: 253, change_pct: 2.85, reason: '底部突破確認 · 回測支撐守穩 · 評分 86', generated_at: new Date(now).toISOString(), quote_at: new Date(now).toISOString(), score: 86, confirmation: 'breakout' }
-    ];
-  }
-  const cache = await read('summaryReboundCache', null);
-  if (cache && now >= cache.at && now - cache.at < 1800000 && Array.isArray(cache.items) && cache.items.length > 0) {
-    return cache.items;
-  }
-
-  // 1.03: prefer the published feed; if it is unreadable, compute the same range-rebound rules as the web UI.
-  try {
-    const feed = await json(`${FIREBASE_ROOT}/rebound_feed.json`, 900000);
-    if (plain(feed) && Array.isArray(feed.signals)) {
-      const items = feed.signals.filter(x => plain(x) && typeof x.symbol === 'string').map(x => ({
-        id: String(x.id || `range-rebound:${x.symbol}:${feed.as_of || ''}`),
-        symbol: String(x.symbol),
-        market: x.market === 'TWO' ? 'TWO' : 'TW',
-        name: String(x.name || x.symbol),
-        price: Number(x.price),
-        change_pct: finite(x.change_pct) ? x.change_pct : 0,
-        reason: String(x.reason || '底部反彈觀察'),
-        score: finite(x.score) ? x.score : undefined,
-        confirmation: x.confirmation || 'pullback',
-        generated_at: x.generated_at || feed.generated_at,
-        quote_at: x.quote_at || x.generated_at || feed.generated_at,
-        strategy_version: x.strategy_version || feed.strategy_version
-      })).filter(x => finite(x.price) && x.price > 0);
-      if (items.length || feed.as_of) {
-        await write('summaryReboundCache', { at: now, items });
-        return items;
-      }
-    }
-  } catch (_) {}
-
-
-  // The website already falls back to local range-rebound calculation when the
-  // published feed cannot be read. Chrome must do the same instead of showing empty.
-  try {
-    const computed = await computeSharedReboundFallback(now);
-    if (computed.length) {
-      await write('summaryReboundCache', { at: now, items: computed });
-      return computed;
-    }
-  } catch (_) {}
-
-  // Compatibility fallback for a not-yet-updated backend. No hard-coded symbols.
-  try {
-    const summary = await json(`${FIREBASE_ROOT}/summary.json`, 2500000);
-    if (!plain(summary)) return cache?.items || [];
-    const items = [];
-    for (const [sym, row] of Object.entries(summary)) {
-      const reb = row?.selection?.strategies?.REBOUND;
-      if (!reb?.eligible || !finite(row.price) || row.price <= 0) continue;
-      const market = (sym.length === 4 && (sym.startsWith('5') || sym.startsWith('6') || sym.startsWith('8'))) ? 'TWO' : 'TW';
-      const day = /^\d{4}-\d{2}-\d{2}$/.test(String(row.updated_at || '')) ? row.updated_at : taipei(now).date;
-      items.push({
-        id: `legacy-rebound:${sym}:${day}`,
-        symbol: sym,
-        market,
-        name: row.name ? row.name.replace(/股份有限公司|企業股份有限公司|科技股份有限公司/g, '') : sym,
-        price: row.price,
-        change_pct: finite(row.intraday_ret) ? row.intraday_ret * 100 : (finite(row.change_pct) ? row.change_pct : 0),
-        reason: Array.isArray(reb.reasons) ? reb.reasons.join(' · ') : '日線回踩轉強',
-        score: finite(reb.score) ? reb.score : 80,
-        confirmation: 'pullback',
-        generated_at: `${day}T13:30:00+08:00`,
-        quote_at: `${day}T13:30:00+08:00`,
-        strategy_version: 'legacy-rebound'
-      });
-    }
-    items.sort((x, y) => (y.score || 0) - (x.score || 0));
-    const picked = items.slice(0, 3);
-    if (picked.length) await write('summaryReboundCache', { at: now, items: picked });
-    return picked.length ? picked : (cache?.items || []);
-  } catch (_) {
-    return cache?.items || [];
-  }
-}
-
-async function refreshTaiexOnly(now = Date.now()) {
-  const cache = await read('feedCache', null);
+// The index has its own TTL and its own cache fields; failure keeps the last value and marks the error.
+export async function refreshTaiexOnly(now = Date.now()) {
   const taiex = await fetchTaiexIndex().catch(() => null);
-  if (!taiex) return cache || { quotes: {}, live: {}, taiex: null, at: now };
-  const value = { ...(cache || { quotes: {}, live: {} }), taiex, taiexAt: now, at: cache?.at || now };
-  await write('feedCache', value);
+  const value = await commitFeed(cur => {
+    cur.taiexAttemptAt = now;
+    if (taiex) {
+      const oldMs = quoteStampMs(cur.taiex), newMs = quoteStampMs(taiex);
+      if (!cur.taiex || !finite(oldMs) || !finite(newMs) || newMs >= oldMs) cur.taiex = taiex;
+      cur.taiexAt = now;
+      cur.taiexError = '';
+    } else {
+      cur.taiexError = '指數來源暫時無法連線';
+    }
+    return cur;
+  });
   safe(updateMarketStatusIcon(value, now));
   return value;
+}
+function taiexDue(cache, now) {
+  return !cache?.taiexAttemptAt || now < cache.taiexAttemptAt || now - cache.taiexAttemptAt >= TAIEX_TTL;
+}
+
+// Watchlist quotes (Yahoo) and real sparklines for specific stocks; persisted, never popup-memory only.
+export async function refreshSymbolQuotes(stocks, now = Date.now()) {
+  const list = (Array.isArray(stocks) ? stocks : []).filter(s => s && SYMBOL.test(s.symbol));
+  if (!list.length || VM_MODE) return read('feedCache', null);
+  for (const s of list) quoteInflight.add(s.symbol);
+  try {
+    const [closingMap, sparkMap] = await Promise.all([
+      fetchQuotesWithMarketFallback(list),
+      fetchStockSparklines(list).catch(() => ({}))
+    ]);
+    const value = await commitFeed(cur => {
+      cur.quotes ||= {}; cur.quoteAttempts ||= {};
+      for (const s of list) {
+        const item = closingMap[s.symbol];
+        if (item) cur.quotes[s.symbol] = mergeQuote(cur.quotes[s.symbol], item);
+        if (cur.quotes[s.symbol] && Array.isArray(sparkMap[s.symbol])) cur.quotes[s.symbol] = { ...cur.quotes[s.symbol], spark: sparkMap[s.symbol] };
+        cur.quoteAttempts[s.symbol] = { at: now, ok: !!item };
+      }
+      cur.watchAt = now;
+      return cur;
+    });
+    broadcast({ type: 'QUOTES_UPDATED', symbols: list.map(s => s.symbol) });
+    return value;
+  } finally {
+    for (const s of list) quoteInflight.delete(s.symbol);
+  }
+}
+// Correct a guessed market (TW/TWO) or a placeholder name once a real quote proves otherwise.
+async function reconcileStocks(fixes) {
+  if (!fixes.length) return;
+  await serial(async () => {
+    const st = await state();
+    let changed = false;
+    for (const fix of fixes) {
+      const row = st.stocks.find(x => x.symbol === fix.symbol);
+      if (!row) continue;
+      if (fix.market && ['TW', 'TWO'].includes(fix.market) && row.market !== fix.market) { row.market = fix.market; changed = true; }
+      const name = typeof fix.name === 'string' ? fix.name.trim().slice(0, 60) : '';
+      if (name && /^\d{4,6}[A-Z]?$/.test(row.name) && name !== row.name) { row.name = name; changed = true; }
+    }
+    if (changed) {
+      const before = (await state()).stocks;
+      st.rev = (st.rev || 0) + 1;
+      await write('state', st);
+      const meta = await readMeta();
+      if (touchStocks(meta, before, st.stocks, Date.now())) { await write('syncMeta', meta); scheduleSync(); }
+      broadcast({ type: 'STATE_UPDATED' });
+    }
+  });
+}
+
+// Account messages run outside the state queue: an interactive Google consent may take a while
+// and must not block adding stocks. Their own state changes go through transact().
+export const ACCOUNT_MESSAGES = new Set(['AUTH_SIGN_IN', 'AUTH_SIGN_OUT', 'SYNC_NOW']);
+export async function handleAccount(message) {
+  if (VM_MODE) throw new Error('VM 隔離版不提供 Google 登入');
+  const a = await auth();
+  if (message.type === 'AUTH_SIGN_IN') {
+    const cfg = a.status();
+    if (!cfg.ready) throw new Error(`${describeBlocked(cfg)}（${cfg.status}）`);
+    await a.signIn({ interactive: true });
+    const result = await (await syncEngine()).syncNow();
+    return { ...(await snapshot(false, false, true)), syncResult: result };
+  }
+  if (message.type === 'AUTH_SIGN_OUT') {
+    clearTimeout(syncTimer);
+    await a.signOut();
+    // The cloud copy is untouched; the local copy stays usable offline and remembers its owner UID,
+    // so a different account signing in next never receives it (see sync.js account switch).
+    await transact(async (_st, meta) => { Object.assign(meta, { status: 'signed_out', lastError: '' }); return { meta }; });
+    return snapshot(false, false, true);
+  }
+  if (message.type === 'SYNC_NOW') {
+    if (!(await a.profile())?.uid) throw new Error('尚未登入 Google');
+    const result = await (await syncEngine()).syncNow();
+    return { ...(await snapshot(false, false, true)), syncResult: result };
+  }
+  throw new Error('不支援的操作');
+}
+export async function fetchQuotesWithMarketFallback(list) {
+  const map = await fetchStockClosingQuotes(list).catch(() => ({}));
+  const fixes = [];
+  const missing = list.filter(s => !map[s.symbol]);
+  if (missing.length) {
+    const flipped = missing.map(s => ({ symbol: s.symbol, market: s.market === 'TWO' ? 'TW' : 'TWO' }));
+    const alt = await fetchStockClosingQuotes(flipped).catch(() => ({}));
+    for (const s of flipped) if (alt[s.symbol]) { map[s.symbol] = alt[s.symbol]; fixes.push({ symbol: s.symbol, market: s.market }); }
+  }
+  for (const s of list) {
+    const name = map[s.symbol]?.name;
+    if (name && /^\d{4,6}[A-Z]?$/.test(String(s.name || '')) && name !== s.symbol) fixes.push({ symbol: s.symbol, name });
+  }
+  // Not awaited: callers may already be inside the state queue (poll), which would deadlock.
+  if (fixes.length) safe(reconcileStocks(fixes));
+  return map;
+}
+function queueQuoteRefresh(stocks) {
+  const list = (stocks || []).filter(s => s && !quoteInflight.has(s.symbol));
+  if (list.length) safe(refreshSymbolQuotes(list));
 }
 
 async function feeds(now, forced = false) {
   const cache = await read('feedCache', null);
+  const open = marketOpen(now);
 
-  if (!forced && cache && now >= cache.at && now - cache.at < TTL) {
-    // The broad feed may be cached for five minutes, but the market index is not.
-    if (marketOpen(now) && (!cache.taiexAt || now - cache.taiexAt >= TAIEX_TTL)) {
-      return cache;
-    }
+  if (!forced && cache?.at && now >= cache.at && now - cache.at < TTL) {
+    // The broad feed may be cached for five minutes, but the market index is not (2.0 fix:
+    // 1.05 returned the old cache in both branches, so the index waited for the 5-minute feed).
+    if (open && taiexDue(cache, now)) return refreshTaiexOnly(now);
     return cache;
   }
 
   const at = await read('feedAttempt', 0);
   if (!forced && at && now >= at && now - at < TTL) {
-    return { ...(cache || { quotes: {}, live: {} }), error: '行情暫時無法更新' };
+    const base = open && taiexDue(cache, now) ? await refreshTaiexOnly(now) : (cache || emptyFeed());
+    return { ...base, error: '行情暫時無法更新' };
   }
-  if (!forced && !marketOpen(now)) return cache || { quotes: {}, live: {} };
+  if (!forced && !open) return cache || emptyFeed();
 
   await write('feedAttempt', now);
-  try {
-    const [quotesRaw, live, taiex] = VM_MODE ?
-      [{ '2330': { name: '台積電（VM 示例）', price: 1000, change_pct: 1.25, updated_at: new Date(now).toISOString(), quote_at: new Date(now).toISOString() } }, {}, { price: 22800.00, change: 120.50, change_pct: 0.53, time: '13:30:00' }] :
-      await Promise.all([
-        json(`${FIREBASE_ROOT}/public_feed.json`),
-        json(`${FIREBASE_ROOT}/intraday_live.json`),
-        fetchTaiexIndex().catch(() => null)
-      ]);
-    if (!plain(quotesRaw) || !plain(live)) throw new Error('行情格式不符');
+  // Index refresh runs independently: a broken public feed must not discard a good index value.
+  const indexTask = refreshTaiexOnly(now).catch(() => null);
+  let quotesRaw = null, live = null, feedError = '';
+  if (VM_MODE) {
+    const stamp = new Date(now).toISOString();
+    quotesRaw = { '2330': { name: '台積電（VM 示例）', price: 1000, change_pct: 1.25, updated_at: stamp, quote_at: stamp } };
+    live = {};
+  } else {
+    const [q, l] = await Promise.allSettled([
+      json(`${FIREBASE_ROOT}/public_feed.json`),
+      json(`${FIREBASE_ROOT}/intraday_live.json`)
+    ]);
+    if (q.status === 'fulfilled' && plain(q.value)) quotesRaw = q.value; else feedError = '行情暫時無法更新；舊報價僅供檢視';
+    if (l.status === 'fulfilled' && plain(l.value)) live = l.value;
+  }
 
-    const quotes = structuredClone(quotesRaw);
-    let summaryRebound = cache?.summaryRebound || [];
-    try { summaryRebound = await fetchSummaryRebound(now); } catch (_) {}
-
-    if (!VM_MODE) {
-      const st = await state().catch(() => null);
-      if (st?.stocks?.length) {
-        const targets = st.stocks.filter(stockRow => {
-          const q = quotes[stockRow.symbol];
-          const stamp = q?.quote_at || q?.updated_at;
-          return forced || !q || !finite(q.price) || !finite(calcChangePct(q)) || !fresh(stamp, now, QUOTE_FRESH_MS);
-        });
-        if (targets.length) {
-          try {
-            const closingMap = await fetchStockClosingQuotes(targets);
-            for (const [sym, item] of Object.entries(closingMap)) {
-              const old = quotes[sym];
-              const oldStamp = old?.quote_at || old?.updated_at;
-              if (forced || !old || !fresh(oldStamp, now, QUOTE_FRESH_MS)) {
-                quotes[sym] = { ...(old || {}), ...item, name: old?.name || item.name };
-              } else {
-                if (!finite(calcChangePct(old))) {
-                  old.change_pct = item.change_pct;
-                  old.change = item.change;
-                  old.previous_close = item.previous_close;
-                }
-                if (!old.high && item.high) old.high = item.high;
-                if (!old.low && item.low) old.low = item.low;
-                if (!old.open && item.open) old.open = item.open;
-                if (!old.time && item.time) old.time = item.time;
-                if (!old.quote_at && item.quote_at) old.quote_at = item.quote_at;
-              }
-            }
-          } catch (_) {}
-        }
-
-        try {
-          const sparkMap = await fetchStockSparklines(st.stocks);
-          for (const [sym, points] of Object.entries(sparkMap)) {
-            if (quotes[sym]) quotes[sym].spark = points;
-          }
-        } catch (_) {}
+  let closingMap = {}, sparkMap = {}, targets = [];
+  if (!VM_MODE) {
+    const st = await state().catch(() => null);
+    const holidays = await cachedHolidays();
+    if (st?.stocks?.length) {
+      const known = { ...(cache?.quotes || {}) };
+      if (quotesRaw) for (const [sym, q] of Object.entries(quotesRaw)) known[sym] = mergeQuote(known[sym], q);
+      targets = st.stocks.filter(row => {
+        const q = known[row.symbol];
+        const status = quoteStatus(q, now, { holidays }).state;
+        return forced || !['live', 'close'].includes(status) || !finite(calcChangePct(q)) ||
+          (open && !fresh(q?.quote_at || q?.updated_at, now, QUOTE_FRESH_MS));
+      });
+      for (const s of targets) quoteInflight.add(s.symbol);
+      try {
+        [closingMap, sparkMap] = await Promise.all([
+          targets.length ? fetchQuotesWithMarketFallback(targets) : {},
+          fetchStockSparklines(st.stocks).catch(() => ({}))
+        ]);
+      } finally {
+        for (const s of targets) quoteInflight.delete(s.symbol);
       }
     }
-
-    const value = {
-      at: now,
-      quotes,
-      live,
-      taiex: taiex || cache?.taiex || null,
-      taiexAt: taiex ? now : (cache?.taiexAt || null),
-      summaryRebound
-    };
-    await write('feedCache', value);
-    safe(updateMarketStatusIcon(value, now));
-    return value;
-  } catch {
-    return { ...(cache || { quotes: {}, live: {} }), error: '行情暫時無法更新；舊報價僅供檢視' };
   }
+  await indexTask;
+
+  const value = await commitFeed(cur => {
+    cur.quotes ||= {}; cur.quoteAttempts ||= {};
+    if (quotesRaw) for (const [sym, q] of Object.entries(quotesRaw)) cur.quotes[sym] = mergeQuote(cur.quotes[sym], q);
+    for (const [sym, item] of Object.entries(closingMap)) cur.quotes[sym] = mergeQuote(cur.quotes[sym], item);
+    for (const [sym, points] of Object.entries(sparkMap)) {
+      if (cur.quotes[sym] && Array.isArray(points)) cur.quotes[sym] = { ...cur.quotes[sym], spark: points };
+    }
+    for (const s of targets) cur.quoteAttempts[s.symbol] = { at: now, ok: !!closingMap[s.symbol] };
+    if (live) cur.live = live;
+    delete cur.summaryRebound; // 2.0: 觸底反彈 removed from Chrome; drop the old cache field
+    if (quotesRaw) cur.at = now;
+    cur.watchAt = now;
+    return cur;
+  });
+  safe(updateMarketStatusIcon(value, now));
+  return feedError ? { ...value, error: feedError } : value;
 }
 
 export async function updateMarketStatusIcon(data, now = Date.now(), explicitTaiex = null) {
@@ -461,7 +551,7 @@ export function liveSignals(data, stocks, now, allAlerts = false) {
     const pct = q && finite(q.change_pct) ? q.change_pct : (q && finite(q.previous_close) && q.previous_close > 0 ? (q.price / q.previous_close - 1) * 100 : (finite(p.change_pct) ? p.change_pct : (finite(p.pnl_pct) ? p.pnl_pct : null)));
     const base = signal({ id: `entry:${s.symbol}:${p.entry_time}`, symbol: s.symbol, market: s.market,
       name: p.name || s.name, price, change_pct: pct, generated_at: p.entry_time, quote_at: quoteAt,
-      reason: Array.isArray(p.entry_reasons) ? (p.entry_reasons.join('；').slice(0, 200) || '當沖進場') : (p.reason || '當沖進場') }, 'daytrade', now, true);
+      reason: Array.isArray(p.entry_reasons) ? (p.entry_reasons.join('；').slice(0, 200) || SIGNAL_LABELS.entry) : (p.reason || SIGNAL_LABELS.entry) }, 'daytrade', now, true);
     if (!base) return [];
     return [{
       ...base,
@@ -499,7 +589,7 @@ export function liveExitSignals(data, stocks, now, allAlerts = false) {
       change_pct: pnl,
       generated_at: t.exit_time,
       quote_at: t.exit_time,
-      reason: t.exit_reason || '平倉出場'
+      reason: t.exit_reason || SIGNAL_LABELS.exit
     }, 'daytrade', now, true);
     if (!base) return [];
     return [{
@@ -535,13 +625,13 @@ async function notify(s, { test = false, vip = false, now = Date.now() } = {}) {
   try {
     const isExit = s.action === 'SELL' || s.id?.startsWith('exit:');
     const isDaytrade = s.strategy === 'daytrade';
-    const defaultTitle = `${test ? '\u3010VM \u6e2c\u8a66\u3011' : ''}${isExit ? '\u3010\u7576\u6c96\u51fa\u5834\u3011' : '\u3010\u7576\u6c96\u591a\u65b9\u8a0a\u865f\u3011'}${s.symbol} ${s.name}`;
-    const telegramTitle = `${test ? '\u3010VM \u6e2c\u8a66\u3011' : ''}${isExit ? '\u2705\u3010\u7576\u6c96\u51fa\u5834\u3011' : '\ud83d\ude80\u3010\u7576\u6c96\u9032\u5834\u8a0a\u865f\u3011'}${s.symbol} ${s.name}`;
-    const title = s.telegramText ? telegramTitle : (s.customTitle || defaultTitle);
+    // 2.0 wording: \u91cf\u591a\u9032\u653b / \u91cf\u6e1b\u9000\u5b88 are observation labels; the signal source is unchanged.
+    const label = isExit ? `\u25bc\u3010${SIGNAL_LABELS.exit}\u3011` : `\u25b2\u3010${SIGNAL_LABELS.entry}\u3011`;
+    const title = s.customTitle && !s.telegramText ? s.customTitle : `${test ? '\u3010\u7bc4\u4f8b\u3011' : ''}${label}${s.symbol} ${s.name}`;
 
     const changePctVal = calcChangePct(s);
     const defaultMsg = `現價 ${s.price.toFixed(2)} 元｜${finite(changePctVal) ? `${changePctVal >= 0 ? '+' : ''}${changePctVal.toFixed(2)}%` : '結盤 0.00%'}\n${s.reason}`;
-    const message = (s.telegramText || defaultMsg) + (test ? '\n示例數字，非交易訊號、不計額度。' : '');
+    const message = (s.telegramText || defaultMsg) + (test ? '\n範例數字，非交易訊號、不計額度。' : '');
 
     await chrome.notifications.create(id, {
       type: 'basic', iconUrl: chrome.runtime.getURL('assets/icon128.png'),
@@ -560,24 +650,8 @@ async function notify(s, { test = false, vip = false, now = Date.now() } = {}) {
     return true;
   } catch (e) { await write('ledger', original); throw e; }
 }
-function buildBounceView(c, data, now) {
-  const remoteBounce = (c?.bounce_strategy_signals || []).map(x => signal(x, 'rebound', now, false, true)).filter(Boolean);
-  const summaryBounce = (data.summaryRebound || []).map(x => signal(x, 'rebound', now, false, true)).filter(Boolean);
-  const bounceMap = new Map();
-  for (const b of [...summaryBounce, ...remoteBounce]) {
-    if (bounceMap.has(b.symbol)) continue;
-    const q = data.quotes?.[b.symbol];
-    bounceMap.set(b.symbol, {
-      ...b,
-      price: (q && finite(q.price) && q.price > 0) ? q.price : b.price,
-      change_pct: calcChangePct(q) ?? b.change_pct
-    });
-  }
-  return [...bounceMap.values()];
-}
-
 async function snapshot(refresh = false, taiexOnly = false, localOnly = false) {
-  const now = Date.now(), st = await state();
+  let now = Date.now();
   let c = null, configError = '';
 
   if (localOnly) {
@@ -590,24 +664,40 @@ async function snapshot(refresh = false, taiexOnly = false, localOnly = false) {
   let data;
   if (taiexOnly) data = await refreshTaiexOnly(now);
   else if (refresh) data = await feeds(now, true);
-  else data = await read('feedCache', { quotes: {}, live: {} });
+  else data = (await read('feedCache', null)) || emptyFeed();
 
+  // State is read after network I/O: a refresh that started before an ADD must not return
+  // (and let the popup render) the older watchlist.
+  now = Date.now();
+  const st = await state();
+  const holidays = c?.market_holidays || await cachedHolidays();
   const day = ledger(await read('ledger', null), now);
   safe(updateMarketStatusIcon(data, now));
+  // Opening the popup pulls cloud changes at most every 10 minutes (short REST request, no listener).
+  if (refresh) safe(periodicSync(10 * 60000).catch(() => null));
+  let account = null;
+  try { account = await accountView(); } catch (_) { account = null; }
 
   return {
+    rev: st.rev || 0,
+    account,
+    version: manifestInfo().version_name || manifestInfo().version || '',
     stocks: st.stocks,
+    watchGroups: st.watchGroups,
     settings: st.settings,
     vip: isVIP(c, st.vipHash),
     vm: VM_MODE,
     quotes: data.quotes || {},
+    quoteAttempts: data.quoteAttempts || {},
+    pendingQuotes: [...quoteInflight],
     live: data.live || {},
     taiex: data.taiex || null,
+    taiexQuality: indexQuality(data.taiex, now, { holidays, lastError: data.taiexError || '' }),
+    holidays,
     updatedAt: data.at || null,
     error: configError || data.error || '',
-    marketOpen: marketOpen(now, c?.market_holidays),
+    marketOpen: marketOpen(now, holidays),
     used: day.count,
-    bounce: buildBounceView(c, data, now),
     paymentURL: c?.payment_gateway_url || ''
   };
 }
@@ -615,10 +705,19 @@ async function snapshot(refresh = false, taiexOnly = false, localOnly = false) {
 export async function poll() {
   const now = Date.now();
   if (VM_MODE || !marketOpen(now)) return; // VM mode never auto-generates trading signals.
+  let c = null, configError = null;
+  try { c = await remoteConfig(now); } catch (e) { configError = e; }
+  const holidays = c?.market_holidays || await cachedHolidays();
+  if (!marketOpen(now, holidays)) return;
+  // 2.0: the index refresh no longer depends on alert settings or on the remote config fetch.
+  if (taiexDue(await read('feedCache', null), now)) await refreshTaiexOnly(now).catch(() => null);
   const st = await state();
-  if (!st.settings.daytrade) return;
-  const c = await remoteConfig(now);
-  if (!marketOpen(now, c.market_holidays)) return;
+  if (!st.settings.daytrade) {
+    const cache = await read('feedCache', null);
+    if (st.stocks.length && (!cache?.watchAt || now - cache.watchAt >= TTL)) await refreshSymbolQuotes(st.stocks, now).catch(() => null);
+    return;
+  }
+  if (configError) throw configError;
   const data = await feeds(now);
   safe(updateMarketStatusIcon(data, now));
   const allDaytrade = st.settings.allDaytradeAlerts !== false;
@@ -669,24 +768,38 @@ export async function processLiveData(live) {
     }
   }
 }
+// Read-only / network-only messages never enter the state mutation queue.
+export const READ_ONLY_MESSAGES = new Set(['BOOTSTRAP', 'SNAPSHOT', 'AUTH_STATUS', 'FETCH_INTRADAY', 'FETCH_DAILY']);
 export async function handle(message) {
   if (!plain(message)) throw new Error('訊息格式不正確');
   const st = await state();
+  const beforeStocks = structuredClone(st.stocks);
+  const changedSettings = [];
+  const changedGroups = [];
+  let notice = '';
+  let quoteTargets = [];
   switch (message.type) {
+    case 'AUTH_STATUS': return snapshot(false, false, true);
     case 'BOOTSTRAP': return snapshot(false, false, true);
     case 'SNAPSHOT': return snapshot(message.refresh === true, message.taiexOnly === true, false);
     case 'ADD': {
       const row = stock(message.stock);
       const existing = st.stocks.find(x => x.symbol === row.symbol);
       if (existing) {
+        // Same stock, another watchlist group: add the membership, never a second row.
         const combined = [...new Set([...existing.groups, ...row.groups])];
-        if (combined.length === existing.groups.length) {
-          throw new Error('此股票已在自選清單');
+        const lists = [...new Set([...(existing.lists || ['g1']), ...row.lists])];
+        if (combined.length === existing.groups.length && lists.length === (existing.lists || ['g1']).length) {
+          // Duplicate is a notice, not a failure, and does not write.
+          return { ...(await snapshot()), notice: 'DUPLICATE' };
         }
         existing.groups = combined;
+        existing.lists = lists;
       } else {
         st.stocks = watchlist([...st.stocks, row]);
+        quoteTargets = [row];
       }
+      notice = 'ADDED';
       break;
     }
     case 'ADD_BATCH': {
@@ -703,6 +816,7 @@ export async function handle(message) {
           }
         } else {
           st.stocks.push(item);
+          quoteTargets.push(item);
           addedCount++;
         }
       }
@@ -710,7 +824,27 @@ export async function handle(message) {
       st.stocks = watchlist(st.stocks);
       break;
     }
-    case 'DELETE': st.stocks = st.stocks.filter(x => x.symbol !== message.symbol); break;
+    case 'DELETE': {
+      // Deleting inside a group removes it from that group; the stock goes away when no group is left.
+      const row = st.stocks.find(x => x.symbol === message.symbol);
+      const lists = row?.lists || ['g1'];
+      if (row && WATCH_GROUP_IDS.includes(message.list) && lists.length > 1 && lists.includes(message.list)) {
+        row.lists = lists.filter(x => x !== message.list);
+      } else {
+        st.stocks = st.stocks.filter(x => x.symbol !== message.symbol);
+      }
+      break;
+    }
+    case 'RENAME_GROUP': {
+      const target = st.watchGroups.find(g => g.id === message.id);
+      if (!target) throw new Error('群組不存在');
+      const name = String(message.name ?? '').trim();
+      if (!groupNameValid(name)) throw new Error(`群組名稱需為 1–${GROUP_NAME_MAX} 個字`);
+      if (target.name === name) return snapshot();
+      target.name = name;
+      changedGroups.push(target.id);
+      break;
+    }
     case 'GROUP': {
       if (!GROUPS.includes(message.group) || typeof message.enabled !== 'boolean') throw new Error('群組格式不正確');
       const row = st.stocks.find(x => x.symbol === message.symbol);
@@ -720,12 +854,15 @@ export async function handle(message) {
       break;
     }
     case 'SETTINGS': {
-      const allowed = [...GROUPS, 'allDaytradeAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'darkMode', 'pageSize', 'cardDensity', 'fontSize', 'windowHeight', 'showSparkline', 'preferredBroker'];
+      const allowed = [...GROUPS, 'allDaytradeAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'darkMode', 'colorMode', 'pageSize', 'cardDensity', 'fontSize', 'windowHeight', 'showSparkline', 'preferredBroker'];
       if (!allowed.includes(message.strategy)) throw new Error('開關格式不正確');
-      st.settings[message.strategy] = message.enabled !== undefined ? message.enabled : message.value;
+      const value = message.enabled !== undefined ? message.enabled : message.value;
+      if (message.strategy === 'colorMode' && !COLOR_MODES.includes(value)) throw new Error('漲跌配色格式不正確');
+      st.settings[message.strategy] = value;
+      changedSettings.push(message.strategy);
       break;
     }
-    case 'IMPORT': st.stocks = watchlist(message.stocks); break;
+    case 'IMPORT': st.stocks = watchlist(message.stocks); quoteTargets = st.stocks; break;
     case 'VIP': {
       if (typeof message.key !== 'string' || !message.key.trim() || message.key.length > 128) throw new Error('授權碼格式不正確');
       const hash = await sha256(message.key.trim());
@@ -737,7 +874,7 @@ export async function handle(message) {
       if (message.action === 'SELL') {
         const fakeExit = {
           symbol: '2330', name: '台積電', market: 'TW', price: 1025, exit_price: 1025, entry_price: 1000,
-          pnl_pct: 2.5, mfe_pct: 3.0, mae_pct: -0.5, duration_seconds: 1800, exit_reason: '12:55當沖強制出場',
+          pnl_pct: 2.5, mfe_pct: 3.0, mae_pct: -0.5, duration_seconds: 1800, exit_reason: '範例：量能轉弱',
           strategy: 'daytrade', action: 'SELL'
         };
         fakeExit.telegramText = formatTelegramExit(fakeExit);
@@ -770,8 +907,17 @@ export async function handle(message) {
     }
     default: throw new Error('不支援的操作');
   }
+  st.rev = (st.rev || 0) + 1;
   await write('state', st);
-  return snapshot();
+  // Local-first: record what changed for the cloud replica, then sync later (debounced, outside the queue).
+  const meta = await readMeta();
+  const now = Date.now();
+  const touched = touchStocks(meta, beforeStocks, st.stocks, now) | touchSettings(meta, changedSettings, now) | touchGroups(meta, changedGroups, now);
+  if (touched) { await write('syncMeta', meta); scheduleSync(); }
+  // Saved first, shown first; the quote is fetched afterwards and pushed via QUOTES_UPDATED.
+  if (quoteTargets.length) queueQuoteRefresh(quoteTargets);
+  const result = await snapshot();
+  return notice ? { ...result, notice } : result;
 }
 
 export async function fetchIntradayData(sym, mkt) {
@@ -800,7 +946,8 @@ export async function fetchIntradayData(sym, mkt) {
 
       const bars = [];
       let cumAmount = 0, cumVol = 0;
-      let lastValidPrice = previousClose || regularPrice || 0;
+      // Minutes before the first real trade are skipped, not back-filled from the previous close.
+      let lastValidPrice = null;
 
       for (let i = 0; i < timestamps.length; i++) {
         const ts = timestamps[i];
@@ -890,7 +1037,7 @@ export async function fetchDailyData(sym, mkt) {
         const quotes = result.indicators?.quote?.[0];
         if (!Array.isArray(timestamps) || !quotes) continue;
 
-        const bars = [];
+        let bars = [];
         let lastValidPrice = null;
         for (let i = 0; i < timestamps.length; i++) {
           const ts = timestamps[i];
@@ -1037,11 +1184,32 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   }
   const allowed = [chrome.runtime.getURL('popup.html'), chrome.runtime.getURL('chart.html')];
   if (!allowed.some(u => sender.url?.startsWith(u))) return false;
-  serial(() => handle(message)).then(value => respond({ ok: true, value }), e => respond({ ok: false, error: e.message || '操作失敗' }));
+  const run = ACCOUNT_MESSAGES.has(message?.type) ? handleAccount(message)
+    : (READ_ONLY_MESSAGES.has(message?.type) ? handle(message) : serial(() => handle(message)));
+  run.then(value => respond({ ok: true, value }), e => respond({ ok: false, error: e.message || '操作失敗' }));
   return true;
 });
-chrome.alarms.onAlarm.addListener(a => { if (a.name === ALARM) safe(serial(poll)); });
-chrome.runtime.onInstalled.addListener(() => {
+chrome.alarms.onAlarm.addListener(a => {
+  if (a.name !== ALARM) return;
+  safe(serial(poll));
+  // Offline queue / retry with backoff / 6-hourly pull. Outside the poll task to avoid queue deadlock.
+  safe(periodicSync());
+});
+// 2.0 upgrade: keep what a 1.05 user had (incl. their dark theme); fresh installs start light.
+export async function onInstalledMigration(details = {}) {
+  await serial(async () => {
+    const saved = await read('state', null);
+    if (details.reason === 'update') {
+      const migrated = migrateState(saved, { reason: 'update' });
+      if (!saved || (saved.version ?? 1) < migrated.version) await write('state', migrated);
+      if (!(await read('syncMeta', null))) await write('syncMeta', legacyMeta(migrated));
+    } else if (details.reason === 'install' && !(await read('syncMeta', null))) {
+      await write('syncMeta', emptyMeta());
+    }
+  });
+}
+chrome.runtime.onInstalled.addListener(details => {
+  safe(onInstalledMigration(details));
   safe(ensureAlarm());
   safe(updateMarketStatusIcon(null));
 });

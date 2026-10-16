@@ -62,7 +62,7 @@ test('background behavior', async t => {
   await t.test('parallel polls cannot overrun three-notification quota', async () => {
     reset(); setupSignals(); await Promise.all([bg.serial(bg.poll), bg.serial(bg.poll), bg.serial(bg.poll)]);
     assert.equal(notifications.length, 3); assert.equal(db.ledger.count, 3);
-    assert.equal(notifications[0].options.title, '【當沖多方訊號】2330 2330');
+    assert.equal(notifications[0].options.title, '▲【量多進攻】2330 2330');
     assert.equal(notifications[0].options.buttons.length, 2);
   });
   await t.test('stored VIP hash revalidated; unlimited still respects dedup', async () => {
@@ -74,7 +74,7 @@ test('background behavior', async t => {
     reset(); now = Date.parse('2026-09-19T22:00:00+08:00');
     for (let i = 0; i < 4; i++) await bg.serial(() => bg.handle({ type: 'TEST', strategy: 'daytrade' }));
     assert.equal(notifications.length, 4); assert.equal(db.ledger.count, 0); assert.equal(calls.length, 0);
-    assert.match(notifications[0].options.title, /VM 測試/);
+    assert.match(notifications[0].options.title, /範例/);
   });
   await t.test('notification errors do not consume daily allowance', async () => {
     reset(); setupSignals(1); denied = true; await assert.rejects(bg.serial(bg.poll)); assert.equal(db.ledger, undefined);
@@ -134,8 +134,8 @@ test('background behavior', async t => {
     assert.equal(exits.length, 1);
     assert.equal(exits[0].action, 'SELL');
     assert.equal(exits[0].symbol, '2330');
-    assert.match(exits[0].telegramText, /✅【當沖出場】/);
-    assert.match(exits[0].telegramText, /報酬：\+2\.50%/);
+    assert.match(exits[0].telegramText, /▼【量減退守】/);
+    assert.match(exits[0].telegramText, /區間漲跌：\+2\.50%/);
   });
   await t.test('LIVE_DATA_SYNC from content script triggers instant telegram notifications', async () => {
     reset(); db.state = defaultState();
@@ -161,8 +161,8 @@ test('background behavior', async t => {
     await bg.serial(async () => {});
     assert.equal(response.ok, true);
     assert.equal(notifications.length, 2);
-    assert.ok(notifications.some(n => n.options.title.includes('🚀【當沖進場訊號】') && n.options.message.includes('2330 台積電')));
-    assert.ok(notifications.some(n => n.options.title.includes('✅【當沖出場】') && n.options.message.includes('2603 長榮')));
+    assert.ok(notifications.some(n => n.options.title.includes('▲【量多進攻】') && n.options.message.includes('2330 台積電')));
+    assert.ok(notifications.some(n => n.options.title.includes('▼【量減退守】') && n.options.message.includes('2603 長榮')));
   });
   await t.test('conditional push filters signals by price range and change pct', async () => {
     reset(); db.state = defaultState();

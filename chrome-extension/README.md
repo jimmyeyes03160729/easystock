@@ -2,6 +2,20 @@
 
 完整 Manifest V3 原始碼。保留使用者提供的 400 × 600 popup 結構、配色及設定抽屜；Tailwind 編譯為本機 CSS，圖示與 JavaScript 全數隨套件提供。不含券商帳密，不下單，不改動 LINE / Telegram。
 
+## 2.0 重點（Release Candidate）
+
+- 自選股新增立即生效：先顯示、背景存入本機，再抓行情；行情顯示「載入中／暫無行情／資料過期／收盤」，不以舊價或假分時冒充即時。
+- 加權／櫃買指數獨立 30 秒刷新，不受 5 分鐘行情快取、提醒開關或 public_feed 失敗影響；帶 `source / quote_at / received_at`，過期標示。
+- 選用的 Google 登入（`chrome.identity` + Firebase Auth REST，無遠端程式碼）與 Firebase `users/{uid}` 同步；不登入照常使用本機自選。
+- 第一次登入只合併不刪除；之後逐項新者勝、刪除標記、離線佇列、ETag 條件寫入、指數退避。
+- 新安裝預設白色主題，1.05 既有偏好（含深色）保留；漲跌配色「紅綠／黑白（低調）」與主題分開。
+- 文案改為「量多進攻／量減退守」，「當沖 AI 架構」改為「架構」；底層訊號與門檻未變。
+- 黑白「沖」字圖示（`scripts/make-icons.ps1` 產生）。
+- 設定與上架：`docs/CHROME_EXTENSION_2_0_GOOGLE_SETUP.md`；技術與測試矩陣：`docs/CHROME_EXTENSION_2_0_RELEASE.md`。
+
+指令：`pnpm build`（產生 `dist/production`、`dist/vm`）、`pnpm test`、`pnpm package`（建置並輸出驗證過的 `../easystock-chrome-extension-v2.0.0.zip`）。
+`auth-config.json` 只放公開識別碼；填入 Chrome 擴充功能類型 OAuth Client ID 後，build 才會在 `dist/production/manifest.json` 加入 `oauth2`。
+
 ## 1.05 重點
 
 - 版本號維持 1.05；全新「沖」字紅色毛筆書法風格 ICON（高對比透明去背）。

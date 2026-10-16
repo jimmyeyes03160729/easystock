@@ -1,0 +1,9 @@
+{
+  "_comment": "Public identifiers only. Never put a client secret, service account or private key here. See docs/CHROME_EXTENSION_2_0_GOOGLE_SETUP.md.",
+  "firebase_project_id": "easystock-c237a",
+  "database_url": "https://easystock-c237a-default-rtdb.firebaseio.com",
+  "firebase_api_key": "AIzaSyDV7Vd3WJQ5NK7dfH50R10u3d1K9KfYQ9E",
+  "oauth_client_id": "179809300331-6i8sfhcbp07o6ngsk3qnspebp0ublleh.apps.googleusercontent.com",
+  "extension_id": "khidbieahmnnandhkcmjceideljgjfid",
+  "extension_public_key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr1++9mJViVWYgT4rPhICRSaeOPJ5CLz5ecD2BfLKj1cZAiZsE8qF7l6ZsK5oWe5hZYqj9dlgKrzHLgoCQG4wia+h+5xwEtuoWjXkVrQ+qnkRjl59nDT0UFbTAA0RB/N89i7gabYopbW/FrptDeRtCwn8YDsiGKyZ2Ls9ew7qd+yIAz2ZNF1RovK1d3PL4lc/c6dx1IYqr+2/WSy+1kTMR7U8lMa/2FY7zhWugsy0VwbT+AWFhXF9omtz2ja7Mf03sTBL5PH6EsqRbZrEvcj1cjT9HmhmMGglp2buz0SsM0zryUaiju8DhluTpludOp484+pvd60mxJajceIK1G0vcwIDAQAB"
+}
