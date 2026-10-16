@@ -3,6 +3,32 @@
   let exportFile = null, previewURL = null, generation = 0, returnFocus = null;
   const get = id => document.getElementById(id);
   const status = text => { get('moduleShareStatus').textContent = text; };
+  // html2canvas cannot parse CSS Color 4 values emitted by color-mix().
+  // Freeze the visible source, then resolve paint colors through the browser.
+  function freezeStyles(source, copy) {
+    const probe=document.createElement('canvas');probe.width=probe.height=1;
+    const paint=probe.getContext('2d',{willReadFrequently:true}), colors=new Map();
+    const resolve=color=>{
+      if(!/\b(?:color|oklch|oklab|lab|lch)\(/.test(color))return color;
+      if(colors.has(color))return colors.get(color);
+      paint.clearRect(0,0,1,1);paint.fillStyle=color;paint.fillRect(0,0,1,1);
+      const [r,g,b,a]=paint.getImageData(0,0,1,1).data;
+      const value=`rgba(${r},${g},${b},${a/255})`;colors.set(color,value);return value;
+    };
+    const originals=[source,...source.querySelectorAll('*')], copies=[copy,...copy.querySelectorAll('*')];
+    originals.forEach((node,index)=>{
+      const target=copies[index], style=getComputedStyle(node);
+      for(let i=0;i<style.length;i++){
+        const name=style[i];let value=style.getPropertyValue(name);
+        if(/color$/.test(name))value=resolve(value);
+        else if(/background-image|box-shadow|text-shadow/.test(name))
+          value=value.replace(/\b(?:color|oklch|oklab|lab|lch)\([^)]*\)/g,resolve);
+        target.style.setProperty(name,value);
+      }
+      target.style.animation='none';target.style.transition='none';
+      target.style.backdropFilter='none';target.style.webkitBackdropFilter='none';
+    });
+  }
   function clearFile() {
     exportFile = null;
     if (previewURL) URL.revokeObjectURL(previewURL);
@@ -32,6 +58,8 @@
       if (token !== generation) return;
       // Freeze this module before the live Firebase refresh changes the DOM.
       staging = source.cloneNode(true);
+      freezeStyles(source,staging);
+      staging.querySelectorAll('[hidden]').forEach(el=>el.remove());
       staging.removeAttribute('id');
       staging.querySelectorAll('[data-share-ignore],button').forEach(el => el.remove());
       staging.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));

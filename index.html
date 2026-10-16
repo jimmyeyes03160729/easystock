@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-TW" class="light" data-theme="light">
+<html lang="zh-TW" class="light lg-root" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -212,10 +212,11 @@
 .eight-module [role=tablist]{display:flex;gap:10px;margin:14px 0}.eight-module button{padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--text)}.eight-module [aria-selected=true]{border-color:#06b6d4;color:#06b6d4}.eight-card{border:1px solid var(--border);border-radius:10px;padding:14px;margin:10px 0;min-width:0}.eight-card svg{width:100%;max-width:340px;height:100px;color:#06b6d4}.eight-card ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0;list-style:none}.eight-card small{overflow-wrap:anywhere}.eight-pagination{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:14px 0}.eight-pagination button{min-height:44px}.eight-pagination button:disabled{opacity:.45;cursor:not-allowed}.eight-pagination button:focus-visible{outline:2px solid #06b6d4;outline-offset:3px}.eight-pagination span{text-align:center;font-size:14px}.eight-module [hidden]{display:none!important}@media(max-width:600px){.eight-card ul{grid-template-columns:1fr}}
 </style>
 <link rel="stylesheet" href="assets/liquid-glass.css?v=a09885af9bd5" />
+<link rel="stylesheet" href="assets/glass-home.css?v=baadbf9a5482" />
 <link rel="icon" type="image/png" sizes="128x128" href="chrome-extension/assets/icon128.png">
 </head>
 
-<body class="lg min-h-screen font-sans">
+<body class="home-v2 lg min-h-screen font-sans">
 
   <!-- =====================================================
        STITCH FIXED GLASSMORPHIC HEADER
@@ -265,42 +266,17 @@
   <!-- =====================================================
        HERO & BOSS KEY CONTROLS
        ===================================================== -->
-  <div class="lg-top-bento">
-  <div class="intro glass">
-    <div>
-      <div class="flex items-center gap-2 mb-1.5">
-        <span class="px-2 py-0.5 rounded bg-[#1C2B3C] text-[#F59E0B] font-mono text-xs uppercase font-bold tracking-wide">工位摸魚 · 社畜自救看盤室</span>
-        <span class="text-[#64748B] text-xs font-mono">/ RESEARCH DASHBOARD</span>
-      </div>
-      <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-[#F1F5F9] my-2">上班很累，看盤要清楚。</h1>
-      <p class="text-[#94A3B8] text-sm max-w-2xl leading-relaxed">有訊號偷摸魚，沒訊號專心裝忙。今日當沖機會、防守底線與下班進修進度，一眼看完。</p>
-    </div>
-    <div id="chrome-tools" class="intro-status flex flex-col items-end gap-2">
-      <div class="flex items-center gap-2 flex-wrap justify-end">
-        <button type="button" onclick="fetchMarketData()" class="btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#F59E0B] hover:brightness-110 text-[#0B0F17] font-bold text-xs transition-all shadow-md">
-          <span class="material-symbols-outlined text-[16px]">sync</span>
-          <span>↻ 同步最新分時數據</span>
-        </button>
-      </div>
-      <a class="extension-cta" href="https://chromewebstore.google.com/detail/%E7%95%B6%E6%B2%96%E5%90%A7%EF%BC%81%E7%89%9B%E9%A6%AC%E4%BB%94-%E5%B7%A5%E4%BD%8D%E6%91%B8%E9%AD%9A%E7%9C%8B%E7%9B%A4%E7%A5%9E%E5%99%A8-%EF%BD%9C-%E5%8F%B0%E8%82%A1-ai/khidbieahmnnandhkcmjceideljgjfid" target="_blank" rel="noopener noreferrer" aria-label="在 Chrome 線上應用程式商店安裝當沖吧牛馬仔小工具">
-        <span class="extension-icon" aria-hidden="true"><img src="chrome-extension/assets/icon128.png" width="32" height="32" alt=""></span>
-        <span>安裝 Chrome 小工具<small>工位摸魚快速看盤、免切頁 ↗</small></span>
-      </a>
-      <div id="dataStatusText" class="text-sub text-xs font-mono" role="status">正在從 Firebase 載入市場資料…</div>
-    </div>
-  </div>
-
-  <section id="dashboardOverview" class="panel dashboard-ux glass" aria-labelledby="overviewTitle">
-    <h2 id="overviewTitle">現在的資料與模式</h2>
-    <div class="ux-overview-grid">
-      <div><span>盤中快照狀態</span><p id="overviewSession">等待有效快照</p></div>
-      <div><span>資料有效性</span><p id="overviewValidity">日線與盤中分開確認</p></div>
-      <div><span>用途 / 執行模式</span><p>Research 研究 · Paper 模擬</p><small>不是 Live 實盤控制台；公開快照無法確認實盤開關。</small></div>
-      <div><span>來源最後更新</span><p id="overviewUpdated">尚未取得</p></div>
-    </div>
-    <p id="overviewNotice" role="status"></p>
+  <section class="home-intro" aria-label="研究看板總覽">
+    <div><div class="home-eyebrow">工位摸魚 · RESEARCH / PAPER</div><h1>上班很累，<span>看盤要清楚。</span></h1><p>把市場的雜訊留在外面，把自己的節奏找回來。</p></div>
+    <div class="home-intro-actions"><div id="chrome-tools"><a class="extension-cta" href="https://chromewebstore.google.com/detail/%E7%95%B6%E6%B2%96%E5%90%A7%EF%BC%81%E7%89%9B%E9%A6%AC%E4%BB%94-%E5%B7%A5%E4%BD%8D%E6%91%B8%E9%AD%9A%E7%9C%8B%E7%9B%A4%E7%A5%9E%E5%99%A8-%EF%BD%9C-%E5%8F%B0%E8%82%A1-ai/khidbieahmnnandhkcmjceideljgjfid" target="_blank" rel="noopener noreferrer" aria-label="在 Chrome 線上應用程式商店安裝當沖吧牛馬仔小工具"><span class="extension-icon" aria-hidden="true"><img src="assets/chrome-logo.svg" width="36" height="36" alt=""></span><span>Chrome 小工具<small>安裝，摸魚更順手 ↗</small></span></a></div><div class="home-date" aria-label="台北日期"><span class="material-symbols-outlined" aria-hidden="true">calendar_today</span><strong id="homeDateDay">—</strong><div><small id="homeDateMonth">—</small><small id="homeDateWeek">日期待確認</small></div></div></div>
   </section>
-  </div>
+  <section class="home-summary" aria-label="最近交易日研究摘要">
+    <article class="home-summary-card home-overview glass"><div class="home-card-top"><span>最近交易日研究</span><span class="home-pill" id="homeSnapshotState">等待有效快照</span></div><div class="home-summary-big"><strong id="homeResearchCount">—</strong><span id="homeResearchCaption">研究資料讀取中</span></div><div class="home-overview-bottom"><div><b id="homePaperFilled">—</b><small>Paper 模擬成交</small></div><div><b id="homePaperSkipped">—</b><small>Paper 略過筆數</small></div><div><b id="homeOpenCount">—</b><small>A 研究持倉</small></div></div></article>
+    <article class="home-summary-card home-return glass"><div class="home-card-top"><span>研究淨報酬加總</span><span class="material-symbols-outlined" aria-hidden="true">monitoring</span></div><div id="homeResearchPnl" class="home-return-value">—</div><div class="home-summary-note">各筆研究費後報酬相加<br>非帳戶報酬 · 非實盤績效</div></article>
+    <article class="home-summary-card home-data glass"><div class="home-card-top"><span>把資料準備好</span><span class="home-pill">資料收集</span></div><div class="home-data-content"><div class="home-ring" id="homeCoverageRing"><span id="homeCoveragePercent">—</span></div><div><strong id="homeCoverage">—</strong><small>股票資料收集完成</small></div></div><div class="home-summary-note" id="homeModelStatus">模型狀態：待確認</div></article>
+  </section>
+  <div class="home-status-strip"><div><span id="homeResearchDate">研究日期待資料</span><button id="homeDataDetails" type="button" aria-expanded="false">資料與模式 ›</button></div><button type="button" class="home-refresh" onclick="fetchMarketData()">↻ <span>更新市場資料</span></button></div>
+  <p id="dataStatusText" class="text-sub text-xs" role="status">正在從 Firebase 載入市場資料…</p>
 
   <nav class="section-nav lg:hidden" aria-label="首頁行動區域">
     <a href="#intraday-strategies">01 盤中摸魚</a>
@@ -318,6 +294,16 @@
        8-METRIC PULSE STREAM BAR
        ===================================================== -->
   <details class="dashboard-data-details glass"><summary>資料與模型細節</summary>
+  <section id="dashboardOverview" class="panel dashboard-ux glass" aria-labelledby="overviewTitle">
+    <h2 id="overviewTitle">現在的資料與模式</h2>
+    <div class="ux-overview-grid">
+      <div><span>盤中快照狀態</span><p id="overviewSession">等待有效快照</p></div>
+      <div><span>資料有效性</span><p id="overviewValidity">日線與盤中分開確認</p></div>
+      <div><span>用途 / 執行模式</span><p>Research 研究 · Paper 模擬</p><small>不是 Live 實盤控制台；公開快照無法確認實盤開關。</small></div>
+      <div><span>來源最後更新</span><p id="overviewUpdated">尚未取得</p></div>
+    </div>
+    <p id="overviewNotice" role="status"></p>
+  </section>
   <header class="system-header panel" aria-label="資料狀態">
     <div class="system-stats grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2.5">
 
@@ -602,6 +588,7 @@
     <span class="text-xs text-[#64748B] font-medium">收盤加班進修 / DRONE SURVIVAL LOG</span>
   </div>
 
+<div class="home-learning-teasers"><a class="home-learning-teaser glass" href="#learningSection"><span class="material-symbols-outlined" aria-hidden="true">menu_book</span><div><h3>每天一點，慢慢看懂市場</h3><p>每日盤後研究</p></div><div class="home-learning-value"><b id="homeLearningDays">—</b><small>累積學習日</small></div></a><a class="home-learning-teaser glass" href="#learningSection"><span class="material-symbols-outlined" aria-hidden="true">layers</span><div><h3>歷史研究，持續累積</h3><p>歷史測試非實際勝率</p></div><div class="home-learning-value"><b id="homeHistorySamples">—</b><small>歷史研究樣本</small></div></a></div>
   <section class="panel learning-panel glass mb-8" id="learningSection" aria-labelledby="learningTitle">
     <div class="learning-head flex items-start justify-between gap-4 border-b border-[#232F42] pb-3">
       <div>
@@ -885,7 +872,7 @@
 </div>
 
 
-<script src="assets/dashboard-ux.js?v=49ab09c31c09"></script>
+<script src="assets/dashboard-ux.js?v=7d2bc8c260a1"></script>
 <script>
 
   /* ========================================================
@@ -3259,9 +3246,9 @@
             window.paperExecutionStatus?.(x) || null;
 
           return `
-            <div class="rounded-xl border muted-border p-3.5 sm:p-4 surface trade-detail-card" role="button" tabindex="0" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(x.name || x.symbol)} 當日K線與選股原因">
+            <div class="rounded-xl border muted-border p-3.5 sm:p-4 surface home-trade-card trade-detail-card" role="button" tabindex="0" data-home-price="${displayPrice !== null ? displayPrice : ''}" data-home-status="${isOpen ? 'OPEN' : 'CLOSED'}" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(x.name || x.symbol)} 當日K線與選股原因">
 
-              <div class="flex items-start justify-between gap-2.5">
+              <div class="home-trade-main flex items-start justify-between gap-2.5">
 
                 <div>
                   <div class="flex items-center gap-2 flex-wrap">
@@ -3280,7 +3267,7 @@
                       )}
                     </span>
 
-                    <span class="text-xs font-semibold border rounded-md px-2 py-0.5 ${statusClass}">
+                    <span class="home-position-state text-xs font-semibold border rounded-md px-2 py-0.5 ${statusClass}">
                       ${
                         isOpen
                           ? "OPEN · 持倉中"
@@ -3574,7 +3561,7 @@
     if (todayRows.length > 0) {
       rows = todayRows;
       if (stamp && lastUpdate) {
-        stamp.textContent = `即時 · ${formatTaiwanDateTime(lastUpdate)}`;
+        stamp.textContent = `${v2Data?.session === "closed" ? "收盤快照" : !laneFresh ? "資料延遲" : "即時"} · ${formatTaiwanDateTime(lastUpdate)}`;
       }
     } else if (isShowingPreviousDay) {
       if (stamp) stamp.textContent = "保留上一交易日戰報";
@@ -3645,13 +3632,13 @@
       if (!reasons.length) reasons = ["進場理由未提供"];
 
       return `
-        <div class="rounded-xl border border-emerald-500/20 bg-[#0F172A]/70 p-3.5 sm:p-4 surface trade-detail-card transition-all hover:border-emerald-500/40 cursor-pointer" role="button" tabindex="0" data-trade-lane="${lane}" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(stockName)} ${lane} 模擬交易紀錄">
-          <div class="flex items-start justify-between gap-2.5">
+        <div class="rounded-xl border border-emerald-500/20 bg-[#0F172A]/70 p-3.5 sm:p-4 surface home-trade-card trade-detail-card transition-all hover:border-emerald-500/40 cursor-pointer" role="button" tabindex="0" data-home-price="${displayPrice !== null ? displayPrice : ''}" data-home-status="${isOpen ? 'OPEN' : 'CLOSED'}" data-trade-lane="${lane}" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(stockName)} ${lane} 模擬交易紀錄">
+          <div class="home-trade-main flex items-start justify-between gap-2.5">
             <div>
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-bold text-base text-[#F1F5F9]">${escapeHtml(stockName)}</span>
                 <span class="text-xs text-[#94A3B8] font-mono font-medium">${escapeHtml(x.symbol)}</span>
-                <span class="text-xs font-semibold border rounded-md px-2 py-0.5 ${isOpen ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-[#94A3B8] bg-slate-800/60 border-slate-700'}">
+                <span class="home-position-state text-xs font-semibold border rounded-md px-2 py-0.5 ${isOpen ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-[#94A3B8] bg-slate-800/60 border-slate-700'}">
                   ${isOpen ? 'OPEN · 持倉中' : 'CLOSE · 已平倉'}
                 </span>
                 <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
@@ -5147,7 +5134,7 @@
   <p class="text-sub text-xs mt-3">支援的手機可在系統分享選單選擇 LINE；未支援時，下載圖片後在 LINE 附加傳送。</p>
 </dialog>
 <script src="assets/vendor/html2canvas.min.js"></script>
-<script src="assets/module-share.js?v=d047d833f8a3"></script>
+<script src="assets/module-share.js?v=b12b4078b9d0"></script>
 <script src="assets/learning-status.js?v=7abe6c98e7b4"></script>
 <script src="assets/dashboard-layout.js?v=488bb302a486"></script>
 <script src="assets/intraday-chart.js?v=f83d9b0ede04"></script>
@@ -5163,5 +5150,6 @@
 <script src="assets/eight-methods.js?v=dbfd908b8895"></script>
 <script src="assets/b-lanes-replay.js?v=ea6b415dae32"></script>
 <script src="assets/a-watchlist.js?v=44db2c9964bb"></script>
+<script src="assets/glass-home.js?v=d798db4d190b"></script>
 </body>
 </html>

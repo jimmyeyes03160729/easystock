@@ -42,6 +42,7 @@
     setText('overviewValidity', `日線：${dailyConnection}${data?.dailyValid ? '符合既有版本 / 日期檢查（非即時）' : '待確認或失效，不產生資格推薦'} · 盤中：${health.current ? live.session === 'closed' ? '收盤 / 歷史快照，非即時' : '快照通過時效檢查' : '待確認 / 失效'}`);
     setText('overviewUpdated', `日線 ${meta.updated_at || '未知'} · 盤中 ${timeText(live.last_update_at || live.generated_at)}`);
     setText('overviewNotice', health.message || '此處的「盤中」是模擬資料服務階段，不是交易所開市或實盤執行證明。');
+    window.HomePresentation?.update(data);
   }
   window.DashboardUX = {update, emptyReason, requestFinished};
 })();
