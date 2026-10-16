@@ -212,7 +212,7 @@
 .eight-module [role=tablist]{display:flex;gap:10px;margin:14px 0}.eight-module button{padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--text)}.eight-module [aria-selected=true]{border-color:#06b6d4;color:#06b6d4}.eight-card{border:1px solid var(--border);border-radius:10px;padding:14px;margin:10px 0;min-width:0}.eight-card svg{width:100%;max-width:340px;height:100px;color:#06b6d4}.eight-card ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0;list-style:none}.eight-card small{overflow-wrap:anywhere}.eight-pagination{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:14px 0}.eight-pagination button{min-height:44px}.eight-pagination button:disabled{opacity:.45;cursor:not-allowed}.eight-pagination button:focus-visible{outline:2px solid #06b6d4;outline-offset:3px}.eight-pagination span{text-align:center;font-size:14px}.eight-module [hidden]{display:none!important}@media(max-width:600px){.eight-card ul{grid-template-columns:1fr}}
 </style>
 <link rel="stylesheet" href="assets/liquid-glass.css?v=a09885af9bd5" />
-<link rel="stylesheet" href="assets/glass-home.css?v=ceab2e93dd90" />
+<link rel="stylesheet" href="assets/glass-home.css?v=81ce746afd89" />
 <link rel="icon" type="image/png" sizes="128x128" href="chrome-extension/assets/icon128.png">
 </head>
 
@@ -3256,52 +3256,9 @@
 
               <div class="home-trade-main flex items-start justify-between gap-2.5">
 
-                <div>
-                  <div class="flex items-center gap-2 flex-wrap">
-
-                    <span class="font-bold text-base text-main">
-                      ${escapeHtml(
-                        x.name
-                        ||
-                        x.symbol
-                      )}
-                    </span>
-
-                    <span class="text-xs text-sub font-mono font-medium">
-                      ${escapeHtml(
-                        x.symbol
-                      )}
-                    </span>
-
-                    <span class="home-position-state text-xs font-semibold border rounded-md px-2 py-0.5 ${statusClass}">
-                      ${
-                        isOpen
-                          ? "OPEN · 持倉中"
-                          : "CLOSE · 已平倉"
-                      }
-                    </span>
-
-                    ${
-                      paper
-                        ? `<span class="text-xs font-semibold border rounded-md px-2 py-0.5 ${paper.filled ? "paper-filled" : "paper-research"}" data-paper-status>${escapeHtml(paper.label)}</span>`
-                        : ""
-                    }
-
-                  </div>
-
-                  <div class="text-xs text-sub mt-1.5 leading-normal font-medium">
-                    ${
-                      isOpen
-                        ? "Shioaji 即時監控中"
-                        : escapeHtml(
-                            x.exit_reason
-                            ||
-                            "已出場"
-                          )
-                    }
-                  </div>
-                </div>
-
+                <div class="home-trade-identity"><strong>${escapeHtml(x.name || x.symbol)}</strong><span>${escapeHtml(x.symbol)}</span></div>
+                <div class="home-trade-reason">${isOpen ? "Shioaji 即時監控中" : escapeHtml(x.exit_reason || "已出場")}</div>
+                <div class="home-trade-signal"><span class="home-position-state ${statusClass}">${isOpen ? "OPEN · 持倉中" : "CLOSE · 已平倉"}</span>${paper ? `<span class="home-signal-badge ${paper.filled ? "paper-filled" : "paper-research"}" data-paper-status>${escapeHtml(paper.label)}</span>` : '<span class="home-signal-badge">模擬紀錄</span>'}</div>
 
                 ${renderHomeTradeExecution(x, entry, exit, isOpen)}
                 <div class="text-right shrink-0">
@@ -3641,22 +3598,9 @@
       return `
         <div class="rounded-xl border border-emerald-500/20 bg-[#0F172A]/70 p-3.5 sm:p-4 surface home-trade-card trade-detail-card transition-all hover:border-emerald-500/40 cursor-pointer" role="button" tabindex="0" data-home-price="${displayPrice !== null ? displayPrice : ''}" data-home-status="${isOpen ? 'OPEN' : 'CLOSED'}" data-trade-lane="${lane}" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(stockName)} ${lane} 模擬交易紀錄">
           <div class="home-trade-main flex items-start justify-between gap-2.5">
-            <div>
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-bold text-base text-[#F1F5F9]">${escapeHtml(stockName)}</span>
-                <span class="text-xs text-[#94A3B8] font-mono font-medium">${escapeHtml(x.symbol)}</span>
-                <span class="home-position-state text-xs font-semibold border rounded-md px-2 py-0.5 ${isOpen ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-[#94A3B8] bg-slate-800/60 border-slate-700'}">
-                  ${isOpen ? 'OPEN · 持倉中' : 'CLOSE · 已平倉'}
-                </span>
-                <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
-                  ${escapeHtml(signalTypeLabel)}
-                </span>
-              </div>
-              <div class="text-xs text-[#94A3B8] mt-1.5 leading-normal font-medium flex items-center gap-2 flex-wrap">
-                <span>${isOpen ? (x.quote_stale || !laneFresh ? '報價延遲 · 等待新鮮五檔' : lane === 'B1' ? '五檔監控 · 停損2檔／停利3檔' : lane === 'B2' ? '五檔監控 · 布林中軌目標' : '五檔監控 · 結構停損與趨勢目標') : escapeHtml(exitReason)}</span>
-                ${x.score ? `<span class="text-[11px] text-[#64748B] font-mono">評分: ${fmt(x.score, 1)}</span>` : ''}
-              </div>
-            </div>
+            <div class="home-trade-identity"><strong>${escapeHtml(stockName)}</strong><span>${escapeHtml(x.symbol)}</span></div>
+            <div class="home-trade-reason">${isOpen ? (x.quote_stale || !laneFresh ? '報價延遲 · 等待新鮮五檔' : '持倉監控中') : escapeHtml(exitReason)}</div>
+            <div class="home-trade-signal"><span class="home-position-state ${isOpen ? 'trade-open' : 'trade-closed'}">${isOpen ? 'OPEN · 持倉中' : 'CLOSE · 已平倉'}</span><span class="home-signal-badge">${escapeHtml(signalTypeLabel)}</span></div>
 
             ${renderHomeTradeExecution(x, entry, exit, isOpen)}
             <div class="text-right shrink-0">
@@ -5145,7 +5089,7 @@
 <script src="assets/module-share.js?v=b12b4078b9d0"></script>
 <script src="assets/learning-status.js?v=7abe6c98e7b4"></script>
 <script src="assets/dashboard-layout.js?v=488bb302a486"></script>
-<script src="assets/intraday-chart.js?v=f83d9b0ede04"></script>
+<script src="assets/intraday-chart.js?v=eb17fea13239"></script>
 <script src="assets/provider-health.js?v=e8f08c578597"></script>
 <nav class="mobile-bottom-nav glass-chrome" aria-label="手機主導覽">
   <a href="#intraday-strategies" aria-label="盤中摸魚" aria-current="location"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span><span>盤中摸魚</span></a>

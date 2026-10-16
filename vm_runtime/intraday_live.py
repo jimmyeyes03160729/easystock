@@ -5325,6 +5325,8 @@ class IntradayLiveEngine:
         self.log_entry_reject_summary(force=True)
 
         self.running = False
+        charts = getattr(self, 'chart_publisher', None)
+        if charts: charts.stop()
 
         # 若在 12:55 後 shutdown，保證不留 OPEN。
         if has_force_exit_started():
@@ -5413,6 +5415,10 @@ class IntradayLiveEngine:
         self.init_firebase()
         self.login()
         self.install_callback()
+        # Public price charts reuse received bars; no broker requests or orders.
+        from trade_chart_feed import ChartPublisher
+        self.chart_publisher = ChartPublisher(self.store, self.bars)
+        self.chart_publisher.start()
         trial=getattr(self,'b1_closing_experiment',None)
         if trial:
             for symbol in sorted(trial.required_ticks(now_tpe())):

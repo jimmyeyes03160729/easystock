@@ -1,0 +1,8 @@
+[Unit]
+Description=Refresh available cached trade charts every five minutes
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=5min
+Unit=easystock-trade-charts.service
+[Install]
+WantedBy=timers.target

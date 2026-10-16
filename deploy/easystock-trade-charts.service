@@ -1,0 +1,14 @@
+[Unit]
+Description=EasyStock cached trade charts (price display only)
+After=network-online.target
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/easystock
+EnvironmentFile=/home/ubuntu/easystock/.env
+EnvironmentFile=-/home/ubuntu/easystock-learning.env
+ExecStart=/home/ubuntu/easystock/.venv/bin/python /home/ubuntu/easystock/deploy/publish_trade_charts.py
+UMask=0077
+NoNewPrivileges=true
+TimeoutStartSec=120

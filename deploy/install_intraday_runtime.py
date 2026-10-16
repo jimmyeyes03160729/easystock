@@ -19,6 +19,7 @@ BACKUP_ROOT = Path(
 
 FILES = [
     "intraday_live.py",
+    "trade_chart_feed.py",
     "market_risk.py",
     "firebase_store.py",
     "paper_account.py",

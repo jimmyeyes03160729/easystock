@@ -81,3 +81,22 @@
 .home-v2 .home-trade-execution small{display:block;color:var(--lg-muted);font-size:9px;line-height:1.4;overflow-wrap:anywhere}
 @media(max-width:1100px){:root[data-theme] .home-v2 #dashboard .home-trade-main{grid-template-columns:minmax(120px,1fr) minmax(150px,1fr) 78px;gap:10px}.home-v2 .home-trade-execution{padding-left:10px;gap:8px}}
 @media(max-width:550px){:root[data-theme] .home-v2 #dashboard .home-trade-main{grid-template-columns:minmax(0,1fr) 76px;gap:8px}:root[data-theme] .home-v2 #dashboard .home-trade-main>.home-trade-execution{display:none}:root[data-theme] .home-v2 #dashboard .home-trade-card{padding:10px 6px;min-height:64px}}
+
+/* Readable trade columns: stock/code, exit reason, execution status, prices. */
+:root[data-theme] .home-v2 #dashboard .home-trade-main{grid-template-columns:104px minmax(110px,.85fr) 132px minmax(180px,1.2fr) 92px;gap:12px}
+:root[data-theme] .home-v2 #dashboard .home-trade-card{padding:12px 10px;min-height:78px}
+.home-v2 .home-trade-identity strong{display:block;font-size:18px;font-weight:700;line-height:1.5;overflow-wrap:anywhere}
+.home-v2 .home-trade-identity>span{display:block;font-size:13px;font-variant-numeric:tabular-nums;color:var(--lg-sub);line-height:1.5}
+.home-v2 .home-trade-reason{font-size:14px;line-height:1.6;color:var(--lg-sub);overflow-wrap:anywhere}
+.home-v2 .home-trade-signal{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+:root[data-theme] .home-v2 .home-trade-main .home-signal-badge{display:inline-block;font-size:12px;padding:4px 8px;border-radius:8px;background:var(--glass-tile);border:1px solid var(--glass-hairline);line-height:1.5}
+:root[data-theme] .home-v2 .home-trade-main .home-position-state{font-size:11px;padding:2px 5px;border-radius:5px}
+:root[data-theme] .home-v2 [data-home-status=CLOSED] .home-position-state{display:none}
+.home-v2 .home-trade-execution{padding-left:12px;gap:10px}
+.home-v2 .home-trade-execution span{font-size:12px}
+.home-v2 .home-trade-execution strong{font-size:16px}
+.home-v2 .home-trade-execution small{font-size:11px}
+:root[data-theme] .home-v2 .home-trade-main>div:last-child>div:first-child{font-size:18px}
+:root[data-theme] .home-v2 .home-trade-main>div:last-child>div:nth-child(2){font-size:15px}
+@media(max-width:1100px){:root[data-theme] .home-v2 #dashboard .home-trade-main{grid-template-columns:94px minmax(100px,1fr) 126px 88px;gap:10px}:root[data-theme] .home-v2 #dashboard .home-trade-main>.home-trade-execution{display:none}}
+@media(max-width:550px){:root[data-theme] .home-v2 #dashboard .home-trade-main{grid-template-columns:78px minmax(0,1fr) 74px;gap:4px 8px}.home-v2 .home-trade-identity{grid-column:1;grid-row:1/3}.home-v2 .home-trade-reason{grid-column:2;grid-row:1;font-size:13px}.home-v2 .home-trade-signal{grid-column:2;grid-row:2}:root[data-theme] .home-v2 .home-trade-main>.home-trade-signal .home-signal-badge{font-size:11px;padding:2px 5px}.home-v2 .home-trade-main>div:last-child{grid-column:3;grid-row:1/3}.home-v2 .home-trade-identity strong{font-size:17px}.home-v2 .home-trade-identity>span{font-size:13px}:root[data-theme] .home-v2 .home-trade-main>div:last-child>div:first-child{font-size:16px}:root[data-theme] .home-v2 .home-trade-main>div:last-child>div:nth-child(2){font-size:14px}:root[data-theme] .home-v2 #dashboard .home-trade-card{padding:11px 6px;min-height:76px}}
