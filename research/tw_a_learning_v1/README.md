@@ -3,6 +3,21 @@
 本目錄落實台股專用資料合約與模型比較前的檢查，不是已完成的模型訓練器。
 正式 A/B、風控、紅綠燈、模型門檻及 VM 都沒有接入或改動。
 
+## 2026-10-16 唯讀資料稽核
+
+已完成[候選樣本清單](audit_20261016/SAMPLE_INVENTORY.md)、
+[成本差異表](audit_20261016/COST_COMPARISON.md)與
+[缺少欄位表](audit_20261016/MISSING_FIELDS.md)。
+整體仍為 [REQUIRES_RECONSTRUCTION_AND_PROVENANCE_AUDIT](audit_20261016/FINAL_READINESS.md)，
+不是新增訓練、准許讀取近期／保留區資料或提升正式模型資格。
+
+`audit_inventory.py` 只盤點截止日前標籤結構、日誌來源鍵、成本設定與有限schema樣本，
+在開檔前拒絕越界日期與符號連結；SQLite只讀schema。
+來源端經標準輸入執行，沒有部署檔案；沒有評估報酬或改寫來源。
+[審閱後的中繼資料快照](audit_20261016/audit_evidence.json)與
+[已執行的重現notebook](audit_20261016/AUDIT_REPRODUCTION.ipynb)可供檢查。
+notebook只讀同目錄快照，不重新連來源、不讀行情或訓練。
+
 ## 已完成的入口
 
 - `contract.py`：純函式，檢查台灣普通股、已知當沖資格、明確 UTC+8、

@@ -1,0 +1,88 @@
+{
+  "schema_version": "tw-a-reviewed-inventory-v1",
+  "captured_at": "2026-10-16T20:52:59.442136+08:00",
+  "historical_cutoff": "2026-10-02",
+  "raw_label_rows": 6260,
+  "common_stock_code_candidate_rows": 6224,
+  "out_of_scope_rows": 36,
+  "out_of_scope_codes": {
+    "0050": 15,
+    "0056": 14,
+    "0052": 7
+  },
+  "profiles": [
+    {
+      "profile": "208e5245843edcc4",
+      "rows": 2607,
+      "common_stock_code_rows": 2590,
+      "days": 6,
+      "start_date": "2026-09-11",
+      "end_date": "2026-09-18"
+    },
+    {
+      "profile": "162cc665885f69b7",
+      "rows": 53,
+      "common_stock_code_rows": 53,
+      "days": 1,
+      "start_date": "2026-09-18",
+      "end_date": "2026-09-18"
+    },
+    {
+      "profile": "18d13718d66141f1",
+      "rows": 424,
+      "common_stock_code_rows": 418,
+      "days": 1,
+      "start_date": "2026-09-22",
+      "end_date": "2026-09-22"
+    },
+    {
+      "profile": "cc6815f1a2c2de2f",
+      "rows": 59,
+      "common_stock_code_rows": 59,
+      "days": 1,
+      "start_date": "2026-09-22",
+      "end_date": "2026-09-22"
+    },
+    {
+      "profile": "06470428fd6d355f",
+      "rows": 470,
+      "common_stock_code_rows": 468,
+      "days": 1,
+      "start_date": "2026-09-24",
+      "end_date": "2026-09-24"
+    },
+    {
+      "profile": "72a58274c3f1ff77",
+      "rows": 2647,
+      "common_stock_code_rows": 2636,
+      "days": 4,
+      "start_date": "2026-09-29",
+      "end_date": "2026-10-02"
+    }
+  ],
+  "journal_matched": 6224,
+  "quote_times_causal_fresh": 6224,
+  "bar_pack_exists_rows": 6224,
+  "expanded_raw_exists_rows": 3393,
+  "source_hashes_match_after_lf_normalization": {
+    "daytrade_learning/settings.json": true,
+    "daytrade_learning/research.py": true,
+    "daytrade_learning/features.py": true,
+    "paper_execution.py": true,
+    "paper_ledger.py": true,
+    "history/collector_core.py": true
+  },
+  "source_hashes": {
+    "daytrade_learning/settings.json": "fc463942fd87aaf868c954b1cdd604638364c8745a942aec089037ebff99e56e",
+    "daytrade_learning/research.py": "73dc7d9f663c6beeb39788abc76604301c19f6b46791f038981d90f090a94cdf",
+    "daytrade_learning/features.py": "6a087e1246aa309b07d6573fd1b9e37bf87767b17f96d347b583aa2eed402de8",
+    "paper_execution.py": "c0092774901971b870a56d87ba9ef7dfce878325540d396948aa66c3c95f0359",
+    "paper_ledger.py": "30d67d093dfdb6fd2c677cf17949121e639db94bf4875d6b14dcbfad38692050",
+    "history/collector_core.py": "a5d659892ee7a12c37624d236466b6aaae20dfe0d3d1bdfbc341a10dab300415"
+  },
+  "market_data_sampled_for_schema_only": true,
+  "performance_calculated": false,
+  "training_executed": false,
+  "holdout_content_read": false,
+  "status": "REQUIRES_RECONSTRUCTION_AND_PROVENANCE_AUDIT"
+}

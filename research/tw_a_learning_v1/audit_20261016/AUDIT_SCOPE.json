@@ -1,0 +1,25 @@
+{
+  "audit_id": "TW_A_DATA_READINESS_AUDIT_20261016",
+  "purpose": "DESCRIPTIVE_STRUCTURE_AND_COST_AUDIT_ONLY",
+  "authority": "User requested sample inventory, cost comparison and missing-field tables",
+  "historical_cutoff": "2026-10-02",
+  "allowed_content": [
+    "historical learning label structure and provenance",
+    "saved historical cost settings",
+    "first/last allowed archive schema samples",
+    "source code",
+    "SQLite schema only",
+    "historical journal sample key, quote time and policy field presence only"
+  ],
+  "forbidden_content": [
+    "any date after cutoff",
+    "Rebound/Phase2C/Runway reserved outcomes including aliases",
+    "actual return values and performance evaluation"
+  ],
+  "recent_partitions": "file existence only; no counts or content reads",
+  "json_decoding_disclosure": "Historical permitted JSON labels/reports are decoded to count structure; outcome values are not evaluated or exported",
+  "training": false,
+  "backtest": false,
+  "production_writes": false,
+  "source_machine_writes": false
+}
