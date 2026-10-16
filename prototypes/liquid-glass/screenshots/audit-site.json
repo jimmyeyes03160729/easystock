@@ -1,0 +1,122 @@
+{
+  "site-desktop-light": {
+    "theme": "light",
+    "viewport": 1440,
+    "textChecked": 244,
+    "manualGradient": 0,
+    "minRatio": 4.53,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 11,
+    "backdropFilterTargets": [
+      "header.glass-chrome",
+      "div.intro",
+      "section.panel",
+      "section.panel",
+      "details.dashboard-data-details",
+      "div.filter-panel",
+      "div.glass",
+      "div.panel",
+      "section.panel",
+      "section.panel",
+      "section.disclaimer"
+    ]
+  },
+  "site-mobile-light": {
+    "theme": "light",
+    "viewport": 390,
+    "textChecked": 242,
+    "manualGradient": 0,
+    "minRatio": 4.59,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 390,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 2,
+    "backdropFilterTargets": [
+      "header.glass-chrome",
+      "nav.mobile-bottom-nav"
+    ]
+  },
+  "site-narrow-light": {
+    "theme": "light",
+    "viewport": 320,
+    "textChecked": 242,
+    "manualGradient": 0,
+    "minRatio": 4.59,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 320,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 2,
+    "backdropFilterTargets": [
+      "header.glass-chrome",
+      "nav.mobile-bottom-nav"
+    ]
+  },
+  "site-desktop-dark": {
+    "theme": "dark",
+    "viewport": 1440,
+    "textChecked": 244,
+    "manualGradient": 0,
+    "minRatio": 5.59,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 11,
+    "backdropFilterTargets": [
+      "header.glass-chrome",
+      "div.intro",
+      "section.panel",
+      "section.panel",
+      "details.dashboard-data-details",
+      "div.filter-panel",
+      "div.glass",
+      "div.panel",
+      "section.panel",
+      "section.panel",
+      "section.disclaimer"
+    ]
+  },
+  "site-mobile-dark": {
+    "theme": "dark",
+    "viewport": 390,
+    "textChecked": 242,
+    "manualGradient": 0,
+    "minRatio": 5.41,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 390,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 2,
+    "backdropFilterTargets": [
+      "header.glass-chrome",
+      "nav.mobile-bottom-nav"
+    ]
+  },
+  "site-narrow-dark": {
+    "theme": "dark",
+    "viewport": 320,
+    "textChecked": 242,
+    "manualGradient": 0,
+    "minRatio": 5.41,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 320,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 2,
+    "backdropFilterTargets": [
+      "header.glass-chrome",
+      "nav.mobile-bottom-nav"
+    ]
+  }
+}

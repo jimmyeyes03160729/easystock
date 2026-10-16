@@ -120,6 +120,26 @@ async function main() {
     }
   };
 
+  // `node capture.cjs site`: the real index.html (served on :8766) after the glass layer is applied.
+  if (process.argv[2] === 'site') {
+    const audit = {};
+    for (const theme of ['light', 'dark']) for (const vpName of ['desktop', 'mobile', 'narrow']) {
+      await setViewport(VIEWPORTS[vpName]);
+      await open('before', theme);
+      const tag = `site-${vpName}-${theme}`;
+      if (vpName !== 'narrow') await shot(`${tag}.png`, false);
+      await shot(`${tag}-full.jpg`, true);
+      audit[tag] = await evaluate(AUDIT);
+      if (vpName !== 'narrow') {
+        await evaluate(`openStockDetail('TEST1','DAYTRADE')`); await sleep(900);
+        await shot(`${tag}-modal.png`, false);
+      }
+    }
+    fs.writeFileSync(path.join(OUT, 'audit-site.json'), JSON.stringify(audit, null, 2));
+    for (const [k, v] of Object.entries(audit)) console.log(k.padEnd(24), `contrast fails ${String(v.contrastFailures).padStart(3)} / ${v.textChecked}  min ${v.minRatio}  manual ${v.manualGradient}  overflow ${v.horizontalOverflow} ${v.overflowOffenders.join(' ')}  blur layers ${v.backdropFilterLayers}`);
+    for (const [k, v] of Object.entries(audit)) if (v.contrastFailures) console.log(k, JSON.stringify(v.worst.slice(0, 6)));
+    ws.close(); proc.kill(); return;
+  }
   const audit = {};
   for (const side of ['before', 'after']) for (const theme of ['light', 'dark']) for (const vpName of ['desktop', 'mobile']) {
     await setViewport(VIEWPORTS[vpName]);

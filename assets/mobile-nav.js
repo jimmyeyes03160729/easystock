@@ -3,7 +3,9 @@
   if(!nav) return;
   const links=[...nav.querySelectorAll('a[href^="#"]')];
   const candidates=links.map(link=>({href:link.getAttribute('href'),node:document.querySelector(link.getAttribute('href'))})).filter(x=>x.node);
-  const select=href=>links.forEach(link=>{
+  // The desktop header nav mirrors the same active section.
+  const headerLinks=[...document.querySelectorAll('header .section-nav a[href^="#"]')];
+  const select=href=>[...links,...headerLinks].forEach(link=>{
     if(link.getAttribute('href')===href) link.setAttribute('aria-current','location');
     else link.removeAttribute('aria-current');
   });

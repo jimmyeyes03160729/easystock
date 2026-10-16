@@ -71,6 +71,18 @@
     <figure class="glass-tile"><figcaption>320px · 深色<a href="screenshots/after-narrow320-dark-full.jpg">整頁</a></figcaption><img src="screenshots/after-narrow320-dark-full.jpg" alt="320px 深色整頁" style="max-height:900px;object-fit:cover;object-position:top"></figure>
   </div>
 
+  <h2>第二階段 · 正式 index.html 套用後（合成資料）</h2>
+  <div class="row">
+    <figure class="glass-tile"><figcaption>桌機 · 淺色<a href="screenshots/site-desktop-light-full.jpg">整頁</a></figcaption><img src="screenshots/site-desktop-light.png" alt="正式頁桌機淺色"></figure>
+    <figure class="glass-tile"><figcaption>桌機 · 深色<a href="screenshots/site-desktop-dark-full.jpg">整頁</a></figcaption><img src="screenshots/site-desktop-dark.png" alt="正式頁桌機深色"></figure>
+  </div>
+  <div class="row4" style="margin-top:14px">
+    <figure class="glass-tile"><figcaption>手機 · 淺色<a href="screenshots/site-mobile-light-full.jpg">整頁</a></figcaption><img src="screenshots/site-mobile-light.png" alt="正式頁手機淺色"></figure>
+    <figure class="glass-tile"><figcaption>手機 · 深色<a href="screenshots/site-mobile-dark-full.jpg">整頁</a></figcaption><img src="screenshots/site-mobile-dark.png" alt="正式頁手機深色"></figure>
+    <figure class="glass-tile"><figcaption>股票詳情 · 手機</figcaption><img src="screenshots/site-mobile-light-modal.png" alt="正式頁手機 Modal"></figure>
+    <figure class="glass-tile"><figcaption>股票詳情 · 桌機深色</figcaption><img src="screenshots/site-desktop-dark-modal.png" alt="正式頁桌機 Modal 深色"></figure>
+  </div>
+
   <h2>對比度 · 溢出 · 模糊圖層（自動檢查）</h2>
   <section class="glass card">
     <div class="scroll"><table><thead><tr><th>狀態</th><th>檢查文字數</th><th>AA 未通過</th><th>最低對比</th><th>橫向溢出</th><th>backdrop-filter 圖層</th></tr></thead><tbody id="audit"><tr><td colspan="6">讀取 screenshots/audit.json…</td></tr></tbody></table></div>
@@ -95,7 +107,7 @@
   </section>
 </div>
 <script>
-  fetch('screenshots/audit.json').then(r => r.json()).then(a => {
+  Promise.all(['screenshots/audit.json', 'screenshots/audit-site.json'].map(u => fetch(u).then(r => r.ok ? r.json() : {}))).then(([p, s]) => ({ ...p, ...s })).then(a => {
     document.getElementById('audit').innerHTML = Object.entries(a).sort(([x], [y]) => x.localeCompare(y)).map(([k, v]) =>
       `<tr><td>${k}</td><td>${v.textChecked}</td><td class="${v.contrastFailures ? 'bad' : 'ok'}">${v.contrastFailures}</td><td>${v.minRatio}</td><td class="${v.horizontalOverflow ? 'bad' : 'ok'}">${v.horizontalOverflow ? '有' : '無'}</td><td>${v.backdropFilterLayers}</td></tr>`).join('');
   }).catch(() => { document.getElementById('audit').innerHTML = '<tr><td colspan="6">請先執行 capture.cjs</td></tr>'; });
