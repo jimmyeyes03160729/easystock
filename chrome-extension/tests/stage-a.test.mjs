@@ -356,6 +356,16 @@ test('window height really sizes the popup (420–600, Chrome limit) and fixed p
   assert.equal(tall.w.document.getElementById('range-page-size').disabled, false);
   assert.ok(tall.w.document.getElementById('btn-open-standalone'), 'standalone window offered for longer views');
   tall.dom.window.close();
+  // A screen that cannot fit the requested height: the page shrinks to the real visible height
+  // (no outer scrollbar) and the settings explain the limit.
+  const capped = await popup({ stocks, extra: { settings: { ...defaultState().settings, windowHeight: 600 } } });
+  Object.defineProperty(capped.w, 'innerHeight', { value: 470, configurable: true });
+  await new Promise(r => setTimeout(r, 320));
+  assert.equal(capped.w.document.documentElement.style.height, '470px');
+  assert.equal(capped.w.document.getElementById('window-height-note').hidden, false);
+  assert.match(capped.w.document.getElementById('window-height-note').textContent, /470px/);
+  assert.equal(capped.w.document.getElementById('window-height-val').textContent, '470px');
+  capped.dom.window.close();
   const short = await popup({ stocks, extra: { settings: { ...defaultState().settings, windowHeight: 300 } } });
   assert.equal(short.w.document.documentElement.style.height, '420px');
   assert.equal(short.w.document.getElementById('toggle-auto-page-size').checked, true, 'auto-fill is the default');

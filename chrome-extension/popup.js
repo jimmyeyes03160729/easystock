@@ -422,22 +422,66 @@ const POPUP_MAX_HEIGHT = 600; // Chrome extension popup hard limit
 const STANDALONE = typeof location !== 'undefined' && new URLSearchParams(location.search).get('standalone') === '1';
 let fitRows = 0;
 
-function applyWindowHeight(h) {
-  const val = Math.max(POPUP_MIN_HEIGHT, Math.min(POPUP_MAX_HEIGHT, Number(h) || 500));
-  const size = STANDALONE ? '100vh' : `${val}px`;
+let desiredHeight = 500;
+let screenCap = 0;
+let capTimer = null;
+
+function setPopupSize(size) {
   if (document.documentElement) document.documentElement.style.height = size;
-  if (document.body) { document.body.style.height = size; document.body.style.minHeight = STANDALONE ? '0' : `${POPUP_MIN_HEIGHT}px`; }
+  if (document.body) { document.body.style.height = size; document.body.style.minHeight = STANDALONE ? '0' : `${Math.min(POPUP_MIN_HEIGHT, parseInt(size, 10) || POPUP_MIN_HEIGHT)}px`; }
   const container = $('popup-container');
   if (container) {
     container.style.height = size;
     container.style.minHeight = STANDALONE ? '0' : size;
     container.style.maxHeight = size;
   }
-  const tagText = STANDALONE ? '獨立視窗' : `${val}px`;
+}
+
+function showHeightState(val) {
+  const capped = !STANDALONE && screenCap > 0 && screenCap < val;
+  const tagText = STANDALONE ? '獨立視窗' : (capped ? `${screenCap}px` : `${val}px`);
   if ($('window-height-val')) $('window-height-val').textContent = tagText;
   if ($('density-status-tag')) $('density-status-tag').textContent = tagText;
+  const note = $('window-height-note');
+  if (note) {
+    note.hidden = !capped;
+    note.textContent = capped ? `這個螢幕最多只能顯示 ${screenCap}px 高的小工具（Chrome 不讓小工具超出螢幕），要更長請用「獨立視窗開啟」。` : '';
+  }
+}
+
+// Chrome grows the popup to the page height, but never past 600px or the bottom of the screen. If the
+// window could not reach the requested height, shrink the page to the real visible height so there is
+// no outer scrollbar, and say so.
+function fitPopupToScreen() {
+  if (STANDALONE || typeof window === 'undefined') return;
+  const vh = Math.floor(window.innerHeight || 0);
+  if (vh > 0 && vh + 2 < desiredHeight) {
+    screenCap = Math.max(300, vh);
+    setPopupSize(`${screenCap}px`);
+  } else {
+    screenCap = 0;
+  }
+  showHeightState(desiredHeight);
+  if (view && group === 'watchlist') render();
+}
+
+let heightApplied = false;
+function applyWindowHeight(h, { force = false } = {}) {
+  const val = Math.max(POPUP_MIN_HEIGHT, Math.min(POPUP_MAX_HEIGHT, Number(h) || 500));
+  // render() calls this on every refresh: only re-size when the requested height really changes.
+  if (heightApplied && !force && val === desiredHeight) { showHeightState(val); return; }
+  heightApplied = true;
+  desiredHeight = val;
+  // Ask for the full height first; the screen check below trims it if Chrome could not grow that far.
+  screenCap = 0;
+  setPopupSize(STANDALONE ? '100vh' : `${val}px`);
+  showHeightState(val);
   if ($('range-window-height') && document.activeElement !== $('range-window-height')) {
     $('range-window-height').value = String(val);
+  }
+  if (!STANDALONE && typeof window !== 'undefined') {
+    clearTimeout(capTimer);
+    capTimer = setTimeout(fitPopupToScreen, 250);
   }
 }
 
