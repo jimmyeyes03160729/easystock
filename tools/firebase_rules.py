@@ -43,6 +43,28 @@ def merge_rebound_feed(rules):
     return candidate
 
 
+USER_OWNER_RULE = 'auth != null && auth.uid === $uid'
+
+
+def merge_users(rules, users_block):
+    """Chrome 2.0: add only the owner-only users/{uid} subtree; keep every other live rule.
+
+    Refuses when the live root grants a read or write, because such a grant would cascade into
+    users/{uid} and no child rule could revoke it.
+    """
+    candidate = copy.deepcopy(rules)
+    root = candidate['rules']
+    if root.get('.read') not in (False, None) or root.get('.write') not in (False, None):
+        raise RuntimeError('Live root grants access; users/{uid} would not be private')
+    uid = users_block.get('$uid') if isinstance(users_block, dict) else None
+    if not isinstance(uid, dict) or uid.get('.read') != USER_OWNER_RULE or uid.get('.write') != USER_OWNER_RULE:
+        raise RuntimeError('users block must be owner-only')
+    if '.read' in users_block or '.write' in users_block:
+        raise RuntimeError('users root must not grant access')
+    root['users'] = copy.deepcopy(users_block)
+    return candidate
+
+
 def preserved_public_paths(url, paths, required=HEALTH_NODES):
     """A narrow merge must not require opening formerly private feed nodes."""
     required = set(required)
@@ -66,6 +88,7 @@ def main():
     parser.add_argument('--expected-sha256')
     parser.add_argument('--merge-health', action='store_true', help='Preserve current rules and add only health read grants')
     parser.add_argument('--merge-rebound-feed', action='store_true', help='Preserve current rules and add only rebound_feed read grants')
+    parser.add_argument('--merge-users', action='store_true', help='Preserve current rules and add only the owner-only users/{uid} subtree (Chrome 2.0)')
     args = parser.parse_args()
     candidate = json.loads(Path(args.candidate).read_text())
     root = candidate['rules']
@@ -94,6 +117,8 @@ def main():
             market[node] = {'.read': True, '.write': False}
     if args.merge_rebound_feed:
         candidate = merge_rebound_feed(before)
+    if args.merge_users:
+        candidate = merge_users(before, json.loads(Path(args.candidate).read_text())['rules']['users'])
     print(json.dumps({'current_rules_sha256': digest(before), 'candidate_sha256': digest(candidate)}))
     if not args.apply:
         return
@@ -109,6 +134,9 @@ def main():
     elif args.merge_rebound_feed:
         required = ['rebound_feed'] + (['releases/'+active+'/rebound_feed'] if isinstance(active, str) else [])
         public = preserved_public_paths(url, public, required)
+    elif args.merge_users:
+        # Adding users/{uid} must not change which market nodes are public today.
+        public = preserved_public_paths(url, public, required=())
     backup_dir = Path(args.backup_dir).resolve()
     backup_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     backup = backup_dir / ('firebase-rules-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '.json')
@@ -142,6 +170,14 @@ def main():
         status = requests.get(url+'/market_data/line_groups.json', headers=headers, params={'shallow':'true'}, timeout=20).status_code
         if status != 200:
             raise RuntimeError('Service account private read failed')
+        if args.merge_users:
+            # Anonymous clients must not read or list user data after the merge.
+            for node in ['/users', '/users/__probe_'+uuid4().hex]:
+                status = requests.get(url+node+'.json', params={'shallow':'true'}, timeout=20).status_code
+                if status not in (401, 403):
+                    raise RuntimeError('User data readable without auth: '+node)
+            print('Verified: users/{uid} not readable anonymously; existing public endpoints unchanged.')
+            return
         # Firebase evaluates a false ETag before Security Rules (HTTP 412), so
         # a conditional write cannot prove denial. Use a unique absent child;
         # the candidate and readback above both prove .write=false first.

@@ -27,6 +27,28 @@
       "history_training_status": {".read": true},
       "dual_review_status": {".read": true},
       "public_feed": {".read": true}
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "profile": {
+          ".validate": "newData.hasChildren(['schema', 'updatedAt']) && newData.child('schema').isNumber() && newData.child('updatedAt').isNumber()"
+        },
+        "watchlist": {
+          "$symbol": {
+            ".validate": "$symbol.matches(/^[0-9]{4,6}[A-Z]?$/) && newData.child('symbol').val() === $symbol && newData.child('updatedAt').isNumber()"
+          }
+        },
+        "alerts": {
+          "$key": {".validate": "newData.child('t').isNumber()"}
+        },
+        "settings": {
+          "$key": {".validate": "newData.child('t').isNumber()"}
+        },
+        "groups": {".validate": "newData.hasChildren()"},
+        "$other": {".validate": false}
+      }
     }
   }
 }

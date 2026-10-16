@@ -701,8 +701,39 @@ export function getBroker(id) {
   return BROKERS.find(b => b.id === id) || BROKERS.find(b => b.id === 'sinopac') || BROKERS[0];
 }
 
+export const STATE_VERSION = 2;
+export const COLOR_MODES = ['redgreen', 'mono'];
+
+// Upgrade rules (2.0): a new install gets the light theme; anything a 1.05 user already had —
+// including the old dark default — is kept. Price colours default to red/green, independent of theme.
+export function migrateState(saved, { reason = 'read' } = {}) {
+  const defaults = defaultState();
+  if (!plain(saved)) {
+    if (reason === 'update') {
+      // 1.05 rendered dark when no state was saved yet; keep what the user was seeing.
+      return { ...defaults, settings: { ...defaults.settings, darkMode: true }, migratedFrom: 1 };
+    }
+    return defaults;
+  }
+  const savedSettings = plain(saved.settings) ? saved.settings : {};
+  const settings = { ...defaults.settings, ...savedSettings };
+  if ((saved.version ?? 1) < STATE_VERSION) {
+    if (typeof savedSettings.darkMode !== 'boolean') settings.darkMode = true;
+  }
+  if (!COLOR_MODES.includes(settings.colorMode)) settings.colorMode = 'redgreen';
+  if (typeof settings.darkMode !== 'boolean') settings.darkMode = defaults.settings.darkMode;
+  return {
+    ...defaults,
+    ...saved,
+    version: STATE_VERSION,
+    ...((saved.version ?? 1) < STATE_VERSION ? { migratedFrom: saved.version ?? 1 } : {}),
+    stocks: Array.isArray(saved.stocks) ? saved.stocks : defaults.stocks,
+    settings
+  };
+}
+
 export function defaultState() {
-  return { version: 1, stocks: [stock({ symbol: '2330', name: '台積電', market: 'TW', groups: ['watchlist'] })],
+  return { version: STATE_VERSION, stocks: [stock({ symbol: '2330', name: '台積電', market: 'TW', groups: ['watchlist'] })],
     settings: {
       daytrade: true,
       allDaytradeAlerts: true,
@@ -712,7 +743,8 @@ export function defaultState() {
       minChangePct: null,
       pageSize: 5,
       cardDensity: 'compact',
-      darkMode: true,
+      darkMode: false,
+      colorMode: 'redgreen',
       fontSize: 'standard',
       windowHeight: 500,
       showSparkline: true,

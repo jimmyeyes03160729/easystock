@@ -60,7 +60,8 @@ test('config is data only; payment URLs cannot execute script', () => {
   assert.throws(() => config({ ...base, vip_keys_hash: ['VIP888'] }));
 });
 test('watchlist is bounded, typed, deduplicated, and export-safe', () => {
-  assert.equal(defaultState().settings.darkMode, true);
+  assert.equal(defaultState().settings.darkMode, false);
+  assert.equal(defaultState().settings.colorMode, 'redgreen');
   const s = defaultState().stocks[0];
   assert.deepEqual(watchlist([s]), [s]);
   for (const input of [[s, s], [{ ...s, symbol: '__proto__' }], [{ ...s, groups: [] }], [{ ...s, market: 'X' }], Array(101).fill(s)]) assert.throws(() => watchlist(input));
@@ -86,10 +87,16 @@ test('VIP revalidated against config, not a stored boolean', async () => {
 test('production has narrow permissions, packaged resources, no test VIP', async () => {
   const m = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url)));
   assert.equal(m.manifest_version, 3);
-  assert.equal(m.version, '1.0.5');
-  assert.equal(m.version_name, '1.05');
-  assert.deepEqual(m.permissions, ['storage', 'alarms', 'notifications']);
+  assert.equal(m.version, '2.0.0');
+  assert.equal(m.version_name, '2.0');
+  // 2.0 adds only `identity` (no install warning); no new host permission, so 1.05 users are not
+  // re-prompted. Identity Toolkit is reached via CORS without a host permission.
+  assert.deepEqual(m.permissions, ['storage', 'alarms', 'notifications', 'identity']);
   assert.equal(m.host_permissions.some(x => x.includes('<all_urls>')), false);
+  assert.equal(m.host_permissions.length, 6);
+  assert.equal('oauth2' in m, false, 'source manifest has no placeholder OAuth client');
+  assert.equal('key' in m, false);
+  assert.equal(m.content_security_policy.extension_pages, "script-src 'self'; object-src 'none'; base-uri 'none'");
   const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
   assert.doesNotMatch(html, /<script[^>]+src="https?:/);
   const cfg = JSON.parse(await readFile(new URL('../config.json', import.meta.url)));

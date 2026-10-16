@@ -43,14 +43,29 @@ for (const size of [16, 48, 128]) {
   const existing = await readFile(iconPath).catch(() => null);
   if (!existing || existing.length === 0) await writeFile(iconPath, icon(size));
 }
-const files = ['manifest.json', 'popup.html', 'popup.js', 'chart.html', 'chart.js', 'background.js', 'rebound-engine.js', 'content-script.js', 'core.js', 'environment.js', 'icons.js', 'config.json', 'github_config_schema.json', 'README.md', 'assets/popup.css', 'assets/v2.css', 'assets/TAILWIND-LICENSE.txt', 'assets/icon16.png', 'assets/icon48.png', 'assets/icon128.png', 'assets/icon.svg'];
+const files = ['manifest.json', 'popup.html', 'popup.js', 'chart.html', 'chart.js', 'background.js', 'rebound-engine.js', 'content-script.js', 'core.js', 'auth.js', 'sync.js', 'auth-config.json', 'environment.js', 'icons.js', 'config.json', 'github_config_schema.json', 'README.md', 'assets/popup.css', 'assets/v2.css', 'assets/TAILWIND-LICENSE.txt', 'assets/icon16.png', 'assets/icon48.png', 'assets/icon128.png', 'assets/icon.svg'];
+const authCfg = JSON.parse(await readFile(join(root, 'auth-config.json'), 'utf8'));
+const CLIENT_ID = /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/;
 for (const mode of ['production', 'vm']) {
   const out = resolve(root, 'dist', mode);
   await mkdir(join(out, 'assets'), { recursive: true });
   for (const file of files) await copyFile(join(root, file), join(out, file));
+  if (mode === 'production') {
+    // OAuth is injected only with a real Chrome-extension OAuth client ID; otherwise the build stays
+    // installable and the popup reports BLOCKED_BY_OAUTH_CONFIGURATION instead of pretending.
+    const manifest = JSON.parse(await readFile(join(root, 'manifest.json'), 'utf8'));
+    if (CLIENT_ID.test(String(authCfg.oauth_client_id || ''))) {
+      manifest.oauth2 = { client_id: authCfg.oauth_client_id, scopes: ['openid', 'email', 'profile'] };
+    }
+    // Optional: pin an unpacked test build to the Web Store extension ID (the OAuth client is bound to it).
+    // Never set for the Web Store upload ZIP (the store rejects a "key" field).
+    if (process.env.EASYSTOCK_PIN_KEY === '1' && /^[A-Za-z0-9+/=]{200,}$/.test(String(authCfg.extension_public_key || ''))) manifest.key = authCfg.extension_public_key;
+    await writeFile(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+  }
   if (mode === 'vm') {
     const manifest = JSON.parse(await readFile(join(root, 'manifest.json'), 'utf8'));
-    manifest.name = 'EasyStock VM ?皜祈岫'; manifest.host_permissions = [];
+    manifest.permissions = manifest.permissions.filter(p => p !== 'identity');
+    manifest.name = 'EasyStock VM 隔離測試'; manifest.host_permissions = [];
     await writeFile(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
     await writeFile(join(out, 'environment.js'), "export const VM_MODE = true;\nexport const CONFIG_URL = '';\nexport const FIREBASE_ROOT = '';\n");
     const cfg = JSON.parse(await readFile(join(root, 'config.json'), 'utf8'));

@@ -1,4 +1,4 @@
-import { SYMBOL, GROUPS, finite, formatTaipeiQuoteTime, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, formatTelegramEntry, formatTelegramExit, BROKERS, getBroker, sparklineSessionX, quoteStatus, quoteStampMs, sparkForQuote, taipei } from './core.js';
+import { SYMBOL, GROUPS, finite, formatTaipeiQuoteTime, watchlist, chartURL, searchStocks, searchOnlineStocks, calcChangePct, formatTelegramEntry, formatTelegramExit, BROKERS, getBroker, sparklineSessionX, quoteStatus, quoteStampMs, sparkForQuote, taipei, migrateState } from './core.js';
 import { icons } from './icons.js';
 
 const $ = id => (typeof document !== 'undefined' && document ? document.getElementById(id) : null);
@@ -257,14 +257,61 @@ function applyDarkMode(enabled) {
   const btnIcon = $('theme-btn-icon');
   const toggleCheckbox = $('toggle-dark-mode');
   if (toggleCheckbox) toggleCheckbox.checked = !!enabled;
-  if (tag) tag.textContent = 'v1.05';
-  if (enabled) {
-    if (btnIcon) btnIcon.textContent = '☀️';
-    if (btnLabel) btnLabel.textContent = '光明';
-  } else {
-    if (btnIcon) btnIcon.textContent = '🌙';
-    if (btnLabel) btnLabel.textContent = '黑暗';
+  if ($('theme-light')) $('theme-light').checked = !enabled;
+  if ($('theme-dark')) $('theme-dark').checked = !!enabled;
+  if (tag) tag.textContent = APP_VERSION_TAG;
+  if (btnIcon) btnIcon.textContent = enabled ? '☀' : '☾';
+  if (btnLabel) btnLabel.textContent = enabled ? '白色' : '深色';
+  $('btn-theme-toggle')?.setAttribute('aria-label', enabled ? '切換為白色主題' : '切換為深色主題');
+}
+
+const APP_VERSION_TAG = 'v2.0';
+// Price colours are independent of the theme: red/green or monochrome, both keep ▲▼ and +/-.
+function applyColorMode(mode) {
+  const value = mode === 'mono' ? 'mono' : 'redgreen';
+  document.body.classList.toggle('color-mono', value === 'mono');
+  document.body.classList.toggle('color-redgreen', value !== 'mono');
+  if ($('color-redgreen')) $('color-redgreen').checked = value !== 'mono';
+  if ($('color-mono')) $('color-mono').checked = value === 'mono';
+}
+
+const SYNC_LABELS = { synced: '已同步', syncing: '同步中…', error: '同步失敗', offline: '離線，稍後補同步', reauth: '需要重新登入', blocked: '待設定', signed_out: '未登入', idle: '待同步' };
+function renderAccount() {
+  const acc = view?.account;
+  const badge = $('sync-badge'), email = $('account-email'), meta = $('account-meta'), btn = $('btn-auth'), syncBtn = $('btn-sync-now');
+  if (!badge || !btn) return;
+  if (view?.vm) {
+    badge.textContent = 'VM 不提供'; email.textContent = 'VM 隔離版不提供 Google 登入'; meta.textContent = '';
+    btn.hidden = true; if (syncBtn) syncBtn.hidden = true; return;
   }
+  if (!acc?.configured && !acc?.signedIn) {
+    badge.textContent = '待設定'; badge.className = 'es-sync-badge es-stale';
+    email.textContent = 'Google 登入尚未設定（本機自選照常使用）';
+    meta.textContent = acc?.status === 'BLOCKED_BY_OAUTH_CONFIGURATION' ? `BLOCKED_BY_OAUTH_CONFIGURATION：缺少 ${(acc.missing || []).join('、')}` : '';
+    btn.disabled = true; btn.textContent = '使用 Google 登入'; btn.hidden = false;
+    if (syncBtn) syncBtn.hidden = true;
+    return;
+  }
+  btn.disabled = false; btn.hidden = false;
+  if (!acc.signedIn) {
+    badge.textContent = '未登入'; badge.className = 'es-sync-badge es-muted';
+    email.textContent = '未登入（自選股僅存在本機）';
+    meta.textContent = '登入後可在不同電腦同步自選股、提醒與介面偏好';
+    btn.textContent = '使用 Google 登入'; btn.setAttribute('aria-label', '使用 Google 帳號登入');
+    btn.className = 'es-btn es-btn-primary';
+    if (syncBtn) syncBtn.hidden = true;
+    return;
+  }
+  const s = acc.sync || {};
+  badge.textContent = SYNC_LABELS[s.status] || '待同步';
+  badge.className = `es-sync-badge ${s.status === 'synced' ? 'es-ok' : (['error', 'reauth', 'blocked'].includes(s.status) ? 'es-error' : 'es-muted')}`;
+  email.textContent = acc.email || acc.displayName || acc.uidShort;
+  email.title = acc.email || '';
+  const last = s.lastSyncAt ? new Date(s.lastSyncAt).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '尚未同步';
+  meta.textContent = [`最後同步 ${last}`, s.pending ? '有待上傳變更' : '', s.lastError || ''].filter(Boolean).join(' · ');
+  meta.title = meta.textContent;
+  btn.textContent = '登出'; btn.setAttribute('aria-label', '登出 Google 帳號'); btn.className = 'es-btn';
+  if (syncBtn) syncBtn.hidden = false;
 }
 
 function openChartWindow(s, strategy = '') {
@@ -1061,6 +1108,8 @@ function render() {
   }
   if ($('toggle-all-daytrade')) $('toggle-all-daytrade').checked = view.settings?.allDaytradeAlerts !== false;
   applyDarkMode(view.settings?.darkMode);
+  applyColorMode(view.settings?.colorMode);
+  renderAccount();
 
   // 視窗高度自定義 (比照截圖：預設 500px 即 +20px)
   const windowHeight = Number(view.settings?.windowHeight) || 500;
@@ -1525,17 +1574,60 @@ async function toggleDarkMode() {
     view.settings.darkMode = next;
     applyDarkMode(next);
   }
-  status(next ? '🌙 已切換為黑暗模式' : '☀️ 已切換為光明模式');
+  status(next ? '已切換為深色主題' : '已切換為白色主題');
 }
 $('btn-theme-toggle')?.addEventListener('click', toggleDarkMode);
-$('toggle-dark-mode')?.addEventListener('change', async e => {
-  await act({ type: 'SETTINGS', strategy: 'darkMode', enabled: e.target.checked });
-  if (view) {
-    if (!view.settings) view.settings = {};
-    view.settings.darkMode = e.target.checked;
-    applyDarkMode(e.target.checked);
+async function setTheme(dark) {
+  if (!view) return;
+  applyDarkMode(dark);
+  await act({ type: 'SETTINGS', strategy: 'darkMode', enabled: dark });
+  if (view?.settings) view.settings.darkMode = dark;
+  applyDarkMode(dark);
+  status(dark ? '已切換為深色主題' : '已切換為白色主題');
+}
+$('theme-light')?.addEventListener('change', e => { if (e.target.checked) void setTheme(false); });
+$('theme-dark')?.addEventListener('change', e => { if (e.target.checked) void setTheme(true); });
+$('toggle-dark-mode')?.addEventListener('change', e => { void setTheme(e.target.checked); });
+async function setColorMode(mode) {
+  if (!view) return;
+  applyColorMode(mode);
+  await act({ type: 'SETTINGS', strategy: 'colorMode', value: mode });
+  if (view?.settings) view.settings.colorMode = mode;
+  render();
+  status(mode === 'mono' ? '漲跌配色：黑白（低調）' : '漲跌配色：紅綠');
+}
+$('color-redgreen')?.addEventListener('change', e => { if (e.target.checked) void setColorMode('redgreen'); });
+$('color-mono')?.addEventListener('change', e => { if (e.target.checked) void setColorMode('mono'); });
+
+// Google 帳號：登入／登出／立即同步。登入失敗或取消不影響本機自選。
+$('btn-auth')?.addEventListener('click', async () => {
+  if (!view?.account) return;
+  const btn = $('btn-auth');
+  btn.disabled = true;
+  try {
+    if (view.account.signedIn) {
+      const result = await send({ type: 'AUTH_SIGN_OUT' });
+      applyResult(result);
+      status('已登出；雲端資料保留，本機自選照常可用');
+    } else {
+      btn.textContent = '登入中…';
+      const result = await send({ type: 'AUTH_SIGN_IN' });
+      applyResult(result);
+      status(result?.syncResult?.ok ? '已登入並完成同步' : `已登入；${result?.syncResult?.message || '同步稍後重試'}`, !result?.syncResult?.ok);
+    }
+  } catch (e) {
+    status(e.message, true);
+  } finally {
+    btn.disabled = false;
+    renderAccount();
   }
-  status(e.target.checked ? '🌙 已切換為黑暗模式' : '☀️ 已切換為光明模式');
+});
+$('btn-sync-now')?.addEventListener('click', async () => {
+  try {
+    const result = await send({ type: 'SYNC_NOW' });
+    applyResult(result);
+    status(result?.syncResult?.ok ? '同步完成' : (result?.syncResult?.message || '同步失敗，稍後自動重試'), !result?.syncResult?.ok);
+  } catch (e) { status(e.message, true); }
 });
 
 document.addEventListener('keydown', e => {
@@ -1565,11 +1657,14 @@ $('settings-panel').inert = true;
 // Render saved theme/layout and cached market data immediately, then refresh in the background.
 try {
   const saved = await chrome.storage.local.get('state');
-  const settings = saved?.state?.settings || {};
-  applyDarkMode(settings.darkMode !== false);
+  // Same rules as the worker: new installs light, saved (incl. 1.05) preferences kept.
+  const settings = migrateState(saved?.state).settings;
+  applyDarkMode(settings.darkMode === true);
+  applyColorMode(settings.colorMode);
   applyWindowHeight(Number(settings.windowHeight) || 500);
 } catch (_) {
-  applyDarkMode(true);
+  applyDarkMode(false);
+  applyColorMode('redgreen');
   applyWindowHeight(500);
 }
 // Background pushes: a new stock's quote arrived, or a guessed market/name was corrected.

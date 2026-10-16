@@ -1,6 +1,8 @@
 import { VM_MODE, CONFIG_URL, FIREBASE_ROOT } from './environment.js';
 import './rebound-engine.js';
-import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes, buildPartialDailyBar, mergeQuote, quoteStampMs, quoteStatus, indexQuality } from './core.js';
+import { createAuth } from './auth.js';
+import { createSync, emptyMeta, legacyMeta, touchStocks, touchSettings } from './sync.js';
+import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes, buildPartialDailyBar, mergeQuote, quoteStampMs, quoteStatus, indexQuality, migrateState, COLOR_MODES } from './core.js';
 
 const ALARM = 'easystock-five-minutes';
 let tail = Promise.resolve();
@@ -38,13 +40,94 @@ function broadcast(message) {
 async function read(key, fallback) { return (await chrome.storage.local.get(key))[key] ?? fallback; }
 async function write(key, value) { await chrome.storage.local.set({ [key]: value }); }
 async function state() {
-  const defaults = defaultState();
+  return migrateState(await read('state', null));
+}
+
+// ---- 2.0 account + cloud sync wiring ---------------------------------------------------------
+let authConfigCache = null;
+async function authConfig() {
+  if (authConfigCache) return authConfigCache;
+  try {
+    const res = await fetch(chrome.runtime.getURL('auth-config.json'), { cache: 'no-store' });
+    authConfigCache = res.ok ? await res.json() : {};
+  } catch (_) { authConfigCache = {}; }
+  return authConfigCache;
+}
+function manifestInfo() {
+  try { return chrome.runtime.getManifest?.() || {}; } catch (_) { return {}; }
+}
+let authInstance = null;
+async function auth() {
+  if (authInstance) return authInstance;
+  const cfg = await authConfig();
+  authInstance = createAuth({
+    identity: chrome.identity || { getAuthToken: async () => { throw new Error('identity API unavailable'); }, removeCachedAuthToken: async () => {} },
+    config: cfg,
+    manifest: manifestInfo(),
+    sessionStore: chrome.storage.session,
+    localStore: chrome.storage.local
+  });
+  return authInstance;
+}
+async function readMeta() {
+  const meta = await read('syncMeta', null);
+  if (meta) return meta;
   const saved = await read('state', null);
-  if (!saved) return defaults;
+  return saved ? legacyMeta(migrateState(saved)) : emptyMeta();
+}
+// Runs fn(state, meta) inside the state queue and persists what it returns.
+function transact(fn) {
+  return serial(async () => {
+    const st = await state();
+    const meta = await readMeta();
+    const out = await fn(st, meta);
+    if (out?.state) {
+      out.state.rev = (st.rev || 0) + 1;
+      out.state.stocks = watchlist(out.state.stocks);
+      await write('state', out.state);
+      broadcast({ type: 'STATE_UPDATED' });
+    }
+    if (out?.meta) await write('syncMeta', out.meta);
+    return out;
+  });
+}
+let syncInstance = null;
+async function syncEngine() {
+  if (syncInstance) return syncInstance;
+  const cfg = await authConfig();
+  const a = await auth();
+  syncInstance = createSync({
+    auth: a, dbUrl: String(cfg.database_url || '').replace(/\/$/, ''), transact, readMeta,
+    online: () => (typeof navigator === 'undefined' ? true : navigator.onLine !== false)
+  });
+  return syncInstance;
+}
+async function signedInProfile() {
+  try { return await (await auth()).profile(); } catch (_) { return null; }
+}
+let syncTimer = null;
+// Debounced: several quick edits produce one upload. Never awaited from inside the state queue.
+function scheduleSync(delay = 3000) {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => safe((async () => {
+    if (VM_MODE || !(await signedInProfile())?.uid) return;
+    await (await syncEngine()).syncNow();
+  })()), delay);
+}
+async function periodicSync(maxPullAgeMs) {
+  if (VM_MODE || !(await signedInProfile())?.uid) return null;
+  return (await syncEngine()).maybeSync(maxPullAgeMs ? { maxPullAgeMs } : {});
+}
+async function accountView() {
+  const a = await auth();
+  const cfg = a.status();
+  const profile = await a.profile();
+  const meta = await readMeta();
   return {
-    ...defaults,
-    ...saved,
-    settings: { ...defaults.settings, ...(saved.settings || {}) }
+    configured: cfg.ready, status: cfg.status, missing: cfg.missing,
+    signedIn: !!profile?.uid, email: profile?.email || '', displayName: profile?.displayName || '',
+    uidShort: profile?.uid ? `${profile.uid.slice(0, 6)}…` : '',
+    sync: { status: profile?.uid ? meta.status : 'signed_out', lastSyncAt: meta.lastSyncAt || null, lastError: meta.lastError || '', pending: !!meta.dirty }
   };
 }
 async function json(url, maxBytes = 1500000) {
@@ -373,8 +456,44 @@ async function reconcileStocks(fixes) {
       const name = typeof fix.name === 'string' ? fix.name.trim().slice(0, 60) : '';
       if (name && /^\d{4,6}[A-Z]?$/.test(row.name) && name !== row.name) { row.name = name; changed = true; }
     }
-    if (changed) { st.rev = (st.rev || 0) + 1; await write('state', st); broadcast({ type: 'STATE_UPDATED' }); }
+    if (changed) {
+      const before = (await state()).stocks;
+      st.rev = (st.rev || 0) + 1;
+      await write('state', st);
+      const meta = await readMeta();
+      if (touchStocks(meta, before, st.stocks, Date.now())) { await write('syncMeta', meta); scheduleSync(); }
+      broadcast({ type: 'STATE_UPDATED' });
+    }
   });
+}
+
+// Account messages run outside the state queue: an interactive Google consent may take a while
+// and must not block adding stocks. Their own state changes go through transact().
+export const ACCOUNT_MESSAGES = new Set(['AUTH_SIGN_IN', 'AUTH_SIGN_OUT', 'SYNC_NOW']);
+export async function handleAccount(message) {
+  if (VM_MODE) throw new Error('VM 隔離版不提供 Google 登入');
+  const a = await auth();
+  if (message.type === 'AUTH_SIGN_IN') {
+    const cfg = a.status();
+    if (!cfg.ready) throw new Error(`Google 登入待設定（${cfg.status}）：缺少 ${cfg.missing.join('、')}`);
+    await a.signIn({ interactive: true });
+    const result = await (await syncEngine()).syncNow();
+    return { ...(await snapshot(false, false, true)), syncResult: result };
+  }
+  if (message.type === 'AUTH_SIGN_OUT') {
+    clearTimeout(syncTimer);
+    await a.signOut();
+    // The cloud copy is untouched; the local copy stays usable offline and remembers its owner UID,
+    // so a different account signing in next never receives it (see sync.js account switch).
+    await transact(async (_st, meta) => { Object.assign(meta, { status: 'signed_out', lastError: '' }); return { meta }; });
+    return snapshot(false, false, true);
+  }
+  if (message.type === 'SYNC_NOW') {
+    if (!(await a.profile())?.uid) throw new Error('尚未登入 Google');
+    const result = await (await syncEngine()).syncNow();
+    return { ...(await snapshot(false, false, true)), syncResult: result };
+  }
+  throw new Error('不支援的操作');
 }
 export async function fetchQuotesWithMarketFallback(list) {
   const map = await fetchStockClosingQuotes(list).catch(() => ({}));
@@ -710,9 +829,15 @@ async function snapshot(refresh = false, taiexOnly = false, localOnly = false) {
   const holidays = c?.market_holidays || await cachedHolidays();
   const day = ledger(await read('ledger', null), now);
   safe(updateMarketStatusIcon(data, now));
+  // Opening the popup pulls cloud changes at most every 10 minutes (short REST request, no listener).
+  if (refresh) safe(periodicSync(10 * 60000).catch(() => null));
+  let account = null;
+  try { account = await accountView(); } catch (_) { account = null; }
 
   return {
     rev: st.rev || 0,
+    account,
+    version: manifestInfo().version_name || manifestInfo().version || '',
     stocks: st.stocks,
     settings: st.settings,
     vip: isVIP(c, st.vipHash),
@@ -800,13 +925,16 @@ export async function processLiveData(live) {
   }
 }
 // Read-only / network-only messages never enter the state mutation queue.
-export const READ_ONLY_MESSAGES = new Set(['BOOTSTRAP', 'SNAPSHOT', 'FETCH_INTRADAY', 'FETCH_DAILY']);
+export const READ_ONLY_MESSAGES = new Set(['BOOTSTRAP', 'SNAPSHOT', 'AUTH_STATUS', 'FETCH_INTRADAY', 'FETCH_DAILY']);
 export async function handle(message) {
   if (!plain(message)) throw new Error('訊息格式不正確');
   const st = await state();
+  const beforeStocks = structuredClone(st.stocks);
+  const changedSettings = [];
   let notice = '';
   let quoteTargets = [];
   switch (message.type) {
+    case 'AUTH_STATUS': return snapshot(false, false, true);
     case 'BOOTSTRAP': return snapshot(false, false, true);
     case 'SNAPSHOT': return snapshot(message.refresh === true, message.taiexOnly === true, false);
     case 'ADD': {
@@ -858,9 +986,12 @@ export async function handle(message) {
       break;
     }
     case 'SETTINGS': {
-      const allowed = [...GROUPS, 'allDaytradeAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'darkMode', 'pageSize', 'cardDensity', 'fontSize', 'windowHeight', 'showSparkline', 'preferredBroker'];
+      const allowed = [...GROUPS, 'allDaytradeAlerts', 'filterMode', 'minPrice', 'maxPrice', 'minChangePct', 'darkMode', 'colorMode', 'pageSize', 'cardDensity', 'fontSize', 'windowHeight', 'showSparkline', 'preferredBroker'];
       if (!allowed.includes(message.strategy)) throw new Error('開關格式不正確');
-      st.settings[message.strategy] = message.enabled !== undefined ? message.enabled : message.value;
+      const value = message.enabled !== undefined ? message.enabled : message.value;
+      if (message.strategy === 'colorMode' && !COLOR_MODES.includes(value)) throw new Error('漲跌配色格式不正確');
+      st.settings[message.strategy] = value;
+      changedSettings.push(message.strategy);
       break;
     }
     case 'IMPORT': st.stocks = watchlist(message.stocks); quoteTargets = st.stocks; break;
@@ -910,6 +1041,11 @@ export async function handle(message) {
   }
   st.rev = (st.rev || 0) + 1;
   await write('state', st);
+  // Local-first: record what changed for the cloud replica, then sync later (debounced, outside the queue).
+  const meta = await readMeta();
+  const now = Date.now();
+  const touched = touchStocks(meta, beforeStocks, st.stocks, now) | touchSettings(meta, changedSettings, now);
+  if (touched) { await write('syncMeta', meta); scheduleSync(); }
   // Saved first, shown first; the quote is fetched afterwards and pushed via QUOTES_UPDATED.
   if (quoteTargets.length) queueQuoteRefresh(quoteTargets);
   const result = await snapshot();
@@ -1180,12 +1316,32 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   }
   const allowed = [chrome.runtime.getURL('popup.html'), chrome.runtime.getURL('chart.html')];
   if (!allowed.some(u => sender.url?.startsWith(u))) return false;
-  const run = READ_ONLY_MESSAGES.has(message?.type) ? handle(message) : serial(() => handle(message));
+  const run = ACCOUNT_MESSAGES.has(message?.type) ? handleAccount(message)
+    : (READ_ONLY_MESSAGES.has(message?.type) ? handle(message) : serial(() => handle(message)));
   run.then(value => respond({ ok: true, value }), e => respond({ ok: false, error: e.message || '操作失敗' }));
   return true;
 });
-chrome.alarms.onAlarm.addListener(a => { if (a.name === ALARM) safe(serial(poll)); });
-chrome.runtime.onInstalled.addListener(() => {
+chrome.alarms.onAlarm.addListener(a => {
+  if (a.name !== ALARM) return;
+  safe(serial(poll));
+  // Offline queue / retry with backoff / 6-hourly pull. Outside the poll task to avoid queue deadlock.
+  safe(periodicSync());
+});
+// 2.0 upgrade: keep what a 1.05 user had (incl. their dark theme); fresh installs start light.
+export async function onInstalledMigration(details = {}) {
+  await serial(async () => {
+    const saved = await read('state', null);
+    if (details.reason === 'update') {
+      const migrated = migrateState(saved, { reason: 'update' });
+      if (!saved || (saved.version ?? 1) < migrated.version) await write('state', migrated);
+      if (!(await read('syncMeta', null))) await write('syncMeta', legacyMeta(migrated));
+    } else if (details.reason === 'install' && !(await read('syncMeta', null))) {
+      await write('syncMeta', emptyMeta());
+    }
+  });
+}
+chrome.runtime.onInstalled.addListener(details => {
+  safe(onInstalledMigration(details));
   safe(ensureAlarm());
   safe(updateMarketStatusIcon(null));
 });

@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/popup.css">
   <link rel="stylesheet" href="assets/v2.css">
 </head>
-<body class="dark-mode bg-slate-50 font-sans text-slate-800 antialiased selection:bg-slate-200" style="min-width:440px;min-height:480px">
+<body class="color-redgreen bg-slate-50 font-sans text-slate-800 antialiased selection:bg-slate-200" style="min-width:440px;min-height:480px">
   <div id="popup-container" class="w-[440px] min-h-[480px] flex flex-col bg-white border border-slate-200 shadow-xl overflow-hidden relative">
 
     <!-- 即時 In-App 推播通知彈窗 (點擊測試或即時訊號直接在小工具內彈出，最上層浮動) -->
@@ -32,7 +32,7 @@
           <div id="market-status-dot" class="h-2 w-2 rounded-full bg-slate-400 shrink-0" title="離線 / 休市"></div>
           <img src="assets/icon16.png" class="w-3.5 h-3.5 shrink-0 inline-block" alt="Logo" />
           <h1 id="brand-title" class="text-xs font-bold tracking-tight text-slate-900 truncate whitespace-nowrap">EasyStock · 牛馬自救終端</h1>
-          <span id="brand-tag" class="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 py-0.2 rounded border border-slate-200 shrink-0 whitespace-nowrap">v1.05</span>
+          <span id="brand-tag" class="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 py-0.2 rounded border border-slate-200 shrink-0 whitespace-nowrap">v2.0</span>
         </div>
         <div class="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
           <button id="btn-theme-toggle" aria-label="切換黑暗與光明模式" title="切換黑暗 / 光明模式 (快捷鍵 D)" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 flex items-center gap-1 transition shrink-0 whitespace-nowrap">
@@ -153,20 +153,43 @@
       <div class="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
         <p id="action-message" role="status" aria-live="polite" class="text-[11px] text-slate-500"></p>
 
-        <!-- 黑暗 / 光明模式 -->
-        <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
-          <div class="flex items-center justify-between">
-            <div class="space-y-0.5 pr-2">
-              <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                <span class="text-sm">🌙</span> <span>黑暗模式</span>
-              </span>
-              <span class="block text-[10px] text-slate-500 leading-normal">切換深色介面，夜間看盤更舒適；關閉即回到光明模式 (快捷鍵 D)</span>
-            </div>
-            <label class="toggle-switch">
-              <input type="checkbox" id="toggle-dark-mode" />
-              <span class="toggle-slider"></span>
-            </label>
+        <!-- 2.0 Google 帳號與雲端同步（不登入也可使用本機自選） -->
+        <section id="account-card" class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs es-account" aria-labelledby="account-title">
+          <div class="es-account-row">
+            <h3 id="account-title" class="font-bold text-slate-900 text-xs">Google 帳號同步</h3>
+            <span id="sync-badge" class="es-sync-badge es-muted">未登入</span>
           </div>
+          <div class="es-account-row">
+            <div class="min-w-0">
+              <div id="account-email" class="es-account-email text-slate-800">未登入（自選股僅存在本機）</div>
+              <div id="account-meta" class="es-account-meta">登入後可在不同電腦同步自選股、提醒與介面偏好</div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button id="btn-sync-now" type="button" class="es-btn" hidden aria-label="立即同步">同步</button>
+              <button id="btn-auth" type="button" class="es-btn es-btn-primary" aria-label="使用 Google 帳號登入">使用 Google 登入</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 外觀：主題與漲跌配色互相獨立 -->
+        <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-900 text-xs">主題</span>
+            <span class="text-[10px] text-slate-400">快捷鍵 D 切換</span>
+          </div>
+          <div class="es-segment" role="radiogroup" aria-label="主題">
+            <label><input type="radio" name="theme" id="theme-light" value="light" /><span>白色</span></label>
+            <label><input type="radio" name="theme" id="theme-dark" value="dark" /><span>深色</span></label>
+          </div>
+          <div class="flex items-center justify-between pt-1">
+            <span class="font-bold text-slate-900 text-xs">漲跌配色</span>
+            <span class="text-[10px] text-slate-400">保留 ▲▼ 與 +/- 符號</span>
+          </div>
+          <div class="es-segment" role="radiogroup" aria-label="漲跌配色">
+            <label><input type="radio" name="color-mode" id="color-redgreen" value="redgreen" /><span>紅綠</span></label>
+            <label><input type="radio" name="color-mode" id="color-mono" value="mono" /><span>黑白（低調）</span></label>
+          </div>
+          <input type="checkbox" id="toggle-dark-mode" class="hidden" tabindex="-1" aria-hidden="true" />
         </div>
 
         <!-- 顯示排版與外觀自定義 (Stitch 分段膠囊鈕 + 緊湊預覽) -->

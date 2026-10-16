@@ -1,0 +1,9 @@
+{
+  "_comment": "Public identifiers only. Never put a client secret, service account or private key here. See docs/CHROME_EXTENSION_2_0_GOOGLE_SETUP.md.",
+  "firebase_project_id": "easystock-c237a",
+  "database_url": "https://easystock-c237a-default-rtdb.firebaseio.com",
+  "firebase_api_key": "",
+  "oauth_client_id": "",
+  "extension_id": "khidbieahmnnandhkcmjceideljgjfid",
+  "extension_public_key": ""
+}
