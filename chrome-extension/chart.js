@@ -53,7 +53,7 @@ setText('badge-market', market === 'TWO' ? '上櫃' : '上市');
 const stBadge = document.getElementById('badge-strategy');
 if (stBadge) {
   if (strategyType) {
-    stBadge.textContent = strategyType === 'daytrade' ? '當沖策略' : strategyType;
+    stBadge.textContent = strategyType === 'daytrade' ? '量能觀察' : (strategyType === 'rebound' ? '觸底反彈觀察' : strategyType);
     stBadge.style.display = 'inline-block';
   } else {
     stBadge.style.display = 'none';
@@ -509,7 +509,7 @@ async function loadData(force = false) {
         const live = await liveRes.json();
         const openPos = live?.open_positions?.[symbol];
         if (openPos && openPos.status === 'OPEN') {
-          currentStockInfo.reason = Array.isArray(openPos.entry_reasons) ? openPos.entry_reasons.join('、') : (openPos.reason || '當沖進場持倉中');
+          currentStockInfo.reason = Array.isArray(openPos.entry_reasons) ? openPos.entry_reasons.join('、') : (openPos.reason || '量多進攻觀察中');
           if (openPos.name) stockName = openPos.name;
         }
       }
@@ -542,7 +542,7 @@ function renderInfo() {
   dEl.className = `price-diff ${cls}`;
 
   const noteEl = document.getElementById('txt-signal-note');
-  let note = currentStockInfo.reason ? `訊號：${currentStockInfo.reason}` : '';
+  let note = currentStockInfo.reason ? `觀察：${currentStockInfo.reason}` : '';
   if (currentStockInfo.vwap) note += ` ｜ VWAP: ${Number(currentStockInfo.vwap).toFixed(2)}`;
   noteEl.textContent = note;
 

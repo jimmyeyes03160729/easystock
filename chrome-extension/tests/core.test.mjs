@@ -109,28 +109,48 @@ test('telegram format generates matching entry and exit messages', () => {
     entry_vwap: 996.5, entry_reasons: ['量價突破', '站在VWAP之上'],
     stop_price: 985, take_profit_price: 1030
   });
-  assert.match(entryMsg, /🚀【當沖進場訊號】/);
+  // 2.0 wording: observation labels; same numbers from the same fields.
+  assert.match(entryMsg, /▲【量多進攻】/);
   assert.match(entryMsg, /2330 台積電/);
-  assert.match(entryMsg, /訊號價：1000\.00/);
-  assert.match(entryMsg, /分數：0\.88/);
+  assert.match(entryMsg, /觀察價：1000\.00/);
+  assert.match(entryMsg, /量能分數：0\.88/);
   assert.match(entryMsg, /✓ 量價突破/);
-  assert.match(entryMsg, /停損參考：985\.00/);
-  assert.match(entryMsg, /狀態：OPEN/);
+  assert.match(entryMsg, /下緣參考：985\.00/);
+  assert.match(entryMsg, /上緣參考：1030\.00/);
+  assert.match(entryMsg, /非買賣建議/);
 
   const exitMsg = formatTelegramExit({
     symbol: '2330', name: '台積電', entry_price: 1000, exit_price: 1025,
     pnl_pct: 2.5, mfe_pct: 3.0, mae_pct: -0.5, duration_seconds: 1800,
-    exit_reason: '12:55當沖強制出場'
+    exit_reason: '範例：量能轉弱'
   });
-  assert.match(exitMsg, /✅【當沖出場】/);
+  assert.match(exitMsg, /▼【量減退守】/);
   assert.match(exitMsg, /2330 台積電/);
-  assert.match(exitMsg, /訊號進場：1000\.00/);
-  assert.match(exitMsg, /訊號出場：1025\.00/);
-  assert.match(exitMsg, /報酬：\+2\.50%/);
-  assert.match(exitMsg, /最高浮盈：\+3\.00%/);
-  assert.match(exitMsg, /最大浮虧：-0\.50%/);
-  assert.match(exitMsg, /持有時間：30分0秒/);
-  assert.match(exitMsg, /出場原因：12:55當沖強制出場/);
+  assert.match(exitMsg, /觀察起點：1000\.00/);
+  assert.match(exitMsg, /觀察終點：1025\.00/);
+  assert.match(exitMsg, /區間漲跌：\+2\.50%/);
+  assert.match(exitMsg, /區間最高：\+3\.00%/);
+  assert.match(exitMsg, /區間最低：-0\.50%/);
+  assert.match(exitMsg, /觀察時間：30分0秒/);
+  assert.match(exitMsg, /說明：範例：量能轉弱/);
+});
+
+test('T39/T40 user-visible copy: 架構 tab, 量多進攻／量減退守, no buy/sell instruction wording', async () => {
+  const files = ['../popup.html', '../popup.js', '../chart.html', '../chart.js', '../background.js', '../core.js', '../manifest.json'];
+  const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/<!--[\s\S]*?-->/g, '');
+  for (const file of files) {
+    const text = strip(await readFile(new URL(file, import.meta.url), 'utf8'));
+    for (const banned of ['當沖AI架構', '當沖 AI 架構', '當沖標的', '當沖進場', '當沖出場', '建議買入', '建議賣出', '買進訊號', '賣出訊號', '當沖多方訊號', '買進範例', '下單 ↗', '買進推播', '賣出推播']) {
+      assert.equal(text.includes(banned), false, `${file} still shows "${banned}"`);
+    }
+  }
+  const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
+  assert.match(html, /data-group="ai_matrix" aria-label="架構">架構<\/button>/);
+  assert.match(html, /量多進攻/);
+  assert.match(html, /量減退守/);
+  const manifest = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url), 'utf8'));
+  assert.match(manifest.name, /^當沖吧！牛馬仔/, 'brand name kept');
+  assert.doesNotMatch(manifest.name + manifest.description, /AI 量化雷達|突破點火/);
 });
 test('matchFilter supports all-pass, price-range, and change-percentage criteria', () => {
   const allSettings = { filterMode: 'all', minPrice: 100, maxPrice: 500, minChangePct: 3.0 };

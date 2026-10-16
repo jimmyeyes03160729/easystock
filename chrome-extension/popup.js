@@ -100,7 +100,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       const s = msg.signal;
       const isExit = s.action === 'SELL' || s.id?.startsWith('exit:');
       showInAppToast({
-        badgeText: isExit ? '✅ 當沖出場' : '🚀 當沖進場',
+        badgeText: isExit ? '▼ 量減退守' : '▲ 量多進攻',
         badgeColor: isExit ? 'bg-emerald-600' : 'bg-sky-600',
         titleText: s.title || `${s.symbol} ${s.name || ''}`,
         bodyText: s.telegramText || `${s.symbol} ${s.name || ''} 現價 ${s.price} 元\n${s.reason || ''}`,
@@ -374,7 +374,7 @@ function openBrokerOrder(symbol, market = 'TW', name = '') {
     showInAppToast({
       badgeText: `${broker.icon || '🚀'} ${broker.name}`,
       badgeColor: broker.badgeColor || 'bg-red-600',
-      titleText: `${symbol} ${name || ''} 捷徑下單跳轉`,
+      titleText: `${symbol} ${name || ''} 前往券商官網`,
       bodyText: `已為您自動複製股票代號「${symbol}」，並為您開啟 ${broker.name}（${broker.appDesc || ''}）官方頁面。`,
       symbol,
       market,
@@ -494,7 +494,8 @@ function renderAiMatrix(list) {
   badge.append(el('span', 'EASYSTOCK QUANT ENGINE', 'text-[10px] font-mono tracking-wider text-sky-400 font-bold'));
   badge.append(el('span', 'v4.2 PROD', 'text-[9px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono'));
   headerCard.append(badge);
-  headerCard.append(el('h2', '當沖量化神經網絡與每日自適應遷移學習', 'text-xs font-bold text-white'));
+  headerCard.append(el('h2', '架構', 'text-xs font-bold text-white'));
+  headerCard.setAttribute('aria-label', '架構');
   headerCard.append(el('p', '高頻微觀訂單流 · 多因子非線性特徵矩陣 · 每日盤後雲端 OOS 增量訓練自我演進', 'text-[10px] text-slate-300 leading-relaxed'));
   wrap.append(headerCard);
 
@@ -525,7 +526,7 @@ function renderAiMatrix(list) {
   const ul3 = el('ul', '', 'space-y-1 text-[11px] text-slate-600');
   ul3.innerHTML = `
     <li><strong class="text-slate-800">自適應 ATR 移動停利：</strong>波段獲利啟動後，止盈防守點自動隨波動度動態階梯式上移，鎖定波段最大化利潤。</li>
-    <li><strong class="text-slate-800">剛性清倉鐵律：</strong>嚴守 -1.5% ~ -2.0% 硬性停損防線，且於 13:15 前無條件強制平倉，落實當沖「零留夜、零跳空風險」原則。</li>
+    <li><strong class="text-slate-800">風控邏輯：</strong>研究模型內建 -1.5% ~ -2.0% 的回撤上限，並於 13:15 前結束當日觀察；僅描述模型設計，非操作建議。</li>
   `;
   card3.append(ul3);
   wrap.append(card3);
@@ -566,7 +567,7 @@ function renderStrategyBar() {
   let title = '';
 
   if (group === 'daytrade') {
-    title = '🎯 當沖策略即時標的';
+    title = '量多進攻觀察清單';
     const pos = view.live?.open_positions;
     const closed = view.live?.closed_trades;
     const openTargets = (pos && typeof pos === 'object') ? Object.values(pos).filter(p => p?.status === 'OPEN') : [];
@@ -579,7 +580,7 @@ function renderStrategyBar() {
       return { symbol: sym, market: m, name: p.name || s?.name || sym, groups: ['watchlist'] };
     });
   } else if (group === 'rebound') {
-    title = '🛡️ 觸底反彈策略標的';
+    title = '觸底反彈觀察清單';
     targets = (view.bounce || []).map(b => ({
       symbol: b.symbol,
       market: b.market,
@@ -775,8 +776,8 @@ function renderDaytrade(list, isCompact) {
   if (!openPositions.length && !closedTrades.length) {
     const emptyBox = el('div', '', 'p-4 text-center space-y-1 bg-white border border-slate-200 rounded-lg');
     emptyBox.append(el('div', '🎯', 'text-2xl mb-1'));
-    emptyBox.append(el('h3', '目前系統尚無當沖交易紀錄', 'text-xs font-bold text-slate-700'));
-    emptyBox.append(el('p', '量化神經網絡微觀掃描全市場訂單流，盤中進出場訊號將自動即時同步。', 'text-[11px] text-slate-400 leading-relaxed'));
+    emptyBox.append(el('h3', '目前沒有量多進攻／量減退守觀察紀錄', 'text-xs font-bold text-slate-700'));
+    emptyBox.append(el('p', '盤中量能觀察結果會自動同步；僅為行情描述，非買賣建議。', 'text-[11px] text-slate-400 leading-relaxed'));
     list.append(emptyBox);
     return;
   }
@@ -787,8 +788,8 @@ function renderDaytrade(list, isCompact) {
 
   // 頂部狀態橫條
   const headerSummary = el('div', '', 'flex items-center justify-between text-[11px] text-slate-600 bg-slate-100/90 px-2.5 py-1.5 rounded-lg border border-slate-200');
-  headerSummary.append(el('span', `📅 ${scanDate ? `交易日 ${scanDate}` : '當沖紀錄'} · 共 ${totalCount} 筆`, 'font-semibold text-slate-700'));
-  headerSummary.append(el('span', openPositions.length ? `⚡ 持倉中 ${openPositions.length} 檔` : `✓ 今日當沖已平倉收工`, `text-[10px] font-bold ${openPositions.length ? 'text-sky-700' : 'text-slate-500'}`));
+  headerSummary.append(el('span', `📅 ${scanDate ? `交易日 ${scanDate}` : '量能觀察'} · 共 ${totalCount} 筆`, 'font-semibold text-slate-700'));
+  headerSummary.append(el('span', openPositions.length ? `▲ 量多進攻 ${openPositions.length} 檔` : '今日觀察已結束', `text-[10px] font-bold ${openPositions.length ? 'text-sky-700' : 'text-slate-500'}`));
   list.append(headerSummary);
 
   // 1. 渲染持倉中部位 (OPEN)
@@ -812,7 +813,7 @@ function renderDaytrade(list, isCompact) {
     const top = el('div', '', 'flex items-center justify-between gap-1');
     const leftTitle = el('div', '', 'flex items-center gap-1.5 min-w-0');
     leftTitle.append(el('h2', `${sym} ${name}`, 'text-xs font-bold text-slate-900 truncate'));
-    leftTitle.append(el('span', '持倉中', 'text-[9px] bg-sky-600 text-white font-bold px-1.5 py-0.2 rounded shrink-0'));
+    leftTitle.append(el('span', '▲ 量多進攻', 'text-[9px] bg-sky-600 text-white font-bold px-1.5 py-0.2 rounded shrink-0'));
     if (p.entry_score) {
       leftTitle.append(el('span', `分: ${p.entry_score}`, 'text-[9px] bg-sky-100 text-sky-800 px-1 py-0.2 rounded font-mono shrink-0'));
     }
@@ -834,7 +835,7 @@ function renderDaytrade(list, isCompact) {
     // 數據列：進場價、市價、損益
     const dataRow = el('div', '', 'flex items-center justify-between text-xs');
     const leftData = el('div', '', 'flex items-baseline gap-2');
-    leftData.append(el('span', `成本 ${entryPrice.toFixed(2)}`, 'text-slate-500 text-[11px]'));
+    leftData.append(el('span', `起點 ${entryPrice.toFixed(2)}`, 'text-slate-500 text-[11px]'));
     leftData.append(el('strong', `現價 ${curPrice.toFixed(2)}`, 'font-bold text-slate-900'));
     dataRow.append(leftData);
 
@@ -853,10 +854,10 @@ function renderDaytrade(list, isCompact) {
     const broker = getBroker(view.settings?.preferredBroker);
     const orderBtnText = broker.id === 'observe'
       ? '👀 觀察中'
-      : (broker.isObserve ? `${broker.icon || '📈'} ${broker.shortName}看盤 ↗` : `${broker.icon || '🚀'} ${broker.shortName}下單 ↗`);
+      : (broker.isObserve ? `${broker.icon || '📈'} ${broker.shortName}看盤 ↗` : `${broker.shortName} 官網 ↗`);
     const orderBtnTitle = broker.id === 'observe'
       ? `點擊複製 ${sym}（純觀察模式，不跳轉網頁）`
-      : (broker.isObserve ? `點擊複製 ${sym} 並前往 ${broker.name} 看盤` : `點擊複製 ${sym} 並前往 ${broker.name} 下單`);
+      : (broker.isObserve ? `點擊複製 ${sym} 並前往 ${broker.name} 看盤` : `點擊複製 ${sym} 並前往 ${broker.name} 官網`);
     const orderBtn = el('button', orderBtnText, `btn-broker-order text-[11px] ${broker.badgeColor || 'bg-red-600'} hover:opacity-90 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0`);
     orderBtn.title = orderBtnTitle;
     orderBtn.onclick = (e) => {
@@ -903,9 +904,9 @@ function renderDaytrade(list, isCompact) {
     const top = el('div', '', 'flex items-center justify-between gap-1');
     const leftTitle = el('div', '', 'flex items-center gap-1.5 min-w-0');
     leftTitle.append(el('h2', `${sym} ${name}`, 'text-xs font-bold text-slate-900 truncate'));
-    leftTitle.append(el('span', '已平倉', 'text-[9px] bg-slate-200 text-slate-700 font-semibold px-1.5 py-0.2 rounded shrink-0'));
+    leftTitle.append(el('span', '▼ 量減退守', 'text-[9px] bg-slate-200 text-slate-700 font-semibold px-1.5 py-0.2 rounded shrink-0'));
     if (exitTimeStr) {
-      leftTitle.append(el('span', `${exitTimeStr} 出場`, 'text-[9px] text-slate-400 font-mono shrink-0'));
+      leftTitle.append(el('span', `${exitTimeStr} 轉弱`, 'text-[9px] text-slate-400 font-mono shrink-0'));
     }
     top.append(leftTitle);
 
@@ -925,8 +926,8 @@ function renderDaytrade(list, isCompact) {
     // 數據列：進場價、出場價、已實現報酬率
     const dataRow = el('div', '', 'flex items-center justify-between text-xs');
     const leftData = el('div', '', 'flex items-baseline gap-2');
-    leftData.append(el('span', `進 ${entryPrice.toFixed(2)}`, 'text-slate-500 text-[11px]'));
-    leftData.append(el('strong', `出 ${exitPrice.toFixed(2)}`, 'font-bold text-slate-800'));
+    leftData.append(el('span', `起點 ${entryPrice.toFixed(2)}`, 'text-slate-500 text-[11px]'));
+    leftData.append(el('strong', `終點 ${exitPrice.toFixed(2)}`, 'font-bold text-slate-800'));
     dataRow.append(leftData);
 
     const rightData = el('div', '', 'flex items-center gap-2');
@@ -961,8 +962,8 @@ function renderDaytrade(list, isCompact) {
     const exitReason = c.exit_reason || '';
     if (reasons || exitReason) {
       const reasonRow = el('div', '', 'text-[10px] text-slate-500 space-y-0.5');
-      if (reasons) reasonRow.append(el('p', `💡 進場：${reasons}`, 'truncate'));
-      if (exitReason) reasonRow.append(el('p', `🏁 平倉：${exitReason}`, 'text-slate-400 truncate'));
+      if (reasons) reasonRow.append(el('p', `量多：${reasons}`, 'truncate'));
+      if (exitReason) reasonRow.append(el('p', `量減：${exitReason}`, 'text-slate-400 truncate'));
       card.append(reasonRow);
     }
 
@@ -1048,10 +1049,10 @@ function renderRebound(list, isCompact) {
     const broker = getBroker(view.settings?.preferredBroker);
     const orderBtnText = broker.id === 'observe'
       ? '👀 觀察中'
-      : (broker.isObserve ? `${broker.icon || '📈'} ${broker.shortName}看盤 ↗` : `${broker.icon || '🚀'} ${broker.shortName}下單 ↗`);
+      : (broker.isObserve ? `${broker.icon || '📈'} ${broker.shortName}看盤 ↗` : `${broker.shortName} 官網 ↗`);
     const orderBtnTitle = broker.id === 'observe'
       ? `點擊複製 ${sym}（純觀察模式，不跳轉網頁）`
-      : (broker.isObserve ? `點擊複製 ${sym} 並前往 ${broker.name} 看盤` : `點擊複製 ${sym} 並前往 ${broker.name} 下單`);
+      : (broker.isObserve ? `點擊複製 ${sym} 並前往 ${broker.name} 看盤` : `點擊複製 ${sym} 並前往 ${broker.name} 官網`);
     const orderBtn = el('button', orderBtnText, `btn-broker-order text-[11px] ${broker.badgeColor || 'bg-purple-600'} hover:opacity-90 text-white font-bold px-2 py-0.5 rounded shadow-2xs transition cursor-pointer shrink-0`);
     orderBtn.title = orderBtnTitle;
     orderBtn.onclick = (e) => {
@@ -1094,7 +1095,7 @@ function renderBrokerSelector() {
     } else if (currentBroker.isObserve) {
       hintText.textContent = `【看盤分析】：點擊卡片將自動複製代號，並開啟 ${currentBroker.name}（${currentBroker.appDesc || ''}）行情走勢頁面。`;
     } else {
-      hintText.textContent = `【官方直通下單】：點擊卡片將自動複製代號，並開啟 ${currentBroker.name}（${currentBroker.appDesc || ''}）官方頁面。`;
+      hintText.textContent = `【券商官網】：點擊卡片將自動複製代號，並開啟 ${currentBroker.name}（${currentBroker.appDesc || ''}）官方頁面。`;
     }
   }
 }
@@ -1386,36 +1387,36 @@ $('btn-test-daytrade-notif')?.addEventListener('click', async () => {
   };
   const telegramText = formatTelegramEntry(fakeEntry);
   showInAppToast({
-    badgeText: '🚀 當沖進場訊號',
+    badgeText: '▲ 量多進攻（範例）',
     badgeColor: 'bg-sky-600',
-    titleText: '2330 台積電 (進場訊號測試)',
+    titleText: '2330 台積電（範例通知）',
     bodyText: telegramText,
     symbol: '2330',
     market: 'TW',
     name: '台積電',
     strategy: 'daytrade'
   });
-  await act({ type: 'TEST', strategy: 'daytrade' }, '已發送 Chrome 買進推播（桌面通知與即時彈窗雙發送）');
+  await act({ type: 'TEST', strategy: 'daytrade' }, '已發送「量多進攻」範例通知');
 });
 
 $('btn-test-exit-notif')?.addEventListener('click', async () => {
   const fakeExit = {
     symbol: '2330', name: '台積電', market: 'TW', price: 1025, exit_price: 1025, entry_price: 1000,
-    pnl_pct: 2.5, mfe_pct: 3.0, mae_pct: -0.5, duration_seconds: 1800, exit_reason: '12:55當沖強制出場',
+    pnl_pct: 2.5, mfe_pct: 3.0, mae_pct: -0.5, duration_seconds: 1800, exit_reason: '範例：量能轉弱',
     strategy: 'daytrade', action: 'SELL'
   };
   const telegramText = formatTelegramExit(fakeExit);
   showInAppToast({
-    badgeText: '✅ 當沖出場訊號',
+    badgeText: '▼ 量減退守（範例）',
     badgeColor: 'bg-emerald-600',
-    titleText: '2330 台積電 (平倉出場測試)',
+    titleText: '2330 台積電（範例通知）',
     bodyText: telegramText,
     symbol: '2330',
     market: 'TW',
     name: '台積電',
     strategy: 'daytrade'
   });
-  await act({ type: 'TEST', action: 'SELL' }, '已發送 Chrome 賣出推播（桌面通知與即時彈窗雙發送）');
+  await act({ type: 'TEST', action: 'SELL' }, '已發送「量減退守」範例通知');
 });
 
 $('toggle-all-daytrade')?.addEventListener('change', async e => {

@@ -536,6 +536,11 @@ export function canNotify(s, state, now, vip) {
   return !state.ignored[s.symbol] && !state.seen[`${s.strategy}:${s.id}`] &&
     (!state.last[s.symbol] || now - state.last[s.symbol] >= COOLDOWN) && (vip || state.count < 3);
 }
+// 2.0 wording: market-observation labels, not trade instructions. Underlying signals, triggers and
+// thresholds are unchanged — only the text a user reads.
+export const SIGNAL_LABELS = { entry: '量多進攻', exit: '量減退守' };
+export const OBSERVATION_NOTE = '行情觀察描述，非買賣建議';
+
 export function formatTelegramEntry(p) {
   const symbol = p.symbol || '';
   const name = p.name || symbol;
@@ -549,17 +554,17 @@ export function formatTelegramEntry(p) {
     : (p.reason ? `✓ ${p.reason}` : '');
 
   return [
-    `🚀【當沖進場訊號】`,
+    `▲【${SIGNAL_LABELS.entry}】`,
     ``,
     `${symbol} ${name}`,
-    `訊號價：${price}`,
-    `分數：${score}`,
+    `觀察價：${price}`,
+    `量能分數：${score}`,
     `VWAP：${vwap}`,
     reasons ? `\n${reasons}` : '',
-    `停損參考：${stop}`,
-    `停利參考：${tp}`,
+    `下緣參考：${stop}`,
+    `上緣參考：${tp}`,
     ``,
-    `狀態：OPEN`
+    `狀態：觀察中｜${OBSERVATION_NOTE}`
   ].filter(line => line !== null && line !== undefined).join('\n');
 }
 
@@ -574,25 +579,24 @@ export function formatTelegramExit(t) {
   const mae = finite(t.mae_pct) ? `${t.mae_pct >= 0 ? '+' : ''}${t.mae_pct.toFixed(2)}%` : '-';
   const durSec = t.duration_seconds;
   const durText = finite(durSec) ? `${Math.floor(durSec / 60)}分${durSec % 60}秒` : '-';
-  const reason = t.exit_reason || '平倉出場';
+  const reason = t.exit_reason || '量能轉弱';
 
   return [
-    `✅【當沖出場】`,
+    `▼【${SIGNAL_LABELS.exit}】`,
     ``,
     `${symbol} ${name}`,
     ``,
-    `訊號進場：${entryPrice}`,
-    `訊號出場：${exitPrice}`,
+    `觀察起點：${entryPrice}`,
+    `觀察終點：${exitPrice}`,
     ``,
-    `報酬：${sign}${pnl.toFixed(2)}%`,
-    `最高浮盈：${mfe}`,
-    `最大浮虧：${mae}`,
-    `持有時間：${durText}`,
+    `區間漲跌：${sign}${pnl.toFixed(2)}%`,
+    `區間最高：${mfe}`,
+    `區間最低：${mae}`,
+    `觀察時間：${durText}`,
     ``,
-    `出場原因：${reason}`
+    `說明：${reason}｜${OBSERVATION_NOTE}`
   ].join('\n');
 }
-
 export function matchFilter(price, changePct, settings) {
   if (!settings || settings.filterMode === 'all') return true;
   if (finite(settings.minPrice) && (!finite(price) || price < settings.minPrice)) return false;

@@ -2,7 +2,7 @@ import { VM_MODE, CONFIG_URL, FIREBASE_ROOT } from './environment.js';
 import './rebound-engine.js';
 import { createAuth } from './auth.js';
 import { createSync, emptyMeta, legacyMeta, touchStocks, touchSettings } from './sync.js';
-import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes, buildPartialDailyBar, mergeQuote, quoteStampMs, quoteStatus, indexQuality, migrateState, COLOR_MODES } from './core.js';
+import { TTL, TAIEX_TTL, QUOTE_FRESH_MS, SYMBOL, GROUPS, plain, finite, config, stock, watchlist, sha256, isVIP, taipei, marketOpen, fresh, signal, chartURL, ledger, canNotify, defaultState, formatTelegramEntry, formatTelegramExit, matchFilter, calcChangePct, fetchStockClosingQuotes, buildPartialDailyBar, mergeQuote, quoteStampMs, quoteStatus, indexQuality, migrateState, COLOR_MODES, SIGNAL_LABELS } from './core.js';
 
 const ALARM = 'easystock-five-minutes';
 let tail = Promise.resolve();
@@ -691,7 +691,7 @@ export function liveSignals(data, stocks, now, allAlerts = false) {
     const pct = q && finite(q.change_pct) ? q.change_pct : (q && finite(q.previous_close) && q.previous_close > 0 ? (q.price / q.previous_close - 1) * 100 : (finite(p.change_pct) ? p.change_pct : (finite(p.pnl_pct) ? p.pnl_pct : null)));
     const base = signal({ id: `entry:${s.symbol}:${p.entry_time}`, symbol: s.symbol, market: s.market,
       name: p.name || s.name, price, change_pct: pct, generated_at: p.entry_time, quote_at: quoteAt,
-      reason: Array.isArray(p.entry_reasons) ? (p.entry_reasons.join('；').slice(0, 200) || '當沖進場') : (p.reason || '當沖進場') }, 'daytrade', now, true);
+      reason: Array.isArray(p.entry_reasons) ? (p.entry_reasons.join('；').slice(0, 200) || SIGNAL_LABELS.entry) : (p.reason || SIGNAL_LABELS.entry) }, 'daytrade', now, true);
     if (!base) return [];
     return [{
       ...base,
@@ -729,7 +729,7 @@ export function liveExitSignals(data, stocks, now, allAlerts = false) {
       change_pct: pnl,
       generated_at: t.exit_time,
       quote_at: t.exit_time,
-      reason: t.exit_reason || '平倉出場'
+      reason: t.exit_reason || SIGNAL_LABELS.exit
     }, 'daytrade', now, true);
     if (!base) return [];
     return [{
@@ -765,13 +765,13 @@ async function notify(s, { test = false, vip = false, now = Date.now() } = {}) {
   try {
     const isExit = s.action === 'SELL' || s.id?.startsWith('exit:');
     const isDaytrade = s.strategy === 'daytrade';
-    const defaultTitle = `${test ? '\u3010VM \u6e2c\u8a66\u3011' : ''}${isExit ? '\u3010\u7576\u6c96\u51fa\u5834\u3011' : '\u3010\u7576\u6c96\u591a\u65b9\u8a0a\u865f\u3011'}${s.symbol} ${s.name}`;
-    const telegramTitle = `${test ? '\u3010VM \u6e2c\u8a66\u3011' : ''}${isExit ? '\u2705\u3010\u7576\u6c96\u51fa\u5834\u3011' : '\ud83d\ude80\u3010\u7576\u6c96\u9032\u5834\u8a0a\u865f\u3011'}${s.symbol} ${s.name}`;
-    const title = s.telegramText ? telegramTitle : (s.customTitle || defaultTitle);
+    // 2.0 wording: \u91cf\u591a\u9032\u653b / \u91cf\u6e1b\u9000\u5b88 are observation labels; the signal source is unchanged.
+    const label = isExit ? `\u25bc\u3010${SIGNAL_LABELS.exit}\u3011` : `\u25b2\u3010${SIGNAL_LABELS.entry}\u3011`;
+    const title = s.customTitle && !s.telegramText ? s.customTitle : `${test ? '\u3010\u7bc4\u4f8b\u3011' : ''}${label}${s.symbol} ${s.name}`;
 
     const changePctVal = calcChangePct(s);
     const defaultMsg = `現價 ${s.price.toFixed(2)} 元｜${finite(changePctVal) ? `${changePctVal >= 0 ? '+' : ''}${changePctVal.toFixed(2)}%` : '結盤 0.00%'}\n${s.reason}`;
-    const message = (s.telegramText || defaultMsg) + (test ? '\n示例數字，非交易訊號、不計額度。' : '');
+    const message = (s.telegramText || defaultMsg) + (test ? '\n範例數字，非交易訊號、不計額度。' : '');
 
     await chrome.notifications.create(id, {
       type: 'basic', iconUrl: chrome.runtime.getURL('assets/icon128.png'),
@@ -1006,7 +1006,7 @@ export async function handle(message) {
       if (message.action === 'SELL') {
         const fakeExit = {
           symbol: '2330', name: '台積電', market: 'TW', price: 1025, exit_price: 1025, entry_price: 1000,
-          pnl_pct: 2.5, mfe_pct: 3.0, mae_pct: -0.5, duration_seconds: 1800, exit_reason: '12:55當沖強制出場',
+          pnl_pct: 2.5, mfe_pct: 3.0, mae_pct: -0.5, duration_seconds: 1800, exit_reason: '範例：量能轉弱',
           strategy: 'daytrade', action: 'SELL'
         };
         fakeExit.telegramText = formatTelegramExit(fakeExit);
