@@ -3,30 +3,82 @@
     ".read": false,
     ".write": false,
     "market_data": {
-      "active_release": {".read": true},
-      "meta": {".read": true},
-      "summary": {".read": true},
-      "backtests": {".read": true},
-      "rebound_feed": {".read": true},
-      "kline": {"$symbol": {".read": true}},
-      "releases": {
-        "$release": {
-          "meta": {".read": true},
-          "summary": {".read": true},
-          "backtests": {".read": true},
-          "rebound_feed": {".read": true},
-          "kline": {"$symbol": {".read": true}}
+      "active_release": {
+        ".read": true
+      },
+      "meta": {
+        ".read": true
+      },
+      "summary": {
+        ".read": true
+      },
+      "backtests": {
+        ".read": true
+      },
+      "rebound_feed": {
+        ".read": true
+      },
+      "kline": {
+        "$symbol": {
+          ".read": true
         }
       },
-      "intraday_live": {".read": true},
-      "intraday_picks": {".read": true},
-      "premarket_brief": {".read": true},
-      "premarket_status": {".read": true},
-      "provider_health": {".read": true},
-      "daytrade_learning_status": {".read": true},
-      "history_training_status": {".read": true},
-      "dual_review_status": {".read": true},
-      "public_feed": {".read": true}
+      "releases": {
+        "$release": {
+          "meta": {
+            ".read": true
+          },
+          "summary": {
+            ".read": true
+          },
+          "backtests": {
+            ".read": true
+          },
+          "rebound_feed": {
+            ".read": true
+          },
+          "kline": {
+            "$symbol": {
+              ".read": true
+            }
+          }
+        }
+      },
+      "intraday_live": {
+        ".read": true
+      },
+      "intraday_picks": {
+        ".read": true
+      },
+      "premarket_brief": {
+        ".read": true
+      },
+      "premarket_status": {
+        ".read": true
+      },
+      "provider_health": {
+        ".read": true
+      },
+      "daytrade_learning_status": {
+        ".read": true
+      },
+      "history_training_status": {
+        ".read": true
+      },
+      "dual_review_status": {
+        ".read": true
+      },
+      "public_feed": {
+        ".read": true
+      },
+      "intraday_charts": {
+        "$day": {
+          "$symbol": {
+            ".read": true,
+            ".write": false
+          }
+        }
+      }
     }
   }
 }

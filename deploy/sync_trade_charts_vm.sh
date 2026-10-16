@@ -19,7 +19,7 @@ git fetch "${EASYSTOCK_HOME_REMOTE:-https://github.com/jimmyeyes03160729/easysto
 git merge-base --is-ancestor HEAD "$target" || { echo 'VM has divergent commits; preserving them'; exit 1; }
 while IFS= read -r file; do
   case "$file" in
-    index.html|assets/*|tests/*.cjs|tests/test_trade_chart_feed.py|package.json|.github/workflows/deploy-homepage-vm.yml|.github/workflows/deploy-trade-charts-vm.yml|.github/workflows/inspect-trade-charts.yml|deploy/sync_homepage_vm.sh|deploy/sync_trade_charts_vm.sh|deploy/inspect_trade_charts.py|deploy/publish_trade_charts.py|deploy/easystock-trade-charts.service|deploy/easystock-trade-charts.timer|deploy/install_intraday_runtime.py|intraday_live.py|vm_runtime/intraday_live.py|trade_chart_feed.py|vm_runtime/trade_chart_feed.py|docs/HOMEPAGE_RELEASE_2026-10-17.md|docs/TRADE_CHARTS.md) ;;
+    index.html|assets/*|tests/*.cjs|tests/test_trade_chart_feed.py|package.json|.github/workflows/deploy-homepage-vm.yml|.github/workflows/deploy-trade-charts-vm.yml|.github/workflows/inspect-trade-charts.yml|deploy/sync_homepage_vm.sh|deploy/sync_trade_charts_vm.sh|deploy/inspect_trade_charts.py|deploy/publish_trade_charts.py|deploy/grant_trade_chart_read.py|firebase.rules.json|deploy/easystock-trade-charts.service|deploy/easystock-trade-charts.timer|deploy/install_intraday_runtime.py|intraday_live.py|vm_runtime/intraday_live.py|trade_chart_feed.py|vm_runtime/trade_chart_feed.py|docs/HOMEPAGE_RELEASE_2026-10-17.md|docs/TRADE_CHARTS.md) ;;
     *) echo "Non-homepage change requires separate review: $file"; exit 1 ;;
   esac
 done < <(git diff --name-only "$before" "$target")
@@ -68,6 +68,7 @@ for unit in easystock-trade-charts.service easystock-trade-charts.timer; do
 done
 sudo systemctl daemon-reload
 sudo systemctl start easystock-trade-charts.service
+.venv/bin/python deploy/grant_trade_chart_read.py --backup-dir "$backup"
 sudo systemctl enable --now easystock-trade-charts.timer
 systemctl show easystock-trade-charts.service -p Result -p ExecMainStatus
 systemctl is-active easystock-trade-charts.timer

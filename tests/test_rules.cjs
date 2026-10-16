@@ -19,3 +19,7 @@ function check(node){for(const [k,v] of Object.entries(node)){if(k==='.write')as
 check(rules);
 for(const p of pub)assert(!allows('market_data/'+p,'.write'));
 console.log('PASS Firebase policy: public endpoints allowed, parent/private/unknown paths denied, client writes denied');
+
+assert(allows('market_data/intraday_charts/2026-10-16/2330','.read'));
+assert(!allows('market_data/intraday_charts','.read'));
+assert(!allows('market_data/intraday_charts/2026-10-16/2330','.write'));
