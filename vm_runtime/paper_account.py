@@ -26,10 +26,10 @@ def _require_migrated():
         raise RuntimeError('Paper daily limit migration required; run canonical updater')
 
 
-def buy(symbol,name,price,execution_id=None,max_shares=None):
+def buy(symbol,name,price,execution_id=None,max_shares=None,allocation_slots=None):
     _require_migrated()
     import paper_ledger
-    return paper_ledger.buy(symbol,name,price,path=db_path(),execution_id=execution_id,max_shares=max_shares)
+    return paper_ledger.buy(symbol,name,price,path=db_path(),execution_id=execution_id,max_shares=max_shares,allocation_slots=allocation_slots)
 
 
 def sell(symbol,price,reason='',trade_id=None):

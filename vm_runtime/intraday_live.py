@@ -379,6 +379,57 @@ RADAR_MAX_WARM_QUERIES = max(
     ),
 )
 
+# 當沖模擬金購買門檻 (Day Trading Paper Buying Limits - 模擬金購買限制 30~200 元、量>=3000張；A 觀察池與盤後學習金額無上限)
+DAYTRADE_BUY_MIN_PRICE = max(
+    0.0,
+    float(
+        os.environ.get(
+            "DAYTRADE_BUY_MIN_PRICE",
+            os.environ.get("DAYTRADE_MIN_PRICE", "30.0"),
+        )
+    ),
+)
+DAYTRADE_MIN_PRICE = DAYTRADE_BUY_MIN_PRICE
+
+DAYTRADE_BUY_MAX_PRICE = max(
+    0.0,
+    float(
+        os.environ.get(
+            "DAYTRADE_BUY_MAX_PRICE",
+            os.environ.get("DAYTRADE_MAX_PRICE", "200.0"),
+        )
+    ),
+)
+DAYTRADE_MAX_PRICE = DAYTRADE_BUY_MAX_PRICE
+
+DAYTRADE_BUY_MIN_LOTS = max(
+    0.0,
+    float(
+        os.environ.get(
+            "DAYTRADE_BUY_MIN_LOTS",
+            os.environ.get("DAYTRADE_MIN_LOTS", "3000.0"),
+        )
+    ),
+)
+DAYTRADE_MIN_LOTS = DAYTRADE_BUY_MIN_LOTS
+
+CANDIDATE_EXCLUDE_ETF = os.environ.get(
+    "LIVE_CANDIDATE_EXCLUDE_ETF",
+    "1",
+) in ("1", "true", "True")
+
+
+def is_etf(symbol: str, name: str = "", category: str = "") -> bool:
+    """判斷標的是否為 ETF、ETN、境外指數或非 4 位普通股。"""
+    s = str(symbol).strip()
+    n = str(name).strip().upper()
+    c = str(category).strip().upper()
+    if s.startswith(("00", "01", "02", "91")) or not re.match(r"^[1-8]\d{3}$", s):
+        return True
+    if any(k in n or k in c for k in ("ETF", "ETN", "境外指數", "反1", "正2", "期信")):
+        return True
+    return False
+
 # 每日最多 5 檔，可由環境設定更低上限。
 paper_wallet = PaperWallet()
 
@@ -1505,23 +1556,32 @@ def load_candidates_from_firebase(
         ):
             continue
 
+        name = str(
+            stock.get("name")
+            or symbol
+        )
+        category = str(
+            stock.get("category")
+            or ""
+        )
+
+        if CANDIDATE_EXCLUDE_ETF and is_etf(symbol, name, category):
+            continue
+
         price = num(
             stock.get("price")
         )
 
         # 沒價格也不是絕對不能訂閱，
         # 但 summary 裡完全沒 symbol / price 的資料通常不是股票列。
-        if price is not None and price <= 0:
+        if price is None or price <= 0:
             continue
 
         seen.add(symbol)
 
         item = dict(stock)
         item["symbol"] = symbol
-        item["name"] = str(
-            stock.get("name")
-            or symbol
-        )
+        item["name"] = name
 
         output.append(item)
 
@@ -2049,6 +2109,14 @@ def scan_market_activity_universe(
 
             # 當沖過濾：排除金融保險類股（28開頭），其振幅難以跨越當沖交易成本
             if symbol.startswith("28"):
+                continue
+
+            name = str(
+                row.get("name")
+                or symbol
+            ).strip()
+
+            if CANDIDATE_EXCLUDE_ETF and is_etf(symbol, name):
                 continue
 
             close = num(
@@ -2697,6 +2765,10 @@ class IntradayLiveEngine:
         self._entry_reject_summary_logged = {}
         self.market_valid_until = 0.0
         self.market_risk = {'valid': False, 'gate_reason': 'not_checked'}
+        from paper_entry_policy import PaperEntryPolicy
+        paper_wallet.entry_policy=PaperEntryPolicy(DAYTRADE_BUY_MIN_PRICE,DAYTRADE_BUY_MAX_PRICE,DAYTRADE_BUY_MIN_LOTS)
+        paper_wallet.allocation_slots=MAX_DAILY_ENTRIES
+        self._paper_cumulative_volume={}
         paper_wallet.execution_evidence = self.paper_execution_evidence
         self.manager.before_open = lambda **kw: None if self.collect_only else paper_wallet.open_fill(**kw)
         self.manager.before_close = lambda **kw: paper_wallet.close_and_settle(**kw)
@@ -2838,6 +2910,7 @@ class IntradayLiveEngine:
             observed = as_datetime(getattr(quote, 'ts', None))
             return dict(evidence,
                     quote_at=observed.isoformat() if observed else None,
+                    cumulative_volume=getattr(self,'_paper_cumulative_volume',{}).get(str(symbol)),
                     bid=getattr(quote, 'buy_price', None),
                     ask=getattr(quote, 'sell_price', None),
                     # SDK snapshot buy/sell volumes are ordinary board lots.
@@ -2869,6 +2942,9 @@ class IntradayLiveEngine:
                 "/market_data/intraday_live/config"
             ).update({
                 "entry_mode": self.entry_mode,
+                "paper_buy_policy": {"min_price":DAYTRADE_BUY_MIN_PRICE,"max_price":DAYTRADE_BUY_MAX_PRICE,
+                    "min_cumulative_lots":DAYTRADE_BUY_MIN_LOTS,"allocation_slots":MAX_DAILY_ENTRIES,
+                    "volume_source":"shioaji_common_stock_tick_total_volume","volume_max_age_seconds":3},
                 "a_recommendation_policy": "rules-68-ai-advisory-v1" if self.entry_mode == 'rules' else 'approved-model-gate',
                 "model_version": self.daytrade_model.model_version,
                 "model_ready": self.daytrade_model.artifact is not None,
@@ -4176,6 +4252,10 @@ class IntradayLiveEngine:
         symbol: str,
         strategy_time: datetime,
     ) -> None:
+        clock=getattr(self,'_lane_clock',None)
+        if clock and clock.error:
+            self._entry_reject(symbol,'lane_clock_failed')
+            return
         # 12:30 後仍可評估 OPEN position 的技術出場，
         # 但絕不開新倉。
         rows5 = self.bars.rows5(
@@ -4927,6 +5007,18 @@ class IntradayLiveEngine:
             current_tick_type = tick_type_value(
                 tick
             )
+            # V1 common-stock streaming total_volume is explicitly in lots.
+            # Never use last-trade volume, yesterday volume or a magnitude guess.
+            def tick_field(key,default=None):
+                return tick.get(key,default) if isinstance(tick,dict) else getattr(tick,key,default)
+            raw_volume_at=as_datetime(attr_first(tick,'datetime','ts','timestamp'))
+            if raw_volume_at and not tick_field('simtrade',False) and not tick_field('intraday_odd',False):
+                volume_evidence={'source':'shioaji_common_stock_tick_total_volume','unit':'lot',
+                    'value':tick_field('total_volume'),'quote_at':raw_volume_at.isoformat()}
+                cache=getattr(self,'_paper_cumulative_volume',None)
+                if cache is not None and (symbol not in cache or raw_volume_at.isoformat()>=cache[symbol]['quote_at']):
+                    cache[symbol]=volume_evidence
+
 
             current_amount = tick_amount(
                 tick,
@@ -5228,6 +5320,8 @@ class IntradayLiveEngine:
         print(
             f"[SHUTDOWN] {reason}"
         )
+        clock=getattr(self,'_lane_clock',None)
+        if clock:clock.stop()  # Join before recorder/final-state closure.
         self.log_entry_reject_summary(force=True)
 
         self.running = False
@@ -5269,6 +5363,13 @@ class IntradayLiveEngine:
         if getattr(self, 'runway_v2', None) is not None:
             self.runway_v2.close_recording()
         print("✅ Intraday Live stopped")
+
+    def advance_b_clock(self,current):
+        if getattr(self,'dual_books',None):self.dual_books.poll(current)
+        current=now_tpe()  # Never backdate decisions after book I/O or lock waits.
+        if getattr(self,'runway_v2',None):self.runway_v2.advance(current)
+        trial=getattr(self,'b1_closing_experiment',None)
+        if trial:trial.advance(current)
 
     def run(self) -> None:
         print("======================================")
@@ -5328,6 +5429,11 @@ class IntradayLiveEngine:
                     raise RuntimeError('Cannot subscribe restored B OPEN position')
                 self.quote_subscriptions.request(symbol, 'BidAsk')
 
+        from runtime_clock import LaneClock
+        self._lane_clock=LaneClock(self.advance_b_clock,
+            health_path=Path(os.getenv('EASYSTOCK_MARKET_DATA_DIR','/home/ubuntu/easystock-market-data'))/'lane-clock.json')
+        self._lane_clock.start()
+
         current = now_tpe()
         current_t = current.timetz().replace(
             tzinfo=None
@@ -5383,15 +5489,9 @@ class IntradayLiveEngine:
                     self.refresh_market_risk()
                     self.refresh_rebound_guard(current)
                 self.heartbeat_if_due()
-                if getattr(self, "runway_v2", None) is not None:
-                    try:
-                        if getattr(self, 'dual_books', None):
-                            self.dual_books.poll(current)
-                        self.runway_v2.advance(current)
-                        trial=getattr(self,'b1_closing_experiment',None)
-                        if trial:trial.advance(current)
-                    except Exception as exc:
-                        print(f"[B_LANES_WARN] {type(exc).__name__}")
+                lane_clock=getattr(self,'_lane_clock',None)
+                if lane_clock and lane_clock.error:
+                    raise RuntimeError('lane_clock_failed:'+lane_clock.error)
 
                 if (
                     dtime(9, 0)
