@@ -38,3 +38,11 @@ for symbol in ['3231','5498','2344','8150']:
  p=cache/(symbol+'.json')
  if p.exists():
   d=json.loads(p.read_text());r=d.get('bars',[]);print('CACHE',symbol,'bars',len(r),'keys',list(d),'first',r[0] if r else None,'last',r[-1] if r else None)
+
+unit='easystock-intraday.service'
+wd=subprocess.check_output(['systemctl','show',unit,'--property=WorkingDirectory','--value'],text=True).strip()
+command=subprocess.check_output(['systemctl','show',unit,'--property=ExecStart','--value'],text=True).strip()
+expected='/home/ubuntu/easystock/intraday_live.py'
+print('STREAM SERVICE BOUNDARY',{'working_directory_matches':wd=='/home/ubuntu/easystock','installed_engine_in_command':expected in command,'relative_engine_in_command':wd=='/home/ubuntu/easystock' and 'intraday_live.py' in command})
+engine=Path(expected)
+print('STREAM HOOK INSTALLED',all(text in engine.read_text() for text in ['from trade_chart_feed import ChartPublisher','self.chart_publisher.start()','if charts: charts.stop()']))
