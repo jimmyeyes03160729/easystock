@@ -42,5 +42,8 @@ const {createDOM,settle}=require('./dom.cjs'),assert=require('node:assert/strict
  assert.match(w.document.querySelector('#tradeChartNote').textContent,/形成中/);
  w.document.querySelector('[data-chart-mode=candles]').click();assert.equal(w.document.querySelector('#tradeChart polyline'),null);
  assert(w.document.querySelector('#tradeChart rect[stroke-dasharray="3 2"]'));
+ w.fetch=async()=>({ok:true,json:async()=>({date,updated_at:date+'T09:33:00+08:00',minute_bars:[{time:date+'T09:30:00+08:00',open:100,high:102,low:99,close:101,volume:10},{time:date+'T09:32:00+08:00',open:101,high:103,low:100,close:102,volume:20}],bars:[]})});
+ w.document.querySelector('[data-chart-mode=line]').click();refreshTick();await settle();await settle();
+ assert.equal(w.document.querySelectorAll('#tradeChart polyline').length,2,'missing minute stays a gap');
  dom.window.close();console.log('PASS trade chart: closed state, OHLC, entry/exit, escaped evidence, reject wrong session, research vs Paper status');
 })().catch(e=>{console.error(e);process.exitCode=1});

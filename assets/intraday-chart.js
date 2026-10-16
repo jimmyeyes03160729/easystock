@@ -62,7 +62,7 @@
   const age=Date.now()-Date.parse(payload.quote_at||payload.updated_at),stale=!Number.isFinite(age)||age>180000;
   const isCurrent=wanted===day(new Date().toISOString())&&!payload.session_closed;
   put('tradeChartNote',`${wanted} · 永豐行情 · ${chartMode==='line'?'分時走勢':'5 分 K'}${bars.some(b=>b.forming)?'（最新一根形成中）':''} · 行情至 ${Number.isFinite(Date.parse(payload.quote_at||payload.updated_at))?clock(payload.quote_at||payload.updated_at):'時間未提供'}${isCurrent?(stale?' · 資料延遲，顯示最後快照':' · 每 15 秒更新'):payload.status==='complete'?' · 完整交易日走勢':' · 該交易日最後快照'}`);
-  const W=Math.max(360,Math.min(800,target.clientWidth||800)),H=350,left=52,right=W-94,top=20,bottom=250,range=[...bars.flatMap(b=>[Number(b.low),Number(b.high)]),...['entry_price','exit_price'].map(k=>number(t[k])).filter(x=>x!==null)];
+  const W=Math.max(280,Math.min(800,target.clientWidth||800)),H=350,left=W<500?46:52,right=W-(W<500?18:94),top=20,bottom=250,range=[...bars.flatMap(b=>[Number(b.low),Number(b.high)]),...['entry_price','exit_price'].map(k=>number(t[k])).filter(x=>x!==null)];
   let lo=Math.min(...range),hi=Math.max(...range),pad=Math.max((hi-lo)*.08,hi*.001);lo-=pad;hi+=pad;
   const start=Date.parse(`${wanted}T09:00:00+08:00`),span=270*60000,x=time=>left+(Date.parse(time)-start)/span*(right-left),y=p=>bottom-(p-lo)/(hi-lo)*(bottom-top),barWidth=Math.max(1,(right-left)/(chartMode==='line'?270:54)*.65);
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('role','img');svg.setAttribute('aria-label',`${t.symbol} ${wanted} ${chartMode==='line'?'分時走勢':'五分鐘K線'}與進出場位置`);
@@ -71,12 +71,12 @@
   const maxVol=Math.max(1,...bars.map(b=>Number(b.volume)));
   for(const b of bars){const color=b.close>=b.open?'#f87171':'#34d399',cx=x(b.time)+barWidth/2;if(chartMode==='candles')add('line',{x1:cx,x2:cx,y1:y(b.high),y2:y(b.low),stroke:color});const rect=add('rect',{x:cx-barWidth/2,y:Math.min(y(b.open),y(b.close)),width:barWidth,height:Math.max(1,Math.abs(y(b.open)-y(b.close))),fill:color,opacity:chartMode==='line'?0:b.forming?.65:1,stroke:b.forming?'#fbbf24':'none','stroke-dasharray':b.forming?'3 2':'none'});const title=document.createElementNS(ns,'title');title.textContent=`${clock(b.time)} 開 ${b.open} 高 ${b.high} 低 ${b.low} 收 ${b.close} 量 ${b.volume}`;rect.append(title);add('rect',{x:cx-barWidth/2,y:310-b.volume/maxVol*42,width:barWidth,height:b.volume/maxVol*42,fill:color,opacity:.5});}
   if(chartMode==='line'){
-   const gap=Array.isArray(payload?.minute_bars)?120000:600000;let points=[];
+   const gap=Array.isArray(payload?.minute_bars)?60000:300000;let points=[];
    const flush=()=>{if(points.length)add('polyline',{points:points.join(' '),fill:'none',stroke:'#60a5fa','stroke-width':2,'stroke-linejoin':'round'});points=[];};
    bars.forEach((b,i)=>{if(i&&Date.parse(b.time)-Date.parse(bars[i-1].time)>gap)flush();points.push(`${x(b.time)},${y(b.close)}`);});flush();
   }
-  for(const time of ['09:00','10:00','11:00','12:00','13:00','13:30'])add('text',{x:x(`${wanted}T${time}:00+08:00`),y:335,fill:'currentColor','font-size':11,'text-anchor':'middle'},time);
-  for(const [key,when,label,color]of [['entry_price','entry_time',t.direction===-1?'賣出':'買入','#fbbf24'],['exit_price','exit_time',t.direction===-1?'買回':'賣出','#60a5fa']])if(number(t[key])!==null&&day(t[when])===wanted){add('line',{x1:left,x2:right,y1:y(Number(t[key])),y2:y(Number(t[key])),stroke:color,'stroke-dasharray':'4 4'});add('circle',{cx:x(t[when]),cy:y(Number(t[key])),r:5,fill:color});add('text',{x:right+5,y:y(Number(t[key]))+4,fill:color,'font-size':11},`${label} ${price(t[key])}`);}
+  for(const time of (W<500?['09:00','10:00','11:00','12:00','13:30']:['09:00','10:00','11:00','12:00','13:00','13:30']))add('text',{x:x(`${wanted}T${time}:00+08:00`),y:335,fill:'currentColor','font-size':11,'text-anchor':'middle'},time);
+  for(const [key,when,label,color]of [['entry_price','entry_time',t.direction===-1?'賣出':'買入','#fbbf24'],['exit_price','exit_time',t.direction===-1?'買回':'賣出','#60a5fa']])if(number(t[key])!==null&&day(t[when])===wanted){add('line',{x1:left,x2:right,y1:y(Number(t[key])),y2:y(Number(t[key])),stroke:color,'stroke-dasharray':'4 4'});add('circle',{cx:x(t[when]),cy:y(Number(t[key])),r:5,fill:color});add('text',{x:W<500?right-3:right+5,y:y(Number(t[key]))+4,fill:color,'font-size':11,'text-anchor':W<500?'end':'start'},`${label} ${price(t[key])}`);}
   target.append(svg);
  }
  async function refresh(t){const mine=++generation;controller?.abort();controller=new AbortController();const timer=setTimeout(()=>controller.abort(),12000);try{
