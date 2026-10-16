@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="lg-root" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Liquid Glass 改版審閱</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/liquid-glass.css" />
+  <style>
+    .wrap { width: min(1400px, 100%); margin: 0 auto; padding: 28px 16px 60px; }
+    h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: -.02em; }
+    h2 { font-size: 18px; margin: 36px 0 12px; }
+    p { color: var(--lg-sub); margin: 4px 0; }
+    .card { padding: 18px; }
+    .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .row4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: start; }
+    figure { margin: 0; padding: 10px; }
+    figure img { width: 100%; display: block; border-radius: 12px; border: 1px solid var(--glass-hairline); }
+    figcaption { font-size: 13px; font-weight: 700; margin: 2px 2px 8px; display: flex; justify-content: space-between; gap: 8px; }
+    figcaption a { color: var(--lg-interactive); font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--glass-hairline); text-align: right; white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; }
+    td { font-family: "JetBrains Mono", monospace; }
+    .scroll { overflow-x: auto; }
+    .bad { color: var(--lg-bad); font-weight: 700; } .ok { color: var(--lg-ok); font-weight: 700; }
+    ul { color: var(--lg-sub); margin: 6px 0; padding-left: 20px; line-height: 1.8; }
+    .links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    @media (max-width: 900px) { .row, .row4 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="lg">
+<div class="wrap">
+  <section class="glass card">
+    <h1>EasyStock Liquid Glass · 第一階段原型審閱</h1>
+    <p>分支 <code>claude/liquid-glass-prototype</code>（基於 main <code>c2eabac</code>）。尚未修改正式 <code>index.html</code>，未部署。</p>
+    <p>兩邊都使用合成資料：改版前為 <code>tests/preview_dashboard.cjs</code> 的合成快照，改版後為原型內建示意資料。</p>
+    <div class="links">
+      <a class="lg-btn lg-btn--primary" href="./?theme=light">開啟原型（淺色）</a>
+      <a class="lg-btn" href="./?theme=dark">開啟原型（深色）</a>
+      <a class="lg-btn" href="./?theme=light&open=T201">股票詳情 Modal</a>
+    </div>
+  </section>
+
+  <h2>改版前後比較 · 桌機 1440px</h2>
+  <div class="row">
+    <figure class="glass-tile"><figcaption>改版前 · 淺色<a href="screenshots/before-desktop-light-full.jpg">整頁</a></figcaption><img src="screenshots/before-desktop-light.png" alt="改版前桌機淺色"></figure>
+    <figure class="glass-tile"><figcaption>改版後 · 淺色<a href="screenshots/after-desktop-light-full.jpg">整頁</a></figcaption><img src="screenshots/after-desktop-light.png" alt="改版後桌機淺色"></figure>
+    <figure class="glass-tile"><figcaption>改版前 · 深色<a href="screenshots/before-desktop-dark-full.jpg">整頁</a></figcaption><img src="screenshots/before-desktop-dark.png" alt="改版前桌機深色"></figure>
+    <figure class="glass-tile"><figcaption>改版後 · 深色<a href="screenshots/after-desktop-dark-full.jpg">整頁</a></figcaption><img src="screenshots/after-desktop-dark.png" alt="改版後桌機深色"></figure>
+  </div>
+
+  <h2>改版前後比較 · 手機 390px</h2>
+  <div class="row4">
+    <figure class="glass-tile"><figcaption>前 · 淺色<a href="screenshots/before-mobile-light-full.jpg">整頁</a></figcaption><img src="screenshots/before-mobile-light.png" alt="改版前手機淺色"></figure>
+    <figure class="glass-tile"><figcaption>後 · 淺色<a href="screenshots/after-mobile-light-full.jpg">整頁</a></figcaption><img src="screenshots/after-mobile-light.png" alt="改版後手機淺色"></figure>
+    <figure class="glass-tile"><figcaption>前 · 深色<a href="screenshots/before-mobile-dark-full.jpg">整頁</a></figcaption><img src="screenshots/before-mobile-dark.png" alt="改版前手機深色"></figure>
+    <figure class="glass-tile"><figcaption>後 · 深色<a href="screenshots/after-mobile-dark-full.jpg">整頁</a></figcaption><img src="screenshots/after-mobile-dark.png" alt="改版後手機深色"></figure>
+  </div>
+
+  <h2>股票詳情 Modal（K 線）與 320px</h2>
+  <div class="row">
+    <figure class="glass-tile"><figcaption>桌機 · 淺色</figcaption><img src="screenshots/after-desktop-light-modal.png" alt="Modal 淺色"></figure>
+    <figure class="glass-tile"><figcaption>桌機 · 深色</figcaption><img src="screenshots/after-desktop-dark-modal.png" alt="Modal 深色"></figure>
+  </div>
+  <div class="row4" style="margin-top:14px">
+    <figure class="glass-tile"><figcaption>手機 Modal · 淺色</figcaption><img src="screenshots/after-mobile-light-modal.png" alt="手機 Modal 淺色"></figure>
+    <figure class="glass-tile"><figcaption>手機 Modal · 深色</figcaption><img src="screenshots/after-mobile-dark-modal.png" alt="手機 Modal 深色"></figure>
+    <figure class="glass-tile"><figcaption>320px · 淺色<a href="screenshots/after-narrow320-light-full.jpg">整頁</a></figcaption><img src="screenshots/after-narrow320-light-full.jpg" alt="320px 淺色整頁" style="max-height:900px;object-fit:cover;object-position:top"></figure>
+    <figure class="glass-tile"><figcaption>320px · 深色<a href="screenshots/after-narrow320-dark-full.jpg">整頁</a></figcaption><img src="screenshots/after-narrow320-dark-full.jpg" alt="320px 深色整頁" style="max-height:900px;object-fit:cover;object-position:top"></figure>
+  </div>
+
+  <h2>對比度 · 溢出 · 模糊圖層（自動檢查）</h2>
+  <section class="glass card">
+    <div class="scroll"><table><thead><tr><th>狀態</th><th>檢查文字數</th><th>AA 未通過</th><th>最低對比</th><th>橫向溢出</th><th>backdrop-filter 圖層</th></tr></thead><tbody id="audit"><tr><td colspan="6">讀取 screenshots/audit.json…</td></tr></tbody></table></div>
+    <ul>
+      <li>對比度以 WCAG AA 計算（一般文字 4.5:1、大字 3:1），背景為所有祖先 rgba 背景疊在畫布色上的合成色；漸層背景元素另計「需人工確認」。</li>
+      <li>效能：桌機只有頂層卡片（約 11 層）使用 blur；巢狀方塊一律不模糊。手機與觸控裝置卡片改為近不透明實心，只保留 Header 與底部導覽 2 層 blur，Modal 遮罩在手機不模糊。</li>
+      <li>不支援 backdrop-filter 時退回實心背景；系統開啟「降低透明度 / 增加對比」時全部改實心。</li>
+      <li>文字與數字從不套 opacity，透明感只來自 rgba 背景。</li>
+    </ul>
+  </section>
+
+  <h2>設計重點與待 Owner 確認</h2>
+  <section class="glass card">
+    <ul>
+      <li><b>色系</b>：互動狀態（導覽 active、篩選、主按鈕、焦點框）改為淡藍；琥珀色只留給品牌標記與區塊編號。淺色琥珀文字改 #A84E07 以通過 AA。</li>
+      <li><b>漲紅跌綠</b>：K 線沿用 main 的 <code>--up / --down</code>；深色模式的文字另用 <code>--up-text #FF7A7A</code>、<code>--down-text #2DD4A0</code>，因原本 #EF4444 在玻璃上只有 3.3–3.8:1。</li>
+      <li><b>Logo</b>：深色模式下原 Banner 的深藍字幾乎看不見（main 目前也是），原型加淺色霧面底板，不改圖檔與比例。</li>
+      <li><b>Bento</b>：Hero（7 格）＋資料與模式（5 格）；牛馬 AI 進修日為 2×2 大格，其餘統計小格。導覽與區塊順序完全依 main：01 盤中摸魚、02 八法、03 牛馬 AI、社畜後台。</li>
+      <li><b>手機底部導覽</b>：浮動玻璃膠囊、4 項、active 為淡藍底＋實心圖示，保留 safe-area。</li>
+      <li><b>股票詳情</b>：桌機置中玻璃面板；手機改為由下滑出的 sheet。K 線區塊用實心底，避免顏色被背景影響。</li>
+    </ul>
+  </section>
+</div>
+<script>
+  fetch('screenshots/audit.json').then(r => r.json()).then(a => {
+    document.getElementById('audit').innerHTML = Object.entries(a).sort(([x], [y]) => x.localeCompare(y)).map(([k, v]) =>
+      `<tr><td>${k}</td><td>${v.textChecked}</td><td class="${v.contrastFailures ? 'bad' : 'ok'}">${v.contrastFailures}</td><td>${v.minRatio}</td><td class="${v.horizontalOverflow ? 'bad' : 'ok'}">${v.horizontalOverflow ? '有' : '無'}</td><td>${v.backdropFilterLayers}</td></tr>`).join('');
+  }).catch(() => { document.getElementById('audit').innerHTML = '<tr><td colspan="6">請先執行 capture.cjs</td></tr>'; });
+</script>
+</body>
+</html>

@@ -1,0 +1,856 @@
+{
+  "before-desktop-light": {
+    "theme": "light",
+    "viewport": 1440,
+    "textChecked": 246,
+    "manualGradient": 2,
+    "minRatio": 1.53,
+    "contrastFailures": 25,
+    "worst": [
+      {
+        "text": "09:00–09:10 · 模擬",
+        "ratio": 1.53,
+        "fg": "#34d399",
+        "bg": "#caede3",
+        "size": 12.5,
+        "need": 4.5
+      },
+      {
+        "text": "09:30~12:30",
+        "ratio": 1.64,
+        "fg": "#22d3ee",
+        "bg": "#eff4ff",
+        "size": 12.5,
+        "need": 4.5
+      },
+      {
+        "text": "尚無 B1 新跑道快照",
+        "ratio": 1.74,
+        "fg": "#48d7a3",
+        "bg": "#f8fafc",
+        "size": 12.5,
+        "need": 4.5
+      },
+      {
+        "text": "今日當沖模組",
+        "ratio": 1.92,
+        "fg": "#34d399",
+        "bg": "#ffffff",
+        "size": 13,
+        "need": 4.5
+      },
+      {
+        "text": "工位摸魚 · 社畜自救看盤室",
+        "ratio": 1.95,
+        "fg": "#f59e0b",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "01",
+        "ratio": 1.95,
+        "fg": "#f59e0b",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "新規則前向模擬 · 非下單建議 · 尚未驗證勝率。依新鮮",
+        "ratio": 1.95,
+        "fg": "#f59e0b",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "03",
+        "ratio": 1.95,
+        "fg": "#f59e0b",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "↻ 更新市場資料",
+        "ratio": 1.96,
+        "fg": "#f59e0b",
+        "bg": "#f1f5f9",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "12:30",
+        "ratio": 2.05,
+        "fg": "#f59e0b",
+        "bg": "#f8fafc",
+        "size": 13,
+        "need": 4.5
+      },
+      {
+        "text": "0%",
+        "ratio": 2.15,
+        "fg": "#f59e0b",
+        "bg": "#ffffff",
+        "size": 17,
+        "need": 4.5
+      },
+      {
+        "text": "工位自救 · 虛擬交易",
+        "ratio": 2.2,
+        "fg": "#06b6d4",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      }
+    ],
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 1,
+    "backdropFilterTargets": [
+      "header.fixed"
+    ]
+  },
+  "before-mobile-light": {
+    "theme": "light",
+    "viewport": 390,
+    "textChecked": 240,
+    "manualGradient": 2,
+    "minRatio": 1.53,
+    "contrastFailures": 25,
+    "worst": [
+      {
+        "text": "09:00–09:10 · 模擬",
+        "ratio": 1.53,
+        "fg": "#34d399",
+        "bg": "#caede3",
+        "size": 12.5,
+        "need": 4.5
+      },
+      {
+        "text": "09:30~12:30",
+        "ratio": 1.64,
+        "fg": "#22d3ee",
+        "bg": "#eff4ff",
+        "size": 12.5,
+        "need": 4.5
+      },
+      {
+        "text": "尚無 B1 新跑道快照",
+        "ratio": 1.74,
+        "fg": "#48d7a3",
+        "bg": "#f8fafc",
+        "size": 12.5,
+        "need": 4.5
+      },
+      {
+        "text": "今日當沖模組",
+        "ratio": 1.92,
+        "fg": "#34d399",
+        "bg": "#ffffff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "工位摸魚 · 社畜自救看盤室",
+        "ratio": 1.95,
+        "fg": "#f59e0b",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "01",
+        "ratio": 1.95,
+        "fg": "#f59e0b",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "新規則前向模擬 · 非下單建議 · 尚未驗證勝率。依新鮮",
+        "ratio": 1.95,
+        "fg": "#f59e0b",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "03",
+        "ratio": 1.95,
+        "fg": "#f59e0b",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "12:30",
+        "ratio": 2.05,
+        "fg": "#f59e0b",
+        "bg": "#f8fafc",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "0%",
+        "ratio": 2.15,
+        "fg": "#f59e0b",
+        "bg": "#ffffff",
+        "size": 17,
+        "need": 4.5
+      },
+      {
+        "text": "工位自救 · 虛擬交易",
+        "ratio": 2.2,
+        "fg": "#06b6d4",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "TWSE+TPEx",
+        "ratio": 2.21,
+        "fg": "#06b6d4",
+        "bg": "#e6f8fb",
+        "size": 12,
+        "need": 4.5
+      }
+    ],
+    "scrollWidth": 390,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 1,
+    "backdropFilterTargets": [
+      "header.fixed"
+    ]
+  },
+  "before-desktop-dark": {
+    "theme": "dark",
+    "viewport": 1440,
+    "textChecked": 246,
+    "manualGradient": 2,
+    "minRatio": 1.27,
+    "contrastFailures": 49,
+    "worst": [
+      {
+        "text": "➔",
+        "ratio": 1.27,
+        "fg": "#232f42",
+        "bg": "#0d1c2d",
+        "size": 13,
+        "need": 4.5
+      },
+      {
+        "text": "➔",
+        "ratio": 1.27,
+        "fg": "#232f42",
+        "bg": "#0d1c2d",
+        "size": 13,
+        "need": 4.5
+      },
+      {
+        "text": "➔",
+        "ratio": 1.27,
+        "fg": "#232f42",
+        "bg": "#0d1c2d",
+        "size": 13,
+        "need": 4.5
+      },
+      {
+        "text": "累積學習日",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "今日推薦",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "觀察股票",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "完成 Label",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "研究樣本",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "資料收集",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "處理股票日",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "有效標記日",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "歷史樣本",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      }
+    ],
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 1,
+    "backdropFilterTargets": [
+      "header.fixed"
+    ]
+  },
+  "before-mobile-dark": {
+    "theme": "dark",
+    "viewport": 390,
+    "textChecked": 240,
+    "manualGradient": 2,
+    "minRatio": 1.27,
+    "contrastFailures": 48,
+    "worst": [
+      {
+        "text": "➔",
+        "ratio": 1.27,
+        "fg": "#232f42",
+        "bg": "#0d1c2d",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "➔",
+        "ratio": 1.27,
+        "fg": "#232f42",
+        "bg": "#0d1c2d",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "➔",
+        "ratio": 1.27,
+        "fg": "#232f42",
+        "bg": "#0d1c2d",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "累積學習日",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "今日推薦",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "觀察股票",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "完成 Label",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "研究樣本",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "資料收集",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "處理股票日",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "有效標記日",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "歷史樣本",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      }
+    ],
+    "scrollWidth": 390,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 1,
+    "backdropFilterTargets": [
+      "header.fixed"
+    ]
+  },
+  "after-desktop-light": {
+    "theme": "light",
+    "viewport": 1440,
+    "textChecked": 326,
+    "manualGradient": 0,
+    "minRatio": 4.87,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 11,
+    "backdropFilterTargets": [
+      "header.lg-header",
+      "section.hero",
+      "section.glass",
+      "section.glass",
+      "details.glass",
+      "div.glass",
+      "section.glass",
+      "section.glass",
+      "section.glass",
+      "section.glass",
+      "section.glass"
+    ]
+  },
+  "after-mobile-light": {
+    "theme": "light",
+    "viewport": 390,
+    "textChecked": 320,
+    "manualGradient": 0,
+    "minRatio": 4.93,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 390,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 2,
+    "backdropFilterTargets": [
+      "header.lg-header",
+      "nav.lg-bottom-nav"
+    ]
+  },
+  "after-desktop-dark": {
+    "theme": "dark",
+    "viewport": 1440,
+    "textChecked": 326,
+    "manualGradient": 0,
+    "minRatio": 4.95,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 11,
+    "backdropFilterTargets": [
+      "header.lg-header",
+      "section.hero",
+      "section.glass",
+      "section.glass",
+      "details.glass",
+      "div.glass",
+      "section.glass",
+      "section.glass",
+      "section.glass",
+      "section.glass",
+      "section.glass"
+    ]
+  },
+  "after-mobile-dark": {
+    "theme": "dark",
+    "viewport": 390,
+    "textChecked": 320,
+    "manualGradient": 0,
+    "minRatio": 4.78,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 390,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 2,
+    "backdropFilterTargets": [
+      "header.lg-header",
+      "nav.lg-bottom-nav"
+    ]
+  },
+  "after-desktop-light-modal": {
+    "theme": "light",
+    "viewport": 1440,
+    "textChecked": 354,
+    "manualGradient": 1,
+    "minRatio": 4.87,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 13,
+    "backdropFilterTargets": [
+      "header.lg-header",
+      "section.hero",
+      "section.glass",
+      "section.glass",
+      "details.glass",
+      "div.glass",
+      "section.glass",
+      "section.glass",
+      "section.glass",
+      "section.glass",
+      "section.glass",
+      "div.lg-modal",
+      "div.lg-modal-panel"
+    ]
+  },
+  "after-narrow320-light": {
+    "theme": "light",
+    "viewport": 320,
+    "textChecked": 320,
+    "manualGradient": 0,
+    "minRatio": 4.93,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 320,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 2,
+    "backdropFilterTargets": [
+      "header.lg-header",
+      "nav.lg-bottom-nav"
+    ]
+  },
+  "before-narrow320-light": {
+    "theme": "light",
+    "viewport": 320,
+    "textChecked": 240,
+    "manualGradient": 2,
+    "minRatio": 1.53,
+    "contrastFailures": 25,
+    "worst": [
+      {
+        "text": "09:00–09:10 · 模擬",
+        "ratio": 1.53,
+        "fg": "#34d399",
+        "bg": "#caede3",
+        "size": 12.5,
+        "need": 4.5
+      },
+      {
+        "text": "09:30~12:30",
+        "ratio": 1.64,
+        "fg": "#22d3ee",
+        "bg": "#eff4ff",
+        "size": 12.5,
+        "need": 4.5
+      },
+      {
+        "text": "尚無 B1 新跑道快照",
+        "ratio": 1.74,
+        "fg": "#48d7a3",
+        "bg": "#f8fafc",
+        "size": 12.5,
+        "need": 4.5
+      },
+      {
+        "text": "今日當沖模組",
+        "ratio": 1.92,
+        "fg": "#34d399",
+        "bg": "#ffffff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "工位摸魚 · 社畜自救看盤室",
+        "ratio": 1.95,
+        "fg": "#f59e0b",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "01",
+        "ratio": 1.95,
+        "fg": "#f59e0b",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "新規則前向模擬 · 非下單建議 · 尚未驗證勝率。依新鮮",
+        "ratio": 1.95,
+        "fg": "#f59e0b",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "03",
+        "ratio": 1.95,
+        "fg": "#f59e0b",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "12:30",
+        "ratio": 2.05,
+        "fg": "#f59e0b",
+        "bg": "#f8fafc",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "0%",
+        "ratio": 2.15,
+        "fg": "#f59e0b",
+        "bg": "#ffffff",
+        "size": 17,
+        "need": 4.5
+      },
+      {
+        "text": "工位自救 · 虛擬交易",
+        "ratio": 2.2,
+        "fg": "#06b6d4",
+        "bg": "#eff4ff",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "TWSE+TPEx",
+        "ratio": 2.21,
+        "fg": "#06b6d4",
+        "bg": "#e6f8fb",
+        "size": 12,
+        "need": 4.5
+      }
+    ],
+    "scrollWidth": 320,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 1,
+    "backdropFilterTargets": [
+      "header.fixed"
+    ]
+  },
+  "after-desktop-dark-modal": {
+    "theme": "dark",
+    "viewport": 1440,
+    "textChecked": 354,
+    "manualGradient": 1,
+    "minRatio": 4.95,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 13,
+    "backdropFilterTargets": [
+      "header.lg-header",
+      "section.hero",
+      "section.glass",
+      "section.glass",
+      "details.glass",
+      "div.glass",
+      "section.glass",
+      "section.glass",
+      "section.glass",
+      "section.glass",
+      "section.glass",
+      "div.lg-modal",
+      "div.lg-modal-panel"
+    ]
+  },
+  "after-narrow320-dark": {
+    "theme": "dark",
+    "viewport": 320,
+    "textChecked": 320,
+    "manualGradient": 0,
+    "minRatio": 4.78,
+    "contrastFailures": 0,
+    "worst": [],
+    "scrollWidth": 320,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 2,
+    "backdropFilterTargets": [
+      "header.lg-header",
+      "nav.lg-bottom-nav"
+    ]
+  },
+  "before-narrow320-dark": {
+    "theme": "dark",
+    "viewport": 320,
+    "textChecked": 240,
+    "manualGradient": 2,
+    "minRatio": 1.27,
+    "contrastFailures": 48,
+    "worst": [
+      {
+        "text": "➔",
+        "ratio": 1.27,
+        "fg": "#232f42",
+        "bg": "#0d1c2d",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "➔",
+        "ratio": 1.27,
+        "fg": "#232f42",
+        "bg": "#0d1c2d",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "➔",
+        "ratio": 1.27,
+        "fg": "#232f42",
+        "bg": "#0d1c2d",
+        "size": 12,
+        "need": 4.5
+      },
+      {
+        "text": "累積學習日",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "今日推薦",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "觀察股票",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "完成 Label",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "研究樣本",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "資料收集",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "處理股票日",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "有效標記日",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      },
+      {
+        "text": "歷史樣本",
+        "ratio": 3.34,
+        "fg": "#64748b",
+        "bg": "#1a2234",
+        "size": 11,
+        "need": 4.5
+      }
+    ],
+    "scrollWidth": 320,
+    "horizontalOverflow": false,
+    "overflowOffenders": [],
+    "backdropFilterLayers": 1,
+    "backdropFilterTargets": [
+      "header.fixed"
+    ]
+  }
+}
