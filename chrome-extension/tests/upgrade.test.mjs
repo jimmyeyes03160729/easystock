@@ -18,7 +18,8 @@ globalThis.chrome = {
   tabs: { create: async () => {} }
 };
 const manifestText = await readFile(new URL('../manifest.json', import.meta.url), 'utf8');
-const authConfigText = await readFile(new URL('../auth-config.json', import.meta.url), 'utf8');
+// Fixed fixture: the test must not depend on whether the real auth-config.json is filled in yet.
+const authConfigText = JSON.stringify({ database_url: 'https://easystock-c237a-default-rtdb.firebaseio.com', firebase_api_key: '', oauth_client_id: '' });
 globalThis.fetch = async url => {
   if (String(url).endsWith('auth-config.json')) return new Response(authConfigText);
   return new Response('{}');

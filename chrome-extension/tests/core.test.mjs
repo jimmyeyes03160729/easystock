@@ -97,6 +97,12 @@ test('production has narrow permissions, packaged resources, no test VIP', async
   assert.equal('oauth2' in m, false, 'source manifest has no placeholder OAuth client');
   assert.equal('key' in m, false);
   assert.equal(m.content_security_policy.extension_pages, "script-src 'self'; object-src 'none'; base-uri 'none'");
+  // auth-config.json may only hold public identifiers.
+  const auth = JSON.parse(await readFile(new URL('../auth-config.json', import.meta.url), 'utf8'));
+  assert.deepEqual(Object.keys(auth).sort(), ['_comment', 'database_url', 'extension_id', 'extension_public_key', 'firebase_api_key', 'firebase_project_id', 'oauth_client_id']);
+  assert.match(auth.oauth_client_id, /^$|^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/);
+  const { _comment, ...values } = auth;
+  assert.doesNotMatch(JSON.stringify(values), /secret|PRIVATE KEY|refresh_token/i);
   const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
   assert.doesNotMatch(html, /<script[^>]+src="https?:/);
   const cfg = JSON.parse(await readFile(new URL('../config.json', import.meta.url)));
