@@ -19,7 +19,7 @@
 
 ## 目前主要進行中主線（2026-10-07）
 
-- [ ] **Chrome Extension 2.0（2026-10-16 確認需求，尚待開發）**
+- [ ] **Chrome Extension 2.0（2026-10-16 確認需求；RC 程式已完成，待 Owner 設定 Google OAuth / Rules 與上架）**
   - 優先修復自選股加入後未出現／股價空白、盤中加權指數更新時間落後；須有資料新鮮度／缺失狀態，不可用過期行情冒充即時。
   - Google 登入 + Firebase 安全同步（自選股／設定／提醒／群組等），既有本機資料第一次登入只合併、不覆蓋、不刪除。
   - 低調黑白「沖」字 ICON、預設白色主題、漲跌色彩可選紅綠／黑白、股票代號按新增直接加入不彈窗。
@@ -177,17 +177,16 @@
   - 1.05 完成：修正 Chrome runtime `{ ok, value }` 的 `FETCH_DAILY` 解包，今日 partial K 僅聚合台北今日有效分時資料。
   - Chrome 內部版本 `1.0.5`，對外 `version_name = 1.05`；重新產生透明紅色「沖」字 16/48/128 PNG，並加入 PNG CRC / zlib 完整性測試。
 
-- [ ] **Chrome Extension 2.0：正式開發清單（2026-10-16）**
-  - [ ] **P0 自選股 BUG**：修新增後沒進列表／已加入但沒有股價；上市、上櫃及 ETF 均需驗證保存、渲染及行情載入，缺資料／舊資料不可冒充即時。
-  - [ ] **P0 指數刷新延遲**：使用者曾於 10:48 看到 10:16 的加權指數；查 quote_at、received_at、輪詢、來源、cache、台北時區與 freshness。
-  - [ ] **Google 登入 + Firebase 同步**：跨裝置同步自選股、當沖監控、提醒、群組與設定；初次登入本機／雲端 union 合併、離線可用，`users/{uid}` 隔離。
-  - [ ] **黑白「沖」字 ICON**：低調並保持小尺寸辨識度，16/48/128 等圖檔及上架包一致。
-  - [ ] **新增股票無確認彈窗**：輸入有效代號按「新增」直接加入；重複／無效代碼用非阻斷提示。
-  - [ ] **文案調整**：取消小工具「當沖標的」等可能暗示交易建議的用詞，按語境改為「量多進攻／量減退守」；「當沖 AI 架構」改為「架構」。用詞調整不等於完成法遵審查。
-  - [ ] **漲跌兩種色彩設定**：「紅綠」／「黑白低調款」可切換，仍以正負號或箭頭辨識。
-  - [ ] **預設白色主題**：首次安裝、無設定時預設淺色；保留舊使用者的既有偏好，與漲跌配色獨立。
-  - [ ] **測試／上架驗收**：登入登出、同步與 migration、加入股票與報價、指數時效、文案、主題、ICON、MV3 權限與 Chrome 上架包。
-  - 本項為新增規劃，尚未修改 2.0 程式、未驗證／封裝／上架；1.05 現有完成狀態不變。
+- [ ] **Chrome Extension 2.0：正式開發清單（2026-10-16）** — Release Candidate 程式已完成（分支 `feat/chrome-extension-2.0`，PR 待 Owner 整合），尚未上架；細節見 `docs/CHROME_EXTENSION_2_0_RELEASE.md`
+  - [x] **P0 自選股 BUG**（CODE_VERIFIED）：根因為 popup 丟棄進行中的點擊、舊 snapshot 覆蓋新清單、public_feed 缺 00878 且 1102 為前日 09:00 快照、跨日欄位混用；已修正並以 2330／1102／00878 測試。
+  - [x] **P0 指數刷新延遲**（CODE_VERIFIED）：`feeds()` 指數 TTL 分支仍回舊 cache、提醒關閉時背景不刷新、遠端設定失敗與 public_feed 失敗連帶阻擋；已改為獨立 30 秒刷新並標示 STALE。
+  - [ ] **Google 登入 + Firebase 同步**（IMPLEMENTED／MOCK_VERIFIED；真實登入 BLOCKED_BY_OAUTH_CONFIGURATION；`users/{uid}` Rules 已提案未發布）：Owner 依 `docs/CHROME_EXTENSION_2_0_GOOGLE_SETUP.md` 完成設定後做 LIVE 驗收。
+  - [x] **黑白「沖」字 ICON**（CODE_VERIFIED）：16/48/128 單色 RGBA PNG，上架包一致。
+  - [x] **新增股票無確認彈窗**（CODE_VERIFIED）：直接加入；重複顯示「已在自選」、無效代碼 inline 錯誤。
+  - [x] **文案調整**（CODE_VERIFIED）：量多進攻／量減退守、「架構」；底層訊號未改。用詞調整不等於完成法遵審查。
+  - [x] **漲跌兩種色彩設定**（CODE_VERIFIED）：紅綠／黑白低調，保留 ▲▼ 與 +/-。
+  - [x] **預設白色主題**（CODE_VERIFIED）：新安裝淺色；1.05 既有偏好（含深色）保留。
+  - [ ] **測試／上架驗收**：自動化與 Mock 測試、ZIP 驗證已完成；真實 Google 登入、跨帳號 LIVE、Rules 發布、真實 Chrome 安裝回歸、Privacy practices 與提交審核待 Owner。
 
 - [ ] **玉山 API 行情資料源整合（只讀，不交易）**
   - [x] 玉山 API 已完成登入 / WebSocket 連線驗證，可成功訂閱並收到市場資料事件。

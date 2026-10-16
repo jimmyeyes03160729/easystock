@@ -364,7 +364,11 @@ export function createSync({ auth, dbUrl, fetchImpl = fetch, transact, readMeta,
     if (running) { again = true; return running; }
     running = (async () => {
       let result;
-      do { again = false; result = await once(); } while (again && result?.ok);
+      do {
+        again = false;
+        // An unexpected error must surface as a visible failure (with backoff), never a stuck "syncing".
+        result = await once().catch(() => fail({ code: 'INTERNAL', message: '同步發生未預期錯誤，稍後重試' }));
+      } while (again && result?.ok);
       return result;
     })().finally(() => { running = null; });
     return running;

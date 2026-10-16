@@ -44,7 +44,8 @@ for (const size of [16, 48, 128]) {
   if (!existing || existing.length === 0) await writeFile(iconPath, icon(size));
 }
 const files = ['manifest.json', 'popup.html', 'popup.js', 'chart.html', 'chart.js', 'background.js', 'rebound-engine.js', 'content-script.js', 'core.js', 'auth.js', 'sync.js', 'auth-config.json', 'environment.js', 'icons.js', 'config.json', 'github_config_schema.json', 'README.md', 'assets/popup.css', 'assets/v2.css', 'assets/TAILWIND-LICENSE.txt', 'assets/icon16.png', 'assets/icon48.png', 'assets/icon128.png', 'assets/icon.svg'];
-const authCfg = JSON.parse(await readFile(join(root, 'auth-config.json'), 'utf8'));
+// Tolerate a UTF-8 BOM (Windows editors add one when the Owner fills in the client ID).
+const authCfg = JSON.parse((await readFile(join(root, 'auth-config.json'), 'utf8')).replace(/^﻿/, ''));
 const CLIENT_ID = /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/;
 for (const mode of ['production', 'vm']) {
   const out = resolve(root, 'dist', mode);
