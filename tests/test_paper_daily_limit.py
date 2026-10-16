@@ -267,3 +267,24 @@ def test_core_and_admin_root_vm_sources_match():
                  'easystock_admin/store.py','easystock_admin/web.py','easystock_admin/health.py',
                  'easystock_admin/static/paper-trade.js','easystock_admin/static/index.html'):
         assert (ROOT/name).read_bytes()==(ROOT/'vm_runtime'/name).read_bytes(),name
+
+
+def test_five_allocations_preserve_remaining_and_idempotence(account):
+    _,path=account
+    first=ledger.buy('2303','fixture',200,path=path,timestamp=AT,execution_id='first',allocation_slots=5)
+    assert first['shares']==1000 and first['cost']==200000
+    assert ledger.buy('2303','fixture',200,path=path,timestamp=AT,execution_id='first',allocation_slots=5)['already_bought']
+    for i in range(4):
+        got=ledger.buy(str(2400+i),'fixture',100,path=path,timestamp=AT,allocation_slots=5)
+        assert got['shares']==2000 and got['cost']==200000
+    assert metrics(path)['daily_buy_remaining']==0
+    ledger.sell('2303',200,path=path,timestamp=AT)
+    assert metrics(path)['daily_buy_remaining']==0
+    assert ledger.buy('2500','fixture',100,path=path,timestamp=AT,allocation_slots=5)['skip_reason']=='daily_buy_limit_exceeded'
+
+
+def test_allocation_does_not_reallocate_an_unaffordable_lot(account):
+    _,path=account
+    got=ledger.buy('2303','fixture',201,path=path,timestamp=AT,allocation_slots=5)
+    assert got['skip_reason']=='allocation_cap_too_small'
+    assert metrics(path)['daily_buy_used']==0

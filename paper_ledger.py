@@ -231,7 +231,7 @@ def skipped(con, stamp, symbol, name, price, reason, skip_reason=None):
     return {'status':'skipped', 'reason':reason, 'shares':0, 'skip_reason': skip_reason}
 
 
-def buy(symbol, name, price, path=None, timestamp=None, execution_id=None, max_shares=None):
+def buy(symbol, name, price, path=None, timestamp=None, execution_id=None, max_shares=None, allocation_slots=None):
     stamp = datetime_tpe(timestamp)
     symbol, name, price = str(symbol), str(name), d(price)
     if price <= 0 or price > Decimal('10000000'):
@@ -254,7 +254,11 @@ def buy(symbol, name, price, path=None, timestamp=None, execution_id=None, max_s
             return skipped(con, stamp, symbol, name, price, '存在跨日未結部位，禁止新增模擬買進', skip_reason='stale_position')
         metrics = daily_metrics(con,pid,stamp.date().isoformat())
         remaining = money(metrics['daily_buy_remaining'])
-        shares = int(remaining // (price * LOT)) * LOT
+        allocation = remaining
+        if allocation_slots is not None:
+            if type(allocation_slots) is not int or not 1<=allocation_slots<=5:raise ValueError('invalid_allocation_slots')
+            allocation = min(remaining,money(acct['daily_buy_limit'])/allocation_slots)
+        shares = int(allocation // (price * LOT)) * LOT
         if max_shares is not None:
             if type(max_shares) is not int or max_shares < LOT or max_shares % LOT:
                 raise ValueError('invalid_executable_depth')
@@ -268,7 +272,7 @@ def buy(symbol, name, price, path=None, timestamp=None, execution_id=None, max_s
         if shares <= 0:
             return skipped(con, stamp, symbol, name, price,
                            f'今日剩餘買進額度 {remaining:,.2f} 元不足以買進一張',
-                           skip_reason='daily_buy_limit_exceeded')
+                           skip_reason='allocation_cap_too_small' if allocation<remaining else 'daily_buy_limit_exceeded')
         trade_id = uuid.uuid4().hex
         after = money(remaining - gross)
         con.execute('''INSERT INTO paper_trade_positions(symbol,name,entry_price,shares,entry_time,period_id,entry_date,buy_fee)

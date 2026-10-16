@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="lg-root" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="robots" content="noindex" />
+  <title>Liquid Glass 原型 · 當沖吧！牛馬仔</title>
+  <script>
+    // Prototype theme: ?theme= wins, then this prototype's own key. Main's MOHREN_THEME is never written.
+    (() => {
+      let theme = new URLSearchParams(location.search).get('theme');
+      if (theme !== 'dark' && theme !== 'light') { try { theme = localStorage.getItem('LG_PROTO_THEME'); } catch (_) {} }
+      document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/liquid-glass.css" />
+  <link rel="stylesheet" href="prototype.css" />
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js" defer></script>
+</head>
+<body class="lg">
+
+<header class="lg-header glass-chrome">
+  <a class="lg-brand" href="#dashboard" aria-label="當沖吧！牛馬仔首頁">
+    <img src="../../icon/BANNER-376.png?v=20261003" alt="EasyStock 當沖吧！牛馬仔" width="188" height="62" fetchpriority="high" decoding="async" />
+  </a>
+  <div class="lg-header-tools">
+    <span class="lg-chip mono">TWSE / TPEx · 研究資料看板</span>
+    <button type="button" class="lg-btn" data-sync><span class="material-symbols-outlined" aria-hidden="true">sync</span>更新市場資料</button>
+  </div>
+  <nav class="lg-topnav" aria-label="首頁區域">
+    <div class="lg-seg">
+      <a href="#intraday-strategies" aria-current="location">01 盤中摸魚</a>
+      <a href="#eight-methods">02 開盤八法・尾盤八法</a>
+      <a href="#learningSection">03 牛馬 AI 加班進修</a>
+      <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener">社畜後台 ↗</a>
+    </div>
+  </nav>
+  <div class="lg-header-right">
+    <button type="button" id="themeToggle" class="lg-btn" aria-pressed="false" title="切換明暗主題">
+      <span class="material-symbols-outlined" id="themeIcon" aria-hidden="true">dark_mode</span><span id="themeLabel">深色模式</span>
+    </button>
+    <div class="lg-user glass-tile">
+      <span class="material-symbols-outlined" aria-hidden="true">coffee</span>
+      <div><b>工位摸魚工程師</b><small>9527 · 研究看板</small></div>
+    </div>
+  </div>
+</header>
+
+<main class="lg-main" id="dashboard">
+
+  <!-- Hero + 現在的資料與模式 -->
+  <div class="bento">
+    <section class="hero glass s-7" aria-labelledby="heroTitle">
+      <div>
+        <div class="hero-eyebrow">
+          <span class="lg-chip lg-chip--brand mono">工位摸魚 · 社畜自救看盤室</span>
+          <span class="lg-label mono">/ RESEARCH DASHBOARD</span>
+          <span class="lg-chip lg-chip--warn" role="note">原型 · 合成資料，非真實行情</span>
+        </div>
+        <h1 id="heroTitle">上班很累，看盤要清楚。</h1>
+        <p>有訊號偷摸魚，沒訊號專心裝忙。今日當沖機會、防守底線與下班進修進度，一眼看完。</p>
+      </div>
+      <div class="hero-actions">
+        <button type="button" class="lg-btn lg-btn--primary" data-sync><span class="material-symbols-outlined" aria-hidden="true">sync</span>同步最新分時數據</button>
+        <a class="ext-cta glass-tile" href="https://chromewebstore.google.com/detail/khidbieahmnnandhkcmjceideljgjfid" target="_blank" rel="noopener noreferrer" aria-label="在 Chrome 線上應用程式商店安裝當沖吧牛馬仔小工具">
+          <img src="../../chrome-extension/assets/icon128.png" width="40" height="40" alt="">
+          <span>安裝 Chrome 小工具<small>工位摸魚快速看盤、免切頁 ↗</small></span>
+        </a>
+      </div>
+      <div class="hero-status" role="status" id="dataStatusText"><span class="lg-dot lg-dot--ok" aria-hidden="true"></span>合成資料已載入 · 10:24:08 更新</div>
+    </section>
+
+    <section class="glass card s-5" aria-labelledby="overviewTitle">
+      <div class="card-title"><h2 id="overviewTitle">現在的資料與模式</h2><span class="lg-chip lg-chip--interactive">Research · Paper</span></div>
+      <div class="overview-grid">
+        <div class="glass-tile"><span class="lg-label">盤中快照狀態</span><p>有效快照 · 10:24</p></div>
+        <div class="glass-tile"><span class="lg-label">資料有效性</span><p>日線與盤中分開確認</p></div>
+        <div class="glass-tile"><span class="lg-label">用途 / 執行模式</span><p>Research 研究 · Paper 模擬</p><small>不是 Live 實盤控制台；公開快照無法確認實盤開關。</small></div>
+        <div class="glass-tile"><span class="lg-label">來源最後更新</span><p class="mono">10:24:08</p></div>
+      </div>
+    </section>
+
+    <section class="glass health s-12" aria-labelledby="healthTitle">
+      <h2 id="healthTitle">資料來源狀態</h2>
+      <div class="health-rows" aria-live="polite">
+        <span class="lg-chip"><span class="lg-dot lg-dot--ok" aria-hidden="true"></span>永豐行情<span>正常</span></span>
+        <span class="lg-chip"><span class="lg-dot lg-dot--ok" aria-hidden="true"></span>玉山行情<span>正常</span></span>
+        <span class="lg-chip"><span class="lg-dot lg-dot--warn" aria-hidden="true"></span>Fugle<span>延遲</span></span>
+        <span class="lg-chip"><span class="lg-dot lg-dot--ok" aria-hidden="true"></span>Firebase<span>正常</span></span>
+      </div>
+      <span class="health-time mono" role="status">最後檢查 10:24:02</span>
+    </section>
+
+    <details class="glass data-details s-12">
+      <summary>資料與模型細節</summary>
+      <div class="stat-grid" aria-label="資料狀態">
+        <div class="glass-tile"><span class="lg-label">熱門股票池</span><strong>500</strong><small>成交額 TOP 500</small></div>
+        <div class="glass-tile"><span class="lg-label">資料日期</span><strong>2026-10-15</strong><small>日線收盤資料，非即時報價</small></div>
+        <div class="glass-tile"><span class="lg-label">隔日衝最後掃描</span><strong>13:24</strong><small>尾盤量能優先</small></div>
+        <div class="glass-tile"><span class="lg-label">網頁讀取</span><strong>10:24:08</strong><small>3 個請求 · 412 ms</small></div>
+        <div class="glass-tile"><span class="lg-label">模型資料完整度</span><strong style="color:var(--lg-brand)">96%</strong><small>特徵完備度評估</small></div>
+        <div class="glass-tile"><span class="lg-label">回測訊號數</span><strong>18,204</strong><small>十年間歷史樣本</small></div>
+        <div class="glass-tile"><span class="lg-label">掃描模式</span><strong style="color:var(--lg-info)">盤中</strong><small>僅供量化研究</small></div>
+        <div class="glass-tile"><span class="lg-label">今日當沖模組</span><strong>rules-2.0</strong><small>盤中追蹤中</small></div>
+      </div>
+    </details>
+  </div>
+
+  <!-- 篩選器 -->
+  <div class="glass toolbar" role="region" aria-label="股票篩選" style="margin-top:16px">
+    <div class="toolbar-group">
+      <span class="toolbar-label"><span class="material-symbols-outlined" aria-hidden="true">filter_alt</span>每股價格快選（元）</span>
+      <div class="lg-seg" role="group" aria-label="每股價格快選">
+        <button type="button" aria-pressed="true" data-price="">不限</button>
+        <button type="button" aria-pressed="false" data-price="50">50以下</button>
+        <button type="button" aria-pressed="false" data-price="100">100以下</button>
+        <button type="button" aria-pressed="false" data-price="200">200以下</button>
+      </div>
+      <label class="lg-field">每股<input aria-label="最低股價" type="number" min="0" step="1" placeholder="最低"><span aria-hidden="true">～</span><input aria-label="最高股價" type="number" min="0" step="1" placeholder="最高"></label>
+      <label class="lg-field">單張預算<input aria-label="單張預算" type="number" min="0" step="10000" placeholder="不限" style="width:84px;text-align:right"></label>
+    </div>
+    <div class="toolbar-group" style="width:auto">
+      <button type="button" class="lg-btn">清除價格 / 預算</button>
+      <label class="lg-field">顯示排行<select aria-label="顯示標的數量"><option value="5">Top 5</option><option value="10">Top 10</option></select></label>
+    </div>
+  </div>
+  <p class="filter-hint" role="status">僅篩選顯示；單張為 1000 股估算，不含費稅。</p>
+
+  <!-- 01 盤中摸魚 -->
+  <div class="sec-head" id="intraday-strategies">
+    <div>
+      <span class="sec-num glass-tile">01</span>
+      <h2>盤中摸魚 · AI 模擬當沖</h2>
+      <span class="lg-chip lg-chip--info">工位自救 · 虛擬交易</span>
+    </div>
+    <span>永豐 Shioaji 行情 ➔ 量能雷達 ➔ 規則轉強／突破 ➔ AI 附加評分</span>
+  </div>
+
+  <section class="glass card" id="daytradeModule" aria-label="AI 模擬當沖">
+    <div class="dt-head">
+      <div>
+        <b>AI 模擬當沖標的 · 雙跑道監控</b>
+        <span class="lg-chip lg-chip--brand mono">當沖模型: rules-2.0</span>
+        <span class="lg-label mono">10:24 盤中掃描</span>
+      </div>
+      <button type="button" class="lg-btn"><span class="material-symbols-outlined" aria-hidden="true">share</span>分享圖片 ↗</button>
+    </div>
+
+    <ol class="rhythm" aria-label="當日節奏" style="list-style:none;padding:0">
+      <li class="glass-tile"><time style="color:var(--lg-ok)">09:00–09:10</time><span>B1 五檔觀察 · 09:10 狀態通知</span></li>
+      <li class="glass-tile"><time style="color:var(--lg-info)">09:30</time><span>跑道 A 轉強／突破</span></li>
+      <li class="glass-tile"><time style="color:var(--lg-warn)">12:30</time><span>停止新單進場</span></li>
+      <li class="glass-tile"><time style="color:var(--lg-bad)">12:55</time><span>雙跑道全平倉收工</span></li>
+    </ol>
+
+    <div class="lanes">
+      <div class="lane glass-tile">
+        <div class="lane-head">
+          <div><span class="lg-dot lg-dot--info" aria-hidden="true"></span><b>跑道 A · 轉強／突破模擬</b><span class="lg-chip lg-chip--info mono">09:30~12:30</span></div>
+          <small>VWAP 突破 · 大盤出貨過濾 · 限額 100 萬</small>
+        </div>
+        <p class="lg-note" style="margin:0 0 10px">規則模式 · 30–200 元模擬進場；觀察名單不限價。</p>
+        <div class="picks" id="aPicks"></div>
+      </div>
+
+      <div class="lane glass-tile">
+        <div class="lane-head">
+          <div><span class="lg-dot lg-dot--ok" aria-hidden="true"></span><b>B1 · 五檔順勢拉回</b><span class="lg-chip lg-chip--ok mono">09:00–09:10 · 模擬</span></div>
+          <small>限額 100 萬 · 熔斷防守</small>
+        </div>
+        <p class="lane-disclosure">新規則前向模擬 · 非下單建議 · 尚未驗證勝率。依新鮮五檔及逐筆成交觀察；資料不足不進場。成交價為可見買賣一檔的模擬估計，非券商成交。</p>
+        <p class="lg-note" style="margin:0 0 10px" role="status">B2 布林轉折／B3 五分K趨勢突破：背景觀察中</p>
+        <div class="picks" id="b1Picks"></div>
+        <div class="lane-sub"><h3>B2 · 布林轉折 <small class="mono">最早約 10:40</small></h3><div class="empty">等待 20 根完整五分K</div></div>
+        <div class="lane-sub"><h3>B3 · 五分K趨勢突破 <small class="mono">10:22 更新</small></h3><div class="picks" id="b3Picks"></div></div>
+        <details>
+          <summary>B1／B2／B3 回測、成交壓力與資料品質</summary>
+          <p>共用目前跑道規則，按當時接受的五檔、逐筆、股票池、大盤與五分K順序回放；只計完整且可核對的日期。每條各100萬元限額，費用與稅已計入。</p>
+          <p>每日13:20／21:20更新。缺完整五檔或當時股票池的日期不會捏造勝率。</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="glass card" id="revenue-observation" style="margin-top:16px" aria-labelledby="revTitle">
+    <div class="card-title"><h2 id="revTitle">營收成長＋正向消息｜隔日走勢觀察</h2><small role="status">累計 42 筆 · 每小時更新</small></div>
+    <div class="rev-stats">
+      <div class="glass-tile"><span class="lg-label">已結算</span><strong>38</strong></div>
+      <div class="glass-tile"><span class="lg-label">收盤上漲比例</span><strong class="lg-up">57.9%</strong></div>
+      <div class="glass-tile"><span class="lg-label">待補資料</span><strong>4</strong></div>
+    </div>
+    <div class="table-wrap glass-well">
+      <table class="lg-table">
+        <thead><tr><th scope="col">標的</th><th scope="col">訊號日</th><th scope="col">開盤</th><th scope="col">最高</th><th scope="col">最低</th><th scope="col">收盤</th></tr></thead>
+        <tbody id="revRows"></tbody>
+      </table>
+    </div>
+    <details style="margin-top:8px;color:var(--lg-sub);font-size:13px"><summary>查看篩選與走勢計算規則</summary><p>最新月營收年增率、月增率都必須大於 0，搭配近七天重大訊息中的明確正向文字。此區獨立觀察，不影響 A／B1／B2／B3、不下單、不傳送通知。</p></details>
+  </section>
+
+  <!-- 02 八法 -->
+  <div class="sec-head" id="eight-methods">
+    <div><span class="sec-num glass-tile">02</span><h2>開盤八法・尾盤八法</h2></div>
+    <span>盤勢分類與觀察選股</span>
+  </div>
+  <section class="glass card" id="eightMethodsModule" aria-label="開盤八法・尾盤八法">
+    <div class="eight-head">
+      <p>Asia/Taipei · 盤勢分類與觀察選股，未驗證為買入訊號，不自動下單。</p>
+      <button type="button" class="lg-btn"><span class="material-symbols-outlined" aria-hidden="true">share</span>分享</button>
+    </div>
+    <div class="eight-bar">
+      <div class="lg-seg" role="tablist" aria-label="八法觀察">
+        <button type="button" role="tab" id="openingTab" aria-selected="true" aria-controls="openingPanel">開盤八法</button>
+        <button type="button" role="tab" id="closingTab" aria-selected="false" aria-controls="closingPanel" tabindex="-1">尾盤八法</button>
+      </div>
+      <p class="eight-status" role="status" aria-live="polite"><span class="lg-dot lg-dot--ok" aria-hidden="true"></span>09:15 分類完成 · 10:24:05 更新</p>
+    </div>
+    <div id="openingPanel" role="tabpanel" aria-labelledby="openingTab">
+      <div class="markets" id="openingMarkets"></div>
+      <div class="eight-grid" id="openingRows"></div>
+      <nav class="pager" aria-label="開盤八法股票分頁">
+        <button type="button" class="lg-btn" data-page="-1" aria-controls="openingRows">上一頁</button>
+        <span role="status" aria-live="polite" id="pageStatus">1 / 3</span>
+        <button type="button" class="lg-btn" data-page="1" aria-controls="openingRows">下一頁</button>
+      </nav>
+      <details style="margin-top:8px;color:var(--lg-sub);font-size:13px"><summary>八種型態與三段價格說明</summary><p>昨收 → 09:05 → 09:10 → 09:15；各時點僅採用之前 30 秒內成交，平盤及缺 Tick 不分類。</p></details>
+    </div>
+    <div id="closingPanel" role="tabpanel" aria-labelledby="closingTab" hidden>
+      <p class="lg-note">13:00～13:25 觀察；13:25 起收盤集合競價，連續交易訊號已截止。</p>
+      <div class="empty" style="margin-top:12px">等待 13:00</div>
+    </div>
+  </section>
+
+  <!-- 03 牛馬 AI -->
+  <div class="sec-head">
+    <div><span class="sec-num glass-tile">03</span><h2>☕ 牛馬 AI 加班進修打卡室</h2><span class="lg-chip lg-chip--ok">收盤覆盤 · 離職基金</span></div>
+    <span class="mono">收盤加班進修 / DRONE SURVIVAL LOG</span>
+  </div>
+  <section class="glass card" id="learningSection" aria-labelledby="learningTitle">
+    <div class="learn-head">
+      <div><h2 id="learningTitle">AI 盤後學習與特訓進度</h2><p>白天當沖被修理，晚上留下來加班看盤；不求暴富，只求換個便當與湊齊離職自由金。</p></div>
+      <span class="lg-chip lg-chip--brand mono" role="status">累積學習中</span>
+    </div>
+    <div class="learn-bento">
+      <div class="glass-tile learn-hero"><span>累積血汗進修日</span><strong>63</strong>
+        <div><small>同一交易日只計一次 · 目標 101 個交易日</small><progress class="lg-progress" max="101" value="63" aria-label="同設定有效學習日進度" style="margin-top:8px"></progress></div></div>
+      <div class="glass-tile"><span>今日摸魚推薦</span><strong>7</strong><small>當沖引擎觸發推薦檔數</small></div>
+      <div class="glass-tile"><span>盤中盯盤記錄</span><strong>214</strong><small>主力急漲急跌留痕檔數</small></div>
+      <div class="glass-tile"><span>收盤復盤學會</span><strong style="color:var(--lg-info)">1,382</strong><small>完整有效標記的不重複股票</small></div>
+      <div class="glass-tile"><span>有效自救樣本</span><strong>5,906</strong><small>含進場急漲、停損出場特徵</small></div>
+      <div class="glass-tile"><span>行情報價收集</span><strong style="color:var(--lg-ok)">98.6%</strong><small>收盤報告 · 13:20</small></div>
+      <div class="glass-tile learn-wide"><b>當沖模型：rules-2.0（已套用）</b><small class="mono">離職自救進修進度 63 / 101</small></div>
+      <div class="glass-tile"><b>今日檢討週報：已完成</b><small class="mono">2026-10-15 21:20</small></div>
+    </div>
+    <details class="learn-why glass-well"><summary>💡 為什麼牛馬 AI 每天都要進修？</summary><p>盤中先記錄資料，收盤後建立標記與 AI 分析；達到訓練門檻仍需驗證。只有當沖引擎確認載入的版本，才算已套用。AI 復盤完成不代表勝率提高。</p></details>
+  </section>
+
+  <section class="glass disclaimer">
+    <b><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px;color:var(--lg-brand)">gavel</span>社畜看盤免責條款 &amp; 量化隔離說明</b>
+    本頁為量化資料整理與研究工具，不構成投資建議。首頁「開盤八法・尾盤八法」是盤勢分類與觀察選股，未經績效驗證，不是買入訊號；遇到紅燈市場可直接選擇觀望。AI 模擬當沖以 Oracle VM 發布的有效快照為準；模型分數非勝率，亦不代表真實成交。
+  </section>
+  <footer class="lg-footer"><span>當沖吧！牛馬仔 QUANT LAB · Research / Paper</span><span>TWSE / TPEx 日線 + VM 模擬快照</span></footer>
+</main>
+
+<nav class="lg-bottom-nav glass-chrome" aria-label="手機主導覽">
+  <a href="#intraday-strategies" aria-label="盤中摸魚" aria-current="location"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span><span>盤中摸魚</span></a>
+  <a href="#eight-methods" aria-label="開盤八法・尾盤八法"><span class="material-symbols-outlined" aria-hidden="true">trending_up</span><span>八法觀察</span></a>
+  <a href="#learningSection" aria-label="牛馬 AI"><span class="material-symbols-outlined" aria-hidden="true">psychology</span><span>牛馬 AI</span></a>
+  <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" aria-label="社畜後台" target="_blank" rel="noopener"><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span><span>社畜後台</span></a>
+</nav>
+
+<div class="lg-modal" id="stockDetailModal" hidden>
+  <div class="lg-modal-panel glass-chrome" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="modalTitle">--</h2> <span class="lg-chip" id="modalCategory">--</span>
+        <div class="sub" id="modalSub">--</div>
+      </div>
+      <div>
+        <a class="lg-btn" id="modalYahoo" target="_blank" rel="noopener noreferrer" href="#">Yahoo ↗</a>
+        <button type="button" class="lg-btn lg-btn--icon" id="modalClose" aria-label="關閉股票詳情"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="chart-well">
+        <div class="chart-legend" id="chartLegend"></div>
+        <div class="chart" id="chartContainer"></div>
+      </div>
+      <div class="side">
+        <div class="glass-tile score"><div class="score-ring" id="scoreRing" style="--score:72%"><div id="scoreValue">72</div></div><div><b>AI 附加評分</b><p class="lg-note" style="margin:2px 0 0">模型分數非勝率</p></div></div>
+        <div class="kv" id="modalKv"></div>
+        <div class="glass-tile"><b>觸發理由</b><ul id="modalReasons"></ul></div>
+        <div class="glass-tile"><b>風險提示</b><p class="lg-note" id="modalRisk"></p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="prototype.js"></script>
+</body>
+</html>

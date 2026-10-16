@@ -57,8 +57,8 @@ def defaults():
     def get(key, fallback):
         return float(values.get(key) or os.environ.get(key, fallback))
     return validate({
-        'min_price': get('DAYTRADE_MIN_PRICE', '1'),
-        'max_price': get('DAYTRADE_MAX_PRICE', '1000000'),
+        'min_price': get('WATCHLIST_MIN_PRICE', '1'),
+        'max_price': get('WATCHLIST_MAX_PRICE', '1000000'),
         'max_gain_pct': get('DAYTRADE_MAX_GAIN_PCT', '5'),
         'max_recommendations': get('LIVE_RADAR_TOP_N', '30')
     })

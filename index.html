@@ -32,9 +32,8 @@
     }
   </script>
   <style>
-    :root { color-scheme:light; --bg:#F8F9FF; --panel:#FFFFFF; --surface:#F1F5F9; --hover:#E2E8F0; --border:#E2E8F0; --border-bright:#CBD5E1; --main:#0B1C30; --sub:#475569; --muted:#64748B; --inverse:#FFFFFF; --up:#b91c32; --down:#137342; --accent:#D97706; --radar:#0284C7; }
-    :root[data-theme="light"], html.light { color-scheme:light; --bg:#F8F9FF; --panel:#FFFFFF; --surface:#F1F5F9; --hover:#E2E8F0; --border:#E2E8F0; --border-bright:#CBD5E1; --main:#0B1C30; --sub:#475569; --muted:#64748B; --inverse:#FFFFFF; --up:#b91c32; --down:#137342; --accent:#D97706; --radar:#0284C7; }
-    :root[data-theme="dark"], html.dark { color-scheme:dark; --bg:#0B0F17; --panel:#131A26; --surface:#1A2234; --hover:#262C3E; --border:#232F42; --border-bright:#313441; --main:#F1F5F9; --sub:#94A3B8; --muted:#64748B; --inverse:#0B0F17; --up:#EF4444; --down:#10B981; --accent:#F59E0B; --radar:#06B6D4; }
+    /* Legacy names alias the Liquid Glass tokens (assets/liquid-glass.css); light/dark values live there. */
+    :root { --bg:var(--lg-canvas); --panel:var(--glass-tile-solid); --surface:var(--glass-tile); --hover:var(--glass-tile-hover); --border:var(--glass-hairline); --border-bright:var(--glass-edge); --main:var(--lg-text); --sub:var(--lg-sub); --muted:var(--lg-muted); --inverse:var(--lg-primary-text); --accent:var(--lg-interactive); --radar:var(--lg-info); }
     * { box-sizing:border-box; }
     html { scroll-behavior:smooth; scroll-padding-top:100px; }
     body { margin:0; background:var(--bg); color:var(--main); font-family:Inter,"Space Grotesk","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; line-height:1.65; -webkit-font-smoothing:antialiased; }
@@ -125,7 +124,7 @@
     [class*="text-[8px]"], [class*="text-[9px]"], [class*="text-[10px]"] { font-size:12px!important; line-height:1.45!important; letter-spacing:0.015em; }
     [class*="text-[11px]"] { font-size:12.5px!important; line-height:1.45!important; letter-spacing:0.015em; }
     .workspace [class~="text-[8px]"],.workspace [class~="text-[9px]"],.modal-wide [class~="text-[8px]"],.modal-wide [class~="text-[9px]"] { font-size:12px!important; }
-    .disclaimer { margin-top:28px; padding:20px!important; background:var(--panel); border:1px solid var(--border); border-radius:12px!important; line-height:1.8; }
+    .disclaimer { margin-top:28px; padding:20px; background:var(--panel); border:1px solid var(--border); border-radius:12px; line-height:1.8; }
     .footer-line { display:flex; justify-content:space-between; gap:12px; font-size:12px; letter-spacing:.05em; color:var(--muted); padding-top:16px; }
     .modal-wide { box-shadow:0 24px 100px #000a; }
     .score-ring { background:conic-gradient(from 180deg,var(--accent) 0 var(--score),var(--border) var(--score) 100%); }
@@ -165,189 +164,13 @@
     }
     @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } * { transition:none!important; } }
 
-  /* ========================================================
-     STITCH WHITE THEME (白底漲紅跌綠版)
-     ======================================================== */
-  html[data-theme="light"], html.light, html:not(.dark) {
-    color-scheme: light;
-    background-color: var(--bg) !important;
-    color: var(--main) !important;
-  }
-  html[data-theme="light"] body, html.light body, html:not(.dark) body {
-    background-color: var(--bg) !important;
-    color: var(--main) !important;
-  }
-
-  /* Header Glassmorphism in Light Mode */
-  html[data-theme="light"] header.fixed,
-  html.light header.fixed,
-  html:not(.dark) header.fixed {
-    background-color: rgba(255, 255, 255, 0.9) !important;
-    border-color: #E2E8F0 !important;
-    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04) !important;
-  }
-
-  /* Background overrides */
-  html[data-theme="light"] .bg-\[\#0B0F17\]\/90, html.light .bg-\[\#0B0F17\]\/90, html:not(.dark) .bg-\[\#0B0F17\]\/90 { background-color: rgba(255, 255, 255, 0.9) !important; }
-  html[data-theme="light"] .bg-\[\#0B0F17\], html.light .bg-\[\#0B0F17\], html:not(.dark) .bg-\[\#0B0F17\] { background-color: #F8F9FF !important; }
-  html[data-theme="light"] .bg-\[\#131A26\], html.light .bg-\[\#131A26\], html:not(.dark) .bg-\[\#131A26\] { background-color: #FFFFFF !important; }
-  html[data-theme="light"] .bg-\[\#1A2234\], html.light .bg-\[\#1A2234\], html:not(.dark) .bg-\[\#1A2234\] { background-color: #F1F5F9 !important; }
-  html[data-theme="light"] .bg-\[\#0D1C2D\], html.light .bg-\[\#0D1C2D\], html:not(.dark) .bg-\[\#0D1C2D\] { background-color: #F8FAFC !important; }
-  html[data-theme="light"] .bg-\[\#122131\], html.light .bg-\[\#122131\], html:not(.dark) .bg-\[\#122131\] { background-color: #F1F5F9 !important; }
-  html[data-theme="light"] .bg-\[\#0D131F\]\/80, html.light .bg-\[\#0D131F\]\/80, html:not(.dark) .bg-\[\#0D131F\]\/80 { background-color: #F8FAFC !important; }
-  html[data-theme="light"] .bg-\[\#0F172A\]\/70, html.light .bg-\[\#0F172A\]\/70, html:not(.dark) .bg-\[\#0F172A\]\/70 { background-color: #FFFFFF !important; }
-  html[data-theme="light"] .bg-\[\#090D14\]\/60, html.light .bg-\[\#090D14\]\/60, html:not(.dark) .bg-\[\#090D14\]\/60 { background-color: #F8FAFC !important; }
-  html[data-theme="light"] .text-\[\#CBD5E1\], html.light .text-\[\#CBD5E1\], html:not(.dark) .text-\[\#CBD5E1\] { color: #334155 !important; }
-  html[data-theme="light"] .border-\[\#232F42\]\/80, html.light .border-\[\#232F42\]\/80, html:not(.dark) .border-\[\#232F42\]\/80 { border-color: #E2E8F0 !important; }
-  html[data-theme="light"] .bg-\[\#1C2B3C\], html.light .bg-\[\#1C2B3C\], html:not(.dark) .bg-\[\#1C2B3C\] { background-color: #EFF4FF !important; }
-
-  /* Border overrides */
-  html[data-theme="light"] .border-\[\#232F42\], html.light .border-\[\#232F42\], html:not(.dark) .border-\[\#232F42\] { border-color: #E2E8F0 !important; }
-  html[data-theme="light"] .border-\[\#232F42\]\/60, html.light .border-\[\#232F42\]\/60, html:not(.dark) .border-\[\#232F42\]\/60 { border-color: #E2E8F0 !important; }
-  html[data-theme="light"] .border-\[\#232F42\]\/30, html.light .border-\[\#232F42\]\/30, html:not(.dark) .border-\[\#232F42\]\/30 { border-color: #CBD5E1 !important; }
-
-  /* Text overrides */
-  html[data-theme="light"] .text-\[\#F1F5F9\], html.light .text-\[\#F1F5F9\], html:not(.dark) .text-\[\#F1F5F9\] { color: #0B1C30 !important; }
-  html[data-theme="light"] .text-\[\#94A3B8\], html.light .text-\[\#94A3B8\], html:not(.dark) .text-\[\#94A3B8\] { color: #475569 !important; }
-  html[data-theme="light"] .text-\[\#64748B\], html.light .text-\[\#64748B\], html:not(.dark) .text-\[\#64748B\] { color: #475569 !important; }
-
-  /* Hover overrides */
-  html[data-theme="light"] .hover\:bg-\[\#1C2B3C\]:hover, html.light .hover\:bg-\[\#1C2B3C\]:hover, html:not(.dark) .hover\:bg-\[\#1C2B3C\]:hover { background-color: #E2E8F0 !important; }
-  html[data-theme="light"] .hover\:bg-\[\#262C3E\]:hover, html.light .hover\:bg-\[\#262C3E\]:hover, html:not(.dark) .hover\:bg-\[\#262C3E\]:hover { background-color: #E2E8F0 !important; }
-  html[data-theme="light"] .hover\:bg-\[\#273647\]:hover, html.light .hover\:bg-\[\#273647\]:hover, html:not(.dark) .hover\:bg-\[\#273647\]:hover { background-color: #CBD5E1 !important; }
-  html[data-theme="light"] .hover\:text-\[\#F1F5F9\]:hover, html.light .hover\:text-\[\#F1F5F9\]:hover, html:not(.dark) .hover\:text-\[\#F1F5F9\]:hover { color: #0B1C30 !important; }
-
-  /* Panels and cards in light mode */
-  html[data-theme="light"] .panel,
-  html[data-theme="light"] #daytradeModule,
-  html[data-theme="light"] #eightMethodsModule,
-  html[data-theme="light"] #learningSection,
-  html[data-theme="light"] .system-stats > div,
-  html[data-theme="light"] .filter-panel,
-  html.light .panel,
-  html.light #daytradeModule,
-  html.light #eightMethodsModule,
-  html.light #learningSection,
-  html.light .system-stats > div,
-  html.light .filter-panel,
-  html:not(.dark) .panel,
-  html:not(.dark) #daytradeModule,
-  html:not(.dark) #eightMethodsModule,
-  html:not(.dark) #learningSection,
-  html:not(.dark) .system-stats > div,
-  html:not(.dark) .filter-panel {
-    background-color: #FFFFFF !important;
-    border-color: #E2E8F0 !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
-  }
-
-  /* Sub tiles & details */
-  html[data-theme="light"] .learning-numbers > div,
-  html[data-theme="light"] .learning-bottom > div,
-  html[data-theme="light"] #learningSection details,
-  html[data-theme="light"] details.eight-method,
-  html.light .learning-numbers > div,
-  html.light .learning-bottom > div,
-  html.light #learningSection details,
-  html.light details.eight-method,
-  html:not(.dark) .learning-numbers > div,
-  html:not(.dark) .learning-bottom > div,
-  html:not(.dark) #learningSection details,
-  html:not(.dark) details.eight-method {
-    background-color: #F8FAFC !important;
-    border-color: #E2E8F0 !important;
-  }
-
-  html[data-theme="light"] input#priceMin,
-  html[data-theme="light"] input#priceMax,
-  html[data-theme="light"] input#budgetInput,
-  html.light input#priceMin,
-  html.light input#priceMax,
-  html.light input#budgetInput,
-  html:not(.dark) input#priceMin,
-  html:not(.dark) input#priceMax,
-  html:not(.dark) input#budgetInput {
-    color: #0B1C30 !important;
-  }
-
-  html[data-theme="light"] select,
-  html.light select,
-  html:not(.dark) select {
-    background-color: #F8FAFC !important;
-    color: #0B1C30 !important;
-    border-color: #E2E8F0 !important;
-  }
-
-  /* Taiwan convention: red up, green down in light mode */
-  html[data-theme="light"] .market-up,
-  html.light .market-up,
-  html:not(.dark) .market-up {
-    color: #DC2626 !important;
-  }
-  html[data-theme="light"] .market-down,
-  html.light .market-down,
-  html:not(.dark) .market-down {
-    color: #16A34A !important;
-  }
-  html[data-theme="light"] .market-flat,
-  html.light .market-flat,
-  html:not(.dark) .market-flat {
-    color: #64748B !important;
-  }
-
-  /* Model & phase badges in light mode */
-  html[data-theme="light"] #intradayModelBadge,
-  html.light #intradayModelBadge,
-  html:not(.dark) #intradayModelBadge {
-    background-color: #FEF3C7 !important;
-    color: #B45309 !important;
-    border-color: #FCD34D !important;
-  }
-  html[data-theme="light"] #learningPhase,
-  html[data-theme="light"] #historyPhase,
-  html.light #learningPhase,
-  html.light #historyPhase,
-  html:not(.dark) #learningPhase,
-  html:not(.dark) #historyPhase {
-    background-color: #EFF6FF !important;
-    color: #1D4ED8 !important;
-    border-color: #BFDBFE !important;
-  }
-
-  /* Section heading borders in light mode */
-  html[data-theme="light"] .section-heading,
-  html.light .section-heading,
-  html:not(.dark) .section-heading {
-    border-color: #E2E8F0 !important;
-  }
-
-  /* Theme toggle button styling */
-  #themeToggleBtn {
-    transition: background-color .15s, border-color .15s, color .15s, transform .1s;
-  }
-  #themeToggleBtn:active {
-    transform: scale(0.96);
-  }
-  html[data-theme="light"] #themeToggleBtn,
-  html.light #themeToggleBtn,
-  html:not(.dark) #themeToggleBtn {
-    background-color: #FFFFFF !important;
-    border-color: #CBD5E1 !important;
-    color: #0B1C30 !important;
-  }
-  html[data-theme="light"] #themeToggleBtn:hover,
-  html.light #themeToggleBtn:hover,
-  html:not(.dark) #themeToggleBtn:hover {
-    background-color: #F1F5F9 !important;
-  }
-  
 :root{--shift-ink:#f4f4f4}
 .brand strong{font-size:20px;letter-spacing:-.02em}
 .intro{padding-top:24px}
 .intro h1{font-weight:900;letter-spacing:-.04em;font-size:clamp(28px,3.6vw,42px)}
-.panel{box-shadow:none!important}
+.panel{box-shadow:none}
 .share-btn{font-size:11px!important;padding:4px 8px!important;margin-left:8px;white-space:nowrap;border-radius:6px;}
-.learning-panel{margin:22px 0;padding:22px!important;border:1px solid var(--border)!important;border-radius:12px!important;background:var(--panel);}
+.learning-panel{margin:22px 0;padding:22px;border:1px solid var(--border);border-radius:12px;background:var(--panel);}
 .learning-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:20px}
 .learning-head h2{font-size:22px;font-weight:800;margin-top:4px}
 .phase-badge{padding:6px 12px;border:1px solid var(--border-bright);background:var(--surface);color:var(--accent);font-size:12px;font-weight:700;border-radius:8px;}
@@ -388,15 +211,16 @@
 
 .eight-module [role=tablist]{display:flex;gap:10px;margin:14px 0}.eight-module button{padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--text)}.eight-module [aria-selected=true]{border-color:#06b6d4;color:#06b6d4}.eight-card{border:1px solid var(--border);border-radius:10px;padding:14px;margin:10px 0;min-width:0}.eight-card svg{width:100%;max-width:340px;height:100px;color:#06b6d4}.eight-card ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0;list-style:none}.eight-card small{overflow-wrap:anywhere}.eight-pagination{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:14px 0}.eight-pagination button{min-height:44px}.eight-pagination button:disabled{opacity:.45;cursor:not-allowed}.eight-pagination button:focus-visible{outline:2px solid #06b6d4;outline-offset:3px}.eight-pagination span{text-align:center;font-size:14px}.eight-module [hidden]{display:none!important}@media(max-width:600px){.eight-card ul{grid-template-columns:1fr}}
 </style>
+<link rel="stylesheet" href="assets/liquid-glass.css?v=a09885af9bd5" />
 <link rel="icon" type="image/png" sizes="128x128" href="chrome-extension/assets/icon128.png">
 </head>
 
-<body class="min-h-screen font-sans">
+<body class="lg min-h-screen font-sans">
 
   <!-- =====================================================
        STITCH FIXED GLASSMORPHIC HEADER
        ===================================================== -->
-  <header class="fixed top-0 left-0 right-0 z-50 bg-[#0B0F17]/90 backdrop-blur-xl border-b border-[#232F42] shadow-[0_1px_8px_rgba(0,0,0,0.3)]">
+  <header class="glass-chrome fixed top-0 left-0 right-0 z-50">
     <div class="h-20 max-w-[1440px] mx-auto px-3 md:px-6 xl:px-8 flex items-center gap-3 xl:gap-4">
       <a class="brand-link flex items-center flex-none w-[190px] xl:w-[205px] text-decoration-none group" href="#dashboard" aria-label="當沖吧！牛馬仔首頁">
         <img src="icon/BANNER-376.png?v=20261003" alt="EasyStock 當沖吧！牛馬仔" width="188" height="62" fetchpriority="high" decoding="async" class="brand-logo w-[188px] h-[62px] object-contain object-left" />
@@ -441,7 +265,8 @@
   <!-- =====================================================
        HERO & BOSS KEY CONTROLS
        ===================================================== -->
-  <div class="intro">
+  <div class="lg-top-bento">
+  <div class="intro glass">
     <div>
       <div class="flex items-center gap-2 mb-1.5">
         <span class="px-2 py-0.5 rounded bg-[#1C2B3C] text-[#F59E0B] font-mono text-xs uppercase font-bold tracking-wide">工位摸魚 · 社畜自救看盤室</span>
@@ -465,14 +290,7 @@
     </div>
   </div>
 
-  <nav class="section-nav lg:hidden" aria-label="首頁行動區域">
-    <a href="#intraday-strategies">01 盤中摸魚</a>
-    <a href="#eight-methods">02 開盤八法・尾盤八法</a>
-    <a href="#learningSection">03 牛馬 AI 加班進修</a>
-    <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener">社畜後台 ↗</a>
-  </nav>
-
-  <section id="dashboardOverview" class="panel dashboard-ux" aria-labelledby="overviewTitle">
+  <section id="dashboardOverview" class="panel dashboard-ux glass" aria-labelledby="overviewTitle">
     <h2 id="overviewTitle">現在的資料與模式</h2>
     <div class="ux-overview-grid">
       <div><span>盤中快照狀態</span><p id="overviewSession">等待有效快照</p></div>
@@ -482,8 +300,16 @@
     </div>
     <p id="overviewNotice" role="status"></p>
   </section>
+  </div>
 
-  <section id="providerHealthCard" class="panel" aria-labelledby="providerHealthTitle">
+  <nav class="section-nav lg:hidden" aria-label="首頁行動區域">
+    <a href="#intraday-strategies">01 盤中摸魚</a>
+    <a href="#eight-methods">02 開盤八法・尾盤八法</a>
+    <a href="#learningSection">03 牛馬 AI 加班進修</a>
+    <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" target="_blank" rel="noopener">社畜後台 ↗</a>
+  </nav>
+
+  <section id="providerHealthCard" class="panel glass" aria-labelledby="providerHealthTitle">
     <div class="provider-health-heading"><h2 id="providerHealthTitle">資料來源狀態</h2><span id="providerHealthChecked" role="status">正在檢查…</span></div>
     <div id="providerHealthRows" class="provider-health-rows" aria-live="polite"></div>
   </section>
@@ -491,7 +317,7 @@
   <!-- =====================================================
        8-METRIC PULSE STREAM BAR
        ===================================================== -->
-  <details class="dashboard-data-details"><summary>資料與模型細節</summary>
+  <details class="dashboard-data-details glass"><summary>資料與模型細節</summary>
   <header class="system-header panel" aria-label="資料狀態">
     <div class="system-stats grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2.5">
 
@@ -577,7 +403,7 @@
   <!-- =====================================================
        RADAR FILTER TOOLBAR
        ===================================================== -->
-  <div class="filter-panel bg-[#131A26] border border-[#232F42] p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-sm mb-6" role="region" aria-label="股票篩選">
+  <div class="filter-panel glass p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-sm mb-6" role="region" aria-label="股票篩選">
     <div class="flex items-center gap-2 flex-wrap">
       <div class="flex items-center gap-1.5 text-[#64748B] font-mono text-xs sm:text-[13px]">
         <span class="material-symbols-outlined text-[18px] text-[#F59E0B]">filter_alt</span>
@@ -624,7 +450,7 @@
   </div>
 
   <section class="recommendation-section mb-8">
-    <div id="daytradeModule" class="bg-[#131A26] border border-[#232F42] rounded-2xl p-4 sm:p-5 shadow-sm">
+    <div id="daytradeModule" class="glass p-4 sm:p-5">
       <div class="flex items-center justify-between border-b border-[#232F42] pb-3 flex-wrap gap-2">
         <div class="flex items-center gap-2.5 flex-wrap">
           <span class="font-bold text-sm sm:text-base text-[#F1F5F9]">AI 模擬當沖標的 · 雙跑道監控</span>
@@ -723,7 +549,7 @@
        營收與消息隔日觀察
        ===================================================== -->
   <section id="revenue-observation" class="recommendation-section" style="margin-top:20px">
-    <div class="panel rounded-2xl p-4">
+    <div class="panel glass p-4">
       <h2 class="font-bold text-main">營收成長＋正向消息｜隔日走勢觀察</h2>
       <p id="revenueObservationStatus" class="text-sub text-xs mt-2" role="status">等待觀察資料</p>
       <details class="text-sub text-xs mt-3"><summary class="cursor-pointer">查看篩選與走勢計算規則</summary>
@@ -757,7 +583,7 @@
 
   <!-- 02 Independent market observations -->
   <div class="section-heading ranked-heading" id="eight-methods"><h2>02 開盤八法・尾盤八法</h2></div>
-  <section id="eightMethodsModule" class="panel eight-module" aria-label="開盤八法・尾盤八法">
+  <section id="eightMethodsModule" class="panel eight-module glass" aria-label="開盤八法・尾盤八法">
     <div class="eight-module-head"><p>Asia/Taipei · 盤勢分類與觀察選股，未驗證為買入訊號，不自動下單。</p>
     <button type="button" class="btn share-btn" data-share-ignore onclick="prepareModuleShare('eightMethodsModule','開盤八法・尾盤八法')">分享</button></div>
     <div role="tablist" aria-label="八法觀察"><button type="button" id="openingTab" role="tab" aria-selected="true" aria-controls="openingPanel">開盤八法</button><button type="button" id="closingTab" role="tab" aria-selected="false" aria-controls="closingPanel" tabindex="-1">尾盤八法</button></div>
@@ -776,7 +602,7 @@
     <span class="text-xs text-[#64748B] font-medium">收盤加班進修 / DRONE SURVIVAL LOG</span>
   </div>
 
-  <section class="panel learning-panel bg-[#131A26] border border-[#232F42] rounded-2xl p-4 sm:p-5 shadow-sm mb-8" id="learningSection" aria-labelledby="learningTitle">
+  <section class="panel learning-panel glass mb-8" id="learningSection" aria-labelledby="learningTitle">
     <div class="learning-head flex items-start justify-between gap-4 border-b border-[#232F42] pb-3">
       <div>
         <h2 id="learningTitle" class="text-sm sm:text-base font-bold text-[#F1F5F9] m-0">AI 盤後學習與特訓進度</h2>
@@ -841,7 +667,7 @@
   <!-- =====================================================
        DISCLAIMER
        ===================================================== -->
-  <section class="disclaimer text-xs sm:text-[13px] text-[#64748B] leading-relaxed p-5 rounded-2xl bg-[#0B0F17] border border-[#232F42] my-6 shadow-sm">
+  <section class="disclaimer glass text-xs sm:text-[13px] text-[#64748B] leading-relaxed my-6">
     <div class="font-bold text-[#F1F5F9] mb-1 flex items-center gap-1.5">
       <span class="material-symbols-outlined text-[15px] text-[#F59E0B]">gavel</span>
       <span>社畜看盤免責條款 & 量化隔離說明</span>
@@ -878,10 +704,10 @@
 
 <div
   role="dialog" aria-modal="true" aria-labelledby="modalTitle" id="stockDetailModal"
-  class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm p-3 flex items-center justify-center">
+  class="hidden fixed inset-0 z-50 p-3 flex items-center justify-center">
 
   <div
-    class="modal-wide panel rounded-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden">
+    class="modal-wide panel glass-chrome w-full max-w-6xl max-h-[92vh] overflow-hidden">
 
     <div
       class="flex items-center justify-between gap-3 p-4 border-b muted-border">
@@ -1363,7 +1189,7 @@
     const color = name => css.getPropertyValue(name).trim();
     return {
       layout: { background: { color: color('--panel') }, textColor: color('--sub') },
-      grid: { vertLines: { color: color('--surface') }, horzLines: { color: color('--surface') } },
+      grid: { vertLines: { color: color('--border') }, horzLines: { color: color('--border') } },
       timeScale: { borderColor: color('--border') },
       rightPriceScale: { borderColor: color('--border') }
     };
@@ -5326,13 +5152,13 @@
 <script src="assets/dashboard-layout.js?v=488bb302a486"></script>
 <script src="assets/intraday-chart.js?v=f83d9b0ede04"></script>
 <script src="assets/provider-health.js?v=e8f08c578597"></script>
-<nav class="mobile-bottom-nav" aria-label="手機主導覽">
+<nav class="mobile-bottom-nav glass-chrome" aria-label="手機主導覽">
   <a href="#intraday-strategies" aria-label="盤中摸魚" aria-current="location"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span><span>盤中摸魚</span></a>
   <a href="#eight-methods" aria-label="開盤八法・尾盤八法"><span class="material-symbols-outlined" aria-hidden="true">trending_up</span><span>八法觀察</span></a>
   <a href="#learningSection" aria-label="牛馬 AI"><span class="material-symbols-outlined" aria-hidden="true">psychology</span><span>牛馬 AI</span></a>
   <a href="https://landed-ventricle-paging.ngrok-free.dev/admin" aria-label="社畜後台" target="_blank" rel="noopener"><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span><span>社畜後台</span></a>
 </nav>
-<script src="assets/mobile-nav.js?v=ed9c7d1d0f6c"></script>
+<script src="assets/mobile-nav.js?v=a9a35b4a4d36"></script>
 <script src="assets/revenue-observation.js?v=c1040fe37c1d"></script>
 <script src="assets/eight-methods.js?v=dbfd908b8895"></script>
 <script src="assets/b-lanes-replay.js?v=ea6b415dae32"></script>

@@ -37,6 +37,8 @@ class PaperWallet:
     def __init__(self):
         self.state = read_paper_trade_settings()
         self.execution_evidence = None
+        self.entry_policy = None
+        self.allocation_slots = None
 
     def refresh(self) -> dict:
         self.state = read_paper_trade_settings()
@@ -61,8 +63,12 @@ class PaperWallet:
         decision = execution(evidence, 'BUY', datetime.now(TPE))
         if decision['status'] != 'executable':
             return decision
-        result = buy(symbol, name, decision['price'], execution_id=execution_id,
-                     max_shares=decision['max_shares'])
+        if self.entry_policy is not None:
+            rejected=self.entry_policy.check(symbol,name,decision['price'],evidence,datetime.now(TPE))
+            if rejected:return rejected
+        kwargs={'max_shares':decision['max_shares']}
+        if self.allocation_slots is not None:kwargs['allocation_slots']=self.allocation_slots
+        result = buy(symbol, name, decision['price'], execution_id=execution_id,**kwargs)
         return dict(result, execution_evidence=decision)
 
     def try_buy(self, symbol, name, price):
