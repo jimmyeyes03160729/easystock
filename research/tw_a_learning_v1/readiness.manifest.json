@@ -1,0 +1,49 @@
+{
+  "schema_version": "tw-a-learning-manifest-v1",
+  "research_only": true,
+  "production_effect": "NONE",
+  "preregistration_commit": null,
+  "freeze_hashes": {},
+  "dataset": {
+    "dataset_id": null,
+    "training_markets": ["TW"],
+    "instrument_type": "COMMON_STOCK",
+    "start_date": null,
+    "end_date": null,
+    "registry_scope_verified": false,
+    "training_eligible": false,
+    "holdout_exclusion_verified": false,
+    "point_in_time_verified": false,
+    "twse_tpex_identity_verified": false,
+    "official_index_context_verified": false,
+    "execution_depth_verified": false,
+    "sample_profile_verified": false,
+    "labels_match_a_paper_costs": false,
+    "calendar_and_reference_verified": false,
+    "exposure_ledger_registered": false
+  },
+  "models": {
+    "logistic_tw": {"implementation_reviewed": false},
+    "lightgbm_tw": {"implementation_reviewed": false, "package_version": null},
+    "tabpfn_v2_tw": {
+      "implementation_reviewed": false,
+      "package_version": null,
+      "checkpoint": "Prior-Labs/TabPFN-v2-clf",
+      "revision": null,
+      "weight_sha256": null,
+      "license_reviewed": false,
+      "pretraining_overlap_status": "NOT_VERIFIED",
+      "inference_resource_verified": false
+    },
+    "logistic_tw_plus_kronos_mini": {
+      "implementation_reviewed": false,
+      "package_version": null,
+      "checkpoint": "NeoQuasar/Kronos-mini",
+      "revision": null,
+      "weight_sha256": null,
+      "license_reviewed": false,
+      "pretraining_overlap_status": "NOT_VERIFIED",
+      "inference_resource_verified": false
+    }
+  }
+}
