@@ -1,6 +1,6 @@
 'use strict';
 const el=id=>document.getElementById(id);
-let csrf='',version=null,liveRefreshTimer=0;
+let csrf='',liveRefreshTimer=0;
 let pipelineVersion=null;
 function message(id,text,error=false){el(id).textContent=text;el(id).classList.toggle('error',error);}
 async function api(path,{method='GET',body}={}){
@@ -9,7 +9,6 @@ async function api(path,{method='GET',body}={}){
   if(!response.ok)throw Object.assign(new Error(data.error||'登入已失效，請重新登入。'),{code:data.code});
   return data;
 }
-function applySettings(data){version=data.version;el('maxGain').value=data.values.max_gain_pct;el('maxRecommendations').value=data.values.max_recommendations;el('minPrice').value=data.values.min_price;el('maxPrice').value=data.values.max_price;el('version').textContent='設定版本 '+version;}
 function showAdminTab(id){
   const panels=[...document.querySelectorAll('.admin-tab-panel')];
   if(!panels.some(panel=>panel.id===id))id='healthPanel';
@@ -91,7 +90,7 @@ async function loadPipeline(){try{applyPipeline(await api('pipeline-settings'));
 async function maintenance(action,confirmation,label){if(!confirm(`確認要${label}嗎？\n此操作會受到時段、工作衝突與冷卻限制。`))return;const button=el('restartIntraday');button.disabled=true;message('maintenanceStatus','正在送出受控維護要求…');try{const result=await api('maintenance/'+action,{method:'POST',body:{confirmation}});message('maintenanceStatus',result.detail||'操作已送出。',!result.available);}catch(error){message('maintenanceStatus',error.message,true);}finally{await loadMaintenance();}}
 async function session(){const s=await api('session');csrf=s.csrf;el('identity').textContent=s.email;return s;}
 function startLiveRefresh(){if(liveRefreshTimer)clearInterval(liveRefreshTimer);liveRefreshTimer=setInterval(()=>{if(!document.hidden){loadHealth();loadMaintenance();if(typeof window.loadMarketContext==='function')window.loadMarketContext();if(!el('manualOrderPanel')?.hidden && typeof window.loadManualOrders==='function')window.loadManualOrders();}},30000);}
-async function enter(){await session();applySettings(await api('settings'));await loadNotifications();el('login').hidden=true;el('workspace').hidden=false;await loadHealth();await loadMaintenance();await loadPipeline();startLiveRefresh();document.dispatchEvent(new Event('easystock:owner-ready'));}
+async function enter(){await session();await loadNotifications();el('login').hidden=true;el('workspace').hidden=false;await loadHealth();await loadMaintenance();await loadPipeline();startLiveRefresh();document.dispatchEvent(new Event('easystock:owner-ready'));}
 async function loginSetup(){
   try{
     const config=await api('config');
@@ -111,21 +110,11 @@ async function loginSetup(){
 el('retryLogin').onclick=()=>location.reload();
 el('theme').onclick=()=>{const theme=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=theme;try{localStorage.setItem('easystock-admin-theme',theme);}catch{}};
 try{if(localStorage.getItem('easystock-admin-theme')==='light')document.documentElement.dataset.theme='light';}catch{}
-el('settingsForm').onsubmit=async event=>{
-  event.preventDefault();if(version===null)return;
-  const values={min_price:Number(el('minPrice').value),max_price:Number(el('maxPrice').value),max_gain_pct:Number(el('maxGain').value),max_recommendations:Number(el('maxRecommendations').value)};
-  if(values.min_price>values.max_price){message('saveStatus','最低股價不得超過最高股價。',true);return;}
-  if(!Number.isInteger(values.max_recommendations)||values.max_recommendations<1||values.max_recommendations>30){message('saveStatus','推薦股票上限數量須為 1 至 30 的整數。',true);return;}
-  el('save').disabled=true;message('saveStatus','正在儲存…');
-  try{applySettings(await api('settings',{method:'PUT',body:{values,version}}));message('saveStatus','已儲存。之後的新推薦會讀取這份設定。');}
-  catch(error){message('saveStatus',error.message,true);}finally{el('save').disabled=false;}
-};
-el('reload').onclick=async()=>{try{applySettings(await api('settings'));message('saveStatus','已載入最新設定。');}catch(e){message('saveStatus',e.message,true);}};
 el('reloadHealth').onclick=async()=>{const button=el('reloadHealth');button.disabled=true;try{await loadHealth();}finally{button.disabled=false;}};
 el('restartIntraday').onclick=()=>maintenance('restart-intraday','RESTART_INTRADAY','重啟當沖');
 el('pipelineForm').onsubmit=async event=>{event.preventDefault();const values={history_target_symbols:+el('pTarget').value,history_symbols:el('pSymbols').value.split(',').map(x=>x.trim()).filter(Boolean),history_max_pairs:+el('pPairs').value,history_weekends:el('pWeekend').checked,history_window_start:el('pStart').value,history_window_end:el('pEnd').value,learning_enabled:el('pLearning').checked,learning_time:el('pLearningTime').value,min_training_dates:+el('pDates').value,min_training_samples:+el('pSamples').value,min_class_samples:+el('pClass').value,holdout_days:+el('pHoldout').value,model_retrain_every_days:+el('pRetrainDays').value,forward_observe_days:+el('pForwardDays').value,formal_candidate_for_live:el('pFormalLive').checked,model_threshold:+el('pThreshold').value,fee_rate:+el('pFee').value,minimum_fee_twd:+el('pMinFee').value,sell_tax_rate:+el('pTax').value,slippage_bps:+el('pSlip').value,shares:+el('pShares').value};const save=confirm_profile_change=>api('pipeline-settings',{method:'PUT',body:{values,version:pipelineVersion,...(confirm_profile_change?{confirm_profile_change:true}:{})}});try{let data;try{data=await save(false);}catch(error){if(error.code!=='profile_change_confirmation_required'||!confirm(error.message))throw error;data=await save(true);}applyPipeline(data);message('pipelineStatus','已儲存。下一次抓取／訓練會讀取這份計畫。');}catch(error){message('pipelineStatus',error.message,true);}};
 for(const button of document.querySelectorAll('[data-admin-tab]'))button.onclick=()=>showAdminTab(button.dataset.adminTab);
-el('logout').onclick=async()=>{try{await api('logout',{method:'POST',body:{}});location.reload();}catch(e){message('saveStatus',e.message,true);}};
+el('logout').onclick=async()=>{try{await api('logout',{method:'POST',body:{}});location.reload();}catch(e){alert(e.message);}};
 el('checkUsage').onclick=async()=>{el('checkUsage').disabled=true;try{const s=await api('line-quota');message('lineUsage',s.limit===null?`本月已使用 ${s.used}；LINE 未設定月上限。最後查詢：${new Date(s.checked_at*1000).toLocaleString('zh-TW')}`:`已使用：${s.used}｜當月上限：${s.limit}｜剩餘：${s.remaining}｜最後查詢：${new Date(s.checked_at*1000).toLocaleString('zh-TW')}`);}catch(_){message('lineUsage','額度暫時無法取得',true);}finally{el('checkUsage').disabled=false;}};
 let notificationVersion=null;
 function applyNotifications(data){

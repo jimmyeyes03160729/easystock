@@ -185,7 +185,7 @@ def snapshot(store) -> dict:
         market_session,
         _release_signal(),
         _vm_services(),
-        _signal('admin_store', '後台設定資料庫', 'ok', '可讀取目前設定版本。', _timestamp(settings.get('updated_at')), {'setting_version': settings.get('version')}),
+        _signal('admin_store', '後台資料庫', 'ok', '可讀取後台資料庫。'),
         _signal(
             'paper_trade', '模擬買進',
             'ok' if paper_trade.get('status') == 'running' else 'idle',

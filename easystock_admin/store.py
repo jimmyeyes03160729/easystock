@@ -152,18 +152,6 @@ class Store:
     def _audit(self, db, actor, action, body):
         db.execute('INSERT INTO audit(at,actor,action,body) VALUES(?,?,?,?)', (time.time(), actor, action, json.dumps(body)))
 
-    def update(self, value, version):
-        value = validate(value)
-        if isinstance(version, bool) or not isinstance(version, int):
-            raise ValueError('缺少設定版本。')
-        with self.tx() as db:
-            before = self._state(db)
-            if before['version'] != version:
-                raise Conflict('設定已被更新，請重新載入後再修改。')
-            db.execute('UPDATE settings SET body=?,version=version+1,updated=? WHERE id=1', (json.dumps(value), time.time()))
-            self._audit(db, OWNER, 'settings', {'before': before['values'], 'after': value, 'result': 'saved'})
-            return self._state(db)
-
     def get_pipeline_settings(self):
         with self.tx() as db:
             row = db.execute('SELECT body,version,updated FROM pipeline_settings WHERE id=1').fetchone()
@@ -319,17 +307,16 @@ class Store:
             raise Denied('此帳號沒有 Owner 權限，舊 session 請重新登入。')
         return csrf
 
+# Entry filters used by the intraday engine. These were the admin "選股設定" values
+# (unchanged since 2026-09-22); the tab was removed and the values are now fixed here.
+# Override per service with EASYSTOCK_ENTRY_* environment variables.
+ENTRY_LIMITS = {'min_price': 1, 'max_price': 2000, 'max_gain_pct': 8, 'max_recommendations': 30}
+
+
 def read_live_settings():
-    path = db_path()
-    uri = path.resolve().as_uri() + '?mode=ro'
-    db = sqlite3.connect(uri, uri=True, timeout=1)
-    try:
-        row = db.execute('SELECT body FROM settings WHERE id=1').fetchone()
-        if not row:
-            raise RuntimeError('Admin settings missing')
-        return validate(json.loads(row[0]))
-    finally:
-        db.close()
+    env = {'min_price': 'EASYSTOCK_ENTRY_MIN_PRICE', 'max_price': 'EASYSTOCK_ENTRY_MAX_PRICE',
+           'max_gain_pct': 'EASYSTOCK_ENTRY_MAX_GAIN_PCT', 'max_recommendations': 'EASYSTOCK_ENTRY_MAX_RECOMMENDATIONS'}
+    return validate({key: float(os.environ.get(name) or ENTRY_LIMITS[key]) for key, name in env.items()})
 
 
 def read_pipeline_settings():

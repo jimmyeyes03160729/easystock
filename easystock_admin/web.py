@@ -157,11 +157,6 @@ def register_admin(app, store=None, verifier=None):
         response.delete_cookie(SESSION, path='/', secure=True, httponly=True, samesite='Strict')
         return response
 
-    @bp.get('/admin/settings')
-    def get_settings():
-        authenticated()
-        return jsonify(store.get())
-
     @bp.get('/admin/health')
     def get_health():
         authenticated()
@@ -180,14 +175,6 @@ def register_admin(app, store=None, verifier=None):
         data = body()
         from .operations import execute
         return jsonify(execute(store, action, data.get('confirmation', '')))
-
-    @bp.put('/admin/settings')
-    def put_settings():
-        authenticated(True)
-        data = body()
-        if set(data) != {'values', 'version'}:
-            raise ValueError('設定欄位不正確。')
-        return jsonify(store.update(data['values'], data['version']))
 
     @bp.get('/admin/pipeline-settings')
     def get_pipeline_settings():

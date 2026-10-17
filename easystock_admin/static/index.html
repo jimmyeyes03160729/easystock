@@ -15,14 +15,14 @@
 <header><a class="brand" href="https://jimmyeyes03160729.github.io/easystock/">E<span>EasyStock</span></a><button id="theme" type="button">切換明暗</button></header>
 <main>
 <section id="login" class="login panel">
-<p class="eyebrow">管理員登入</p><h1>當沖設定</h1><p class="muted">使用已授權的 Google 帳號登入。</p>
+<p class="eyebrow">管理員登入</p><h1>當沖管理</h1><p class="muted">使用已授權的 Google 帳號登入。</p>
 <div id="googleButton"></div><p id="loginStatus" role="status">正在確認登入狀態…</p><button id="retryLogin" type="button" hidden>重新載入登入</button>
 </section>
 <section id="workspace" hidden>
-<div class="title"><div><p class="eyebrow">當沖管理</p><h1>把推薦範圍設好。</h1><p class="muted">新推薦與 LINE／Telegram 進場通知前，會套用最新限制。</p></div><div class="title-actions"><nav class="admin-section-nav" aria-label="後台功能分類"><button type="button" data-admin-tab="healthPanel">健康中心</button><button type="button" data-admin-tab="settingsPanel">選股設定</button><button type="button" data-admin-tab="paperTradePanel">模擬帳本</button><button type="button" data-admin-tab="conversationPanel">通知設定</button><button type="button" data-admin-tab="manualOrderPanel">永豐手動 API 下單</button></nav><button id="logout" type="button">登出</button></div></div>
-<div class="identity"><span id="identity"></span><span id="version"></span></div>
+<div class="title"><div><p class="eyebrow">當沖管理</p><h1>系統狀態與操作</h1><p class="muted">健康檢查、模擬帳本、通知設定與永豐手動下單。</p></div><div class="title-actions"><nav class="admin-section-nav" aria-label="後台功能分類"><button type="button" data-admin-tab="healthPanel">健康中心</button><button type="button" data-admin-tab="paperTradePanel">模擬帳本</button><button type="button" data-admin-tab="conversationPanel">通知設定</button><button type="button" data-admin-tab="manualOrderPanel">永豐手動 API 下單</button></nav><button id="logout" type="button">登出</button></div></div>
+<div class="identity"><span id="identity"></span></div>
 <section class="panel health-panel admin-tab-panel" id="healthPanel" aria-labelledby="healthTitle">
-  <div class="health-heading"><div><p class="eyebrow">系統健康中心</p><h2 id="healthTitle">當沖設定及健檢</h2><p class="hint">檢查訓練、資料與當沖服務狀態；設定調整在選股設定頁，維護操作有安全限制。</p></div><button id="reloadHealth" type="button">重新檢查</button></div>
+  <div class="health-heading"><div><p class="eyebrow">系統健康中心</p><h2 id="healthTitle">當沖設定及健檢</h2><p class="hint">檢查訓練、資料與當沖服務狀態；維護操作有安全限制。</p></div><button id="reloadHealth" type="button">重新檢查</button></div>
   <div id="healthSummary" class="health-summary" role="status" aria-live="polite">正在檢查系統狀態…</div>
   <div id="healthSignals" class="health-signals" aria-live="polite"></div>
   <h3>API／資料來源診斷</h3>
@@ -35,17 +35,6 @@
   <section class="maintenance" aria-labelledby="maintenanceTitle"><h3 id="maintenanceTitle">受控維護</h3><p id="maintenanceStatus" class="hint">正在確認 VM 維護狀態…</p><div class="actions"><button id="restartIntraday" type="button">重啟當沖</button></div><p class="hint">重啟只限台北交易日 08:45–13:30，且訓練／下載工作必須空閒。VM 程式同步不在後台執行。</p></section>
 <section class="maintenance" aria-labelledby="pipelineTitle"><p class="eyebrow">下次排程生效</p><h3 id="pipelineTitle">訓練與資料計畫</h3><form id="pipelineForm"><label>歷史股票池數量 <input id="pTarget" type="number" min="1" max="200"></label><label>指定股票清單（逗號分隔）<input id="pSymbols" type="text" placeholder="例如 2330,2317"></label><label>每輪抓取上限（股票 × 日期）<input id="pPairs" type="number" min="1" max="50"></label><label>抓取時段 <input id="pStart" type="time"> 至 <input id="pEnd" type="time"></label><label><input id="pWeekend" type="checkbox"> 週末允許抓取</label><label><input id="pLearning" type="checkbox"> 啟用收盤後每日訓練</label><label>每日訓練開始時間 <input id="pLearningTime" type="time"></label><label>最低交易日／樣本／每類樣本 <input id="pDates" type="number"> / <input id="pSamples" type="number"> / <input id="pClass" type="number"></label><label>保留測試天數 <input id="pHoldout" type="number"></label><label>滾動模型重訓間隔（有效交易日）<input id="pRetrainDays" type="number" min="1" max="20"></label><label>正式候選前向觀察交易日 <input id="pForwardDays" type="number" min="5" max="60"></label><label><input id="pFormalLive" type="checkbox"> 正式候選通過後可供盤中使用（預設關閉）</label><label>候選分數門檻（不是勝率）<input id="pThreshold" type="number" min="0.05" max="0.95" step="0.01"></label><label>手續費率／最低手續費（元）／證交稅率／滑價 bps／每筆股數（變更會建立新的訓練標籤規則）<input id="pFee" type="number" step="0.0001"> / <input id="pMinFee" type="number" min="0" step="1"> / <input id="pTax" type="number" step="0.0001"> / <input id="pSlip" type="number"> / <input id="pShares" type="number"></label><div class="actions"><button class="primary" type="submit">儲存訓練與資料計畫</button></div><p id="pipelineStatus" role="status"></p></form></section>
 </section>
-<div>
-<section class="panel settings admin-tab-panel" id="settingsPanel"><h2>推薦條件</h2>
-<form id="settingsForm">
-<label for="maxGain">推薦當下漲幅上限</label><div class="number"><input id="maxGain" name="max_gain_pct" type="number" min="0" max="100" step="0.01" required><span>%</span></div><p class="hint">相對昨收，超過此漲幅就不推薦；等於上限仍可通過。</p>
-<label for="maxRecommendations">推薦股票上限數量</label><div class="number"><input id="maxRecommendations" name="max_recommendations" type="number" min="1" max="30" step="1" required><span>檔</span></div><p class="hint">每輪量能雷達最多顯示與追蹤的推薦檔數。系統安全上限為 30 檔。</p>
-<div class="priceGrid"><div><label for="minPrice">最低股價</label><div class="number"><input id="minPrice" name="min_price" type="number" min="0.01" max="1000000" step="0.01" required><span>元</span></div></div><div><label for="maxPrice">最高股價</label><div class="number"><input id="maxPrice" name="max_price" type="number" min="0.01" max="1000000" step="0.01" required><span>元</span></div></div></div>
-<p class="hint" id="paperBuyLimitsHint">模擬金實際買進另有當沖服務的硬性門檻（目前 30～200 元、成交量 ≥ 3000 張、排除 ETF，設定在 VM 當沖服務環境檔）。這裡的股價範圍只能再縮小，設得比門檻寬不會放行更多股票。</p>
-<p class="hint">停損與停利繼續由系統判斷；既有訊號繼續追蹤。</p>
-<div class="actions"><button class="primary" id="save" type="submit">儲存設定</button><button id="reload" type="button">重新載入</button></div><p id="saveStatus" role="status" aria-live="polite"></p>
-</form></section>
-</div>
 
 <section class="panel paper-trade admin-tab-panel" id="paperTradePanel">
 <h2>每日當沖買進額度</h2>
