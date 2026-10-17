@@ -36,12 +36,7 @@ FILES = [
     "learning_status.py",
     "learning_cycle.py",
     "learning_eod.py",
-    "easystock_admin/store.py",
-    "easystock_admin/notifications.py",
-    "easystock_admin/web.py",
-    "easystock_admin/static/index.html",
-    "easystock_admin/static/admin.js",
-    "easystock_admin/static/paper-trade.js",
+    # easystock_admin/ has no vm_runtime mirror; the root copy is deployed as-is.
     "trade_notifications.py",
     "daytrade_summary_push.py",
     "daytrade_summary_report.py",
