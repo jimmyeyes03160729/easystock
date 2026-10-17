@@ -44,22 +44,19 @@ class StoreTests(unittest.TestCase):
         token,_=self.s.challenge()
         with self.s.tx() as db:db.execute('UPDATE challenges SET expires=0')
         with self.assertRaises(Denied):self.s.take_challenge(token)
-    def test_version_conflict_keeps_latest(self):
-        self.s.update({**INITIAL,'max_price':80},1)
-        with self.assertRaises(Conflict):self.s.update({**INITIAL,'max_price':90},1)
-        self.assertEqual(self.s.get()['values']['max_price'],80)
     def test_only_allowed_fields_and_valid_ranges(self):
         for values in ({**INITIAL,'stop_loss':1},{**INITIAL,'min_price':101},{**INITIAL,'max_price':True},{**INITIAL,'max_gain_pct':float('nan')},{**INITIAL,'max_gain_pct':1.123},{**INITIAL,'max_recommendations':31},{**INITIAL,'max_recommendations':2.5}):
             with self.assertRaises(ValueError):validate(values)
-    def test_live_settings_reads_changes_without_restart(self):
-        with patch.dict(os.environ,{'EASYSTOCK_ADMIN_DB':str(self.path)}):
-            self.assertEqual(read_live_settings()['max_price'],100)
-            self.s.update({**INITIAL,'max_price':80},1)
-            self.assertEqual(read_live_settings()['max_price'],80)
-    def test_missing_database_fails_closed(self):
+    def test_entry_limits_are_fixed_and_need_no_database(self):
         with patch.dict(os.environ,{'EASYSTOCK_ADMIN_DB':str(self.path.parent/'missing.sqlite')}):
-            with self.assertRaises(sqlite3.Error):read_live_settings()
-
+            for key in ('EASYSTOCK_ENTRY_MIN_PRICE','EASYSTOCK_ENTRY_MAX_PRICE','EASYSTOCK_ENTRY_MAX_GAIN_PCT','EASYSTOCK_ENTRY_MAX_RECOMMENDATIONS'):
+                os.environ.pop(key,None)
+            self.assertEqual(read_live_settings(),{'min_price':1,'max_price':2000,'max_gain_pct':8,'max_recommendations':30})
+    def test_entry_limits_env_override_is_validated(self):
+        with patch.dict(os.environ,{'EASYSTOCK_ENTRY_MAX_GAIN_PCT':'9.5','EASYSTOCK_ENTRY_MAX_RECOMMENDATIONS':'20'}):
+            self.assertEqual(read_live_settings()['max_gain_pct'],9.5);self.assertEqual(read_live_settings()['max_recommendations'],20)
+        with patch.dict(os.environ,{'EASYSTOCK_ENTRY_MAX_RECOMMENDATIONS':'31'}):
+            with self.assertRaises(ValueError):read_live_settings()
     def test_health_reads_nested_paper_trade_settings(self):
         from easystock_admin.health import snapshot
         with patch.dict(os.environ, {'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'), 'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history')}):
@@ -179,8 +176,11 @@ class WebTests(unittest.TestCase):
         response=self.post('login',{'credential':'x'*60})
         return response
     def test_anonymous_cannot_read_or_write(self):
-        self.assertEqual(self.client.get('/admin/settings',base_url=ORIGIN).status_code,403)
-        self.assertEqual(self.client.put('/admin/settings',base_url=ORIGIN,json={'values':INITIAL,'version':1},headers={'Origin':ORIGIN}).status_code,403)
+        self.assertEqual(self.client.get('/admin/health',base_url=ORIGIN).status_code,403)
+        self.assertEqual(self.client.put('/admin/pipeline-settings',base_url=ORIGIN,json={'values':{},'version':1},headers={'Origin':ORIGIN}).status_code,403)
+    def test_stock_settings_endpoint_is_removed(self):
+        self.login()
+        self.assertEqual(self.client.get('/admin/settings',base_url=ORIGIN).status_code,404)
     def test_wrong_origin_cannot_start_login(self):
         self.assertEqual(self.post('challenge',{},origin='https://evil.example').status_code,403)
     def test_notifications_require_login_csrf_origin_and_version(self):
@@ -215,11 +215,12 @@ class WebTests(unittest.TestCase):
         response=self.login();self.assertEqual(response.status_code,200)
         cookie=response.headers.getlist('Set-Cookie')[0]
         for text in ('Secure','HttpOnly','SameSite=Strict'):self.assertIn(text,cookie)
-        data={'values':{**INITIAL,'max_price':80},'version':1}
-        denied=self.client.put('/admin/settings',base_url=ORIGIN,json=data,headers={'Origin':ORIGIN})
+        current=self.client.get('/admin/pipeline-settings',base_url=ORIGIN).json
+        data={'values':{**current['values'],'history_max_pairs':6},'version':current['version']}
+        denied=self.client.put('/admin/pipeline-settings',base_url=ORIGIN,json=data,headers={'Origin':ORIGIN})
         self.assertEqual(denied.status_code,403)
-        ok=self.client.put('/admin/settings',base_url=ORIGIN,json=data,headers={'Origin':ORIGIN,'X-CSRF-Token':response.json['csrf']})
-        self.assertEqual(ok.status_code,200);self.assertEqual(ok.json['values']['max_price'],80)
+        ok=self.client.put('/admin/pipeline-settings',base_url=ORIGIN,json=data,headers={'Origin':ORIGIN,'X-CSRF-Token':response.json['csrf']})
+        self.assertEqual(ok.status_code,200);self.assertEqual(ok.json['values']['history_max_pairs'],6)
     def test_wrong_google_user_denied(self):
         self.claims['email']='attacker@gmail.com'
         self.assertEqual(self.login().status_code,403)
