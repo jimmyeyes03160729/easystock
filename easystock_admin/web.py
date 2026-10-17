@@ -103,7 +103,7 @@ def register_admin(app, store=None, verifier=None):
 
     @bp.get('/admin/assets/<name>')
     def assets(name):
-        if name not in ('admin.js', 'admin.css', 'paper-trade.js', 'order.js', 'live-console.js', 'guardian.js'):
+        if name not in ('admin.js', 'admin.css', 'paper-trade.js', 'order.js', 'market-context.js', 'guardian.js'):
             return '', 404
         return send_from_directory(STATIC, name)
 
@@ -167,14 +167,6 @@ def register_admin(app, store=None, verifier=None):
         authenticated()
         from .health import snapshot
         return jsonify(snapshot(store))
-
-    @bp.get('/admin/model-log')
-    def get_model_log():
-        authenticated()
-        from .health import model_promotion_log
-        try:page=int(request.args.get('page','1'))
-        except (TypeError,ValueError):page=1
-        return jsonify(model_promotion_log(page=page,page_size=10))
 
     @bp.get('/admin/maintenance')
     def get_maintenance():
@@ -298,11 +290,6 @@ def register_admin(app, store=None, verifier=None):
     def get_live_console():
         owner_authenticated()
         return jsonify(live.refresh())
-
-    @bp.put('/admin/api/live-console')
-    def put_live_console():
-        owner_authenticated(True)
-        return jsonify(live.change(body()))
 
     @bp.post('/admin/api/live-console/sell-verify')
     def post_sell_verify():

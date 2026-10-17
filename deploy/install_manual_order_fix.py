@@ -4,7 +4,7 @@ from datetime import datetime,timezone
 from pathlib import Path
 
 ROOT=Path('/home/ubuntu/easystock')
-NAMES={p+n for p in ('easystock_admin/','vm_runtime/easystock_admin/')
+NAMES={p+n for p in ('easystock_admin/',)
        for n in ('order_service.py','web.py','live_console.py','static/order.js')}
 DB=Path('/home/ubuntu/easystock-admin/state.sqlite')
 def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()

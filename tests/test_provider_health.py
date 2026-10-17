@@ -151,7 +151,7 @@ def test_admin_health_requires_auth():
 
 def test_vm_admin_provider_views_match_canonical_source():
     root=Path(__file__).resolve().parents[1]
-    for name in ('intraday_live.py','easystock_admin/health.py','easystock_admin/static/admin.js','easystock_admin/static/index.html'):
+    for name in ('intraday_live.py',):
         assert (root/name).read_bytes()==(root/'vm_runtime'/name).read_bytes()
 
 def test_fugle_cache_does_not_expose_unlisted_fields(tmp_path):

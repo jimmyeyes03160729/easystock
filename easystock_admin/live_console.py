@@ -88,8 +88,9 @@ class LiveConsole:
         return self.state()
 
     def state(self):
+        # The mode/kill columns are kept for schema compatibility; no AUTO engine reads them.
         with self.store.tx() as db:
-            mode, kill, raw = db.execute('SELECT mode,kill,snapshot FROM live_console_state WHERE id=1').fetchone()
+            raw, = db.execute('SELECT snapshot FROM live_console_state WHERE id=1').fetchone()
         data = json.loads(raw)
         try:
             age = time.time() - datetime.fromisoformat(data['updated_at']).timestamp()
@@ -97,32 +98,8 @@ class LiveConsole:
         except (KeyError, ValueError, TypeError):
             fresh = False
         ready = bool(fresh and data.get('connected') and data.get('authenticated') and data.get('reconciled'))
-        allowed = live_ordering_enabled() and ready and not kill
-        return {'mode': mode, 'kill_switch': bool(kill), 'live_auto_enabled': mode == 'LIVE AUTO' and allowed,
-                'auto_state': 'AUTO PAUSED' if not ready or kill or (mode == 'LIVE AUTO' and not allowed) else ('READY (skeleton only)' if mode == 'LIVE AUTO' else 'OFF'),
-                'reconciliation': 'OK' if ready else 'RECONCILIATION REQUIRED', 'broker_fresh': fresh,
-                'activation_allowed': allowed, 'ordering_guard': live_ordering_enabled(),
-                'execution_engine': False, 'broker': data}
-
-    def change(self, data):
-        if set(data) == {'mode'} and data['mode'] in ('OFF', 'SHADOW', 'PAPER', 'LIVE AUTO'):
-            if data['mode'] == 'LIVE AUTO' and not self.state()['activation_allowed']:
-                raise Denied('LIVE AUTO guard／同步／對帳未通過。')
-            with self.store.tx() as db:
-                db.execute('UPDATE live_console_state SET mode=? WHERE id=1', (data['mode'],))
-                self.audit('live_mode', {**data, 'result': 'saved'}, db)
-        elif set(data) == {'kill'} and isinstance(data['kill'], bool):
-            with self.store.tx() as db:
-                db.execute('UPDATE live_console_state SET kill=? WHERE id=1', (int(data['kill']),))
-                self.audit('live_kill_switch', {**data, 'result': 'new_auto_orders_blocked' if data['kill'] else 'released'}, db)
-        else:
-            raise ValueError('實盤控制欄位不正確。')
-        return self.state()
-
-    def authorize_auto(self):
-        """Skeleton guard only. Does not place orders or bind Research/Paper strategies."""
-        if not self.state()['live_auto_enabled']:
-            raise Denied('新 AUTO 委託已阻擋。')
+        return {'reconciliation': 'OK' if ready else 'RECONCILIATION REQUIRED', 'broker_fresh': fresh,
+                'ordering_guard': live_ordering_enabled(), 'broker': data}
 
     def sell_check(self, order):
         state = self.refresh()

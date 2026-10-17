@@ -6,7 +6,8 @@ from pathlib import Path
 from .store import Denied
 
 RUNNER = Path(os.environ.get('EASYSTOCK_ADMIN_ACTION_RUNNER', '/usr/local/sbin/easystock-admin-action'))
-CONFIRMATIONS = {'restart-intraday': 'RESTART_INTRADAY', 'sync-vm': 'SYNC_VM'}
+# VM sync is not offered here: update_vm_main.sh rewrites the entry mode in .env.
+CONFIRMATIONS = {'restart-intraday': 'RESTART_INTRADAY'}
 
 def _run(action, timeout=12):
     if not RUNNER.is_file(): return {'available': False, 'detail': '維護控制尚未安裝；僅能查看健檢，不能執行 VM 操作。'}

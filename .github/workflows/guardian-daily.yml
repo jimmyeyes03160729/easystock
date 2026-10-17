@@ -69,7 +69,7 @@ jobs:
           pnpm test
       - id: compile
         continue-on-error: true
-        run: python -m compileall -q guardian easystock_admin vm_runtime/easystock_admin
+        run: python -m compileall -q guardian easystock_admin
       - name: Preserve sanitized test outcomes (no raw logs)
         if: always()
         env:

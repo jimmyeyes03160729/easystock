@@ -5,7 +5,7 @@ function fixture(t,data=marketFixture()){
   const {w,run}=createDOM(html);t.after(()=>w.close());const calls=[];
   let error=null;
   w.api=async(path,options)=>{calls.push({path,options});assert.equal(path,'api/market-context');assert.equal(options,undefined);if(error)throw error;return data;};
-  run('easystock_admin/static/live-console.js');
+  run('easystock_admin/static/market-context.js');
   assert.equal(calls.length,0);
   return {w,data,calls,root:w.document.getElementById('marketContext'),load:()=>w.loadMarketContext(),fail:()=>{error=Error('<img src=x onerror=alert(1)>');}};
 }
@@ -55,7 +55,4 @@ test('manual price and quantity use equivalent label rows with quick quantity be
   const quick=w.document.getElementById('quickQtyBtns');assert.equal(quick.previousElementSibling.id,'orderQty');
   assert.equal(quick.getAttribute('role'),'group');assert.equal(quick.getAttribute('aria-label'),'快捷委託數量');
   assert.deepEqual([...quick.querySelectorAll('button')].map(n=>n.dataset.qty),['1','10','100']);
-});
-test('all modified Admin static assets retain byte-identical VM mirrors',()=>{
-  for(const name of ['admin.css','admin.js','index.html','live-console.js'])assert.deepEqual(fs.readFileSync('easystock_admin/static/'+name),fs.readFileSync('vm_runtime/easystock_admin/static/'+name));
 });

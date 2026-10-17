@@ -56,7 +56,7 @@ class OwnerConsoleTests(AdminOrderWebTests):
 
     def test_A1_A2_A3_owner_boundary_and_no_secrets(self):
         good=self.get_live();self.assertEqual(good.status_code,200)
-        self.assertEqual(good.json['mode'],'OFF');self.assertFalse(good.json['live_auto_enabled'])
+        self.assertNotIn('mode',good.json);self.assertNotIn('kill_switch',good.json)
         self.assertEqual(good.json['broker']['account']['account_id'],'***6543')
         self.assertNotIn('9876543',good.get_data(as_text=True))
         with self.store.tx() as db:
@@ -65,18 +65,12 @@ class OwnerConsoleTests(AdminOrderWebTests):
         self.client.delete_cookie('__Host-easystock_admin', domain='admin.example.com')
         self.assertEqual(self.get_live().status_code,401)
 
-    def test_A6_A7_A8_guards_allow_only_mock_activation_skeleton(self):
+    def test_A6_retired_auto_mode_controls_are_gone(self):
         self.get_live()
-        for enabled,confirmation in [('false',''),('true','')]:
-            with patch.dict(os.environ, {'LIVE_ORDERING_ENABLED':enabled,'LIVE_ORDERING_CONFIRMATION':confirmation}):
-                self.assertFalse(self.get_live().json['activation_allowed'])
-                self.assertEqual(self.post('api/live-console',{'mode':'LIVE AUTO'},self.csrf,'put').status_code,403)
         with patch.dict(os.environ,LIVE):
-            self.assertTrue(self.get_live().json['activation_allowed'])
-            r=self.post('api/live-console',{'mode':'LIVE AUTO'},self.csrf,'put')
-            self.assertEqual(r.status_code,200);self.assertFalse(r.json['execution_engine'])
-        self.assertFalse(self.get_live().json['live_auto_enabled'])
-
+            for body in ({'mode':'LIVE AUTO'},{'kill':True}):
+                self.assertEqual(self.post('api/live-console',body,self.csrf,'put').status_code,405)
+        self.assertFalse(hasattr(LiveConsole,'change'));self.assertFalse(hasattr(LiveConsole,'authorize_auto'))
     def test_A9_A10_A11_sell_csrf_availability_and_validation(self):
         value=order(action='SELL');value.pop('ca_passwd')
         self.assertEqual(self.post('api/live-console/sell-verify',value).status_code,403)
@@ -105,18 +99,12 @@ class OwnerConsoleTests(AdminOrderWebTests):
         audits=json.dumps(self.rows('SELECT * FROM live_trade_events')+self.rows('SELECT * FROM audit'))
         self.assertIn(OWNER,audits);self.assertIn('live_sell_verify',audits);self.assertNotIn('secret-pw',audits);self.assertNotIn(ticket,audits)
 
-    def test_A13_A14_mismatch_pauses_auto_kill_never_flattens(self):
-        self.data=broker([position()]);self.assertEqual(self.get_live().json['auto_state'],'AUTO PAUSED')
-        self.assertEqual(self.get_live().json['reconciliation'],'RECONCILIATION REQUIRED')
+    def test_A13_A14_mismatch_requires_reconciliation_and_never_flattens(self):
+        self.data=broker([position()]);self.assertEqual(self.get_live().json['reconciliation'],'RECONCILIATION REQUIRED')
         self.assertEqual(self.rows('SELECT * FROM live_trade_positions'),[])
         with patch.object(order_service,'place_order') as submit,patch.dict(os.environ,LIVE):
             self.data=broker();self.get_live()
-            self.post('api/live-console',{'mode':'LIVE AUTO'},self.csrf,'put')
-            killed=self.post('api/live-console',{'kill':True},self.csrf,'put')
-            self.assertFalse(killed.json['live_auto_enabled'])
-            with self.assertRaises(Denied):LiveConsole(self.store,order_service,OWNER).authorize_auto()
             submit.assert_not_called()
-
     def test_ticket_bound_to_session_order_expiry_and_fresh_broker(self):
         self.data=broker([position(3000)]);ticket=self.verify().json['verification_id']
         with patch.dict(os.environ,LIVE),patch.object(order_service,'place_order') as submit:
@@ -151,7 +139,7 @@ class OwnerConsoleTests(AdminOrderWebTests):
         self.client.set_cookie('__Host-easystock_admin',token,domain='admin.example.com')
         with patch.dict(os.environ,LIVE),patch.object(order_service,'place_order') as submit:
             self.assertEqual(self.post('api/order/place',self.sell(ticket),csrf).status_code,403)
-            wrong=self.client.put('/admin/api/live-console',base_url=ORIGIN,json={'kill':True},headers={'Origin':'https://evil.example','X-CSRF-Token':csrf})
+            wrong=self.client.post('/admin/api/live-console/sell-verify',base_url=ORIGIN,json={},headers={'Origin':'https://evil.example','X-CSRF-Token':csrf})
             self.assertEqual(wrong.status_code,403);submit.assert_not_called()
 
     def test_reconciliation_compares_order_fields_not_only_identifiers(self):
@@ -173,7 +161,7 @@ class OwnerConsoleTests(AdminOrderWebTests):
             rejected=self.post('api/order/place',self.sell(second,client_order_id='0123456789abcdef-0002'),self.csrf)
             self.assertEqual(rejected.status_code,403);submit.assert_called_once()
         self.assertNotIn('leaked',json.dumps(self.rows('SELECT * FROM audit')))
-        self.assertEqual(self.get_live().json['auto_state'],'AUTO PAUSED')
+        self.assertEqual(self.get_live().json['reconciliation'],'RECONCILIATION REQUIRED')
 
 
 def test_A4_A5_read_adapter_masks_and_refreshes_backend_before_availability():

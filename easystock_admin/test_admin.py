@@ -74,13 +74,13 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(paper['metrics']['daily_buy_limit'], 200000)
         self.assertEqual(paper['metrics']['daily_buy_remaining'], 200000)
 
+    def health_env(self, learning=None):
+        return {'EASYSTOCK_LEARNING_DATA': str(learning or self.path.parent/'learning'), 'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history')}
+
     def test_health_reports_unidentified_deployment_as_warning(self):
         from easystock_admin.health import snapshot
-        with patch.dict(os.environ, {
-            'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'),
-            'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history'),
-            'EASYSTOCK_RELEASE_FILE': str(self.path.parent/'missing-release.json'),
-        }, clear=False):
+        with patch.dict(os.environ, {**self.health_env(), 'EASYSTOCK_RELEASE_FILE': str(self.path.parent/'missing-release.json')}, clear=False), \
+             patch('easystock_admin.release.running_commit', return_value=''):
             for key in ('EASYSTOCK_RELEASE_ID', 'EASYSTOCK_SOURCE_COMMIT'):
                 os.environ.pop(key, None)
             result = snapshot(self.s)
@@ -88,81 +88,60 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(signal['state'], 'warning')
         self.assertIn('不能確認', signal['detail'])
 
-    def test_stale_runtime_is_warning_after_market_close(self):
+    def test_health_flags_release_record_that_lags_the_checkout(self):
         from easystock_admin.health import snapshot
-        with patch('easystock_admin.health._market_session', return_value={
-            'key': 'market_session', 'label': '當沖時段', 'state': 'idle', 'detail': '已收盤',
-            'metrics': {},
-        }), patch.dict(os.environ, {
-            'EASYSTOCK_LEARNING_DATA': str(self.path.parent/'learning'),
-            'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history'),
-        }):
-            learning = self.path.parent/'learning'; models = learning/'models'; models.mkdir(parents=True)
-            (models/'runtime-model-status.json').write_text(json.dumps({
-                'reported_at': '2026-09-29T19:00:00+08:00',
-                'entry_mode': 'model',
-                'runtime': {'artifact_sha256': 'a' * 64, 'version': 'fixture'},
-            }))
-            (models/'latest-approved.json').write_text(json.dumps({'approved': False}))
+        marker = self.path.parent/'release-info.json'
+        marker.write_text(json.dumps({'release_id': 'main-old', 'source_commit': 'a'*40}))
+        with patch.dict(os.environ, {**self.health_env(), 'EASYSTOCK_RELEASE_FILE': str(marker)}), \
+             patch('easystock_admin.release.running_commit', return_value='b'*40):
             result = snapshot(self.s)
-        signal = next(row for row in result['signals'] if row['key'] == 'model_runtime_consistency')
+        signal = next(row for row in result['signals'] if row['key'] == 'deployment_release')
         self.assertEqual(signal['state'], 'warning')
-        self.assertIn('非盤中', signal['detail'])
+        self.assertIn('bbbbbbbbbbbb', signal['detail']); self.assertIn('未更新', signal['detail'])
 
-    def test_health_treats_auto_approved_paper_model_as_healthy(self):
+    def test_health_lists_failed_vm_services(self):
         from easystock_admin.health import snapshot
-        learning = self.path.parent/'learning'
-        models = learning/'models'; models.mkdir(parents=True)
-        (learning/'training-status.json').write_text(json.dumps({
-            'status':'auto_approved_for_paper','samples':470,'version':'research-2026-09-24'
-        }))
-        (models/'candidate-2026-09-24.json').write_text(json.dumps({'status':'candidate_only'}))
-        (models/'latest-approved.json').write_text(json.dumps({
-            'approved':True,'deployment_allowed':True,'version':'research-2026-09-24','trained_through':'2026-09-24'
-        }))
-        with patch.dict(os.environ, {'EASYSTOCK_LEARNING_DATA': str(learning), 'EASYSTOCK_HISTORY_DATA': str(self.path.parent/'history')}):
+        listing = ('easystock-intraday.service loaded inactive dead Intraday\n'
+                   'easystock-events-backfill.service loaded failed failed Backfill\n'
+                   'easystock-esun-marketdata.service loaded active running E.SUN\n'
+                   'easystock-codex-executor@x.service loaded failed failed Codex\n')
+        completed = __import__('subprocess').CompletedProcess([], 0, stdout=listing, stderr='')
+        with patch.dict(os.environ, self.health_env()), patch('subprocess.run', return_value=completed):
+            result = snapshot(self.s)
+        signal = next(row for row in result['signals'] if row['key'] == 'vm_services')
+        self.assertEqual(signal['state'], 'error')
+        self.assertIn('easystock-events-backfill', signal['detail'])
+        self.assertNotIn('codex-executor', signal['detail'])
+        self.assertEqual(signal['metrics'], {'service_total': 3, 'service_running': 1, 'service_failed': 1})
+
+    def test_health_reads_training_action_field(self):
+        from easystock_admin.health import snapshot
+        learning = self.path.parent/'learning'; learning.mkdir()
+        (learning/'training-status.json').write_text(json.dumps({'action': 'blocked', 'sample_count': 1200}))
+        with patch.dict(os.environ, self.health_env(learning)):
             result = snapshot(self.s)
         training = next(row for row in result['signals'] if row['key'] == 'daily_training')
-        candidate = next(row for row in result['signals'] if row['key'] == 'candidate_model')
-        self.assertEqual(training['state'], 'ok')
-        self.assertIn('自動核准', training['detail'])
-        self.assertEqual(candidate['state'], 'ok')
-        self.assertIn('不需人工審核', candidate['detail'])
+        self.assertEqual(training['state'], 'warning')
+        self.assertIn('門檻尚未達成', training['detail'])
+        self.assertEqual(training['metrics']['samples'], 1200)
 
-    def test_health_exposes_profile_mismatch_warning(self):
+    def test_health_omits_retired_model_panels(self):
         from easystock_admin.health import snapshot
-        learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
-        (models/'shadow-summary.json').write_text(json.dumps({'warnings':[{'type':'profile_mismatch','line':'frozen_baseline'}]}))
-        with patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning),'EASYSTOCK_HISTORY_DATA':str(self.path.parent/'history')}):
-            result=snapshot(self.s)
-        signal=next(row for row in result['signals'] if row['key']=='model_profile')
-        self.assertEqual(signal['state'],'warning');self.assertIn('frozen_baseline',signal['detail'])
+        with patch.dict(os.environ, self.health_env()):
+            result = snapshot(self.s)
+        keys = {row['key'] for row in result['signals']}
+        self.assertFalse(keys & {'candidate_model', 'model_profile', 'model_runtime_consistency'})
+        self.assertNotIn('model_runtime_consistency', result)
+        html = (ROOT/'easystock_admin/static/index.html').read_text(encoding='utf-8')
+        for retired in ('runtimeModelPanel', 'modelLogPanel', 'syncVm', 'liveConsolePanel', 'liveKill'):
+            self.assertNotIn(retired, html)
 
-    def test_health_reports_model_runtime_consistency(self):
-        from easystock_admin.health import snapshot
-        learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
-        approved={'approved':True,'deployment_allowed':True,'schema_version':'daytrade-research-v1','features':['gain_pct','return_5m_pct','surge_60s','buy_ratio_60s','amount_60s'],'mean':[0]*5,'scale':[1]*5,'coef':[0]*5,'intercept':0,'threshold':.6,'version':'research-2026-09-28','trained_through':'2026-09-28','profile':'profile-a'}
-        (models/'latest-approved.json').write_text(json.dumps(approved))
-        from daytrade_learning.model_runtime import write_runtime_model_status
-        write_runtime_model_status({
-            'version':'research-2026-09-28','trained_through':'2026-09-28','profile':'profile-a','schema_version':'daytrade-research-v1',
-            'loaded_at':'2026-09-29T09:00:00+08:00','artifact_path':str(models/'latest-approved.json'),'artifact_sha256':'a'*64,
-        }, entry_mode='model', pid=1, path=models/'runtime-model-status.json')
-        dummy_market={'key':'market_session','label':'當沖時段','state':'ok','detail':'test','metrics':{}}
-        with patch('easystock_admin.health._market_session', return_value=dummy_market), patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning),'EASYSTOCK_HISTORY_DATA':str(self.path.parent/'history'),'AI_PAPER_MODEL_PATH':str(models/'latest-approved.json'),'MODEL_RUNTIME_STATUS_PATH':str(models/'runtime-model-status.json')}):
-            result=snapshot(self.s)
-        self.assertIn('model_runtime_consistency', result)
-        signal=next(row for row in result['signals'] if row['key']=='model_runtime_consistency')
-        self.assertEqual(signal['state'],'warning')
-        self.assertIn('不一致', signal['detail'])
-
-    def test_dashboard_has_runtime_model_section(self):
-        html=(ROOT/'easystock_admin/static/index.html').read_text(encoding='utf-8')
-        self.assertIn('runtimeModelPanel', html)
-        self.assertIn('rtVersion', html)
-        self.assertIn('apVersion', html)
-        self.assertIn('rtConsistency', html)
-        self.assertIn('rtMode', html)
+    def test_vm_sync_is_not_a_maintenance_action(self):
+        from easystock_admin.operations import execute
+        with patch('easystock_admin.operations._run') as run:
+            with self.assertRaises(Denied):
+                execute(self.s, 'sync-vm', 'SYNC_VM')
+            run.assert_not_called()
 
     def test_health_does_not_claim_resume_without_worker_status(self):
         from easystock_admin.health import snapshot
@@ -172,37 +151,6 @@ class StoreTests(unittest.TestCase):
             result=snapshot(self.s)
         signal=next(row for row in result['signals'] if row['key']=='history_collection')
         self.assertEqual(signal['state'],'idle');self.assertIn('無法確認',signal['detail'])
-
-    def test_model_promotion_log_is_bounded_and_whitelisted(self):
-        from easystock_admin.health import model_promotion_log
-        learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
-        entry={'promoted_at':'2026-09-28T16:10:00+08:00','promoted_model':'research-2026-09-28',
-               'previous_model':'research-2026-09-27','backup_file':'archive/latest-approved-date.json',
-               'trained_through':'2026-09-28','validation_mode':'test','secret':'hidden',
-               'validation':[{'fold':1,'test_samples':94,'selected_count':30,'expected_value_pct':.2,'brier':.1,'extra':'hidden'}]}
-        (models/'promotion-log.jsonl').write_text('bad json\n'+json.dumps(entry)+'\n',encoding='utf-8')
-        with patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning)}):result=model_promotion_log()
-        self.assertEqual(len(result['entries']),1)
-        self.assertEqual(result['entries'][0]['promoted_model'],'research-2026-09-28')
-        self.assertNotIn('secret',result['entries'][0])
-        self.assertNotIn('extra',result['entries'][0]['validation'][0])
-
-    def test_model_promotion_log_pages_newest_first(self):
-        from easystock_admin.health import model_promotion_log
-        learning=self.path.parent/'learning';models=learning/'models';models.mkdir(parents=True)
-        entries=[]
-        for index in range(25):
-            entries.append(json.dumps({'promoted_model':f'model-{index}','validation':[]}))
-        (models/'promotion-log.jsonl').write_text('\n'.join(entries)+'\n',encoding='utf-8')
-        with patch.dict(os.environ,{'EASYSTOCK_LEARNING_DATA':str(learning)}):
-            first=model_promotion_log(page=1,page_size=10)
-            second=model_promotion_log(page=2,page_size=10)
-            third=model_promotion_log(page=3,page_size=10)
-        self.assertEqual([r['promoted_model'] for r in first['entries']],[f'model-{i}' for i in range(24,14,-1)])
-        self.assertEqual([r['promoted_model'] for r in second['entries']],[f'model-{i}' for i in range(14,4,-1)])
-        self.assertEqual(len(third['entries']),5)
-        self.assertTrue(first['has_more']);self.assertTrue(second['has_more']);self.assertFalse(third['has_more'])
-
 class WebTests(unittest.TestCase):
     def test_paper_start_uses_daily_limit_and_rejects_cash_payload(self):
         csrf=self.login().json['csrf']

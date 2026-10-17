@@ -1,7 +1,7 @@
 const assert=require('node:assert'),fs=require('node:fs');
 const {createDOM,settle}=require('./dom.cjs');
 (async()=>{
- const {w,run}=createDOM(fs.readFileSync('vm_runtime/easystock_admin/static/index.html','utf8'));
+ const {w,run}=createDOM(fs.readFileSync('easystock_admin/static/index.html','utf8'));
  let state={version:1,line:{configured:true,trade:true,summary:false},telegram:{configured:true,trade:false,summary:true},deliveries:[{channel:'line',kind:'trade',status:'sent',at:1}]};
  const writes=[];
  w.fetch=async(url,options={})=>{
@@ -14,7 +14,7 @@ const {createDOM,settle}=require('./dom.cjs');
    if(options.method==='PUT'&&url.endsWith('/notifications')){const body=JSON.parse(options.body);writes.push({url,options,body});state={version:2,line:{configured:true,trade:body.line_trade,summary:body.line_summary},telegram:{configured:true,trade:body.telegram_trade,summary:body.telegram_summary},deliveries:[]};data=state;}
    return {ok:true,json:async()=>data};
  };
- run('vm_runtime/easystock_admin/static/admin.js');await settle();
+ run('easystock_admin/static/admin.js');await settle();
  assert(!w.document.getElementById('workspace').hidden);
  assert.equal(w.document.querySelectorAll('#notificationForm input[type=checkbox]').length,4);
  assert(w.document.getElementById('lineTrade').checked);
