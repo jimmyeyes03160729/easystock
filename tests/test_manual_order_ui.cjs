@@ -24,13 +24,13 @@ function fixture(t){
   const fill=()=>{input('orderSymbol','2330');input('orderPrice',100);input('orderQty',10);input('orderCaPasswd','fake-test-password');};
   return {w,run,get,calls,state,login,input,fill,setOutcome:(value,code=200)=>{outcome=value;status=code;},failNetwork:()=>{networkError=true;},expireSession:()=>{unauthorized=true;}};
 }
-test('manual ordering is inside login workspace, after notifications and before live console',async t=>{
+test('manual ordering is inside login workspace and is the last tab after notifications',async t=>{
   const f=fixture(t);
   assert.equal(f.get('openOrderModal'),null);assert.equal(f.get('orderModal'),null);
   assert(f.get('workspace').contains(f.get('manualOrderPanel')));assert(f.get('workspace').hidden);assert(f.get('manualOrderPanel').hidden);
   assert(f.get('btnOrderSubmit').disabled);assert.equal(f.calls.length,0);
-  f.w.showAdminTab=()=>{};f.w.api=async()=>f.state;f.run('easystock_admin/static/live-console.js');
-  assert.deepEqual([...f.w.document.querySelectorAll('[data-admin-tab]')].slice(-3).map(n=>n.dataset.adminTab),['conversationPanel','manualOrderPanel','liveConsolePanel']);
+  assert.deepEqual([...f.w.document.querySelectorAll('[data-admin-tab]')].slice(-2).map(n=>n.dataset.adminTab),['conversationPanel','manualOrderPanel']);
+  assert.equal(f.get('liveConsolePanel'),null);
   f.get('btnOrderVerify').click();assert.equal(f.calls.length,0);
 });
 test('holdings and broker order/fill results are read only and safely rendered after login',async t=>{
@@ -39,6 +39,8 @@ test('holdings and broker order/fill results are read only and safely rendered a
   assert.equal(f.get('orderPositions').querySelectorAll('img').length,0);
   assert(f.get('orderOrders').textContent.includes('部分成交'));assert(f.get('orderDeals').textContent.includes('500'));
   assert(f.calls.every(c=>!c.url.endsWith('/place')));
+  f.state.broker.pnl={unrealized:2000,realized_today:null};await f.w.loadManualOrders();
+  assert.match(f.get('orderPortfolioStatus').textContent,/未實現損益 2000 · 今日已實現（券商可能延遲）未知/);
   f.state.broker.complete=false;await f.w.loadManualOrders();
   assert.match(f.get('orderPositions').textContent,/尚未完整同步/);assert.equal(f.get('orderPositions').querySelectorAll('button').length,0);
 });

@@ -188,9 +188,6 @@ def inspect_file(path, raw, policy):
         for branch in (n for n in ast.walk(fn) if isinstance(n, ast.If) and 'kill' in words(n.test).lower()):
             if any(tail(c) in ('flatten','flatten_all','close_all','place_order','submit_order','sell') for statement in branch.body for c in calls(statement)):
                 add('TRADING-004', branch.lineno, fn.name+':kill-liquidation')
-        if logical == 'easystock_admin/live_console.py' and fn.name == 'state':
-            if not any(isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.Not) and words(n.operand)=='kill' for n in ast.walk(fn)):
-                add('TRADING-004', fn.lineno, 'kill-not-blocking')
         # Local, monotonic taint propagation. Read operations are never performed by Guardian.
         tainted_holdout, approved, future = set(), set(), set()
         features = 'feature' in fn.name.lower() or any(x in PurePosixPath(logical).stem.lower() for x in ('feature','context','replay','backfill'))

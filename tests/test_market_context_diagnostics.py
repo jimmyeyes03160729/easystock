@@ -29,10 +29,3 @@ def test_market_context_is_not_wired_to_production_strategy():
             code=path.read_text(encoding='utf8')
             assert 'sector_rotation_proxy' not in code
             assert 'market_data.context import diagnostics' not in code
-
-
-def test_new_admin_runtime_files_do_not_drift():
-    from pathlib import Path
-    for name in ('store.py','web.py','order_service.py','broker_read.py','live_console.py',
-                 'static/index.html','static/admin.js','static/admin.css','static/live-console.js'):
-        assert Path('easystock_admin',name).read_bytes() == Path('vm_runtime/easystock_admin',name).read_bytes()

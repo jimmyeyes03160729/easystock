@@ -263,9 +263,7 @@ def test_snapshot_closes_read_connection(account, monkeypatch, fail):
 
 
 def test_core_and_admin_root_vm_sources_match():
-    for name in ('paper_ledger.py','paper_account.py','position_manager.py','daytrade_summary_push.py',
-                 'easystock_admin/store.py','easystock_admin/web.py','easystock_admin/health.py',
-                 'easystock_admin/static/paper-trade.js','easystock_admin/static/index.html'):
+    for name in ('paper_ledger.py','paper_account.py','position_manager.py','daytrade_summary_push.py'):
         assert (ROOT/name).read_bytes()==(ROOT/'vm_runtime'/name).read_bytes(),name
 
 

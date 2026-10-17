@@ -25,4 +25,18 @@ def identity() -> dict:
     except (OSError, ValueError, UnicodeError):
         pass
     values["identified"] = bool(values["release_id"] and values["source_commit"])
+    values["running_commit"] = running_commit()
     return values
+
+
+def running_commit() -> str:
+    """The checkout's actual HEAD; release-info.json can lag behind manual syncs."""
+    import subprocess
+    root = Path(os.environ.get("EASYSTOCK_RELEASE_REPO", Path(__file__).resolve().parents[1]))
+    try:
+        completed = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
+                                   text=True, capture_output=True, timeout=5, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    head = completed.stdout.strip()
+    return head if completed.returncode == 0 and len(head) == 40 else ""

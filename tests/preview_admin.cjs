@@ -25,10 +25,10 @@ http.createServer((req,res)=>{
       window.api=async(path,options)=>{if(path!=='api/market-context'||options)throw Error('Preview denies API calls');return ${JSON.stringify(marketFixture())};};
       document.addEventListener('DOMContentLoaded',()=>window.loadMarketContext());
     `;d.head.append(fixture);
-    const script=d.createElement('script');script.src='/admin/assets/live-console.js';script.defer=true;d.head.append(script);
+    const script=d.createElement('script');script.src='/admin/assets/market-context.js';script.defer=true;d.head.append(script);
     res.setHeader('Content-Type','text/html; charset=utf-8');res.end(dom.serialize());dom.window.close();return;
   }
   const filename=url.pathname.slice('/admin/assets/'.length);
-  if(!url.pathname.startsWith('/admin/assets/')||!['admin.css','live-console.js'].includes(filename)){res.writeHead(404);res.end();return;}
+  if(!url.pathname.startsWith('/admin/assets/')||!['admin.css','market-context.js'].includes(filename)){res.writeHead(404);res.end();return;}
   res.setHeader('Content-Type',filename.endsWith('.css')?'text/css':'text/javascript');fs.createReadStream(path.join(assets,filename)).pipe(res);
 }).listen(8767,'127.0.0.1',()=>console.log('Synthetic Admin UI: http://127.0.0.1:8767/?panel=market (or manual; theme=light)'));

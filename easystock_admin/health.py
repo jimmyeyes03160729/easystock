@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from daytrade_learning.model_runtime import model_runtime_consistency
 from .release import identity as release_identity
 
 
@@ -102,16 +101,46 @@ def _worker_signal(key: str, label: str, value: object, timer: object = None, ne
 
 def _release_signal() -> dict:
     release = release_identity()
-    if release['identified']:
-        detail = (
-            f"部署版本 {release['release_id']}；來源 commit "
-            f"{release['source_commit']}。"
-        )
+    running = release.get('running_commit') or ''
+    recorded = release.get('source_commit') or ''
+    if running and recorded and running != recorded:
+        detail = f"實際程式碼 commit {running[:12]}；release-info 記錄 {recorded[:12]}，部署紀錄未更新。"
+        state = 'warning'
+    elif running:
+        detail = f"實際程式碼 commit {running[:12]}" + (f"；部署版本 {release['release_id']}。" if release.get('release_id') else '。')
         state = 'ok'
+    elif release['identified']:
+        detail = f"部署版本 {release['release_id']}；來源 commit {recorded}（無法讀取實際 git commit）。"
+        state = 'warning'
     else:
         detail = '尚未取得可核對的部署版本與來源 commit；不能確認目前執行的是哪一版。'
         state = 'warning'
     return _signal('deployment_release', '部署版本', state, detail, metrics=release)
+
+
+def _vm_services() -> dict:
+    """List every easystock service unit so a failed job cannot go unnoticed."""
+    import subprocess
+    try:
+        completed = subprocess.run(
+            ['systemctl', 'list-units', '--type=service', '--all', '--plain', '--no-legend', '--no-pager', 'easystock-*'],
+            text=True, capture_output=True, timeout=5, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return _signal('vm_services', 'VM 服務', 'idle', '無法讀取 systemd 狀態（非 VM 環境或權限不足）。')
+    units = []
+    for line in completed.stdout.splitlines():
+        parts = line.split()
+        if len(parts) >= 4 and parts[0].endswith('.service') and '@' not in parts[0]:
+            units.append((parts[0].removesuffix('.service'), parts[2], parts[3]))
+    if completed.returncode != 0 or not units:
+        return _signal('vm_services', 'VM 服務', 'idle', '沒有取得 easystock 服務清單。')
+    failed = sorted(name for name, active, _ in units if active == 'failed')
+    running = sorted(name for name, active, _ in units if active in ('active', 'activating'))
+    metrics = {'service_total': len(units), 'service_running': len(running), 'service_failed': len(failed)}
+    if failed:
+        return _signal('vm_services', 'VM 服務', 'error', '失敗的服務：' + '、'.join(failed) + '。', metrics=metrics)
+    detail = '沒有失敗的服務。執行中：' + ('、'.join(running) if running else '無') + '。'
+    return _signal('vm_services', 'VM 服務', 'ok', detail, metrics=metrics)
 
 
 def _history_collection_state(progress: dict, workers: dict) -> tuple[str, str]:
@@ -155,6 +184,7 @@ def snapshot(store) -> dict:
     signals = [
         market_session,
         _release_signal(),
+        _vm_services(),
         _signal('admin_store', '後台設定資料庫', 'ok', '可讀取目前設定版本。', _timestamp(settings.get('updated_at')), {'setting_version': settings.get('version')}),
         _signal(
             'paper_trade', '模擬買進',
@@ -199,7 +229,8 @@ def snapshot(store) -> dict:
     if training is None:
         signals.append(_signal('daily_training', '每日訓練流程', 'idle' if training_error == 'not_started' else 'error', '尚未產生訓練紀錄。' if training_error == 'not_started' else '無法讀取訓練狀態。'))
     else:
-        status = str(training.get('status', '')).lower()
+        # The learning job writes "action"; older status files used "status".
+        status = str(training.get('status') or training.get('action') or '').lower()
         state = 'ok' if status in ('ok', 'completed', 'experimental_candidate', 'auto_approved_for_paper') else 'warning' if status in ('blocked', 'skipped', 'pending') else 'error'
         detail = {
             'experimental_candidate': '候選模型已完成；尚未套用到即時交易。',
@@ -212,34 +243,6 @@ def snapshot(store) -> dict:
             'labeled': _first_count(training, 'labeled_count', 'labeled'),
         }))
 
-    model_dir = learning / 'models'
-    models = list(model_dir.glob('candidate-*.json')) if model_dir.is_dir() else []
-    newest = max(models, key=lambda item: item.stat().st_mtime) if models else None
-    approved_path = model_dir / 'latest-approved.json'
-    approved, _ = _read_json(approved_path)
-    if approved and approved.get('approved') is True and approved.get('deployment_allowed') is True:
-        detail = '最新模型已自動核准，將於下一個交易日啟動時載入；不需人工審核。'
-        metrics = {'candidate_count': len(models), 'model_version': approved.get('version'), 'trained_through': approved.get('trained_through')}
-        signals.append(_signal('candidate_model', '候選模型', 'ok', detail, _updated_at(approved_path), metrics))
-    else:
-        detail = '已建立候選模型，等待自動核准流程完成。' if newest else '尚無候選模型；資料達到啟動門檻後會自動建立並核准。'
-        signals.append(_signal('candidate_model', '候選模型', 'idle', detail, _updated_at(newest) if newest else None, {'candidate_count': len(models)}))
-
-    shadow_path = model_dir / 'shadow-summary.json'
-    shadow_summary, _ = _read_json(shadow_path)
-    mismatches = [item for item in (shadow_summary or {}).get('warnings', []) if item.get('type') == 'profile_mismatch']
-    if mismatches:
-        names = '、'.join(str(item.get('line') or '未知模型') for item in mismatches)
-        current_profile = (shadow_summary or {}).get('profile') or '未提供'
-        signals.append(_signal(
-            'model_profile', '模型參數一致性', 'warning',
-            f'目前研究 profile={current_profile}；{names} 使用不同 profile，該線已停止比較，請勿混合解讀。',
-            _updated_at(shadow_path),
-            {'current_profile': current_profile, 'mismatched_lines': names},
-        ))
-    elif shadow_summary:
-        signals.append(_signal('model_profile', '模型參數一致性', 'ok', '今日影子評估的模型與交易參數一致。', _updated_at(shadow_path)))
-
     if progress is None:
         signals.append(_signal('history_collection', '歷史資料補抓', 'idle' if history_error == 'not_started' else 'error', '尚未產生歷史資料進度。' if history_error == 'not_started' else '無法讀取歷史資料進度。'))
     else:
@@ -250,82 +253,9 @@ def snapshot(store) -> dict:
             'failed_stock_days': _positive_int(progress.get('failed_stock_days')),
         }))
 
-    try:
-        consistency = model_runtime_consistency(
-            learning_data_dir=str(learning),
-            max_stale_seconds=int(os.environ.get('MODEL_RUNTIME_STALE_SECONDS', '90')),
-        )
-    except Exception as exc:
-        consistency = {
-            'status': 'RUNTIME_UNKNOWN',
-            'runtime': None,
-            'approved': None,
-            'match': False,
-            'reason': 'model_runtime_consistency_check_failed',
-            'error': f'{type(exc).__name__}: {exc}',
-        }
-    status_to_state = {
-        'OK': 'ok',
-        'MISMATCH': 'warning',
-        'RUNTIME_UNKNOWN': 'error',
-        'RUNTIME_STALE': 'error',
-        'APPROVED_MISSING': 'error',
-        'APPROVED_INVALID': 'error',
-    }
-    state = status_to_state.get(consistency['status'], 'error')
-    if consistency['status'] == 'RUNTIME_STALE' and market_session['state'] == 'idle':
-        # The intraday process normally exits after the trading session.  Its
-        # last successful model load remains useful evidence, but a stale
-        # heartbeat after hours is not a runtime failure.
-        state = 'warning'
-    runtime = consistency.get('runtime') or {}
-    runtime_status = consistency.get('runtime_status') or {}
-    approved = consistency.get('approved') or {}
-    if consistency['status'] == 'OK':
-        detail = '盤中 process 實際載入的模型與 latest-approved artifact 一致。'
-    elif consistency['status'] == 'RUNTIME_UNKNOWN':
-        detail = '無法確認盤中 process 目前載入的模型；可能是尚未啟動、狀態遺失或模型載入失敗。'
-        if runtime.get('load_reason'):
-            detail += ' 載入原因：' + str(runtime['load_reason']) + '。'
-    elif consistency['status'] == 'RUNTIME_STALE':
-        detail = (
-            '目前非盤中時段；最後一次盤中服務回報已過期，'
-            '不能視為目前 process 正在執行，但可查看最後載入的模型。'
-        )
-    elif consistency['status'] == 'APPROVED_MISSING':
-        detail = 'latest-approved.json 不存在；無法比對。'
-    elif consistency['status'] == 'APPROVED_INVALID':
-        detail = f'latest-approved.json 無法解析或不符合 schema：{consistency.get("reason")}'
-    else:
-        detail = '盤中 process 使用的模型與 latest-approved artifact 不一致；此為預期監控結果，不會自動重載。'
-    signals.append(_signal(
-        'model_runtime_consistency',
-        '盤中模型狀態',
-        state,
-        detail,
-        metrics={
-            'consistency_status': consistency['status'],
-            'match': bool(consistency.get('match')),
-            'reason': consistency.get('reason'),
-            'runtime_version': runtime.get('version'),
-            'runtime_profile': runtime.get('profile'),
-            'runtime_trained_through': runtime.get('trained_through'),
-            'runtime_loaded_at': runtime.get('loaded_at'),
-            'runtime_load_reason': runtime.get('load_reason'),
-            'runtime_entry_mode': runtime_status.get('entry_mode'),
-            'runtime_artifact_name': runtime.get('artifact_name'),
-            'runtime_sha256_short': (runtime.get('artifact_sha256') or '')[:12],
-            'approved_version': approved.get('version'),
-            'approved_profile': approved.get('profile'),
-            'approved_trained_through': approved.get('trained_through'),
-            'approved_sha256_short': (approved.get('artifact_sha256') or '')[:12],
-        },
-    ))
-
     return {
         'generated_at': datetime.now(timezone.utc).isoformat(),
         'signals': signals,
-        'model_runtime_consistency': consistency,
         'provider_health': provider_diagnostics(),
     }
 
@@ -337,44 +267,3 @@ def provider_diagnostics():
     details['market_gate'] = read_gate()
     return details
 
-
-def model_promotion_log(page: int = 1, page_size: int = 10) -> dict:
-    """Return one newest-first page without loading the whole audit file."""
-    page=max(1,min(int(page),10000));page_size=max(1,min(int(page_size),50))
-    learning=_root('EASYSTOCK_LEARNING_DATA','/home/ubuntu/easystock-learning-data')
-    path=learning/'models'/'promotion-log.jsonl'
-    if not path.exists():return {'entries':[],'page':page,'page_size':page_size,'has_previous':page>1,'has_more':False}
-    needed=page*page_size+1;raw_rows=[]
-    try:
-        with open(path,'rb') as source:
-            source.seek(0,2);position=source.tell();remainder=b''
-            while position>0 and len(raw_rows)<needed:
-                size=min(65536,position);position-=size;source.seek(position)
-                parts=(source.read(size)+remainder).split(b'\n');remainder=parts[0]
-                for raw in reversed(parts[1:]):
-                    if raw.strip():raw_rows.append(raw)
-                    if len(raw_rows)>=needed:break
-            if position==0 and remainder.strip() and len(raw_rows)<needed:raw_rows.append(remainder)
-    except OSError:
-        return {'entries':[],'page':page,'page_size':page_size,'has_previous':page>1,'has_more':False,'unavailable':True}
-    rows=[]
-    for raw in raw_rows:
-        if len(raw)>65536:continue
-        try:source=json.loads(raw)
-        except (ValueError,TypeError):continue
-        if not isinstance(source,dict):continue
-        validations=[]
-        for item in source.get('validation') or []:
-            if not isinstance(item,dict):continue
-            validations.append({key:item.get(key) for key in (
-                'fold','test_samples','selected_count','expected_value_pct','brier','test_from','test_through')})
-        rows.append({
-            'promoted_at':source.get('promoted_at') or source.get('date'),
-            'promoted_model':source.get('promoted_model') or (('滾動模型 · '+str(source.get('action'))) if source.get('action') else None),
-            'previous_model':source.get('previous_model'),'backup_file':source.get('backup_file'),
-            'trained_through':source.get('trained_through'),'validation_mode':source.get('validation_mode'),
-            'validation':validations,'action':source.get('action'),'profile':source.get('profile'),
-            'sample_count':source.get('sample_count'),'warnings':source.get('warnings') or [],
-        })
-    start=(page-1)*page_size;entries=rows[start:start+page_size]
-    return {'entries':entries,'page':page,'page_size':page_size,'has_previous':page>1,'has_more':len(rows)>start+page_size}

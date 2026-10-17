@@ -82,7 +82,7 @@
       state = data;
       const broker = data.broker || {};
       say('orderPortfolioStatus', broker.complete && data.broker_fresh
-        ? `帳戶 ${text(broker.account?.account_id)} · 同步時間 ${text(broker.updated_at)}${data.ordering_guard ? '' : ' · 實單送出尚未啟用'}`
+        ? `帳戶 ${text(broker.account?.account_id)} · 同步時間 ${text(broker.updated_at)} · 未實現損益 ${text(broker.pnl?.unrealized)} · 今日已實現（券商可能延遲）${text(broker.pnl?.realized_today)}${data.ordering_guard ? '' : ' · 實單送出尚未啟用'}`
         : '券商持股尚未確認，請先連線驗證，再同步券商。', !broker.complete || !data.broker_fresh);
       table('orderPositions', broker.positions, [['symbol', '股票代碼'], ['name', '名稱'], ['quantity', '持股（股）'], ['available_to_sell', '可賣（股）'], ['average_price', '均價'], ['current_price', '現價'], ['unrealized_pnl', '未實現損益']], true);
       table('orderOrders', broker.orders, [['symbol', '股票'], ['side', '方向'], ['qty', '委託股數'], ['price', '限價'], ['status', '結果'], ['filled_qty', '已成交股數'], ['order_id', '委託識別']]);
