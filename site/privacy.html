@@ -65,7 +65,7 @@
   <div class="container">
     <h1>隱私權政策 (Privacy Policy)</h1>
     <p><strong>適用版本：</strong>Chrome 擴充功能 2.1 起　<strong>生效日期：</strong>2.1 於 Chrome 線上應用程式商店上架日</p>
-    <p>本隱私權政策適用於 Chrome 擴充功能<strong>「當沖吧！牛馬仔 - 工位摸魚看盤神器 ｜ 台股行情觀察」</strong>（以下簡稱「本擴充功能」）。2.0 新增「可選用的 Google 帳號登入與雲端同步」；2.1 新增「自選股到價提醒」與在您電腦上計算的「智慧參考價位」。以下說明我們實際處理哪些資料、為何處理，以及您如何控制。</p>
+    <p>本隱私權政策適用於 Chrome 擴充功能<strong>「當沖吧！牛馬仔 - 工位摸魚看盤神器 ｜ 台股行情觀察」</strong>（以下簡稱「本擴充功能」）。2.0 新增「可選用的 Google 帳號登入與雲端同步」；2.1 新增「自選股到價提醒」與「智慧參考價位」；2.1.1 將智慧參考價位改為讀取服務端已發布的公開行情結果，舊版仍採本機計算。以下說明我們實際處理哪些資料、為何處理，以及您如何控制。</p>
 
     <div class="highlight-box">
       <strong>重點摘要：</strong>不登入也能完整使用本機自選股與到價提醒。只有在您主動選擇「使用 Google 登入」後，我們才會以您的 Firebase 使用者 ID（UID）在 Firebase 儲存您的自選股、提醒條件、到價提醒價位與介面偏好，用於在不同電腦之間同步。我們不出售資料、不投放廣告，也不收集券商帳號或交易密碼。
@@ -118,7 +118,7 @@
     <ul>
       <li><strong>公開行情（唯讀）：</strong>mis.twse.com.tw、Yahoo 奇摩股市／Yahoo Finance、EasyStock 公開發布端（GitHub、Firebase <code>market_data</code>）。查詢公開行情時只送出股票代號。</li>
       <li><strong>登入與同步（僅在您登入後）：</strong>Google OAuth（chrome.identity）、Firebase Authentication（identitytoolkit.googleapis.com）、Firebase Realtime Database（easystock-c237a-default-rtdb.firebaseio.com）。</li>
-      <li><strong>到價提醒與智慧參考價位：</strong>到價提醒由擴充功能在背景以上述公開行情檢查，並以 Chrome 系統通知顯示；智慧參考價位只在您按下按鈕時，以 Yahoo Finance 公開日 K 在您的電腦上用技術指標計算。兩者都不會把您的資料送往任何 AI 或第三方分析服務，也不會產生任何券商委託。</li>
+      <li><strong>到價提醒與智慧參考價位：</strong>到價提醒由擴充功能在背景以上述公開行情檢查，並以 Chrome 系統通知顯示；2.1.1 的智慧參考價位只在您按下按鈕時，從 Firebase 讀取由既有伺服器根據公開日 K 預先產生的結果。該讀取請求包含股票代碼與參考期間，不會將您的完整自選清單、個人提醒設定或登入權杖傳給價位計算服務；舊版仍採本機計算。兩者都不會產生任何券商委託。</li>
     </ul>
 
     <h2>7. 第三方與資料處理角色</h2>
