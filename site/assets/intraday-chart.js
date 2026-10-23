@@ -1,0 +1,107 @@
+/* Same-session candles and recorded model evidence for simulated trades. */
+(() => {
+ const style=document.createElement('style');style.textContent=`
+ .trade-open{color:#047857!important;background:#d1fae5;border-color:#059669!important}.trade-closed{color:#1d4ed8!important;background:#dbeafe;border-color:#3b82f6!important}
+ .paper-filled{color:#047857!important;background:#d1fae5;border-color:#059669!important}.paper-research{color:#b45309!important;background:#fef3c7;border-color:#f59e0b!important}
+ .trade-detail-card{cursor:pointer}.trade-detail-card:hover,.trade-detail-card:focus-visible{outline:2px solid var(--main);outline-offset:2px}
+ #tradeDialog{width:min(920px,94vw);max-height:90vh;overflow:auto;background:var(--bg,#141414);color:var(--main,#eee);border:1px solid var(--border,#555);border-radius:14px;padding:22px}#tradeDialog::backdrop{background:#0009}
+ #tradeDialog header{display:flex;align-items:start;justify-content:space-between;gap:16px}#tradeDialog h2{font-size:20px;font-weight:800;margin-bottom:10px}#tradeDialog p,#tradeDialog li{font-size:14px;line-height:1.8}#tradeDialog ul{padding-left:20px;list-style:disc}#tradeDialog svg{display:block;width:100%;height:auto;min-width:0}#tradeChartModes{display:flex;gap:8px;margin:16px 0 4px}#tradeChartModes button[aria-pressed=true]{background:var(--glass-seg-active,#dbeafe);font-weight:700}#tradeChart{min-height:230px}#tradeChart{overflow-x:auto;margin:14px 0}#tradeDialog button{padding:7px 12px;border:1px solid var(--border,#555);border-radius:6px}#tradeDialog .trade-status{padding:4px 9px;border-radius:5px;display:inline-block}#tradeDialog h3{font-weight:750;margin:14px 0 6px}
+ `;document.head.append(style);
+ const dialog=document.createElement('dialog');dialog.id='tradeDialog';dialog.setAttribute('aria-labelledby','tradeTitle');
+ dialog.innerHTML='<header><div><h2 id="tradeTitle"></h2><span id="tradeStatus" class="trade-status"></span></div><button type="button" aria-label="關閉當日K線">關閉 ✕</button></header><p id="tradeOutcome"></p><div id="tradeChartModes" role="group" aria-label="走勢圖類型"><button type="button" data-chart-mode="line" aria-pressed="true">分時走勢</button><button type="button" data-chart-mode="candles" aria-pressed="false">5 分 K</button></div><p id="tradeChartNote" role="status"></p><div id="tradeChart"></div><h3>為什麼選入這檔？</h3><p id="tradeModelReason"></p><ul id="tradeReasons"></ul><p>圖中紅 K 為上漲、綠 K 為下跌；持倉中包含正在形成的 5 分 K，未收完前高低收價仍會變動，進出場以模擬成交紀錄為準。</p>';
+ document.body.append(dialog);dialog.querySelector('header button').onclick=()=>dialog.close();
+ let selected=null,generation=0,controller=null,chartMode='line',lastChart=null;
+ dialog.querySelectorAll('[data-chart-mode]').forEach(button=>button.addEventListener('click',()=>{
+  chartMode=button.dataset.chartMode;
+  dialog.querySelectorAll('[data-chart-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+  if(lastChart)draw(lastChart.payload,lastChart.trade);
+ }));
+ dialog.addEventListener('close',()=>{selected=null;generation++;controller?.abort();});
+ const put=(id,v)=>document.getElementById(id).textContent=v;
+ const number=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v):null;
+ const price=v=>number(v)===null?'未提供':Number(v).toFixed(2);
+ const day=v=>{const t=Date.parse(v);return Number.isFinite(t)?new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(new Date(t)):'';};
+ const clock=v=>new Date(v).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false});
+ // A research signal is not a Paper fill; say which one each record is and why.
+ const SKIP_REASONS={daytrade_eligibility_unknown:'無法確認可否當沖',daytrade_ineligible:'非可當沖標的',quote_unavailable:'報價取得失敗',quote_stale:'報價過時',no_counterparty:'無對手盤或委買賣量不足',entry_cutoff:'已過進場時段',daily_buy_limit_exceeded:'每日買進額度已用完',insufficient_cash:'現金不足',daily_entry_limit:'已達每日進場筆數上限',reentry_disabled:'同檔當日不重複進場',execution_unconfirmed:'成交未確認'};
+ function paperStatus(t){
+  const state=t?.paper_execution||(t?.execution_kind==='paper_fill'?'FILLED':null);
+  if(state==='FILLED')return {filled:true,label:'模擬已成交',text:`模擬帳本已成交${number(t.shares)!==null?` ${Number(t.shares).toLocaleString()} 股`:''}。`};
+  if(state==='SKIPPED'){const d=t.paper_skip_detail||{},extra=[d.eligibility_detail,d.quote_error].filter(Boolean).join('，');
+   return {filled:false,label:'僅研究訊號',text:`模擬帳本未成交：${SKIP_REASONS[t.paper_skip_reason]||t.paper_skip_reason||'原因未記錄'}${extra?`（${extra}）`:''}。`};}
+  if(state==='NOT_ATTEMPTED')return {filled:false,label:'僅研究訊號',text:'模擬帳本未嘗試成交。'};
+  return null; // Older records do not say; show nothing rather than guess.
+ }
+ window.paperExecutionStatus=paperStatus;
+ function entryPresentation(t){
+  const status=paperStatus(t),signal=number(t?.entry_price),filled=status?.filled===true;
+  const value=filled?number(t.paper_entry_price):signal;
+  const label=filled?'模擬成交價':status?'研究訊號價':'進場參考價（成交待確認）';
+  const at=Date.parse(t?.entry_quote_at),age=number(t?.entry_quote_age_seconds);
+  const quoteText=Number.isFinite(at)
+   ?`進場行情 ${new Date(at).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})}（台北）${age!==null&&age>=0?` · 判斷時行情年齡 ${age.toFixed(2)} 秒`:''}`
+   :'舊紀錄未保存行情時間，不推估延遲';
+  return {label,value,signal,filled,quoteText};
+ }
+ window.tradeEntryPresentation=entryPresentation;
+ function outcome(t){
+  if(t.lane){const action=t.direction===-1?'先賣後買':'買進做多';return `${t.lane} 模擬${action} ${price(t.entry_price)} 元${t.open?' · 持倉損益尚未實現。':` → 平倉 ${price(t.exit_price)} 元 · 扣成本報酬 ${price(t.return_pct)}% · ${t.exit_reason||'已平倉'}。`}`;}
+  const s=paperStatus(t),research=s&&!s.filled,net=number(t.research_net_pnl_pct);
+  const entry=entryPresentation(t);
+  const ret=net!==null?`研究訊號扣成本報酬 ${price(net)}%`:`訊號報酬（未扣成本）${price(t.pnl_pct)}%`;
+  const name=research?'研究訊號進場':entry.filled?'模擬買入':'進場參考（成交待確認）';
+  const head=t.open?`${name} ${price(entry.value)} 元 · 持倉損益尚未實現。`
+   :`${name} ${price(entry.value)} 元 → ${research?'研究出場':'出場紀錄'} ${price(t.exit_price)} 元 · ${ret} · ${t.exit_reason||'已平倉'}。`;
+  const signal=entry.filled&&entry.signal!==entry.value?` 訊號參考價 ${price(entry.signal)} 元。`:'';
+  return `${head}${s?` ${s.text}`:''}${signal} ${entry.quoteText}`;
+ }
+ function trades(){return [...Object.values(INTRADAY_LIVE?.open_positions||{}).map(x=>({...x,open:true})),...Object.values(INTRADAY_LIVE?.closed_trades||{}).map(x=>({...x,open:false})),
+  ...['B1','B2','B3'].flatMap(lane=>{const r=INTRADAY_LIVE?.runway_b_lanes?.lanes?.[lane];return [...Object.values(r?.open_positions||{}).map(x=>({...x,lane,open:true})),...Object.values(r?.closed_trades||{}).map(x=>({...x,lane,open:false}))];})];}
+ function evidence(t){
+  const e=t.model_evidence||{},f=e.features||{},score=number(e.score??t.model_score??t.entry_score),threshold=number(e.threshold??t.model_threshold),s=paperStatus(t);
+  put('tradeModelReason',t.lane?`${t.lane} 規則模擬；以下列出當時保存的進場理由。`:threshold!==null&&score!==null?`進場時模型分數 ${score.toFixed(4)}，達到門檻 ${threshold.toFixed(4)}，${s&&!s.filled?'記為研究訊號，但未實際模擬成交':'通過報價與資金檢查後模擬買入'}。分數不是勝率。`:'此筆未保存完整模型門檻；以下僅列原始進場紀錄，不推測模型因果。');
+  const lines=[];
+  for(const [key,label,suffix] of [['gain_pct','相對昨收','%'],['return_5m_pct','近 5 分鐘報酬','%'],['volume_ratio','成交量比',' 倍'],['buy_ratio_60s','近 60 秒主動買入比',''],['vwap_distance_pct','偏離成交量加權均價','%']]){
+   if(number(f[key])!==null)lines.push(`${label}：${Number(f[key]).toFixed(2)}${suffix}`);
+  }
+  if(e.model_version)lines.push(`模型版本：${e.model_version}`);
+  if(!lines.length)lines.push(...(Array.isArray(t.lane?t.reasons:t.entry_reasons)?(t.lane?t.reasons:t.entry_reasons).map(String):[]));
+  const list=document.getElementById('tradeReasons');list.replaceChildren();for(const line of lines.length?lines:['尚無可用的進場依據']){const li=document.createElement('li');li.textContent=line;list.append(li);}
+ }
+ function draw(payload,t){
+  const target=document.getElementById('tradeChart');target.replaceChildren();const wanted=day(t.entry_time);lastChart={payload,trade:t};
+  const series=chartMode==='line'&&Array.isArray(payload?.minute_bars)?payload.minute_bars:payload?.bars;
+  const bars=(Array.isArray(series)?series:[]).filter(b=>day(b.time)===wanted&&Date.parse(b.time)<=Date.now()&&['open','high','low','close','volume'].every(k=>number(b[k])!==null)&&b.low>0&&b.volume>=0&&b.low<=Math.min(b.open,b.close)&&b.high>=Math.max(b.open,b.close)).sort((a,b)=>Date.parse(a.time)-Date.parse(b.time));
+  if(payload?.date!==wanted||!bars.length){put('tradeChartNote',`${wanted||'該交易日'} 尚無可用的當日K線，等待永豐行情同步。`);return;}
+  const age=Date.now()-Date.parse(payload.quote_at||payload.updated_at),stale=!Number.isFinite(age)||age>180000;
+  const isCurrent=wanted===day(new Date().toISOString())&&!payload.session_closed;
+  put('tradeChartNote',`${wanted} · 永豐行情 · ${chartMode==='line'?'分時走勢':'5 分 K'}${bars.some(b=>b.forming)?'（最新一根形成中）':''} · 行情至 ${Number.isFinite(Date.parse(payload.quote_at||payload.updated_at))?clock(payload.quote_at||payload.updated_at):'時間未提供'}${isCurrent?(stale?' · 資料延遲，顯示最後快照':' · 每 15 秒更新'):payload.status==='complete'?' · 完整交易日走勢':' · 該交易日最後快照'}`);
+  const W=Math.max(280,Math.min(800,target.clientWidth||800)),H=350,left=W<500?46:52,right=W-(W<500?18:94),top=20,bottom=250,range=[...bars.flatMap(b=>[Number(b.low),Number(b.high)]),...['entry_price','exit_price'].map(k=>number(t[k])).filter(x=>x!==null)];
+  let lo=Math.min(...range),hi=Math.max(...range),pad=Math.max((hi-lo)*.08,hi*.001);lo-=pad;hi+=pad;
+  const start=Date.parse(`${wanted}T09:00:00+08:00`),span=270*60000,x=time=>left+(Date.parse(time)-start)/span*(right-left),y=p=>bottom-(p-lo)/(hi-lo)*(bottom-top),barWidth=Math.max(1,(right-left)/(chartMode==='line'?270:54)*.65);
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('role','img');svg.setAttribute('aria-label',`${t.symbol} ${wanted} ${chartMode==='line'?'分時走勢':'五分鐘K線'}與進出場位置`);
+  function add(tag,attrs,text){const el=document.createElementNS(ns,tag);for(const [k,v]of Object.entries(attrs))el.setAttribute(k,String(v));if(text!==undefined)el.textContent=text;svg.append(el);return el;}
+  for(let i=0;i<5;i++){const p=lo+(hi-lo)*i/4;add('line',{x1:left,x2:right,y1:y(p),y2:y(p),stroke:'currentColor',opacity:.12});add('text',{x:3,y:y(p)+4,fill:'currentColor','font-size':11},p.toFixed(2));}
+  const maxVol=Math.max(1,...bars.map(b=>Number(b.volume)));
+  for(const b of bars){const color=b.close>=b.open?'#f87171':'#34d399',cx=x(b.time)+barWidth/2;if(chartMode==='candles')add('line',{x1:cx,x2:cx,y1:y(b.high),y2:y(b.low),stroke:color});const rect=add('rect',{x:cx-barWidth/2,y:Math.min(y(b.open),y(b.close)),width:barWidth,height:Math.max(1,Math.abs(y(b.open)-y(b.close))),fill:color,opacity:chartMode==='line'?0:b.forming?.65:1,stroke:b.forming?'#fbbf24':'none','stroke-dasharray':b.forming?'3 2':'none'});const title=document.createElementNS(ns,'title');title.textContent=`${clock(b.time)} 開 ${b.open} 高 ${b.high} 低 ${b.low} 收 ${b.close} 量 ${b.volume}`;rect.append(title);add('rect',{x:cx-barWidth/2,y:310-b.volume/maxVol*42,width:barWidth,height:b.volume/maxVol*42,fill:color,opacity:.5});}
+  if(chartMode==='line'){
+   const gap=Array.isArray(payload?.minute_bars)?60000:300000;let points=[];
+   const flush=()=>{if(points.length)add('polyline',{points:points.join(' '),fill:'none',stroke:'#60a5fa','stroke-width':2,'stroke-linejoin':'round'});points=[];};
+   bars.forEach((b,i)=>{if(i&&Date.parse(b.time)-Date.parse(bars[i-1].time)>gap)flush();points.push(`${x(b.time)},${y(b.close)}`);});flush();
+  }
+  for(const time of (W<500?['09:00','10:00','11:00','12:00','13:30']:['09:00','10:00','11:00','12:00','13:00','13:30']))add('text',{x:x(`${wanted}T${time}:00+08:00`),y:335,fill:'currentColor','font-size':11,'text-anchor':'middle'},time);
+  for(const [key,when,label,color]of [['entry_price','entry_time',t.lane?(t.direction===-1?'賣出':'買入'):'訊號進場','#fbbf24'],['exit_price','exit_time',t.lane?(t.direction===-1?'買回':'賣出'):'出場紀錄','#60a5fa']])if(number(t[key])!==null&&day(t[when])===wanted){add('line',{x1:left,x2:right,y1:y(Number(t[key])),y2:y(Number(t[key])),stroke:color,'stroke-dasharray':'4 4'});add('circle',{cx:x(t[when]),cy:y(Number(t[key])),r:5,fill:color});add('text',{x:W<500?right-3:right+5,y:y(Number(t[key]))+4,fill:color,'font-size':11,'text-anchor':W<500?'end':'start'},`${label} ${price(t[key])}`);}
+  target.append(svg);
+ }
+ async function refresh(t){const mine=++generation;controller?.abort();controller=new AbortController();const timer=setTimeout(()=>controller.abort(),12000);try{
+  let response=await fetch(`${FIREBASE_ROOT}/intraday_charts/${day(t.entry_time)}/${encodeURIComponent(t.symbol)}.json`,{cache:'no-store',signal:controller.signal});if(!response.ok)throw Error('讀取失敗');let payload=await response.json();if(!payload){response=await fetch(`${FIREBASE_ROOT}/intraday_live/charts/${encodeURIComponent(t.symbol)}.json`,{cache:'no-store',signal:controller.signal});if(!response.ok)throw Error('讀取失敗');payload=await response.json();}if(mine===generation){const status=document.getElementById('tradeStatus');status.textContent=t.open?'OPEN · 持倉中':'CLOSE · 已平倉';status.className=`trade-status ${t.open?'trade-open':'trade-closed'}`;put('tradeOutcome',outcome(t));draw(payload,t);}
+ }catch(e){if(mine===generation)put('tradeChartNote','當日K線暫時無法讀取，請稍後重新開啟。');}finally{clearTimeout(timer);}}
+ function open(card){const t=trades().find(r=>String(r.symbol)===card.dataset.tradeSymbol&&String(r.entry_time||'')===card.dataset.tradeEntry&&String(r.lane||'')===String(card.dataset.tradeLane||''));if(!t)return;selected=t;
+  put('tradeTitle',`${t.symbol} ${t.name||''} · 當日K線`);const status=document.getElementById('tradeStatus');status.textContent=t.open?'OPEN · 持倉中':'CLOSE · 已平倉';status.className=`trade-status ${t.open?'trade-open':'trade-closed'}`;
+  put('tradeOutcome',outcome(t));
+  evidence(t);lastChart=null;document.getElementById('tradeChart').replaceChildren();put('tradeChartNote','讀取當日K線…');if(!dialog.open)dialog.showModal();refresh(t);
+ }
+ document.addEventListener('click',e=>{const card=e.target.closest('[data-trade-symbol]');if(card)open(card);});
+ document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-trade-symbol]')){e.preventDefault();open(e.target);}});
+ setInterval(()=>{if(selected&&dialog.open){const latest=trades().find(t=>t.symbol===selected.symbol&&t.entry_time===selected.entry_time&&t.lane===selected.lane);if(latest)selected=latest;refresh(selected);}},15000);
+})();

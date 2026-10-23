@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>隱私權政策 (Privacy Policy) - 當沖吧！牛馬仔</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+      line-height: 1.7;
+      color: #1e293b;
+      background-color: #f8fafc;
+      margin: 0;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e2e8f0;
+    }
+    h1 {
+      font-size: 26px;
+      color: #0f172a;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 12px;
+      margin-top: 0;
+    }
+    h2 {
+      font-size: 18px;
+      color: #1e293b;
+      margin-top: 28px;
+      margin-bottom: 8px;
+    }
+    p, li {
+      font-size: 15px;
+      color: #334155;
+    }
+    ul {
+      padding-left: 24px;
+    }
+    .highlight-box {
+      background-color: #f0fdf4;
+      border-left: 4px solid #22c55e;
+      padding: 14px 18px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+      font-size: 14.5px;
+      color: #166534;
+    }
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 13px;
+      color: #64748b;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>隱私權政策 (Privacy Policy)</h1>
+    <p><strong>適用版本：</strong>Chrome 擴充功能 2.1 起　<strong>生效日期：</strong>2.1 於 Chrome 線上應用程式商店上架日</p>
+    <p>本隱私權政策適用於 Chrome 擴充功能<strong>「當沖吧！牛馬仔 - 工位摸魚看盤神器 ｜ 台股行情觀察」</strong>（以下簡稱「本擴充功能」）。2.0 新增「可選用的 Google 帳號登入與雲端同步」；2.1 新增「自選股到價提醒」與在您電腦上計算的「智慧參考價位」。以下說明我們實際處理哪些資料、為何處理，以及您如何控制。</p>
+
+    <div class="highlight-box">
+      <strong>重點摘要：</strong>不登入也能完整使用本機自選股與到價提醒。只有在您主動選擇「使用 Google 登入」後，我們才會以您的 Firebase 使用者 ID（UID）在 Firebase 儲存您的自選股、提醒條件、到價提醒價位與介面偏好，用於在不同電腦之間同步。我們不出售資料、不投放廣告，也不收集券商帳號或交易密碼。
+    </div>
+
+    <h2>1. 不登入時：資料只存在您的電腦</h2>
+    <p>本擴充功能使用 Chrome 本機儲存空間（<code>chrome.storage.local</code>）保存：</p>
+    <ul>
+      <li>您設定的台股自選股清單與股票群組（如自選、當沖監控）。</li>
+      <li>提醒條件（如價格區間、漲幅門檻、提醒開關）。</li>
+      <li>到價提醒：您為自選股設定的上限／下限價、各自的啟用狀態、觸發方式與冷卻時間；以及只存在本機的觸發狀態（例如最後提醒時間），用來避免重複通知。</li>
+      <li>介面偏好（白色／深色主題、紅綠／黑白漲跌配色、字級、列表高度、外部網站捷徑等）。</li>
+      <li>公開行情的暫存（報價、指數），僅用於畫面顯示，不會上傳。</li>
+    </ul>
+
+    <h2>2. 選擇 Google 登入時：登入的用途</h2>
+    <p>登入完全是選用的，唯一目的是讓您在不同電腦同步自選股與設定。登入流程使用 Chrome 內建的 <code>chrome.identity</code> 取得 Google 授權，再交由 Google 的 Firebase Authentication 驗證並產生 UID。我們請求的 Google 權限範圍僅限 <code>openid</code>、<code>email</code>、<code>profile</code>。</p>
+    <ul>
+      <li><strong>Firebase Authentication（Google 提供）：</strong>保存您的帳號識別資訊（UID、Google 帳號 Email、顯示名稱），用於確認是您本人。</li>
+      <li><strong>擴充功能本機：</strong>保存 UID、Email 與顯示名稱以便在設定頁顯示「目前登入帳號」；登入憑證（Firebase ID Token）只存在瀏覽器工作階段儲存區（<code>chrome.storage.session</code>），關閉瀏覽器即清除；我們不保存 Google 密碼、OAuth Client Secret 或長期 Refresh Token。</li>
+    </ul>
+
+    <h2>3. 雲端同步的資料種類</h2>
+    <p>登入後，以下資料會儲存在 Firebase Realtime Database 的 <code>users/{您的 UID}</code> 底下，並受資料庫安全規則保護，只有您本人登入時可讀寫：</p>
+    <ul>
+      <li>自選股（代號、市場別、名稱、所屬群組、加入／更新時間；刪除時保留刪除時間標記，避免已刪除股票被其他電腦加回）。</li>
+      <li>提醒條件與介面偏好（每個設定值與其更新時間）。</li>
+      <li>到價提醒設定（股票代號、上限／下限價、啟用狀態、觸發方式、冷卻時間與更新時間；解除時保留刪除時間標記，避免被其他電腦加回）。</li>
+      <li>同步用的技術欄位（資料格式版本、最後更新時間、用戶端類型）。</li>
+    </ul>
+    <p><strong>不會上傳：</strong>報價／K 線等公開行情暫存、到價提醒的觸發狀態與最後提醒時間、智慧參考價位的計算結果、VIP 授權雜湊、通知紀錄、任何登入權杖、券商帳號或交易資料。雲端資料中不另外儲存您的 Email（帳號資訊由 Firebase Authentication 管理）。</p>
+
+    <h2>4. 自選股如何同步</h2>
+    <ul>
+      <li>本機優先：新增或修改會先存在您的電腦並立即顯示，之後才以短連線上傳，不會為了同步建立長時間的即時連線。</li>
+      <li>第一次登入時，本機既有資料與雲端資料「只合併、不覆蓋、不刪除」。</li>
+      <li>之後每項資料以較新的修改為準；離線時的修改會保留並在連線恢復後補上傳。</li>
+      <li>在同一台電腦切換成另一個 Google 帳號時，前一個帳號的資料不會上傳到新帳號。</li>
+    </ul>
+
+    <h2>5. 如何登出、停用同步與刪除雲端資料</h2>
+    <ul>
+      <li><strong>登出：</strong>擴充功能「設定 → Google 帳號同步 → 登出」。登出會清除本機登入憑證並停止同步；雲端資料保留，本機自選仍可離線使用。</li>
+      <li><strong>撤銷 Google 授權：</strong>可隨時至 Google 帳戶「第三方應用程式與服務」移除本擴充功能的存取權。</li>
+      <li><strong>刪除雲端資料：</strong>請透過下方聯絡方式提出，註明登入時使用的 Google 帳號 Email；我們會在確認身分後刪除該帳號在 <code>users/{UID}</code> 下的資料與 Firebase Authentication 帳號，並回覆完成。請勿在公開 Issue 張貼個人資料，可要求改以私訊聯繫。</li>
+      <li>移除擴充功能會一併刪除本機資料（雲端資料需依上述方式刪除）。</li>
+    </ul>
+
+    <h2>6. 外部網路連線</h2>
+    <ul>
+      <li><strong>公開行情（唯讀）：</strong>mis.twse.com.tw、Yahoo 奇摩股市／Yahoo Finance、EasyStock 公開發布端（GitHub、Firebase <code>market_data</code>）。查詢公開行情時只送出股票代號。</li>
+      <li><strong>登入與同步（僅在您登入後）：</strong>Google OAuth（chrome.identity）、Firebase Authentication（identitytoolkit.googleapis.com）、Firebase Realtime Database（easystock-c237a-default-rtdb.firebaseio.com）。</li>
+      <li><strong>到價提醒與智慧參考價位：</strong>到價提醒由擴充功能在背景以上述公開行情檢查，並以 Chrome 系統通知顯示；智慧參考價位只在您按下按鈕時，以 Yahoo Finance 公開日 K 在您的電腦上用技術指標計算。兩者都不會把您的資料送往任何 AI 或第三方分析服務，也不會產生任何券商委託。</li>
+    </ul>
+
+    <h2>7. 第三方與資料處理角色</h2>
+    <ul>
+      <li>Google LLC 以 Firebase（Authentication、Realtime Database）服務提供者身分代我們處理上述同步資料，相關處理亦適用 Google 的隱私權政策與 Firebase 資料處理條款。</li>
+      <li>我們不向任何第三方出售、出租或交換使用者資料，不用於廣告、信用評估或貸款審核。</li>
+      <li>本擴充功能對使用者資料的使用遵守 Chrome Web Store 使用者資料政策，包括「有限使用」（Limited Use）要求。</li>
+    </ul>
+
+    <h2>8. 免責聲明</h2>
+    <p>本擴充功能提供的行情、量能描述（如「量多進攻」「量減退守」）與圖表僅供參考，不構成任何證券投資顧問意見或買賣建議。使用者進行任何金融交易需自行判斷並自負風險與盈虧。</p>
+
+    <h2>9. 隱私權政策修訂與聯絡方式</h2>
+    <p>功能變更時我們會更新本政策並標示適用版本。若有疑問或要刪除雲端資料，請透過 GitHub 專案儲存庫聯絡：</p>
+    <p><a href="https://github.com/jimmyeyes03160729/easystock/issues" target="_blank" rel="noopener noreferrer">https://github.com/jimmyeyes03160729/easystock/issues</a></p>
+
+    <div class="footer">
+      © 2026 當沖吧！牛馬仔 Quant Lab. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

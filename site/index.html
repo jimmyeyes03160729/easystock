@@ -1,0 +1,4365 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="light lg-root" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="當沖吧！牛馬仔 - 工位摸魚看盤室 · OFFICE WORKER QUANT LAB" />
+  <title>當沖吧！牛馬仔 · 工位摸魚看盤室</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link rel="stylesheet" href="assets/dashboard-ux.css?v=39f21310759a" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+
+  <script>
+    // Apply the saved palette before first paint; default is white (light) theme.
+    try {
+      const savedTheme = localStorage.getItem('MOHREN_THEME');
+      document.documentElement.dataset.theme = savedTheme === 'dark' ? 'dark' : 'light';
+    } catch (_) {
+      document.documentElement.dataset.theme = 'light';
+    }
+    if (document.documentElement.dataset.theme === 'dark') {
+      document.documentElement.classList?.remove('light');
+      document.documentElement.classList?.add('dark');
+    } else {
+      document.documentElement.classList?.remove('dark');
+      document.documentElement.classList?.add('light');
+    }
+  </script>
+  <style>
+    /* Legacy names alias the Liquid Glass tokens (assets/liquid-glass.css); light/dark values live there. */
+    :root { --bg:var(--lg-canvas); --panel:var(--glass-tile-solid); --surface:var(--glass-tile); --hover:var(--glass-tile-hover); --border:var(--glass-hairline); --border-bright:var(--glass-edge); --main:var(--lg-text); --sub:var(--lg-sub); --muted:var(--lg-muted); --inverse:var(--lg-primary-text); --accent:var(--lg-interactive); --radar:var(--lg-info); }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; scroll-padding-top:100px; }
+    body { margin:0; background:var(--bg); color:var(--main); font-family:Inter,"Space Grotesk","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; line-height:1.65; -webkit-font-smoothing:antialiased; }
+    body.grayscale { filter: grayscale(1) contrast(0.85); }
+    .panel { background:var(--panel); border:1px solid var(--border); }
+    .surface { background:var(--surface); }
+    .text-main,.metric-good,.metric-warn,.metric-bad { color:var(--main); }
+    .text-sub { color:var(--sub); }
+    .market-up { color:var(--up); }
+    .market-down { color:var(--down); }
+    .market-flat { color:var(--sub); }
+    .muted-border { border-color:var(--border); }
+    .btn { background:var(--surface); border:1px solid var(--border); color:var(--main); transition:background .15s,border-color .15s,transform .1s; }
+    button,a,input,select { -webkit-tap-highlight-color:transparent; }
+    button,select { min-height:36px; cursor:pointer; }
+    button:hover,.btn:hover { background:var(--hover); }
+    :focus-visible { outline:2px solid var(--main)!important; outline-offset:4px; }
+    input { color:var(--main); min-height:30px; }
+    input::placeholder { color:var(--muted); opacity:1; }
+    select,option { background:var(--panel); color:var(--main); }
+    .workspace { width:min(1440px,100%); margin:0 auto; padding:80px 36px 32px; }
+    .topbar { min-height:80px; display:flex; align-items:center; justify-content:space-between; gap:20px; border-bottom:1px solid var(--border); }
+    .brand { display:flex; align-items:center; gap:13px; text-decoration:none; color:var(--main); }
+    .brand-mark { display:grid; place-items:center; width:44px; height:44px; background:var(--main); color:var(--inverse); font-size:22px; font-weight:900; border-radius:10px; }
+    .brand strong { display:block; font-size:18px; letter-spacing:.08em; }
+    .brand small { display:block; color:var(--muted); font-size:12px; letter-spacing:.08em; font-weight:500; }
+    .topbar-right { display:flex; gap:12px; align-items:center; }
+    .market-tag { font-size:12px; letter-spacing:.08em; color:var(--muted); font-family:"JetBrains Mono",monospace; }
+    .intro { display:flex; justify-content:space-between; gap:24px; align-items:flex-end; padding:28px 0 22px; }
+    .eyebrow { color:var(--accent); font-size:12px; letter-spacing:.15em; font-weight:700; text-transform:uppercase; font-family:"JetBrains Mono",monospace; }
+    .intro h1 { margin:6px 0 9px; font-size:clamp(28px,3.1vw,42px); line-height:1.25; font-weight:800; letter-spacing:-.035em; }
+    .intro p { color:var(--sub); font-size:13.5px; }
+    .intro-status { text-align:right; max-width:400px; }
+    .intro-status .btn { margin-bottom:10px; padding:7px 15px; border-radius:8px; font-size:12px; }
+    .extension-cta { position:relative; display:inline-flex; align-items:center; gap:11px; width:min(100%,340px); padding:11px 13px; overflow:hidden; color:#F8FAFC; font-size:13px; font-weight:750; text-align:left; text-decoration:none; border:1px solid #F59E0B66; border-radius:10px; background:linear-gradient(120deg,#17243A 0%,#182E46 55%,#29405C 100%); box-shadow:0 8px 22px #0B1C3033; transition:transform .15s,box-shadow .15s,border-color .15s; }
+    .extension-cta::after { content:""; position:absolute; inset:-40% -20% auto auto; width:120px; height:120px; border-radius:50%; background:radial-gradient(circle,#F59E0B55 0%,#F59E0B00 70%); pointer-events:none; }
+    .extension-cta:hover { color:#FFFFFF; border-color:#F59E0B; box-shadow:0 12px 28px #0B1C3055; transform:translateY(-1px); }
+    .extension-cta .extension-icon { position:relative; z-index:1; display:grid; place-items:center; flex:none; width:42px; height:42px; border:1px solid #FFFFFF24; border-radius:10px; background:#0B1C3099; }
+    .extension-cta .extension-icon img { width:32px; height:32px; object-fit:contain; image-rendering:auto; }
+    .extension-cta > span:last-child { position:relative; z-index:1; }
+    .extension-cta small { display:block; color:#CBD5E1; font-size:10px; font-weight:500; line-height:1.4; }
+    .mobile-bottom-nav { display:none; }
+    @media(max-width:768px) {
+      header.fixed .brand-link { width:auto; min-width:0; flex:0 1 auto; }
+      header.fixed .brand-logo { width:clamp(128px,42vw,188px); max-width:100%; height:auto; }
+      body { padding-bottom:calc(68px + env(safe-area-inset-bottom,0px)); }
+      html { scroll-padding-bottom:calc(68px + env(safe-area-inset-bottom,0px)); }
+      .mobile-bottom-nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); position:fixed; bottom:0; left:0; right:0; z-index:30; padding:5px 4px calc(5px + env(safe-area-inset-bottom,0px)); background:var(--panel); border-top:1px solid var(--border); box-shadow:0 -4px 18px #0001; }
+      .mobile-bottom-nav a { min-height:54px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; color:var(--sub); text-decoration:none; font-size:11px; border-radius:8px; }
+      .mobile-bottom-nav .material-symbols-outlined { font-size:21px; }
+      .mobile-bottom-nav a[aria-current="location"] { color:var(--accent); background:var(--surface); font-weight:800; }
+      nav[aria-label="首頁行動區域"] { display:none; }
+    }
+    .section-nav { display:flex; gap:24px; border-bottom:1px solid var(--border); margin-bottom:24px; overflow-x:auto; }
+    .section-nav a { color:var(--sub); white-space:nowrap; padding:12px 0; font-size:13px; text-decoration:none; font-weight:600; }
+    .section-nav a:first-child { color:var(--main); border-bottom:2px solid var(--accent); font-weight:700; }
+    .section-nav a:hover { color:var(--main); }
+    .system-header { border-radius:12px; overflow:hidden; margin-bottom:20px; background:transparent; border:0; }
+    .system-stats { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:10px; }
+    .system-stats > div { border:1px solid var(--border); border-radius:10px; padding:12px 14px; background:var(--panel); }
+    .system-stats [id] { font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; font-family:"JetBrains Mono",monospace; }
+    .filter-panel { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px; padding:14px 18px; border-radius:12px; }
+    .filter-panel > div:first-child { font-size:12px; }
+    .filter-title { font-size:13px; font-weight:700; margin-bottom:3px; }
+    .filter-panel > div:last-child { gap:7px; justify-content:flex-start; }
+    .filter-panel input { width:76px; }
+    .filter-panel button { padding:6px 11px; font-size:12px; }
+    .filter-panel button[aria-pressed="true"] { background:var(--accent); color:var(--inverse); border-color:var(--accent); font-weight:700; }
+    .section-heading { display:flex; align-items:center; justify-content:space-between; gap:15px; margin:10px 0 14px; }
+    .section-heading h2 { font-size:18px; font-weight:750; letter-spacing:-.02em; color:var(--main); }
+    .section-heading h2 span { font-size:inherit!important; font-family:inherit!important; color:inherit!important; font-weight:inherit!important; }
+    .section-heading > span { color:var(--muted); font-size:11px; font-family:"JetBrains Mono",monospace; }
+    .section-heading > div { flex-wrap:wrap; row-gap:6px; min-width:0; }
+    .section-heading .rounded-full { white-space:nowrap; flex:none; }
+    .overview-grid { display:grid; grid-template-columns:minmax(220px,1fr) minmax(0,3fr); gap:18px; margin-bottom:26px; }
+    .workspace section.panel,.overview-grid > .panel,.strategy-grid > .panel { border-radius:12px; padding:20px; }
+    .overview-grid h2 { font-size:17px; }
+    #marketSignalCard { border-top:3px solid var(--accent); display:flex; flex-direction:column; justify-content:space-between; }
+    #marketSignalText { font-size:27px; letter-spacing:-.04em; }
+    #marketSignalDot { background:var(--main); flex-shrink:0; }
+    #marketSignalAdvice { border:0; border-top:1px solid var(--border); border-radius:0; padding:14px 0 0; line-height:1.8; }
+    [onclick*="openStockDetail"] { transition:background .15s,border-color .15s; }
+    [onclick*="openStockDetail"]:hover { border-color:var(--accent); background:var(--hover); }
+    .strategy-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-bottom:18px; }
+    .strategy-grid > .panel > div:first-child .font-bold { font-size:16px; }
+    .strategy-grid [onclick*="openStockDetail"] { padding:16px; margin-top:10px; border-radius:8px; }
+    /* 全面提升微型字體與間距，消除擁擠發糊感 */
+    [class*="text-[8px]"], [class*="text-[9px]"], [class*="text-[10px]"] { font-size:12px!important; line-height:1.45!important; letter-spacing:0.015em; }
+    [class*="text-[11px]"] { font-size:12.5px!important; line-height:1.45!important; letter-spacing:0.015em; }
+    .workspace [class~="text-[8px]"],.workspace [class~="text-[9px]"],.modal-wide [class~="text-[8px]"],.modal-wide [class~="text-[9px]"] { font-size:12px!important; }
+    .disclaimer { margin-top:28px; padding:20px; background:var(--panel); border:1px solid var(--border); border-radius:12px; line-height:1.8; }
+    .footer-line { display:flex; justify-content:space-between; gap:12px; font-size:12px; letter-spacing:.05em; color:var(--muted); padding-top:16px; }
+    .modal-wide { box-shadow:0 24px 100px #000a; }
+    .score-ring { background:conic-gradient(from 180deg,var(--accent) 0 var(--score),var(--border) var(--score) 100%); }
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    @media(max-width:1100px) { .system-stats { grid-template-columns:repeat(4,minmax(0,1fr)); } .overview-grid { grid-template-columns:1fr; } #marketSignalCard { gap:12px; } }
+    @media(max-width:640px) {
+      html,body { overflow-x:hidden; }
+      .workspace { padding:70px 16px 24px; }
+      .topbar { min-height:72px; gap:8px; }
+      .brand strong { font-size:15px; }
+      .brand small { font-size:7px; }
+      .market-tag { display:none; }
+      .intro { display:block; padding:20px 0 12px; }
+      .intro-status { text-align:left; max-width:none; margin-top:16px; }
+      .intro-status .btn { float:none; margin-left:0; }
+      .extension-cta { margin-top:2px; }
+      .section-nav { gap:18px; scrollbar-width:none; }
+      .section-nav::-webkit-scrollbar { display:none; }
+      .system-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .strategy-grid { grid-template-columns:1fr; }
+      .workspace section.panel,.overview-grid > .panel,.strategy-grid > .panel { padding:16px; }
+      .section-heading { align-items:flex-start; }
+      .section-heading span { text-align:right; }
+      .modal-wide { max-height:96dvh; }
+      .footer-line { flex-wrap:wrap; }
+
+      /* Keep the fixed header compact instead of allowing the brand and controls to compete. */
+      header.fixed > div { height:64px; min-height:64px; padding-left:12px; padding-right:12px; gap:8px; }
+      #themeToggleBtn { padding-left:9px; padding-right:9px; flex:none; }
+      #themeToggleLabel { display:none; }
+
+      /* Data supplied at runtime can contain long names, model IDs and timestamps. */
+      #intradayPickList > *, #runwayV2PickList > *, #runwayB2PickList > *, #runwayB3PickList > *, #overnightPickList > *, #eightMethodsModule, #learningSection,
+      .system-stats > *, .filter-panel > * { min-width:0; }
+      #intradayPickList, #runwayV2PickList, #runwayB2PickList, #runwayB3PickList, #overnightPickList, #eightMethodsModule, #learningSection { overflow-wrap:anywhere; }
+    }
+    @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } * { transition:none!important; } }
+
+:root{--shift-ink:#f4f4f4}
+.brand strong{font-size:20px;letter-spacing:-.02em}
+.intro{padding-top:24px}
+.intro h1{font-weight:900;letter-spacing:-.04em;font-size:clamp(28px,3.6vw,42px)}
+.panel{box-shadow:none}
+.share-btn{font-size:11px!important;padding:4px 8px!important;margin-left:8px;white-space:nowrap;border-radius:6px;}
+.learning-panel{margin:22px 0;padding:22px;border:1px solid var(--border);border-radius:12px;background:var(--panel);}
+.learning-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:20px}
+.learning-head h2{font-size:22px;font-weight:800;margin-top:4px}
+.phase-badge{padding:6px 12px;border:1px solid var(--border-bright);background:var(--surface);color:var(--accent);font-size:12px;font-weight:700;border-radius:8px;}
+.learning-numbers{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:18px;}
+.learning-numbers>div{padding:14px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;}
+.learning-numbers span,.learning-numbers small{display:block;color:var(--muted);font-size:11px}
+.learning-numbers strong{display:block;font-size:26px;line-height:1.4;font-variant-numeric:tabular-nums;letter-spacing:-.03em;font-family:"JetBrains Mono",monospace;}
+.learning-bottom{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding-top:16px;border-top:1px solid var(--border);font-size:13px}
+.learning-bottom>div{padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;}
+.learning-bottom p{font-size:12px;color:var(--sub);margin:6px 0}
+.learning-panel progress{width:100%;height:8px;accent-color:var(--accent);border-radius:4px;overflow:hidden;}
+.learning-panel details{border-top:1px solid var(--border);margin-top:18px;padding-top:14px;font-size:12px;color:var(--sub)}
+.learning-panel summary{cursor:pointer;color:var(--main);font-weight:600;}
+#moduleShareDialog{width:min(680px,calc(100vw - 32px));max-height:90dvh;padding:22px;color:var(--main);background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:auto}
+#moduleShareDialog::backdrop{background:#000a}
+#moduleShareDialog img{width:100%;height:auto;margin:16px 0;border-radius:8px;}
+#moduleShareDialog button{padding:8px 14px;border-radius:6px;}
+@media(max-width:850px){.learning-numbers{grid-template-columns:repeat(3,minmax(0,1fr));}.learning-bottom{grid-template-columns:1fr;}}
+@media(max-width:550px){.learning-numbers{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+.recommendation-section{margin-bottom:30px}
+.ranked-heading{padding-top:18px;border-top:1px solid var(--border)}
+.section-number{font-size:12px!important;letter-spacing:.08em!important;margin-right:8px;padding:2px 7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:"JetBrains Mono",monospace;}
+.eight-module{padding:22px;margin-bottom:30px;background:var(--panel);border:1px solid var(--border);border-radius:12px;}
+.eight-module-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.eight-module h2{font-size:14px;font-weight:700;line-height:1.5}
+.eight-module p{font-size:12px;line-height:1.7;margin:6px 0}
+.eight-module table th{color:var(--muted);font-weight:600;white-space:nowrap}
+.eight-module table td{font-variant-numeric:tabular-nums}
+.eight-method{font-size:12px;line-height:1.7;margin:12px 0;border-top:1px solid var(--border);padding-top:14px}
+.eight-method summary{cursor:pointer}
+.market-context{margin-bottom:24px}
+.recommendation-section .panel{padding:20px;border-radius:12px;}
+#intradayPickList,#runwayV2PickList{display:flex;flex-direction:column;gap:12px}
+#overnightPickList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#overnightPickList>div:only-child{grid-column:1/-1}
+@media(max-width:800px){#overnightPickList{grid-template-columns:1fr;}.eight-module-head{flex-direction:column;}}
+
+.eight-module [role=tablist]{display:flex;gap:10px;margin:14px 0}.eight-module button{padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--text)}.eight-module [aria-selected=true]{border-color:#06b6d4;color:#06b6d4}.eight-card{border:1px solid var(--border);border-radius:10px;padding:14px;margin:10px 0;min-width:0}.eight-card svg{width:100%;max-width:340px;height:100px;color:#06b6d4}.eight-card ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0;list-style:none}.eight-card small{overflow-wrap:anywhere}.eight-pagination{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:14px 0}.eight-pagination button{min-height:44px}.eight-pagination button:disabled{opacity:.45;cursor:not-allowed}.eight-pagination button:focus-visible{outline:2px solid #06b6d4;outline-offset:3px}.eight-pagination span{text-align:center;font-size:14px}.eight-module [hidden]{display:none!important}@media(max-width:600px){.eight-card ul{grid-template-columns:1fr}}
+</style>
+<link rel="stylesheet" href="assets/liquid-glass.css?v=a09885af9bd5" />
+<link rel="stylesheet" href="assets/glass-home.css?v=ba7ba03f884a" />
+<link rel="icon" type="image/png" sizes="1254x1254" href="icon/LOGO.png?v=de291d365383">
+</head>
+
+<body class="home-v2 lg min-h-screen font-sans">
+
+  <!-- =====================================================
+       STITCH FIXED GLASSMORPHIC HEADER
+       ===================================================== -->
+  <header class="glass-chrome fixed top-0 left-0 right-0 z-50">
+    <div class="h-20 max-w-[1440px] mx-auto px-3 md:px-6 xl:px-8 flex items-center gap-3 xl:gap-4">
+      <a class="brand-link flex items-center flex-none w-[190px] xl:w-[205px] text-decoration-none group" href="#dashboard" aria-label="當沖吧！牛馬仔首頁">
+        <img src="icon/BANNER-376.png?v=20261003" alt="EasyStock 當沖吧！牛馬仔" width="188" height="62" fetchpriority="high" decoding="async" class="brand-logo w-[188px] h-[62px] object-contain object-left" />
+      </a>
+
+      <div class="hidden lg:flex items-center gap-2 xl:gap-3 shrink-0">
+        <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-[#1A2234] border border-[#232F42]">
+          <span class="font-mono text-xs text-[#F1F5F9]">TWSE / TPEx · 研究資料看板</span>
+        </div>
+        <button type="button" onclick="fetchMarketData()" class="btn flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#122131] hover:bg-[#1C2B3C] text-[#F59E0B] border border-[#232F42] text-xs font-semibold">
+          <span class="material-symbols-outlined text-[15px]">sync</span>
+          <span>↻ 更新市場資料</span>
+        </button>
+      </div>
+
+      <nav class="hidden lg:flex min-w-0 flex-1 items-center justify-center gap-0.5 bg-[#131A26] p-1 rounded-xl border border-[#232F42] text-xs font-semibold section-nav overflow-hidden" aria-label="首頁區域">
+        <a href="#intraday-strategies" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#F1F5F9] hover:bg-[#1C2B3C] transition-colors whitespace-nowrap">01 盤中摸魚</a>
+        <a href="#eight-methods" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">02 開盤八法・尾盤八法</a>
+        <a href="#learningSection" class="flex-1 min-w-0 flex justify-center px-2.5 py-1.5 rounded-lg text-[#94A3B8] hover:bg-[#1C2B3C] hover:text-[#F1F5F9] transition-colors whitespace-nowrap">03 牛馬 AI 加班進修</a>
+        
+      </nav>
+
+      <div class="ml-auto flex items-center gap-2 xl:gap-3 shrink-0">
+        <button type="button" id="themeToggleBtn" onclick="toggleTheme()" class="btn flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-xl border border-[#232F42] bg-[#1A2234] text-[#F1F5F9] hover:bg-[#262C3E] text-xs font-semibold cursor-pointer transition-all shadow-sm" title="切換明暗主題">
+          <span class="material-symbols-outlined text-[16px]" id="themeToggleIcon">dark_mode</span>
+          <span id="themeToggleLabel">深色模式</span>
+        </button>
+
+        <div class="hidden sm:flex items-center gap-2 px-2.5 xl:px-3 py-1.5 rounded-xl bg-[#0D1C2D] border border-[#232F42]">
+          <span class="material-symbols-outlined text-[#F59E0B] text-[18px]">coffee</span>
+          <div class="flex flex-col text-left">
+            <span class="font-mono text-xs text-[#F1F5F9] leading-none">工位摸魚工程師</span>
+            <span class="text-xs text-[#64748B] leading-normal font-mono font-medium">9527 · 研究看板</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+<main class="workspace" id="dashboard">
+
+  <!-- =====================================================
+       HERO & BOSS KEY CONTROLS
+       ===================================================== -->
+  <section class="home-intro" aria-label="研究看板總覽">
+    <div><div class="home-eyebrow">工位摸魚 · RESEARCH / PAPER</div><h1>上班很累，<span>看盤要清楚。</span></h1><p>把市場的雜訊留在外面，把自己的節奏找回來。</p></div>
+    <div class="home-intro-actions"><div id="chrome-tools"><a class="extension-cta" href="https://chromewebstore.google.com/detail/%E7%95%B6%E6%B2%96%E5%90%A7%EF%BC%81%E7%89%9B%E9%A6%AC%E4%BB%94-%E5%B7%A5%E4%BD%8D%E6%91%B8%E9%AD%9A%E7%9C%8B%E7%9B%A4%E7%A5%9E%E5%99%A8-%EF%BD%9C-%E5%8F%B0%E8%82%A1-ai/khidbieahmnnandhkcmjceideljgjfid" target="_blank" rel="noopener noreferrer" aria-label="在 Chrome 線上應用程式商店安裝當沖吧牛馬仔小工具"><span class="extension-icon" aria-hidden="true"><img src="assets/chrome-logo.svg" width="36" height="36" alt=""></span><span>Chrome 小工具<small>安裝，摸魚更順手 ↗</small></span></a></div><div class="home-date" aria-label="台北日期"><span class="material-symbols-outlined" aria-hidden="true">calendar_today</span><strong id="homeDateDay">—</strong><div><small id="homeDateMonth">—</small><small id="homeDateWeek">日期待確認</small></div></div></div>
+  </section>
+  <section class="home-summary" aria-label="最近交易日研究摘要">
+    <article class="home-summary-card home-overview glass"><div class="home-card-top"><span>最近交易日研究</span><span class="home-pill" id="homeSnapshotState">等待有效快照</span></div><div class="home-summary-big"><strong id="homeResearchCount">—</strong><span id="homeResearchCaption">研究資料讀取中</span></div><div class="home-overview-bottom"><div><b id="homeResearchWins">—</b><small>獲利筆數</small></div><div><b id="homeResearchLosses">—</b><small>虧損筆數</small></div><div><b id="homeOpenCount">—</b><small>A 研究持倉</small></div></div></article>
+    <article class="home-summary-card home-return glass"><div class="home-card-top"><span>研究淨報酬加總</span><span class="material-symbols-outlined" aria-hidden="true">monitoring</span></div><div id="homeResearchPnl" class="home-return-value">—</div><div class="home-summary-note">各筆研究費後報酬相加<br>非帳戶報酬 · 非實盤績效</div></article>
+    <article class="home-summary-card home-data glass"><div class="home-card-top"><span>把資料準備好</span><span class="home-pill">資料收集</span></div><div class="home-data-content"><div class="home-ring" id="homeCoverageRing"><span id="homeCoveragePercent">—</span></div><div><strong id="homeCoverage">—</strong><small>股票資料收集完成</small></div></div><div class="home-summary-note" id="homeModelStatus">模型狀態：待確認</div></article>
+  </section>
+  <div class="home-status-strip"><div><span id="homeResearchDate">研究日期待資料</span><button id="homeDataDetails" type="button" aria-expanded="false">資料與模式 ›</button></div><button type="button" class="home-refresh" onclick="fetchMarketData()">↻ <span>更新市場資料</span></button></div>
+  <p id="dataStatusText" class="text-sub text-xs" role="status">正在從 Firebase 載入市場資料…</p>
+
+  <nav class="section-nav lg:hidden" aria-label="首頁行動區域">
+    <a href="#intraday-strategies">01 盤中摸魚</a>
+    <a href="#eight-methods">02 開盤八法・尾盤八法</a>
+    <a href="#learningSection">03 牛馬 AI 加班進修</a>
+    
+  </nav>
+
+  <section id="providerHealthCard" class="panel glass" aria-labelledby="providerHealthTitle">
+    <div class="provider-health-heading"><h2 id="providerHealthTitle">資料來源狀態</h2><span id="providerHealthChecked" role="status">正在檢查…</span></div>
+    <div id="providerHealthRows" class="provider-health-rows" aria-live="polite"></div>
+  </section>
+
+  <!-- =====================================================
+       8-METRIC PULSE STREAM BAR
+       ===================================================== -->
+  <details class="dashboard-data-details glass"><summary>資料與模型細節</summary>
+  <section id="dashboardOverview" class="panel dashboard-ux glass" aria-labelledby="overviewTitle">
+    <h2 id="overviewTitle">現在的資料與模式</h2>
+    <div class="ux-overview-grid">
+      <div><span>盤中快照狀態</span><p id="overviewSession">等待有效快照</p></div>
+      <div><span>資料有效性</span><p id="overviewValidity">日線與盤中分開確認</p></div>
+      <div><span>用途 / 執行模式</span><p>Research 研究 · Paper 模擬</p><small>不是 Live 實盤控制台；公開快照無法確認實盤開關。</small></div>
+      <div><span>來源最後更新</span><p id="overviewUpdated">尚未取得</p></div>
+    </div>
+    <p id="overviewNotice" role="status"></p>
+  </section>
+  <header class="system-header panel" aria-label="資料狀態">
+    <div class="system-stats grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2.5">
+
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <div class="flex items-center justify-between text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">
+          <span>熱門股票池</span>
+          <span class="text-[#06B6D4] font-mono text-xs font-semibold px-1.5 py-0.5 rounded bg-[#06B6D4]/10">TWSE+TPEx</span>
+        </div>
+        <div id="metaStocks" class="text-xl font-bold font-mono text-[#F1F5F9] my-0.5">
+          載入中…
+        </div>
+        <span class="text-xs text-[#64748B] font-medium leading-normal">成交額 TOP 500</span>
+      </div>
+
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <span class="text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">資料日期</span>
+        <div id="metaDate" class="text-sm sm:text-base font-bold font-mono text-[#F1F5F9] my-0.5">
+          載入中…
+        </div>
+        <span class="text-xs text-[#64748B] font-medium leading-normal">日線收盤資料，非即時報價</span>
+      </div>
+
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <span class="text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">隔日衝最後掃描</span>
+        <div id="metaScanTime" class="text-sm sm:text-base font-bold font-mono text-[#F1F5F9] my-0.5">
+          --
+        </div>
+        <span class="text-xs text-[#64748B] font-medium leading-normal">尾盤量能優先</span>
+      </div>
+
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <span class="text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">網頁讀取</span>
+        <div id="metaRefreshTime" class="text-sm sm:text-base font-bold font-mono text-[#F1F5F9] my-0.5">
+          --
+        </div>
+        <span id="requestTiming" class="text-xs text-sub font-mono font-medium leading-normal">
+          尚未完成資料請求
+        </span>
+      </div>
+
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <span class="text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">模型資料完整度</span>
+        <div id="metaQuality" class="text-xl font-bold font-mono text-[#F59E0B] my-0.5">
+          --
+        </div>
+        <span class="text-xs text-[#64748B] font-medium leading-normal">特徵完備度評估</span>
+      </div>
+
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <span class="text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">回測訊號數</span>
+        <div id="metaSignals" class="text-xl font-bold font-mono text-[#F1F5F9] my-0.5">
+          --
+        </div>
+        <span class="text-xs text-[#64748B] font-medium leading-normal">十年間歷史樣本</span>
+      </div>
+
+      <div class="rounded-xl border border-[#232F42] p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5">
+        <span class="text-xs sm:text-[13px] text-[#64748B] font-semibold tracking-wide">掃描模式</span>
+        <div id="metaSession" class="text-sm sm:text-base font-bold font-mono text-[#06B6D4] my-0.5">
+          --
+        </div>
+        <span class="text-xs text-[#64748B] font-medium leading-normal">僅供量化研究</span>
+      </div>
+
+      <div class="rounded-xl border border-emerald-500/30 p-3.5 bg-[#131A26] flex flex-col justify-between shadow-sm min-h-[96px] gap-1.5 ring-1 ring-emerald-500/20">
+        <div class="flex items-center justify-between text-xs sm:text-[13px] text-emerald-400 font-bold tracking-wide">
+          <span>今日當沖模組</span>
+          <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+        </div>
+        <div id="metaDaytradeModel" class="text-sm sm:text-base font-bold font-mono text-[#F1F5F9] my-0.5" title="Research / Paper 模擬當沖版本；不是實盤執行證明">
+          載入中…
+        </div>
+        <div id="metaTracking" class="text-xs text-[#64748B] font-mono font-medium leading-normal">
+          盤前待命中
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  </details>
+
+  <!-- =====================================================
+       RADAR FILTER TOOLBAR
+       ===================================================== -->
+  <div class="filter-panel glass p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-sm mb-6" role="region" aria-label="股票篩選">
+    <div class="flex items-center gap-2 flex-wrap">
+      <div class="flex items-center gap-1.5 text-[#64748B] font-mono text-xs sm:text-[13px]">
+        <span class="material-symbols-outlined text-[18px] text-[#F59E0B]">filter_alt</span>
+        <span class="font-semibold text-[#F1F5F9]">每股價格快選（元）:</span>
+      </div>
+      <button data-price="" aria-pressed="true" onclick="setQuickPrice(null)" class="btn px-3 py-1.5 rounded-lg text-xs sm:text-[13px] font-semibold bg-[#F59E0B] text-[#0B0F17] border-0 shadow-sm">不限</button>
+      <button data-price="50" aria-pressed="false" onclick="setQuickPrice(50)" class="btn px-3 py-1.5 rounded-lg text-xs sm:text-[13px] font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">50以下</button>
+      <button data-price="100" aria-pressed="false" onclick="setQuickPrice(100)" class="btn px-3 py-1.5 rounded-lg text-xs sm:text-[13px] font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">100以下</button>
+      <button data-price="200" aria-pressed="false" onclick="setQuickPrice(200)" class="btn px-3 py-1.5 rounded-lg text-xs sm:text-[13px] font-semibold bg-[#1A2234] hover:bg-[#262C3E] text-[#F1F5F9] border border-[#232F42]">200以下</button>
+      <div class="mobile-filter-inputs flex items-center gap-1.5 bg-[#0D1C2D] border border-[#232F42] px-2.5 py-1.5 rounded-lg text-xs">
+        <span class="text-xs text-[#64748B] font-medium">每股（元）:</span>
+        <input aria-label="最低股價" id="priceMin" type="number" min="0" step="1" placeholder="最低" oninput="setPriceRange()" class="w-14 bg-transparent text-xs text-[#F1F5F9] outline-none text-center font-mono" />
+        <span class="text-[#64748B]">～</span>
+        <input aria-label="最高股價" id="priceMax" type="number" min="0" step="1" placeholder="最高" oninput="setPriceRange()" class="w-14 bg-transparent text-xs text-[#F1F5F9] outline-none text-center font-mono" />
+      </div>
+      <div class="mobile-filter-inputs flex items-center gap-1.5 bg-[#0D1C2D] border border-[#232F42] px-2.5 py-1.5 rounded-lg text-xs" title="以股價 × 1000 股估算，不含費稅；只篩選顯示，不更改 Paper 資金或交易設定">
+        <span class="text-xs text-[#64748B] font-medium">單張預算（元）:</span>
+        <input aria-label="單張預算" id="budgetInput" type="number" min="0" step="10000" placeholder="不限" oninput="setBudget()" class="w-20 bg-transparent text-xs text-[#F1F5F9] outline-none text-right font-mono" />
+      </div>
+    </div>
+    <div class="flex items-center gap-2 self-end lg:self-center">
+      <button type="button" class="btn px-3 py-1.5 rounded-lg text-xs" onclick="clearDisplayFilters()">清除價格 / 預算</button>
+      <span class="text-[#64748B] text-xs sm:text-[13px] font-medium">顯示排行:</span>
+      <select aria-label="顯示標的數量" onchange="setDisplayLimit(Number(this.value))" class="bg-[#0D1C2D] border border-[#232F42] rounded-lg px-3 py-1.5 text-xs sm:text-[13px] text-[#F1F5F9] outline-none font-mono">
+        <option value="5">Top 5</option>
+        <option value="10">Top 10</option>
+      </select>
+    </div>
+  </div>
+
+  <p id="priceFilterStatus" class="text-sub text-xs" role="status">僅篩選顯示；單張為 1000 股估算，不含費稅。</p>
+
+
+  <!-- =====================================================
+       01 盤中摸魚 · AI 模擬當沖
+       ===================================================== -->
+  <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]" id="intraday-strategies">
+    <div class="flex items-center gap-2.5">
+      <span class="h-7 w-7 rounded-lg bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#F59E0B] font-mono text-xs font-bold shadow-sm">01</span>
+      <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9]">盤中摸魚 · AI 模擬當沖</h2>
+      <span class="px-2.5 py-1 rounded-full bg-[#1C2B3C] text-[#06B6D4] font-mono text-xs font-semibold border border-[#06B6D4]/30">工位自救 · 虛擬交易</span>
+    </div>
+    <span class="text-xs text-[#64748B] font-medium">永豐 Shioaji 行情 ➔ 量能雷達 ➔ 規則轉強／突破 ➔ AI 附加評分</span>
+  </div>
+
+  <section class="recommendation-section mb-8">
+    <div id="daytradeModule" class="glass p-4 sm:p-5">
+      <div class="flex items-center justify-between border-b border-[#232F42] pb-3 flex-wrap gap-2">
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <span class="font-bold text-sm sm:text-base text-[#F1F5F9]">AI 模擬當沖標的 · 雙跑道監控</span>
+          <span id="intradayModelBadge" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 font-mono">當沖模型: 載入中…</span>
+          <span id="intradayStamp" class="text-xs text-[#64748B] font-mono font-medium">等待盤中掃描</span>
+        </div>
+        <button class="btn share-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1C2B3C] hover:bg-[#273647] text-[#F1F5F9] text-xs font-semibold" type="button" data-share-ignore onclick="prepareModuleShare('daytradeModule','AI 模擬當沖')">
+          <span class="material-symbols-outlined text-[15px]">share</span> 分享圖片 ↗
+        </button>
+      </div>
+
+      <!-- 四步節奏條 (Execution Rhythm Bar) -->
+      <div class="my-3.5 py-2.5 px-4 rounded-xl bg-[#0D1C2D] border border-[#232F42]/60 flex flex-wrap items-center justify-between gap-3 font-mono text-xs sm:text-[13px] text-[#64748B]">
+        <div class="flex items-center gap-1.5"><span class="text-[#10B981] font-bold">09:00–09:10</span><span class="font-medium">B1 五檔觀察 · 09:10 狀態通知</span></div>
+        <span class="text-[#232F42]">➔</span>
+        <div class="flex items-center gap-1.5"><span class="text-[#06B6D4] font-bold">09:30</span><span class="font-medium">跑道 A 轉強／突破</span></div>
+        <span class="text-[#232F42]">➔</span>
+        <div class="flex items-center gap-1.5"><span class="text-[#F59E0B] font-bold">12:30</span><span class="font-medium">停止新單進場</span></div>
+        <span class="text-[#232F42]">➔</span>
+        <div class="flex items-center gap-1.5"><span class="text-[#EF4444] font-bold">12:55</span><span class="font-medium">雙跑道全平倉收工</span></div>
+      </div>
+
+      <!-- 雙跑道左右分割網格 (大螢幕左右對比，手機單欄自適應) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-3.5 items-start">
+        <!-- 左欄：跑道 A · AI 做多突破量化跑道 -->
+        <div class="rounded-xl bg-[#0D131F]/80 border border-[#232F42] p-3.5 sm:p-4 flex flex-col min-w-0">
+          <div class="flex items-center justify-between border-b border-[#232F42]/80 pb-2.5 mb-2.5 flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
+              <span class="font-bold text-sm text-[#F1F5F9]">跑道 A · 轉強／突破模擬</span>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-[#1C2B3C] text-cyan-400 border border-cyan-500/30">09:30~12:30</span>
+            </div>
+            <span class="text-[11px] text-[#94A3B8] font-mono">VWAP 突破 · 大盤出貨過濾 · 限額 100 萬</span>
+          </div>
+
+          <p id="aPolicyDisclosure" class="text-xs text-[#94A3B8] mb-2">等待當日進場模式確認。</p>
+          <div id="aCandidateList" class="space-y-2 mb-4" aria-live="polite"></div>
+          <div class="text-xs text-[#94A3B8] mb-2">模擬持倉與成交紀錄</div>
+          <div id="intradayPickList" class="space-y-3">
+            <div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-mono">等待 AI 模擬當沖資料（尚無當日有效快照）…</div>
+          </div>
+        </div>
+
+        <!-- 主跑道 B1；B2/B3 獨立背景模擬 -->
+        <div class="rounded-xl bg-[#0D131F]/80 border border-emerald-500/30 p-3.5 sm:p-4 flex flex-col min-w-0 shadow-[0_0_15px_rgba(16,185,129,0.04)]">
+          <div class="flex items-center justify-between border-b border-[#232F42]/80 pb-2.5 mb-2.5 flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="font-bold text-sm text-[#F1F5F9]">B1 · 五檔順勢拉回</span>
+              <span id="runwayV2Badge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">09:00–09:10 · 模擬</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="runwayV2Stamp" class="text-[11px] text-emerald-400/90 font-mono font-medium">限額 100 萬 · 熔斷防守</span>
+            </div>
+          </div>
+
+          <p id="runwayV2Disclosure" class="mb-2.5 px-3 py-1.5 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 text-xs font-semibold leading-relaxed">新規則前向模擬 · 非下單建議 · 尚未驗證勝率。依新鮮五檔及逐筆成交觀察；資料不足不進場。成交價為可見買賣一檔的模擬估計，非券商成交。</p>
+          <p id="runwayBackgroundStatus" class="text-xs text-[#94A3B8] mb-3" role="status">B2 布林轉折／B3 五分K趨勢突破：等待背景狀態</p>
+          <details class="mb-3 rounded-lg border border-[#232F42] p-3 text-xs text-[#CBD5E1] leading-relaxed">
+            <summary class="cursor-pointer font-semibold text-[#F1F5F9]">查看 B1／B2／B3 完整條件與通知時間</summary>
+            <div class="mt-3 space-y-3">
+              <p><strong>共用條件：</strong>目前訂閱行情池內，不限股價；沒有模擬資金或額度，每筆固定一張，最多3檔同時持倉。同一股票每條每天最多進場一次，沒有每日虧損停止進場限制。三條是獨立模擬比較，用來收集訓練資料。</p>
+              <p><strong>行情與成交：</strong>五檔及最後成交需在3秒內；15秒內至少3筆五檔、時間跨度至少5秒；買賣價差最多1檔。10秒內成交量至少80%可辨識內外盤。做多需主動買量≥65%，連續3筆五檔委買賣失衡≥0.10；做空需主動買量≤35%、失衡≤−0.10。委買賣失衡＝（五檔買量−五檔賣量）÷總掛單量。資料不足、大盤風險未通過，或距昨收漲跌≥7%時不進場；做空另須確認先賣後買資格。</p>
+              <p><strong>B1｜09:00～09:10：</strong>至少2檔同產業股票有有效資料，其中≥60%與交易方向一致。前60秒扣除最近10秒的高低差需≥2檔；做多須在昨收以上，最近10秒回落至少1檔且未破先前低點，再出現回升；做空須在昨收以下，最近10秒反彈至少1檔且未過先前高點，再轉跌。搭配上述五檔力道後評估；停損2檔、停利3檔。09:10停止進場並處理剩餘部位。</p>
+              <p><strong>B2｜背景布林轉折：</strong>只用當日20根已完成五分K，20期平均±2倍母體標準差；最早約10:40資料才足夠。前60秒價格曾超出下軌後返回軌內、買盤確認時做多；超出上軌後返回、賣盤確認時做空。停損2檔，目標中軌且距離至少3檔。12:30停止新進場，12:55結束。</p>
+              <p><strong>B3｜背景五分K突破：</strong>至少3根當日完整五分K；最新收盤突破前2根高點且收紅，或跌破前2根低點且收黑；成交量大於前2根均量，並符合五檔力道。最新K低點外1檔／高點外1檔停損，距模擬進場價不得超過1.5%；停利至少3檔或1.5倍價格風險。12:30停止新進場，12:55結束。</p>
+              <p><strong>費用與限額：</strong>手續費28折，買賣各計；股票當沖交易稅0.15%計於賣出。做多以賣一估進場、買一估出場；做空反向。可見第一檔掛單量不足不宣稱整筆成交。實際排隊、延遲與滑價可能更差，固定2檔／3檔不是淨賺賠比保證。</p>
+              <p><strong>LINE＋Telegram：</strong>09:10先彙整三條當時狀態，B2／B3標示繼續觀察；12:55結束後再彙整日結。若剩餘部位缺新鮮報價或深度不足，標示待處理，不虛報已平倉；完成後再發結束結果。通知沿用個人頻道及摘要開關，休市／未收到當日行情不捏造零交易日報。</p>
+              <p>上述數值是本版本明確登記的研究條件，並非作者未公開的原版SOP。族群分類採行情合約產業分類，尚非即時題材關聯。B1即時資料不以五分K代替；舊B跑道績效不混入新帳本。</p>
+            </div>
+          </details>
+          <div id="runwayV2PickList" class="space-y-3">
+            <div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-mono">B1 等待當日行情與五檔資料</div>
+          </div>
+          <section class="mt-5 border-t border-[#232F42] pt-4" aria-label="B2 布林轉折模擬紀錄">
+            <div class="flex justify-between gap-2 mb-3"><h3 class="font-bold text-sm text-[#F1F5F9]">B2 · 布林轉折</h3><span id="runwayB2Stamp" class="text-xs text-sub"></span></div>
+            <div id="runwayB2PickList" class="space-y-3"></div>
+          </section>
+          <section class="mt-5 border-t border-[#232F42] pt-4" aria-label="B3 五分K突破模擬紀錄">
+            <div class="flex justify-between gap-2 mb-3"><h3 class="font-bold text-sm text-[#F1F5F9]">B3 · 五分K趨勢突破</h3><span id="runwayB3Stamp" class="text-xs text-sub"></span></div>
+            <div id="runwayB3PickList" class="space-y-3"></div>
+          </section>
+          <details id="bReplayPanel" class="mt-4 text-xs">
+            <summary class="cursor-pointer font-semibold text-[#F1F5F9]">B1／B2／B3 回測、成交壓力與資料品質</summary>
+            <p id="bReplayStatus" class="text-sub mt-3" role="status">等待歷史資料盤點與回放報告</p>
+            <p class="text-sub mt-2">共用目前跑道規則，按當時接受的五檔、逐筆、股票池、大盤與五分K順序回放；只計完整且可核對的日期。每筆一張、無資金限額，費用與稅已計入，不混用舊B結果。</p>
+            <p class="text-sub mt-2">每日13:20／21:20更新。基準是可見報價模擬，尚未模擬排隊與市場衝擊；延遲0.5／1秒會重跑規則，雙邊各多1檔只是固定交易的額外成本試算。各情境有效日期可能不同，須一併查看天數。回撤只計已實現損益，合成測試資料不列正式績效。</p>
+            <div id="bReplayRows" class="mt-3">缺完整五檔或當時股票池的日期不會捏造勝率。</div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================
+       營收與消息隔日觀察
+       ===================================================== -->
+  <section id="revenue-observation" class="recommendation-section" style="margin-top:20px">
+    <div class="panel glass p-4">
+      <h2 class="font-bold text-main">營收成長＋正向消息｜隔日走勢觀察</h2>
+      <p id="revenueObservationStatus" class="text-sub text-xs mt-2" role="status">等待觀察資料</p>
+      <details class="text-sub text-xs mt-3"><summary class="cursor-pointer">查看篩選與走勢計算規則</summary>
+        <p class="mt-2">最新月營收年增率、月增率都必須大於 0，資料月份距目前不超過兩個月；搭配近七天重大訊息中的明確正向文字，例如營收創新高、獲利成長、轉虧為盈、取得訂單或上修展望。否定、澄清與假設句排除。這是保守文字規則，未經人工確認；法說會行程、財報核准本身不算利多，尚未自動解讀簡報或影片。</p>
+        <p class="mt-2">若公告已公布比官方 API 更新月份的營收，先等待官方月份更新，不沿用較舊數字建立觀察。從系統首次同時取得兩項條件時建立紀錄，追蹤其後第一個交易日，休市順延。同檔同一觀察日只計一次；保存當時的營收與消息，後續不改寫訊號。涵蓋官方上市櫃四位數普通股，不限價位或首頁熱門股。</p>
+        <p class="mt-2">基準為訊號成立日收盤，休市則取前一交易日收盤。開盤、最高、最低、收盤漲跌均相對此基準；另列開盤到收盤漲跌。只在收盤後取得完整官方日線才結算，缺資料標示待補。每小時更新、頁面每十分鐘刷新，最新顯示200筆，累計統計包含全部紀錄。</p>
+        <p class="mt-2">此區獨立觀察，不影響 A／B1／B2／B3、不下單、不傳送通知。收盤上漲比例是觀察結果，並非可交易勝率或扣費後盈虧；目前不補造過去績效。</p>
+      </details>
+      <div id="revenueObservationRows" class="mt-3">尚未取得觀察紀錄</div>
+    </div>
+  </section>
+
+  <!-- =====================================================
+       隔日衝 TOP 3 (保留 DOM 相容性)
+       ===================================================== -->
+  <div class="section-heading ranked-heading" id="overnight-strategies" style="display:none;">
+    <h2><span class="section-number">02</span> 隔日衝 TOP 3</h2><span>尾盤觀察・隔日策略</span>
+  </div>
+  <section class="recommendation-section" style="display:none;">
+    <div id="overnightModule" class="panel rounded-2xl p-3">
+      <div class="flex items-center justify-between border-b muted-border pb-2">
+        <div class="font-bold text-xs text-main">隔日衝 TOP 3 <button class="btn share-btn" type="button" data-share-ignore onclick="prepareModuleShare('overnightModule','隔日衝 TOP 3')">分享圖片 ↗</button></div>
+        <span id="overnightStamp" class="text-[9px] text-main">尾盤優先</span>
+      </div>
+      <p id="overnightHealth" class="text-sub text-xs mt-3" role="status">正在確認隔日衝資料來源…</p>
+      <div id="overnightPickList" class="space-y-1.5 mt-2">
+        <div class="text-xs text-sub text-center py-8">等待線型交叉掃描…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 Independent market observations -->
+  <div class="section-heading ranked-heading" id="eight-methods"><h2>02 開盤八法・尾盤八法</h2></div>
+  <section id="eightMethodsModule" class="panel eight-module glass" aria-label="開盤八法・尾盤八法">
+    <div class="eight-module-head"><p>Asia/Taipei · 盤勢分類與觀察選股，未驗證為買入訊號，不自動下單。</p>
+    <button type="button" class="btn share-btn" data-share-ignore onclick="prepareModuleShare('eightMethodsModule','開盤八法・尾盤八法')">分享</button></div>
+    <div role="tablist" aria-label="八法觀察"><button type="button" id="openingTab" role="tab" aria-selected="true" aria-controls="openingPanel">開盤八法</button><button type="button" id="closingTab" role="tab" aria-selected="false" aria-controls="closingPanel" tabindex="-1">尾盤八法</button></div>
+    <p id="eightStatus" role="status" aria-live="polite">等待行情觀察資料…</p>
+    <div id="openingPanel" role="tabpanel" aria-labelledby="openingTab"><p>昨收 → 09:05 → 09:10 → 09:15；09:15 前尚未完成。各時點僅採用之前 30 秒內成交，平盤及缺 Tick 不分類。</p><div id="openingMarkets"></div><nav id="openingPagination" class="eight-pagination" aria-label="開盤八法股票分頁" data-share-ignore hidden><button type="button" data-opening-page="-1" aria-controls="openingRows">上一頁</button><span data-opening-page-status role="status" aria-live="polite"></span><button type="button" data-opening-page="1" aria-controls="openingRows">下一頁</button></nav><div id="openingRows"></div><nav id="openingPaginationBottom" class="eight-pagination" aria-label="開盤八法股票分頁（下方）" data-share-ignore hidden><button type="button" data-opening-page="-1" aria-controls="openingRows">上一頁</button><span data-opening-page-status role="status" aria-live="polite"></span><button type="button" data-opening-page="1" aria-controls="openingRows">下一頁</button></nav>
+    <details class="eight-method"><summary>八種型態與三段價格說明</summary><ol><li>漲漲漲：連續上行</li><li>漲漲跌：先升後回落</li><li>漲跌跌：上行後連續回落</li><li>跌漲漲：下行後連續回升</li><li>跌跌漲：連續下行後回升</li><li>跌跌跌：連續下行</li><li>跌漲跌：下上交錯</li><li>漲跌漲：上下交錯</li></ol><a href="https://www.yunfar.com.tw/GBSSKILL/starting-8ways.html" target="_blank" rel="noopener">開盤八法參考</a></details></div>
+    <div id="closingPanel" role="tabpanel" aria-labelledby="closingTab" hidden><p>13:00～13:25 觀察；13:25 起收盤集合競價，連續交易訊號已截止。</p><p>台股 TW_CLOSING_RULES_V1：漲幅 3–5%、量比 &gt; 1、換手率 2–10%、市值 50–500 億 TWD、量擴張、5/20/60 均線、強於大盤、股價 ≥ 當日高點 98%。大陸規則另存，未套用於台股。</p><p id="closingPoolStatus" aria-live="polite"></p><div id="closingRows"></div></div>
+  </section>
+
+  <div class="section-heading ranked-heading flex items-center justify-between gap-3 mb-3 pt-4 border-t border-[#232F42]">
+    <div class="flex items-center gap-2.5">
+      <span class="h-7 w-7 rounded-lg bg-[#1C2B3C] border border-[#232F42] flex items-center justify-center text-[#F59E0B] font-mono text-xs font-bold shadow-sm">03</span>
+      <h2 class="text-base md:text-lg font-bold tracking-tight text-[#F1F5F9]">☕ 牛馬 AI 加班進修打卡室</h2>
+      <span class="px-2.5 py-1 rounded-full bg-[#1C2B3C] text-[#10B981] font-mono text-xs font-semibold border border-[#10B981]/30">收盤覆盤 · 離職基金</span>
+    </div>
+    <span class="text-xs text-[#64748B] font-medium">收盤加班進修 / DRONE SURVIVAL LOG</span>
+  </div>
+
+<div class="home-learning-teasers"><a class="home-learning-teaser glass" href="#learningSection"><span class="material-symbols-outlined" aria-hidden="true">menu_book</span><div><h3>每天一點，慢慢看懂市場</h3><p>每日盤後研究</p></div><div class="home-learning-value"><b id="homeLearningDays">—</b><small>累積學習日</small></div></a><a class="home-learning-teaser glass" href="#learningSection"><span class="material-symbols-outlined" aria-hidden="true">layers</span><div><h3>歷史研究，持續累積</h3><p>歷史測試非實際勝率</p></div><div class="home-learning-value"><b id="homeHistorySamples">—</b><small>歷史研究樣本</small></div></a></div>
+  <section class="panel learning-panel glass mb-8" id="learningSection" aria-labelledby="learningTitle">
+    <div class="learning-head flex items-start justify-between gap-4 border-b border-[#232F42] pb-3">
+      <div>
+        <h2 id="learningTitle" class="text-sm sm:text-base font-bold text-[#F1F5F9] m-0">AI 盤後學習與特訓進度</h2>
+        <p class="text-[#64748B] text-xs sm:text-[13px] mt-1 font-medium">白天當沖被修理，晚上留下來加班看盤；不求暴富，只求換個便當與湊齊離職自由金。</p>
+      </div>
+      <span id="learningPhase" class="phase-badge px-3 py-1 rounded-lg bg-[#1C2B3C] text-[#F59E0B] border border-[#F59E0B]/30 font-mono text-xs font-bold" role="status">等待學習資料</span>
+    </div>
+    
+    <div class="learning-numbers grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 my-4">
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3.5 rounded-xl flex flex-col justify-between min-h-[96px] gap-1">
+        <span class="text-xs sm:text-[13px] font-semibold text-[#64748B] tracking-wide block">累積血汗進修日</span>
+        <strong id="learnDays" class="text-2xl font-bold font-mono text-[#F59E0B] block my-0.5">—</strong>
+        <span class="text-xs text-[#64748B] block mt-1 leading-normal font-medium">同一交易日只計一次</span>
+      </div>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3.5 rounded-xl flex flex-col justify-between min-h-[96px] gap-1">
+        <span class="text-xs sm:text-[13px] font-semibold text-[#64748B] tracking-wide block">今日摸魚推薦</span>
+        <strong id="learnStocks" class="text-2xl font-bold font-mono text-[#F1F5F9] block my-0.5">—</strong>
+        <span class="text-xs text-[#64748B] block mt-1 leading-normal font-medium">當沖引擎觸發推薦檔數</span>
+      </div>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3.5 rounded-xl flex flex-col justify-between min-h-[96px] gap-1">
+        <span class="text-xs sm:text-[13px] font-semibold text-[#64748B] tracking-wide block">盤中盯盤記錄</span>
+        <strong id="learnObserved" class="text-2xl font-bold font-mono text-[#F1F5F9] block my-0.5">—</strong>
+        <span class="text-xs text-[#64748B] block mt-1 leading-normal font-medium">主力急漲急跌留痕檔數</span>
+      </div>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3.5 rounded-xl flex flex-col justify-between min-h-[96px] gap-1">
+        <span class="text-xs sm:text-[13px] font-semibold text-[#64748B] tracking-wide block">收盤復盤學會</span>
+        <strong id="learnLearned" class="text-2xl font-bold font-mono text-[#06B6D4] block my-0.5">—</strong>
+        <span class="text-xs text-[#64748B] block mt-1 leading-normal font-medium">完整有效標記的不重複股票</span>
+      </div>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3.5 rounded-xl flex flex-col justify-between min-h-[96px] gap-1">
+        <span class="text-xs sm:text-[13px] font-semibold text-[#64748B] tracking-wide block">有效自救樣本</span>
+        <strong id="learnSamples" class="text-2xl font-bold font-mono text-[#F1F5F9] block my-0.5">—</strong>
+        <span class="text-xs text-[#64748B] block mt-1 leading-normal font-medium">含進場急漲、停損出場特徵</span>
+      </div>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3.5 rounded-xl flex flex-col justify-between min-h-[96px] gap-1">
+        <span class="text-xs sm:text-[13px] font-semibold text-[#64748B] tracking-wide block">行情報價收集</span>
+        <strong id="learnCoverage" class="text-2xl font-bold font-mono text-emerald-400 block my-0.5">—</strong>
+        <span id="learnCoverageNote" class="text-xs text-[#64748B] block mt-1 leading-normal font-medium">等待收盤報告</span>
+      </div>
+    </div>
+
+    <div class="learning-bottom grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-[#232F42]">
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3 rounded-xl">
+        <b id="learnModel" class="text-sm font-bold text-[#F1F5F9] block">當沖模型：載入中…</b>
+        <p id="learnTraining" class="text-xs text-[#64748B] my-1 font-mono">離職自救進修進度（目標 101 個交易日）</p>
+        <progress id="learnProgress" max="101" value="0" aria-label="同設定有效學習日進度" class="w-full h-2 rounded-full overflow-hidden accent-[#F59E0B]"></progress>
+      </div>
+      <div class="bg-[#0D1C2D] border border-[#232F42]/60 p-3 rounded-xl">
+        <b id="learnAI" class="text-sm font-bold text-[#F1F5F9] block">今日檢討週報：待確認</b>
+        <p id="learnUpdated" class="text-xs text-[#64748B] my-1 font-mono">尚未收到更新</p>
+        <p id="learnError" role="status" class="text-xs text-[#EF4444] font-mono"></p>
+      </div>
+    </div>
+
+    <details class="mt-3 p-3 rounded-lg bg-[#0D1C2D] border border-[#232F42]/60 text-xs text-[#64748B]">
+      <summary class="cursor-pointer font-bold text-[#F1F5F9] hover:text-[#F59E0B]">💡 為什麼牛馬 AI 每天都要進修？</summary>
+      <p class="mt-1 leading-relaxed">盤中先記錄資料，收盤後建立標記與 AI 分析；達到訓練門檻仍需驗證。只有當沖引擎確認載入的版本，才算已套用。AI 復盤完成不代表勝率提高。</p>
+      <p id="learnLastReport" class="mt-1 font-mono text-[#06B6D4]"></p>
+    </details>
+  </section>
+
+  <!-- =====================================================
+       DISCLAIMER
+       ===================================================== -->
+  <section class="disclaimer glass text-xs sm:text-[13px] text-[#64748B] leading-relaxed my-6">
+    <div class="font-bold text-[#F1F5F9] mb-1 flex items-center gap-1.5">
+      <span class="material-symbols-outlined text-[15px] text-[#F59E0B]">gavel</span>
+      <span>社畜看盤免責條款 & 量化隔離說明</span>
+    </div>
+    本頁為量化資料整理與研究工具，不構成投資建議。
+    首頁「開盤八法・尾盤八法」是盤勢分類與觀察選股，未經績效驗證，不是買入訊號；
+    遇到紅燈市場可直接選擇觀望。
+    資料核心為 TWSE / TPEx 官方公開資料；
+    永豐 Shioaji 負責即時當沖行情，
+    Fugle 暫時保留歷史研究與隔日衝資料。
+    AI 模擬當沖以 Oracle VM 發布的有效快照為準；模型分數非勝率，亦不代表真實成交：
+    09:30 開始允許進場，
+    12:30 停止新進場，
+    12:55 強制結束當沖部位，
+    13:00 後不再產生當沖進場訊號。
+  </section>
+
+  <footer class="footer-line flex flex-wrap items-center justify-between gap-3 text-xs text-[#64748B] py-4 border-t border-[#232F42] font-mono">
+    <span>當沖吧！牛馬仔 QUANT LAB · Research / Paper</span>
+    <span class="flex items-center gap-2">
+      <span id="footerRequestTiming">資料請求耗時尚未取得</span>
+      <span>•</span>
+      <span>TWSE / TPEx 日線 + VM 模擬快照</span>
+      <span>•</span>
+      <span class="text-[#F1F5F9]">牛馬下班，風險不加班。</span>
+    </span>
+  </footer>
+</main>
+
+
+<!-- =========================================================
+     STOCK DETAIL MODAL
+     ========================================================= -->
+
+<div
+  role="dialog" aria-modal="true" aria-labelledby="modalTitle" id="stockDetailModal"
+  class="hidden fixed inset-0 z-50 p-3 flex items-center justify-center">
+
+  <div
+    class="modal-wide panel glass-chrome w-full max-w-6xl max-h-[92vh] overflow-hidden">
+
+    <div
+      class="flex items-center justify-between gap-3 p-4 border-b muted-border">
+
+      <div>
+
+        <div class="flex items-center gap-2">
+
+          <h2
+            id="modalTitle"
+            class="font-bold text-main">
+            --
+          </h2>
+
+          <span
+            id="modalCategory"
+            class="text-xs px-2.5 py-1 rounded-md border muted-border text-sub font-medium">
+            --
+          </span>
+
+        </div>
+
+        <div
+          id="modalSubTitle"
+          class="text-xs text-sub font-mono mt-1 font-medium">
+          --
+        </div>
+
+      </div>
+
+
+      <div class="flex items-center gap-2">
+
+        <a
+          id="modalYahooLink"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn text-xs px-3 py-1.5 rounded-lg font-semibold">
+
+          Yahoo ↗
+
+        </a>
+
+        <button
+          aria-label="關閉股票詳情" onclick="closeModal()"
+          class="text-sub hover:text-main text-xl px-2">
+
+          ✕
+
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div class="overflow-y-auto p-4 space-y-3 max-h-[82vh]">
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+
+        <div class="lg:col-span-2 panel rounded-xl p-2">
+
+          <div
+            id="chartContainer"
+            style="height:340px;">
+          </div>
+
+        </div>
+
+
+        <div class="space-y-2">
+
+          <div class="panel rounded-xl p-3">
+
+            <div class="flex items-center gap-3">
+
+              <div
+                id="scoreCircle"
+                class="w-16 h-16 rounded-full p-1 score-ring">
+
+                <div
+                  class="w-full h-full rounded-full panel flex items-center justify-center">
+
+                  <span
+                    id="scoreValue"
+                    class="text-lg font-bold text-main">
+                    --
+                  </span>
+
+                </div>
+
+              </div>
+
+
+              <div>
+
+                <div class="text-xs text-sub font-medium">
+                  策略排序分（不是勝率）
+                </div>
+
+                <div
+                  id="scoreLabel"
+                  class="text-sm sm:text-base font-bold text-main mt-1">
+                  --
+                </div>
+
+                <div
+                  id="scoreQuality"
+                  class="text-xs text-sub mt-1 font-mono font-medium">
+                  --
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div
+            id="factorGrid"
+            class="grid grid-cols-2 gap-2">
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="panel rounded-xl p-3.5">
+
+        <div class="text-xs sm:text-sm font-bold text-main mb-2">
+          基本面／估值
+        </div>
+
+        <div
+          id="fundamentalGrid"
+          class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+        </div>
+
+      </div>
+
+
+      <div class="panel rounded-xl p-3.5">
+
+        <div class="text-xs sm:text-sm font-bold text-main mb-2">
+          量化模型入選理由
+        </div>
+
+        <div
+          id="modalReason"
+          class="text-xs sm:text-[13px] text-sub leading-relaxed space-y-2 font-medium">
+        </div>
+
+      </div>
+
+
+      <div class="panel rounded-xl p-3">
+
+        <div class="text-xs font-bold text-main mb-2">
+          日線技術訊號研究（不等同當沖或隔日衝實績）
+        </div>
+
+        <div
+          id="stockBacktest"
+          class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>window.PUBLIC_RESULTS_V1=true;</script><script src="assets/public-data.js?v=8276b4415cb8"></script>
+<script src="assets/dashboard-ux.js?v=7d2bc8c260a1"></script>
+<script>
+
+  /* ========================================================
+     FIREBASE
+     ======================================================== */
+
+  const FIREBASE_ORIGIN =
+    "https://easystock-c237a-default-rtdb.firebaseio.com";
+
+  const FIREBASE_ROOT =
+    `${FIREBASE_ORIGIN}/market_data`;
+
+  const LONG_MIN_YIELD = 4;
+
+
+  /* ========================================================
+     GLOBAL STATE
+     ======================================================== */
+
+  let CURRENT_LIMIT = 5;
+
+  let PRICE_MIN = null;
+
+  let PRICE_MAX = null;
+
+  let BUDGET_MAX = null;
+
+  let CURRENT_THEME =
+    document.documentElement.dataset.theme || "light";
+
+  let COMPUTED_STOCKS = [];
+
+  let META = {};
+  let DAILY_FETCH_STATE = 'waiting';
+
+  // 舊 Fugle：只保留隔日衝
+  let INTRADAY = {};
+
+  // Oracle VM + Shioaji AI 純模擬當沖（以 VM 有效快照為準）
+  let INTRADAY_LIVE = {};
+  let LIVE_FETCH_ERROR = '';
+  let liveRefreshBusy = false;
+
+  function liveDataState(now = Date.now()) {
+    const at = INTRADAY_LIVE.last_update_at || INTRADAY_LIVE.generated_at;
+    const elapsed = now - Date.parse(at);
+    if (LIVE_FETCH_ERROR) return {label:'連線失敗', message:'即時資料讀取失敗；保留最後成功快照，價格與部位狀態待確認。', current:false};
+    if (!at) return {label:'等待資料', message:'尚未收到有效當沖快照，無法確認目前部位。', current:false};
+    if (!Number.isFinite(elapsed) || elapsed < -60000)
+      return {label:'資料時間異常', message:'快照時間無效或在未來，無法確認目前狀態。', current:false};
+    if (INTRADAY_LIVE.session === 'closed') {
+      const isToday = taiwanDay(at) === taiwanDay(new Date(now));
+      return {
+        label: isToday ? '當沖已結束' : '盤前待命',
+        message: isToday ? '今日收盤快照；不是即時報價。' : `非盤中時段（保留上一交易日 ${taiwanDay(at)} 收盤戰報・09:00 開盤重置）。`,
+        current: true
+      };
+    }
+    if (!Number.isFinite(elapsed) || elapsed < -60000 || taiwanDay(at) !== taiwanDay(new Date(now)))
+      return {label:'資料日期異常或過期', message:'目前不是今日有效快照，等待當沖服務更新。', current:false};
+    if (elapsed > 60000) return {label:'更新逾時', message:'超過 60 秒未更新；下方為最後快照，不代表仍在即時監控。', current:false};
+    return {label:({preopen:'開盤前',daytrade:'即時監控',no_new_entry:'停止新進場',force_exit:'強制出場'}[INTRADAY_LIVE.session] || '階段待確認'), message:'', current:true};
+  }
+
+  let DATA_MODE = "split";
+
+  let currentChart = null;
+  let currentSeries = null;
+  let CURRENT_MODAL_STRATEGY = null;
+
+
+  /* ========================================================
+     SYSTEM REFRESH TIME
+     ======================================================== */
+
+  let SYSTEM_REFRESH_AT = null;
+
+
+  /* ========================================================
+     BASIC FUNCTIONS
+     ======================================================== */
+
+  const clamp = (v, min, max) =>
+    Math.max(min, Math.min(max, v));
+
+
+  const n = v =>
+    (
+      v === null ||
+      v === undefined ||
+      (typeof v === "boolean" || String(v).trim() === "" || !Number.isFinite(Number(v)))
+    )
+      ? null
+      : Number(v);
+
+
+  const fmt = (v, d = 1) =>
+    n(v) === null
+      ? "N/A"
+      : Number(v).toFixed(d);
+
+
+  const pct = (v, d = 1) =>
+    n(v) === null
+      ? "N/A"
+      : `${Number(v).toFixed(d)}%`;
+
+
+  /* ========================================================
+     TIME FUNCTIONS
+     ======================================================== */
+
+  function formatTaiwanDateTime(value) {
+
+    if (!value) {
+      return "--";
+    }
+
+    try {
+
+      const d = new Date(value);
+
+      if (Number.isNaN(d.getTime())) {
+
+        return String(value)
+          .replace("T", " ")
+          .slice(5, 16);
+
+      }
+
+      return d.toLocaleString(
+        "zh-TW",
+        {
+          timeZone: "Asia/Taipei",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false
+        }
+      );
+
+    } catch (e) {
+
+      return String(value)
+        .replace("T", " ")
+        .slice(5, 16);
+
+    }
+
+  }
+
+
+  function formatTaiwanTime(value) {
+
+    if (!value) {
+      return "--";
+    }
+
+    try {
+
+      const d = new Date(value);
+
+      if (Number.isNaN(d.getTime())) {
+        return String(value)
+          .replace("T", " ")
+          .slice(-8, -3);
+      }
+
+      return d.toLocaleTimeString(
+        "zh-TW",
+        {
+          timeZone: "Asia/Taipei",
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        }
+      );
+
+    } catch (e) {
+
+      return String(value);
+
+    }
+
+  }
+
+
+  function formatDuration(minutes) {
+
+    if (
+      minutes === null ||
+      minutes === undefined ||
+      Number.isNaN(Number(minutes))
+    ) {
+      return "--";
+    }
+
+    const m =
+      Math.max(
+        0,
+        Number(minutes)
+      );
+
+    const hours =
+      Math.floor(m / 60);
+
+    const mins =
+      m % 60;
+
+    if (hours > 0) {
+
+      return `${hours}小時 ${mins}分鐘`;
+
+    }
+
+    return `${mins}分鐘`;
+
+  }
+
+
+  function durationFromTimes(
+    first,
+    last
+  ) {
+
+    if (!first || !last) {
+      return null;
+    }
+
+    try {
+
+      const a = new Date(first);
+
+      const b = new Date(last);
+
+      if (
+        Number.isNaN(a.getTime()) ||
+        Number.isNaN(b.getTime())
+      ) {
+        return null;
+      }
+
+      return Math.max(
+        0,
+        Math.floor(
+          (b.getTime() - a.getTime())
+          / 60000
+        )
+      );
+
+    } catch (e) {
+
+      return null;
+
+    }
+
+  }
+
+
+  /* ========================================================
+     THEME
+     ======================================================== */
+
+  function chartPalette() {
+    const css = getComputedStyle(document.documentElement);
+    const color = name => css.getPropertyValue(name).trim();
+    return {
+      layout: { background: { color: color('--panel') }, textColor: color('--sub') },
+      grid: { vertLines: { color: color('--border') }, horzLines: { color: color('--border') } },
+      timeScale: { borderColor: color('--border') },
+      rightPriceScale: { borderColor: color('--border') }
+    };
+  }
+
+  function candlePalette() {
+    const css = getComputedStyle(document.documentElement);
+    const up = css.getPropertyValue('--up').trim();
+    const down = css.getPropertyValue('--down').trim();
+    return { upColor: up, downColor: down, borderUpColor: up, borderDownColor: down, wickUpColor: up, wickDownColor: down };
+  }
+
+  function marketClass(value) {
+    const v = n(value);
+    return v === null || v === 0 ? 'market-flat' : v > 0 ? 'market-up' : 'market-down';
+  }
+
+  function updateThemeToggleUI() {
+    const icon = document.getElementById('themeToggleIcon');
+    const label = document.getElementById('themeToggleLabel');
+    const btn = document.getElementById('themeToggleBtn');
+    if (!btn) return;
+    if (CURRENT_THEME === 'light') {
+      if (icon) icon.textContent = 'dark_mode';
+      if (label) label.textContent = '深色模式';
+      btn.title = '切換為深色模式';
+    } else {
+      if (icon) icon.textContent = 'light_mode';
+      if (label) label.textContent = '白色模式';
+      btn.title = '切換為白色模式';
+    }
+  }
+
+  function setTheme(theme) {
+    CURRENT_THEME = theme === 'dark' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = CURRENT_THEME;
+    if (CURRENT_THEME === 'dark') {
+      document.documentElement.classList?.remove('light');
+      document.documentElement.classList?.add('dark');
+    } else {
+      document.documentElement.classList?.remove('dark');
+      document.documentElement.classList?.add('light');
+    }
+    try { localStorage.setItem('MOHREN_THEME', CURRENT_THEME); } catch (_) {}
+    ['dark', 'light'].forEach(t => {
+      const btn = document.getElementById(`theme-${t}`);
+      if (btn) btn.setAttribute('aria-pressed', String(t === CURRENT_THEME));
+    });
+    updateThemeToggleUI();
+    if (currentChart) currentChart.applyOptions(chartPalette());
+    if (currentSeries) currentSeries.applyOptions(candlePalette());
+  }
+
+  function toggleTheme() {
+    setTheme(CURRENT_THEME === 'light' ? 'dark' : 'light');
+  }
+
+  /* ========================================================
+     DATA QUALITY
+     ======================================================== */
+
+  function scoreLabel(score) {
+
+    if (score >= 85) {
+      return "強勢";
+    }
+
+    if (score >= 75) {
+      return "良好";
+    }
+
+    if (score >= 65) {
+      return "中性";
+    }
+
+    if (score >= 50) {
+      return "偏弱";
+    }
+
+    return "弱勢";
+
+  }
+
+
+  /* ========================================================
+     LEGACY KLINE METRICS
+     ======================================================== */
+
+  /* ========================================================
+     QUANTITATIVE ENGINE
+     ======================================================== */
+
+  function runQuantitativeEngine(rows) { return rows.filter(s => s.public_display && s.public_display.display_release_id === s.release_id && s.public_display.display_as_of === s.updated_at).map(s => ({...s, ...s.public_display})); }
+  /* ========================================================
+     MODEL / STRATEGY
+     ======================================================== */
+
+  const RULE_VERSION = '2.0.0';
+  function taiwanDay(value = new Date()) {
+    const d = new Date(value);
+    if (!Number.isFinite(d.getTime())) return '';
+    return new Intl.DateTimeFormat('sv-SE', {timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+  }
+  function validSelection(stock) {
+    const asof = stock.selection?.as_of;
+    const age = (Date.parse(taiwanDay() + 'T00:00:00+08:00') - Date.parse(asof + 'T00:00:00+08:00')) / 86400000;
+    return META.rule_version === RULE_VERSION && stock.selection?.version === RULE_VERSION && asof === META.updated_at && stock.updated_at === asof && age >= 0 && age <= 7;
+  }
+  function qualified(stock, strategy) {
+    return validSelection(stock) && stock.public_qualified?.[strategy] === true;
+  }
+  function confidenceFor(stock, strategy) {
+    return qualified(stock, strategy) ? stock.selection.strategies[strategy].score : 0;
+  }
+
+  function bestStrategyFor(stock) {
+    return ['REBOUND','SWING'].filter(key => qualified(stock,key))
+      .map(key => [key,confidenceFor(stock,key)]).sort((a,b)=>b[1]-a[1])[0] || null;
+  }
+
+  function pickReasons(stock, strategy) {
+    return stock.selection?.strategies?.[strategy]?.reasons || ['尚未取得新版資格判定'];
+  }
+
+  function riskReason(
+    stock,
+    strategy
+  ) {
+
+    if (
+      strategy === "SWING" &&
+      (stock.nearHighRatio ?? 0)
+        > .97
+    ) {
+
+      return "已接近近期高點，避免追價";
+
+    }
+
+    if (
+      strategy === "REBOUND" &&
+      (stock.sharpe20 ?? 0)
+        < 0
+    ) {
+
+      return "波動風險仍高";
+
+    }
+
+    if (
+      strategy === "LONG" &&
+      n(stock.pe) !== null &&
+      stock.pe > 30
+    ) {
+
+      return "估值偏高";
+
+    }
+
+    if (
+      strategy === "DAYTRADE"
+    ) {
+
+      return "短線模型波動高，僅供研究";
+
+    }
+
+    if (
+      (stock.dataQuality ?? 0)
+      < 70
+    ) {
+
+      return "資料完整度偏低";
+
+    }
+
+    return "仍需留意大盤與個股突發風險";
+
+  }
+
+
+  function strategyName(strategy) {
+
+    return {
+
+      REBOUND:
+        "回踩轉強",
+
+      SWING:
+        "主升趨勢",
+
+      LONG:
+        "長期核心",
+
+      DAYTRADE:
+        "隔日衝"
+
+    }[strategy] || strategy;
+
+  }
+
+
+  /* ========================================================
+     MARKET
+     ======================================================== */
+
+  function evaluateMarket(pool) {
+
+    if (!pool.length) {
+
+      return {
+
+        level:
+          "YELLOW",
+
+        label:
+          "保守",
+
+        ratio:
+          0,
+
+        advice:
+          "沒有有效的市場資料，等待更新；不以缺值判定市場。"
+
+      };
+
+    }
+
+
+    const valid =
+      pool.filter(
+        s =>
+          n(s.sma20) !== null &&
+          n(s.sma60) !== null
+      );
+
+
+    const above =
+      valid.filter(
+        s =>
+          s.price > s.sma20 &&
+          s.price > s.sma60
+      ).length;
+
+
+    const ratio =
+      valid.length
+        ? above / valid.length
+        : 0;
+
+
+    const mom =
+      pool
+        .map(
+          s => n(s.momo20)
+        )
+        .filter(
+          v => v !== null
+        )
+        .map(
+          v => v - 1
+        );
+
+
+    const avgMom =
+      mom.length
+        ? mom.reduce(
+            (a, b) => a + b,
+            0
+          ) / mom.length
+        : 0;
+
+
+    if (valid.length < 30 || valid.length / pool.length < .6 || mom.length < 30) {
+      return {level:'UNKNOWN',label:'資料不足',ratio,avgMom,advice:'有效樣本不足，不判定市場方向、不產生今日首選。'};
+    }
+    if (
+      ratio >= .60 &&
+      avgMom >= 0
+    ) {
+
+      return {
+
+        level:
+          "GREEN",
+
+        label:
+          "正常",
+
+        ratio,
+
+        avgMom,
+
+        advice:
+          "市場廣度與趨勢偏多，可正常使用選股結果，但避免單筆過度集中。"
+
+      };
+
+    }
+
+
+    if (
+      ratio >= .42 ||
+      avgMom >= 0
+    ) {
+
+      return {
+
+        level:
+          "YELLOW",
+
+        label:
+          "保守",
+
+        ratio,
+
+        avgMom,
+
+        advice:
+          "市場訊號分歧，優先看高排序分標的並降低追價。"
+
+      };
+
+    }
+
+
+    return {
+
+      level:
+        "RED",
+
+      label:
+        "觀望",
+
+      ratio,
+
+      avgMom,
+
+      advice:
+        "市場廣度偏弱，無腦模式建議觀望，暫不勉強選股。"
+
+    };
+
+  }
+
+
+  /* ========================================================
+     PRICE FILTER
+     ======================================================== */
+
+  function priceFilteredStocks() {
+
+    return COMPUTED_STOCKS.filter(
+      s => {
+
+        const p =
+          n(s.price);
+
+        if (p === null) {
+          return false;
+        }
+
+        if (
+          PRICE_MIN !== null &&
+          p < PRICE_MIN
+        ) {
+          return false;
+        }
+
+        if (
+          PRICE_MAX !== null &&
+          p > PRICE_MAX
+        ) {
+          return false;
+        }
+
+        if (
+          BUDGET_MAX !== null &&
+          p * 1000 > BUDGET_MAX
+        ) {
+          return false;
+        }
+
+        return true;
+
+      }
+    );
+
+  }
+
+
+  /* ========================================================
+     MAIN RENDER
+     ======================================================== */
+
+  function renderAllSections() {
+    const filterStatus = document.getElementById('priceFilterStatus');
+    if (filterStatus) filterStatus.textContent = PRICE_MIN !== null && PRICE_MAX !== null && PRICE_MIN > PRICE_MAX
+      ? '最低股價高於最高股價，請修正或清除篩選；不改變選股或交易條件。'
+      : '僅篩選顯示；每股以元計，單張為 1000 股估算，不含費稅。';
+    document.querySelectorAll('[data-price]').forEach(button => {
+      const value = button.dataset.price === '' ? null : Number(button.dataset.price);
+      button.setAttribute('aria-pressed', String((PRICE_MIN === null || PRICE_MIN === 0) && PRICE_MAX === value));
+    });
+
+    renderMarketSignal(COMPUTED_STOCKS.filter(validSelection));
+
+
+    renderIntradayPicks();
+    updateDashboardUX();
+
+  }
+
+
+  /* ========================================================
+     MARKET SIGNAL
+     ======================================================== */
+
+  function renderMarketSignal(pool) {
+    if (!document.getElementById("marketSignalCard")) return;
+
+    const m =
+      evaluateMarket(COMPUTED_STOCKS.filter(validSelection));
+
+
+    const dot =
+      document.getElementById(
+        "marketSignalDot"
+      );
+
+
+    dot.className =
+      `w-4 h-4 rounded-full ${
+        m.level === "GREEN"
+          ? "surface"
+          : m.level === "RED"
+            ? "surface"
+            : "surface"
+      }`;
+
+
+    document.getElementById(
+      "marketSignalText"
+    ).textContent =
+      m.label;
+
+
+    document.getElementById(
+      "marketSignalSub"
+    ).textContent =
+      `多頭排列 ${
+        (m.ratio * 100).toFixed(0)
+      }% · 20D平均動能 ${
+        ((m.avgMom || 0) * 100)
+          .toFixed(1)
+      }%`;
+
+
+    document.getElementById(
+      "marketSignalAdvice"
+    ).textContent =
+      m.advice;
+
+
+    const bits = [];
+
+
+    if (
+      PRICE_MIN !== null ||
+      PRICE_MAX !== null
+    ) {
+
+      bits.push(
+        `價格 ${
+          PRICE_MIN ?? 0
+        }～${
+          PRICE_MAX ?? "不限"
+        }`
+      );
+
+    }
+
+
+    if (
+      BUDGET_MAX !== null
+    ) {
+
+      bits.push(
+        `單張≤${
+          Math.round(
+            BUDGET_MAX / 10000
+          )
+        }萬`
+      );
+
+    }
+
+
+    const filterLabel = document.getElementById("activeFilterLabel");
+    if (filterLabel) filterLabel.textContent = bits.length ? bits.join(" · ") : "全部價格";
+
+  }
+
+
+  /* ========================================================
+     TOP PICKS
+     ======================================================== */
+
+
+  function renderSmartList(
+    containerId,
+    items
+  ) {
+
+    const c =
+      document.getElementById(
+        containerId
+      );
+    if (!c) return;
+    if (!items.length) {
+
+      c.innerHTML =
+        `
+        <div class="text-xs sm:text-sm text-sub text-center py-8">
+          無合格標的，或必要資料不足；不以其他股票補名單
+        </div>
+        `;
+
+      return;
+
+    }
+
+
+    c.innerHTML =
+      items
+        .map(
+          (x, idx) => {
+
+            const s =
+              x.stock;
+
+
+            return `
+              <div
+                role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="openStockDetail('${s.symbol}','${x.strategy}')"
+                class="cursor-pointer rounded-xl border muted-border p-3.5 surface hover:translate-y-[-1px] transition">
+
+                <div class="flex justify-between gap-2.5">
+
+                  <div class="min-w-0">
+
+                    <div class="flex items-center gap-2">
+
+                      <span class="text-xs text-sub font-mono font-medium">
+                        #${idx + 1}
+                      </span>
+
+                      <span class="font-bold text-sm text-main truncate">
+                        ${escapeHtml(s.name)}
+                      </span>
+
+                      <span class="text-xs text-sub font-mono">
+                        ${escapeHtml(s.symbol)}
+                      </span>
+
+                    </div>
+
+                    <div class="text-xs text-sub mt-1.5 leading-normal">
+                      ${strategyName(x.strategy)}
+                      ·
+                      資料完整度 ${fmt(s.dataQuality, 0)}%
+                      ·
+                      Sharpe ${fmt(s.sharpe20, 2)}
+                    </div>
+
+                  </div>
+
+                  <div class="text-right shrink-0">
+
+                    <div class="text-sm sm:text-base font-bold text-main">
+                      ${fmt(s.price, 2)}
+                    </div>
+
+                    <div class="text-xs font-semibold metric-good mt-0.5">
+                      排序分 ${x.confidence}
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+            `;
+
+          }
+        )
+        .join("");
+
+  }
+
+
+  function renderPremarketBrief() {}
+
+
+  /* ========================================================
+     INTRADAY FILTER
+     ======================================================== */
+
+  function intradayFiltered(items) {
+
+    return (
+      Array.isArray(items)
+        ? items
+        : []
+    )
+    .filter(
+      x => {
+
+        const p =
+          n(x.price);
+
+        if (p === null) {
+          return false;
+        }
+
+        if (
+          PRICE_MIN !== null &&
+          p < PRICE_MIN
+        ) {
+          return false;
+        }
+
+        if (
+          PRICE_MAX !== null &&
+          p > PRICE_MAX
+        ) {
+          return false;
+        }
+
+        if (
+          BUDGET_MAX !== null &&
+          p * 1000 > BUDGET_MAX
+        ) {
+          return false;
+        }
+
+        return true;
+
+      }
+    );
+
+  }
+
+
+  /* ========================================================
+     INTRADAY CARD
+     ======================================================== */
+
+  function renderLinePickList(
+    containerId,
+    items,
+    mode
+  ) {
+
+    const c =
+      document.getElementById(
+        containerId
+      );
+    if (!c) return;
+
+
+    const stamp = INTRADAY?.generated_at;
+    const scanToday = INTRADAY?.scan_date === taiwanDay();
+    const fresh = Number.isFinite(Date.parse(stamp)) && Date.now() - Date.parse(stamp) >= -60000
+      && (INTRADAY?.session === 'close' || Date.now() - Date.parse(stamp) <= 20*60000);
+    const rawCandidates = Array.isArray(items) ? items : [];
+    const candidates = rawCandidates.filter(x => {
+      if (!x.bar_asof) return false;
+      const t = Date.parse(x.bar_asof);
+      const now = new Date();
+      const close = Date.parse(taiwanDay(now)+'T13:30:00+08:00');
+      return Number.isFinite(t) && t <= Date.now() && Math.min(Date.now(),close)-t <= 20*60000;
+    });
+    const rows = scanToday && fresh ? intradayFiltered(candidates).slice(0, 3) : [];
+    if (!scanToday || !fresh) {
+      const msg = !stamp ? '尚未收到隔日衝掃描資料。請檢查 Fugle 排程與授權。'
+        : !scanToday ? `最新掃描日期：${String(INTRADAY?.scan_date || '未知')}。今天尚未收到新報告；舊日候選不當成今日訊號。`
+        : '今天的尾盤資料已過期或時間格式不正確，等待新的掃描結果。';
+      c.replaceChildren(); const notice=document.createElement('div');notice.className='text-sm text-sub py-8';notice.textContent=msg;c.append(notice);
+      return;
+    }
+
+
+    if (!rows.length) {
+      const explanation = rawCandidates.length === 0 ? '掃描已更新，原始候選為 0 檔；可能未達策略門檻，請看掃描診斷。'
+        : candidates.length === 0 ? `收到 ${rawCandidates.length} 檔候選，但 K 棒時間缺少或過期，暫不列出。`
+        : '有合格時效的候選，但被你設定的股價或預算條件篩除。';
+      c.replaceChildren();const notice=document.createElement('div');notice.className='text-sm text-sub py-8';notice.textContent=explanation;c.append(notice);return;
+    }
+
+
+    c.innerHTML =
+      rows
+        .map(
+          (x, idx) => {
+
+            const score =
+              mode === "DAY"
+                ? x.daytrade_score
+                : x.overnight_score;
+
+
+            const reasons =
+              mode === "DAY"
+                ? (
+                    x.daytrade_reasons
+                    || []
+                  )
+                : (
+                    x.overnight_reasons
+                    || []
+                  );
+
+
+            const risk =
+              (
+                x.vetoes || []
+              )[0]
+
+              ||
+
+              (
+                x.vwap_distance_pct != null &&
+                x.vwap_distance_pct > 2
+                  ? "距VWAP偏遠"
+                  : "仍需設定停損並注意盤中突發量價反轉"
+              );
+
+
+            const hasStock =
+              COMPUTED_STOCKS.some(
+                s =>
+                  s.symbol ===
+                  String(x.symbol)
+              );
+
+
+            const click =
+              hasStock
+                ? `role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="openStockDetail('${x.symbol}','DAYTRADE')"`
+                : "";
+
+
+            const firstSeen =
+              formatTaiwanDateTime(
+                x.first_seen_at
+              );
+
+
+            const lastSeen =
+              formatTaiwanDateTime(
+                x.last_seen_at
+                ||
+                INTRADAY?.last_scan_at
+                ||
+                INTRADAY?.generated_at
+              );
+
+
+            let duration =
+              n(
+                x.duration_minutes
+              );
+
+
+            if (
+              duration === null
+            ) {
+
+              duration =
+                durationFromTimes(
+                  x.first_seen_at,
+                  x.last_seen_at
+                    ||
+                    INTRADAY?.last_scan_at
+                    ||
+                    INTRADAY?.generated_at
+                );
+
+            }
+
+
+            const durationText =
+              formatDuration(
+                duration
+              );
+
+
+            return `
+              <div
+                ${click}
+                class="${
+                  hasStock
+                    ? "cursor-pointer"
+                    : ""
+                } rounded-xl border muted-border p-2.5 surface hover:translate-y-[-1px] transition">
+
+                <div class="flex justify-between gap-2.5">
+
+                  <div>
+
+                    <div class="text-xs text-sub font-mono font-medium">
+                      #${idx + 1}
+                      ·
+                      ${
+                        mode === "DAY"
+                          ? "當沖"
+                          : "隔日衝"
+                      }
+                    </div>
+
+                    <div class="font-bold text-sm text-main mt-1">
+
+                      ${escapeHtml(x.name)}
+
+                      <span class="text-xs text-sub font-mono">
+                        ${escapeHtml(x.symbol)}
+                      </span>
+
+                    </div>
+
+                  </div>
+
+
+                  <div class="text-right">
+
+                    <div class="text-sm sm:text-base font-bold text-main">
+                      ${fmt(x.price, 2)}
+                    </div>
+
+                    <div class="text-xs font-semibold metric-good mt-0.5">
+                      線型 ${score ?? "--"}
+                    </div>
+
+                  </div>
+
+                </div>
+
+
+                <div class="flex flex-wrap gap-1.5 mt-2.5">
+
+                  ${reasons
+                    .slice(0, 3)
+                    .map(
+                      r =>
+                        `
+                        <span
+                          class="text-xs px-2 py-0.5 rounded border muted-border text-main font-medium">
+
+                          ${escapeHtml(r)}
+
+                        </span>
+                        `
+                    )
+                    .join("")
+                  }
+
+                </div>
+
+
+                <div class="grid grid-cols-3 gap-2 mt-2.5 text-xs">
+
+                  <div>
+
+                    <span class="text-sub">
+                      VWAP
+                    </span>
+
+                    <div class="text-main font-mono font-semibold">
+                      ${
+                        x.vwap == null
+                          ? "N/A"
+                          : fmt(x.vwap, 2)
+                      }
+                    </div>
+
+                  </div>
+
+
+                  <div>
+
+                    <span class="text-sub">
+                      量比
+                    </span>
+
+                    <div class="text-main font-mono font-semibold">
+                      ${
+                        x.volume_ratio == null
+                          ? "N/A"
+                          : fmt(
+                              x.volume_ratio,
+                              2
+                            ) + "x"
+                      }
+                    </div>
+
+                  </div>
+
+
+                  <div>
+
+                    <span class="text-sub">
+                      15m趨勢
+                    </span>
+
+                    <div class="text-main font-mono font-semibold">
+                      ${
+                        x.fifteen_trend == null
+                          ? "N/A"
+                          : fmt(
+                              x.fifteen_trend,
+                              0
+                            )
+                      }
+                    </div>
+
+                  </div>
+
+                </div>
+
+
+                <div
+                  class="mt-2.5 pt-2 border-t muted-border">
+
+                  <div class="grid grid-cols-2 gap-2">
+
+                    <div>
+
+                      <div class="text-xs text-sub">
+                        首次出現
+                      </div>
+
+                      <div class="text-xs text-main font-mono font-medium">
+                        ${
+                          x.first_seen_at
+                            ? firstSeen
+                            : "--"
+                        }
+                      </div>
+
+                    </div>
+
+
+                    <div>
+
+                      <div class="text-xs text-sub">
+                        最後掃描
+                      </div>
+
+                      <div class="text-xs text-main font-mono font-medium">
+                        ${lastSeen}
+                      </div>
+
+                    </div>
+
+                  </div>
+
+
+                  <div class="text-xs text-main mt-1.5 font-medium">
+
+                    ⏱ 持續
+                    ${durationText}
+
+                  </div>
+
+                </div>
+
+
+                <div class="text-xs text-main mt-2 font-medium">
+
+                  ⚠
+                  ${escapeHtml(risk)}
+
+                </div>
+
+              </div>
+            `;
+
+          }
+        )
+        .join("");
+
+  }
+
+
+  /* ========================================================
+     INTRADAY HEADER
+     ======================================================== */
+
+  // Reuse recorded execution values; missing prices/timestamps stay unknown.
+  function renderHomeTradeExecution(x, entry, exit, isOpen, entryView = null) {
+    const point = (label, price, time, quoteText = "") => `<div><span>${escapeHtml(label)}</span><strong>${price !== null ? fmt(price, 2) : "—"}</strong><small>${escapeHtml(time ? formatTaiwanDateTime(time) : "時間未提供")}</small>${quoteText ? `<small class="home-entry-quote">${escapeHtml(quoteText)}</small>` : ""}</div>`;
+    return `<div class="home-trade-execution">${point(entryView?.label || "進場", entryView ? entryView.value : entry, x.entry_time, entryView?.quoteText)}${isOpen ? '<div><span>狀態</span><strong>持倉中</strong><small>尚未出場</small></div>' : point("出場", exit, x.exit_time)}</div>`;
+  }
+
+  function renderLiveIntraday() {
+    updateDashboardUX();
+    if (window.AWatchlist) window.AWatchlist.render(INTRADAY_LIVE, liveDataState());
+
+    const container =
+      document.getElementById(
+        "intradayPickList"
+      );
+
+    const stamp =
+      document.getElementById(
+        "intradayStamp"
+      );
+
+    if (!container) {
+      return;
+    }
+
+    const health = liveDataState();
+    let healthEl = document.getElementById('intradayHealth');
+    if (!healthEl) {
+      healthEl = document.createElement('p');
+      healthEl.id = 'intradayHealth';
+      healthEl.setAttribute('role', 'status');
+      healthEl.className = 'text-xs text-sub mb-3';
+      container.before(healthEl);
+    }
+    healthEl.textContent = health.message;
+    const lastUpdate =
+      INTRADAY_LIVE?.last_update_at
+      ||
+      INTRADAY_LIVE?.generated_at;
+
+    const session =
+      INTRADAY_LIVE?.session
+      ||
+      "unknown";
+
+    const sessionLabels = {
+      preopen: "開盤前",
+      daytrade: "即時監控",
+      no_new_entry: "停止新進場",
+      force_exit: "強制出場",
+      closed: "當沖已結束"
+    };
+
+    if (stamp) {
+      stamp.textContent =
+        lastUpdate
+          ? `${
+              (!health.current ? health.label : sessionLabels[session])
+              || session
+            } · ${formatTaiwanDateTime(lastUpdate)}`
+          : health.label;
+    }
+
+    const modelBadge = document.getElementById("intradayModelBadge");
+    const metaDaytradeModel = document.getElementById("metaDaytradeModel");
+    const config = INTRADAY_LIVE?.config || {};
+    const modeLabel = config.entry_mode === 'rules' ? '規則模式'
+      : config.entry_mode === 'model' ? (config.model_ready ? '模型模式' : 'A 暫停進場（模型改版中）')
+      : '模式待確認';
+    const modeDate = INTRADAY_LIVE?.scan_date || '日期未知';
+    if (modelBadge) {
+      modelBadge.textContent = `當沖：${modeLabel}`;
+      modelBadge.title = `引擎設定日期：${modeDate}；模型版本：${config.model_version || '未提供'}。設定不代表當下服務正常，請同時查看更新時間。`;
+    }
+    if (metaDaytradeModel) {
+      metaDaytradeModel.textContent = modeLabel;
+      metaDaytradeModel.title = `引擎設定日期：${modeDate}，不以訓練日期推斷部署版本`;
+    }
+
+
+    const openRows =
+      Object.values(
+        INTRADAY_LIVE?.open_positions
+        || {}
+      )
+      .filter(Boolean)
+      .map(
+        x => ({
+          ...x,
+          _liveStatus: "OPEN"
+        })
+      )
+      .sort((a, b) => {
+        const ta = Date.parse(a.entry_time || "") || 0;
+        const tb = Date.parse(b.entry_time || "") || 0;
+        return tb - ta;
+      });
+
+    const closedRows =
+      Object.values(
+        INTRADAY_LIVE?.closed_trades
+        || {}
+      )
+      .filter(Boolean)
+      .map(
+        x => ({
+          ...x,
+          _liveStatus: "CLOSED"
+        })
+      )
+      .sort(
+        (a, b) => {
+          const ta =
+            Date.parse(
+              a.exit_time || ""
+            )
+            || 0;
+
+          const tb =
+            Date.parse(
+              b.exit_time || ""
+            )
+            || 0;
+
+          return tb - ta;
+        }
+      );
+
+
+    let rows = [
+      ...openRows,
+      ...closedRows
+    ];
+
+    const today =
+      new Date()
+        .toLocaleDateString(
+          "en-CA",
+          {
+            timeZone:"Asia/Taipei"
+          }
+        );
+
+    const todayRows =
+      rows.filter(
+        x =>
+          String(
+            x.entry_time
+            ||
+            x.exit_time
+            ||
+            ""
+          ).startsWith(today)
+      );
+
+    const isShowingPreviousDay = todayRows.length === 0 && rows.length > 0;
+    if (todayRows.length > 0) {
+      rows = todayRows;
+    } else if (isShowingPreviousDay && healthEl) {
+      healthEl.textContent = `${health.message} 保留上一交易日模擬戰報，並非今日訊號。`;
+    }
+
+
+
+    const unfilteredRowCount = rows.length;
+    rows =
+      rows.filter(
+        x => {
+
+          const price =
+            n(
+              x.current_price
+              ??
+              x.exit_price
+              ??
+              x.entry_price
+            );
+
+          if (
+            price === null
+          ) {
+            return false;
+          }
+
+          if (
+            PRICE_MIN !== null
+            &&
+            price < PRICE_MIN
+          ) {
+            return false;
+          }
+
+          if (
+            PRICE_MAX !== null
+            &&
+            price > PRICE_MAX
+          ) {
+            return false;
+          }
+
+          if (
+            BUDGET_MAX !== null
+            &&
+            price * 1000 > BUDGET_MAX
+          ) {
+            return false;
+          }
+
+          return true;
+        }
+      );
+
+
+    // rows = rows.slice(0, 6); // 已解除數量限制，自適應網格完整顯示
+
+
+    if (!rows.length) {
+
+      let message;
+
+      if (!health.current) {
+        message = health.message;
+      } else if (
+        session === "closed"
+      ) {
+
+        message =
+          "今日當沖已結束。13:00 後不再產生新的當沖訊號。";
+
+      } else if (
+        session === "no_new_entry"
+      ) {
+
+        message =
+          "12:30 後停止新進場；現有部位持續監控至出場。";
+
+      } else if (
+        session === "force_exit"
+      ) {
+
+        message =
+          "12:55 強制出場階段。";
+
+      } else {
+
+        message =
+          "目前沒有 OPEN 部位或今日完成交易。";
+      }
+
+      if (window.DashboardUX) message = window.DashboardUX.emptyReason({live:INTRADAY_LIVE, health, filtered:unfilteredRowCount > 0});
+      container.innerHTML = `
+        <div class="text-xs sm:text-sm text-sub text-center py-8 font-medium">
+          ${escapeHtml(message)}
+        </div>
+      `;
+
+      renderRunwayV2Live();
+      return;
+    }
+
+
+    container.innerHTML =
+      rows
+      .map(
+        x => {
+
+          const isOpen =
+            x._liveStatus
+            === "OPEN";
+
+          const entry =
+            n(
+              x.entry_price
+            );
+
+          const current =
+            n(
+              x.current_price
+            );
+
+          const exit =
+            n(
+              x.exit_price
+            );
+
+          const displayPrice =
+            isOpen
+              ? (
+                  current
+                  ??
+                  entry
+                )
+              : (
+                  exit
+                  ??
+                  entry
+                );
+
+          let pnl = null;
+
+          if (
+            isOpen
+            &&
+            entry !== null
+            &&
+            current !== null
+            &&
+            entry > 0
+          ) {
+
+            pnl =
+              (
+                current
+                /
+                entry
+                -
+                1
+              )
+              *
+              100;
+
+          } else if (
+            !isOpen
+          ) {
+
+            pnl =
+              n(
+                x.pnl_pct
+              );
+          }
+
+          const pnlClass = marketClass(pnl);
+
+          const pnlText =
+            pnl === null
+              ? "--"
+              : `${
+                  pnl >= 0
+                    ? "+"
+                    : ""
+                }${fmt(pnl, 2)}%`;
+
+          const statusClass =
+            isOpen
+              ? "trade-open"
+              : "trade-closed";
+
+          const reasons =
+            Array.isArray(
+              x.entry_reasons
+            )
+              ? x.entry_reasons
+              : [];
+
+          // 研究訊號與模擬成交分開標示；判斷邏輯在 intraday-chart.js。
+          const paper =
+            window.paperExecutionStatus?.(x) || null;
+          const entryView = window.tradeEntryPresentation?.(x) || {
+            label: '進場參考價（成交待確認）', value: null,
+            quoteText: '行情時間未提供，不推估延遲'
+          };
+
+          return `
+            <div class="rounded-xl border muted-border p-3.5 sm:p-4 surface home-trade-card trade-detail-card" role="button" tabindex="0" data-home-price="${displayPrice !== null ? displayPrice : ''}" data-home-status="${isOpen ? 'OPEN' : 'CLOSED'}" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(x.name || x.symbol)} 當日K線與選股原因">
+
+              <div class="home-trade-main flex items-start justify-between gap-2.5">
+
+                <div class="home-trade-identity"><strong>${escapeHtml(x.name || x.symbol)}</strong><span>${escapeHtml(x.symbol)}</span></div>
+                <div class="home-trade-reason">${isOpen ? "Shioaji 即時監控中" : escapeHtml(x.exit_reason || "已出場")}</div>
+                <div class="home-trade-signal"><span class="home-position-state ${statusClass}">${isOpen ? "OPEN · 持倉中" : "CLOSE · 已平倉"}</span>${paper ? `<span class="home-signal-badge ${paper.filled ? "paper-filled" : "paper-research"}" data-paper-status>${escapeHtml(paper.label)}</span>` : '<span class="home-signal-badge">模擬紀錄</span>'}</div>
+
+                ${renderHomeTradeExecution(x, entry, exit, isOpen, entryView)}
+                <div class="text-right shrink-0">
+                  <div class="text-base sm:text-lg font-bold text-main font-mono">
+                    ${
+                      displayPrice !== null
+                        ? fmt(
+                            displayPrice,
+                            2
+                          )
+                        : "--"
+                    }
+                  </div>
+
+                  <div class="text-xs sm:text-sm font-bold ${pnlClass} mt-0.5">
+                    ${pnlText}
+                  </div>
+                  <div class="text-xs text-sub mt-1">訊號追蹤報酬，非模擬帳結算</div>
+                </div>
+
+              </div>
+
+
+              <div class="grid grid-cols-2 gap-2.5 mt-3 text-xs">
+
+                <div class="rounded-lg border muted-border p-2.5">
+                  <div class="text-sub font-medium">${escapeHtml(entryView.label)}</div>
+
+                  <div class="text-sm font-bold text-main font-mono mt-1">
+                    ${
+                      entryView.value !== null
+                        ? fmt(
+                            entryView.value,
+                            2
+                          )
+                        : "--"
+                    }
+                  </div>
+
+                  <div class="text-xs text-sub mt-1">${escapeHtml(entryView.quoteText)}</div>
+                  <div class="text-xs text-main font-mono mt-1">
+                    ${
+                      x.entry_time
+                        ? formatTaiwanDateTime(
+                            x.entry_time
+                          )
+                        : "--"
+                    }
+                  </div>
+                </div>
+
+
+                <div class="rounded-lg border muted-border p-2.5">
+                  <div class="text-sub font-medium">
+                    ${
+                      isOpen
+                        ? "目前 / 最高"
+                        : "出場"
+                    }
+                  </div>
+
+                  <div class="text-sm font-bold text-main font-mono mt-1">
+                    ${
+                      isOpen
+                        ? `${
+                            current !== null
+                              ? fmt(
+                                  current,
+                                  2
+                                )
+                              : "--"
+                          } / ${
+                            n(
+                              x.highest_price
+                            ) !== null
+                              ? fmt(
+                                  x.highest_price,
+                                  2
+                                )
+                              : "--"
+                          }`
+                        : (
+                            exit !== null
+                              ? fmt(
+                                  exit,
+                                  2
+                                )
+                              : "--"
+                          )
+                    }
+                  </div>
+
+                  <div class="text-xs text-main font-mono mt-1">
+                    ${
+                      isOpen
+                        ? (
+                            x.stop_price != null
+                              ? `停損 ${fmt(
+                                  x.stop_price,
+                                  2
+                                )}`
+                              : "--"
+                          )
+                        : (
+                            x.exit_time
+                              ? formatTaiwanDateTime(
+                                  x.exit_time
+                                )
+                              : "--"
+                          )
+                    }
+                  </div>
+                </div>
+
+              </div>
+
+
+              ${
+                isOpen
+                &&
+                x.entry_score != null
+                  ? `
+                    <div class="text-xs text-main mt-2.5 font-medium leading-normal">
+                      AI 模型分數（非勝率）：
+                      <span class="font-mono font-bold">${escapeHtml(
+                        x.entry_score
+                      )}</span>
+                    </div>
+                  `
+                  : ""
+              }
+
+
+              ${
+                isOpen
+                &&
+                x.trailing_stop != null
+                  ? `
+                    <div class="text-xs text-main mt-1.5 font-medium leading-normal">
+                      移動停利：
+                      <span class="font-mono font-bold">${fmt(
+                        x.trailing_stop,
+                        2
+                      )}</span>
+                    </div>
+                  `
+                  : ""
+              }
+
+
+              ${
+                reasons.length
+                  ? `
+                    <div class="flex flex-wrap gap-1.5 mt-2.5">
+                      ${
+                        reasons
+                        .slice(
+                          0,
+                          4
+                        )
+                        .map(
+                          reason => `
+                            <span class="text-xs rounded-md border muted-border px-2 py-0.5 text-main font-medium">
+                              ✓ ${escapeHtml(reason)}
+                            </span>
+                          `
+                        )
+                        .join("")
+                      }
+                    </div>
+                  `
+                  : ""
+              }
+
+
+              ${
+                !isOpen
+                &&
+                x.mfe_pct != null
+                  ? `
+                    <div class="grid grid-cols-2 gap-2 mt-2.5 text-xs text-sub font-medium py-1 px-2 rounded-lg bg-black/5 dark:bg-white/5">
+
+                      <div>
+                        最高浮盈
+                        <span class="font-bold ${marketClass(x.mfe_pct)}">
+                          ${Number(x.mfe_pct).toFixed(2)}%
+                        </span>
+                      </div>
+
+                      <div>
+                        最大浮虧
+                        <span class="font-bold ${marketClass(x.mae_pct)}">
+                          ${Number(x.mae_pct).toFixed(2)}%
+                        </span>
+                      </div>
+
+                    </div>
+                  `
+                  : ""
+              }
+
+
+              ${
+                paper
+                  ? `
+                    <div class="text-xs text-sub mt-2 font-medium leading-normal" data-paper-detail>
+                      ${escapeHtml(paper.text)}
+                    </div>
+                  `
+                  : ""
+              }
+
+            </div>
+          `;
+        }
+      )
+      .join("");
+
+    renderRunwayV2Live();
+  }
+
+
+  /* ========================================================
+     RUNWAY V2 · 實驗動能跑道渲染（只顯示後端實際紀錄）
+     ======================================================== */
+
+  function renderRunwayV2Live(lane = "B1") {
+    if (lane === "B1") { renderRunwayV2Live("B2"); renderRunwayV2Live("B3"); }
+    const container = document.getElementById(lane === "B1" ? "runwayV2PickList" : `runway${lane}PickList`);
+    if (!container) return;
+
+    const stamp = document.getElementById(lane === "B1" ? "runwayV2Stamp" : `runway${lane}Stamp`);
+    const suite = INTRADAY_LIVE?.runway_b_lanes;
+    const v2Data = suite?.lanes?.[lane];
+    const background = document.getElementById("runwayBackgroundStatus");
+    if (background) background.textContent = ["B2", "B3"].map(lane => {
+      const data = suite?.lanes?.[lane];
+      if (!data) return `${lane}：尚無新跑道快照`;
+      const count = Object.keys(data.closed_trades || {}).length;
+      const open = Object.keys(data.open_positions || {}).length;
+      const age = Date.now() - Date.parse(data.last_update_at || "");
+      const fresh = Number.isFinite(age) && age >= -5000 && age <= 90000;
+      const status = data.session === "closed" ? "已結束" : !fresh ? "資料延遲" : data.session === "pending_exit" ? "待報價處理" : "背景觀察";
+      return `${lane} ${status} · 已平倉${count}／持倉${open} · ${data.day || "日期未提供"}`;
+    }).join(" ｜ ");
+    const lastUpdate = v2Data?.last_update_at;
+    const laneAge = Date.now() - Date.parse(lastUpdate || "");
+    const laneFresh = Number.isFinite(laneAge) && laneAge >= -5000 && laneAge <= 90000;
+
+    const openPositions = Object.values(v2Data?.open_positions || {})
+      .filter(Boolean)
+      .map(x => ({ ...x, _liveStatus: "OPEN" }))
+      .sort((a, b) => (Date.parse(b.entry_time || "") || 0) - (Date.parse(a.entry_time || "") || 0));
+
+    const closedTrades = Object.values(v2Data?.closed_trades || {})
+      .filter(Boolean)
+      .map(x => ({ ...x, _liveStatus: "CLOSED" }))
+      .sort((a, b) => (Date.parse(b.exit_time || "") || 0) - (Date.parse(a.exit_time || "") || 0));
+
+    let rows = [...openPositions, ...closedTrades];
+
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" });
+    const todayRows = rows.filter(x => String(x.entry_time || x.exit_time || "").startsWith(today));
+    const isShowingPreviousDay = todayRows.length === 0 && rows.length > 0;
+
+    if (todayRows.length > 0) {
+      rows = todayRows;
+      if (stamp && lastUpdate) {
+        stamp.textContent = `${v2Data?.session === "closed" ? "收盤快照" : !laneFresh ? "資料延遲" : "即時"} · ${formatTaiwanDateTime(lastUpdate)}`;
+      }
+    } else if (isShowingPreviousDay) {
+      if (stamp) stamp.textContent = "保留上一交易日戰報";
+    } else {
+      if (stamp) stamp.textContent = lastUpdate ? `${lane} ${v2Data?.session === "closed" ? "已結束" : "觀察中"} · ${formatTaiwanDateTime(lastUpdate)}` : `尚無 ${lane} 新跑道快照`;
+      const rejects = Object.entries(v2Data?.rejects || {}).sort((a, b) => b[1] - a[1]);
+      container.innerHTML = `<div class="text-xs sm:text-sm text-[#64748B] text-center py-8 font-medium">${lane} 尚無模擬交易。${escapeHtml(rejects[0]?.[0] || "等待新鮮五檔與符合條件的訊號")}。${lane === 'B2' ? '需要20根當日完整五分K，正常最早約10:40。' : ''}</div>`;
+      return;
+    }
+
+    const KNOWN_STOCK_NAMES = {
+      "6226": "光鼎",
+      "3717": "聯嘉投控",
+      "2313": "華通",
+      "8131": "福懋科",
+      "2330": "台積電",
+      "2317": "鴻海",
+      "2454": "聯發科",
+      "2603": "長榮",
+      "2609": "陽明",
+      "2615": "萬海",
+      "3231": "緯創",
+      "2382": "廣達",
+      "2376": "技嘉",
+      "2356": "英業達",
+      "2409": "友達",
+      "3481": "群創"
+    };
+
+    container.innerHTML = rows.map(x => {
+      const isOpen = x._liveStatus === "OPEN";
+      const entry = n(x.entry_price);
+      const current = laneFresh && !x.quote_stale ? n(x.current_price) : null;
+      const exit = n(x.exit_price);
+      const displayPrice = isOpen ? current : exit;
+
+      // 1. 股票名稱乾淨提取與保底
+      let stockName = (x.name && typeof x.name === "string" && !x.name.includes("?")) ? x.name.trim() : "";
+      if (!stockName) {
+        const found = COMPUTED_STOCKS.find(s => String(s.symbol) === String(x.symbol));
+        if (found && found.name && !found.name.includes("?")) stockName = found.name.trim();
+      }
+      if (!stockName) {
+        stockName = KNOWN_STOCK_NAMES[String(x.symbol)] || x.symbol;
+      }
+
+      // 2. 出場原因防護
+      let exitReason = (x.exit_reason && typeof x.exit_reason === "string" && !x.exit_reason.includes("?")) ? x.exit_reason.trim() : "";
+      if (!exitReason) exitReason = "出場原因未提供";
+
+      let pnl = null;
+      if (isOpen && entry !== null && current !== null && entry > 0) {
+        pnl = ((current / entry) - 1) * 100 * (x.direction === -1 ? -1 : 1);
+      } else if (!isOpen) {
+        pnl = n(x.return_pct);
+      }
+
+      const pnlClass = marketClass(pnl);
+      const pnlText = pnl === null ? "--" : `${pnl >= 0 ? "+" : ""}${fmt(pnl, 2)}%`;
+      const netPnl = n(x.net_pnl);
+      const netPnlText = netPnl !== null ? `${netPnl >= 0 ? "+" : ""}${Math.round(netPnl).toLocaleString()} 元` : "";
+
+      const signalTypeLabel = lane === 'B1' ? `B1 五檔${x.direction === -1 ? "反彈做空" : "拉回做多"}` :
+        `${lane} ${lane === 'B2' ? '布林轉折' : '五分K突破'}${x.direction === -1 ? '做空' : '做多'}`;
+      
+      let rawReasons = Array.isArray(x.reasons) ? x.reasons : (typeof x.reasons === "string" ? x.reasons.split(",").map(s => s.trim()) : []);
+      let reasons = rawReasons.filter(r => typeof r === "string" && !r.includes("?"));
+      if (!reasons.length) reasons = ["進場理由未提供"];
+
+      return `
+        <div class="rounded-xl border border-emerald-500/20 bg-[#0F172A]/70 p-3.5 sm:p-4 surface home-trade-card trade-detail-card transition-all hover:border-emerald-500/40 cursor-pointer" role="button" tabindex="0" data-home-price="${displayPrice !== null ? displayPrice : ''}" data-home-status="${isOpen ? 'OPEN' : 'CLOSED'}" data-trade-lane="${lane}" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(stockName)} ${lane} 模擬交易紀錄">
+          <div class="home-trade-main flex items-start justify-between gap-2.5">
+            <div class="home-trade-identity"><strong>${escapeHtml(stockName)}</strong><span>${escapeHtml(x.symbol)}</span></div>
+            <div class="home-trade-reason">${isOpen ? (x.quote_stale || !laneFresh ? '報價延遲 · 等待新鮮五檔' : '持倉監控中') : escapeHtml(exitReason)}</div>
+            <div class="home-trade-signal"><span class="home-position-state ${isOpen ? 'trade-open' : 'trade-closed'}">${isOpen ? 'OPEN · 持倉中' : 'CLOSE · 已平倉'}</span><span class="home-signal-badge">${escapeHtml(signalTypeLabel)}</span></div>
+
+            ${renderHomeTradeExecution(x, entry, exit, isOpen)}
+            <div class="text-right shrink-0">
+              <div class="text-base sm:text-lg font-bold text-[#F1F5F9] font-mono">
+                ${displayPrice !== null ? fmt(displayPrice, 2) : "--"}
+              </div>
+              <div class="text-xs sm:text-sm font-bold ${pnlClass} mt-0.5">
+                ${pnlText}
+              </div>
+              ${netPnlText ? `<div class="text-[11px] font-mono ${pnlClass} opacity-80">${netPnlText}</div>` : ''}
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5 mt-3 text-xs">
+            <div class="rounded-lg border border-[#232F42] bg-[#090D14]/60 p-2.5">
+              <div class="text-[#64748B] font-medium">進場點位</div>
+              <div class="text-sm font-bold text-[#F1F5F9] font-mono mt-1">${entry !== null ? fmt(entry, 2) : "--"}</div>
+              <div class="text-xs text-[#94A3B8] font-mono mt-1">${x.entry_time ? formatTaiwanDateTime(x.entry_time) : "--"}</div>
+            </div>
+
+            <div class="rounded-lg border border-[#232F42] bg-[#090D14]/60 p-2.5">
+              <div class="text-[#64748B] font-medium">${isOpen ? "現價 / 目標" : "出場點位"}</div>
+              <div class="text-sm font-bold text-[#F1F5F9] font-mono mt-1">
+                ${isOpen ? `${current !== null ? fmt(current, 2) : "--"} / ${n(x.target) !== null ? fmt(x.target, 2) : "--"}` : (exit !== null ? fmt(exit, 2) : "--")}
+              </div>
+              <div class="text-xs text-[#94A3B8] font-mono mt-1">
+                ${isOpen ? (x.stop_price != null ? `防守 ${fmt(x.stop_price, 2)}` : "--") : (x.exit_time ? formatTaiwanDateTime(x.exit_time) : "--")}
+              </div>
+            </div>
+          </div>
+
+          ${reasons.length ? `
+            <div class="flex flex-wrap gap-1.5 mt-2.5">
+              ${reasons.slice(0, 4).map(r => `
+                <span class="text-[11px] rounded-md border border-[#232F42] bg-[#1A2234]/50 px-2 py-0.5 text-[#94A3B8] font-medium">
+                  ✓ ${escapeHtml(r)}
+                </span>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join("");
+  }
+
+
+  function renderIntradayPicks() {
+
+    // 新 Shioaji 當沖
+    renderLiveIntraday();
+
+    // 舊 Fugle 只保留 Overnight
+    const s2 =
+      document.getElementById(
+        "overnightStamp"
+      );
+
+    if (s2) {
+      s2.textContent = `${INTRADAY?.session === 'close' ? '收盤研究版・非進場訊號' : '尾盤候選'} · ${INTRADAY?.last_scan_at ? formatTaiwanDateTime(INTRADAY.last_scan_at) : '等待掃描'} · ${INTRADAY?.scanned_symbols || 0}/${INTRADAY?.candidate_symbols || 0} 檔`;
+    }
+
+    renderLinePickList(
+      "overnightPickList",
+      INTRADAY?.overnight_candidates
+      || INTRADAY?.overnight
+      ||
+      [],
+      "OVERNIGHT"
+    );
+  }
+
+
+
+  /* ========================================================
+     MODAL
+     ======================================================== */
+
+  async function openStockDetail(
+    symbol,
+    strategyType
+  ) {
+    CURRENT_MODAL_STRATEGY = strategyType;
+
+    const stock =
+      COMPUTED_STOCKS.find(
+        s =>
+          s.symbol ===
+          String(symbol)
+      );
+
+
+    if (!stock) {
+      return;
+    }
+
+
+    document.getElementById(
+      "modalTitle"
+    ).textContent =
+      `${stock.symbol} ${stock.name}`;
+
+
+    document.getElementById(
+      "modalCategory"
+    ).textContent =
+      stock.category || "一般";
+
+
+    document.getElementById(
+      "modalSubTitle"
+    ).textContent =
+      `資料日期 ${
+        stock.updated_at
+        ||
+        META.updated_at
+        ||
+        "--"
+      } · 股票池 #${
+        stock.hot_rank || "--"
+      }`;
+
+
+    document.getElementById(
+      "modalYahooLink"
+    ).href =
+      `https://tw.stock.yahoo.com/quote/${
+        stock.symbol
+      }.${
+        stock.exchange === "TPEx"
+          ? "TWO"
+          : "TW"
+      }`;
+
+
+    const score =
+      clamp(
+        confidenceFor(stock, strategyType),
+        0,
+        100
+      );
+
+
+    document.getElementById(
+      "scoreValue"
+    ).textContent =
+      score.toFixed(0);
+
+
+    document.getElementById(
+      "scoreLabel"
+    ).textContent =
+      scoreLabel(score);
+
+
+    document.getElementById(
+      "scoreQuality"
+    ).textContent =
+      `資料完整度 ${stock.dataQuality}% · ${stock.selection?.strategies?.[strategyType]?.holding_period || "研究資料"}`;
+
+
+    document.getElementById(
+      "scoreCircle"
+    ).style.setProperty(
+      "--score",
+      `${score}%`
+    );
+
+
+    renderFactorGrid(stock);
+
+    renderFundamentals(stock);
+
+
+    document.getElementById(
+      "modalReason"
+    ).innerHTML =
+      buildReasons(
+        stock,
+        strategyType
+      )
+      .map(
+        x =>
+          `<div>• ${escapeHtml(x)}</div>`
+      )
+      .join("");
+
+
+    renderStockBacktest(stock);
+
+
+    document.getElementById(
+      "stockDetailModal"
+    ).classList.remove("hidden");
+
+
+    const c =
+      document.getElementById(
+        "chartContainer"
+      );
+
+
+    c.innerHTML =
+      `
+      <div class="h-full flex items-center justify-center text-xs text-sub">
+        載入 K 線中…
+      </div>
+      `;
+
+
+    if (
+      !Array.isArray(stock.kline)
+      ||
+      !stock.kline.length
+    ) {
+
+      try {
+
+        stock.kline =
+          await fetchJson(
+            stockKlineUrl(stock)
+          );
+
+      } catch (err) {
+
+        console.warn(
+          "Kline fetch failed",
+          err
+        );
+
+      }
+
+    }
+
+
+    if (Array.isArray(stock.kline) && stock.kline.length && stock.kline.at(-1).time !== stock.updated_at) {
+      c.innerHTML = '<div class="text-xs text-sub p-6">K線與摘要日期不同，等待資料同步後再開啟。</div>';
+      return;
+    }
+    renderModalChart(stock);
+
+  }
+
+
+  function renderFactorGrid(stock) {
+    const rows = [['REBOUND','多頭回踩'],['SWING','強勢波段'],['LONG','收益型長期']];
+    document.getElementById('factorGrid').innerHTML = rows.map(([key,label]) => {
+      const d = stock.selection?.strategies?.[key];
+      return `<div class="panel rounded-lg p-2"><div class="text-xs text-sub">${label}</div><div class="text-sm text-main font-bold">${qualified(stock,key) ? fmt(d.score,0)+' 分' : '未通過'}</div></div>`;
+    }).join('');
+  }
+
+  function renderFundamentals(stock) {
+
+    const c =
+      document.getElementById(
+        "fundamentalGrid"
+      );
+
+
+    const rows = [
+
+      [
+        "ROE",
+        pct(stock.roe)
+      ],
+
+      [
+        "EPS",
+        fmt(stock.eps, 2)
+      ],
+
+      [
+        "營收YoY",
+        pct(stock.rev_yoy)
+      ],
+
+      [
+        "FCF",
+        fmt(stock.fcf, 0)
+      ],
+
+      [
+        "負債比",
+        pct(stock.debt_ratio)
+      ],
+
+      [
+        "PE",
+        fmt(stock.pe, 2)
+      ],
+
+      [
+        "PB",
+        fmt(stock.pb, 2)
+      ],
+
+      [
+        "殖利率",
+        pct(stock.yieldPct)
+      ],
+
+      [
+        "法人15日",
+        fmt(stock.net15Total, 0)
+      ],
+
+      [
+        "Sharpe20",
+        fmt(stock.sharpe20, 2)
+      ],
+
+      [
+        "量比",
+        fmt(stock.volumeRatio, 2)
+      ],
+
+      [
+        "接近高點",
+        pct(
+          stock.nearHighRatio !== null
+            ? stock.nearHighRatio * 100
+            : null
+        )
+      ]
+
+    ];
+
+
+    c.innerHTML =
+      rows
+        .map(
+          ([label, value]) =>
+            `
+            <div class="panel rounded-xl p-2.5">
+
+              <div class="text-xs text-sub font-medium">
+                ${label}
+              </div>
+
+              <div class="text-sm font-bold text-main font-mono mt-1">
+                ${value}
+              </div>
+
+            </div>
+            `
+        )
+        .join("");
+
+  }
+
+
+  function buildReasons(
+    stock,
+    strategy
+  ) {
+
+    const reasons =
+      pickReasons(
+        stock,
+        strategy
+      );
+
+
+    const extra = [];
+
+
+    if (
+      stock.dataQuality !== null
+    ) {
+
+      extra.push(
+        `資料完整度 ${stock.dataQuality}%`
+      );
+
+    }
+
+
+    if (
+      stock.strategyScore !== null
+    ) {
+
+      extra.push(
+        `多因子模型 ${fmt(stock.strategyScore, 0)}`
+      );
+
+    }
+
+
+    if (
+      stock.dayTradeScore !== null
+    ) {
+
+      extra.push(
+        `短線動能 ${fmt(stock.dayTradeScore, 0)}`
+      );
+
+    }
+
+
+    return [
+      ...reasons,
+      ...extra
+    ].slice(0, 8);
+
+  }
+
+
+  function renderStockBacktest(
+    stock
+  ) {
+
+    const c =
+      document.getElementById(
+        "stockBacktest"
+      );
+
+
+    const bt = stock.backtest?.[CURRENT_MODAL_STRATEGY?.toLowerCase()] || {};
+
+
+    const stats = [
+
+      [
+        "Profit Factor",
+        fmt(
+          bt.profit_factor,
+          2
+        )
+      ],
+
+      [
+        "平均報酬",
+        pct(
+          bt.avg_return
+        )
+      ],
+
+      [
+        "訊號數",
+        n(bt.signals) === null
+          ? "N/A"
+          : Number(
+              bt.signals
+            ).toLocaleString()
+      ]
+
+    ];
+
+
+    c.innerHTML =
+      stats
+        .map(
+          ([label, value]) =>
+            `
+            <div class="panel rounded-xl p-2.5">
+
+              <div class="text-xs text-sub font-medium">
+                ${label}
+              </div>
+
+              <div class="text-sm font-bold font-mono ${label === '平均報酬' ? marketClass(bt.avg_return) : 'text-main'} mt-1">
+                ${value}
+              </div>
+
+            </div>
+            `
+        )
+        .join("");
+
+  }
+
+
+  function renderModalChart(
+    stock
+  ) {
+
+    const c =
+      document.getElementById(
+        "chartContainer"
+      );
+
+
+    c.innerHTML = "";
+
+
+    if (currentChart) {
+
+      currentChart.remove();
+
+      currentChart = null;
+      currentSeries = null;
+
+    }
+
+
+    if (
+      !window.LightweightCharts ||
+      !Array.isArray(stock.kline) ||
+      !stock.kline.length
+    ) {
+
+      c.innerHTML =
+        `
+        <div class="h-full flex items-center justify-center text-xs text-sub">
+          暫無 K 線資料
+        </div>
+        `;
+
+      return;
+
+    }
+
+
+    currentChart =
+      LightweightCharts.createChart(
+        c,
+        {
+          width:
+            c.clientWidth,
+
+          height:
+            330,
+
+          ...chartPalette(),
+          timeScale: { ...chartPalette().timeScale, timeVisible: false }
+
+        }
+      );
+
+
+    const series = currentChart.addCandlestickSeries(candlePalette());
+    currentSeries = series;
+
+    const data =
+      stock.kline
+        .map(
+          k => ({
+            time:
+              k.time,
+            open:
+              k.open,
+            high:
+              k.high,
+            low:
+              k.low,
+            close:
+              k.close
+          })
+        )
+        .filter(
+          k =>
+            k.time !== undefined &&
+            k.open !== undefined &&
+            k.high !== undefined &&
+            k.low !== undefined &&
+            k.close !== undefined
+        );
+
+
+    series.setData(data);
+
+
+    currentChart
+      .timeScale()
+      .fitContent();
+
+  }
+
+
+  function closeModal() {
+
+    document.getElementById(
+      "stockDetailModal"
+    ).classList.add("hidden");
+
+
+    if (currentChart) {
+
+      currentChart.remove();
+
+      currentChart = null;
+      currentSeries = null;
+
+    }
+
+  }
+
+
+  /* ========================================================
+     LIMIT / PRICE
+     ======================================================== */
+
+  function setDisplayLimit(v) {
+
+    CURRENT_LIMIT = v;
+
+    renderAllSections();
+
+  }
+
+
+  function setQuickPrice(
+    maxPrice
+  ) {
+
+    PRICE_MIN = null;
+
+    PRICE_MAX = maxPrice;
+
+
+    const minEl =
+      document.getElementById(
+        "priceMin"
+      );
+
+    const maxEl =
+      document.getElementById(
+        "priceMax"
+      );
+
+
+    if (minEl) {
+      minEl.value = "";
+    }
+
+
+    if (maxEl) {
+
+      maxEl.value =
+        maxPrice ?? "";
+
+    }
+
+
+    localStorage.removeItem(
+      "MOHREN_PRICE_MIN"
+    );
+
+
+    if (
+      maxPrice === null
+    ) {
+
+      localStorage.removeItem(
+        "MOHREN_PRICE_MAX"
+      );
+
+    } else {
+
+      localStorage.setItem(
+        "MOHREN_PRICE_MAX",
+        String(maxPrice)
+      );
+
+    }
+
+
+    renderAllSections();
+
+  }
+
+
+  function setBudget() {
+
+    const el =
+      document.getElementById(
+        "budgetInput"
+      );
+
+
+    const v =
+      el &&
+      el.value !== ""
+        ? Number(el.value)
+        : null;
+
+
+    BUDGET_MAX =
+      Number.isFinite(v) &&
+      v > 0
+        ? v
+        : null;
+
+
+    if (
+      BUDGET_MAX === null
+    ) {
+
+      localStorage.removeItem(
+        "MOHREN_BUDGET_MAX"
+      );
+
+    } else {
+
+      localStorage.setItem(
+        "MOHREN_BUDGET_MAX",
+        String(BUDGET_MAX)
+      );
+
+    }
+
+
+    renderAllSections();
+
+  }
+
+
+  function restoreBudget() {
+
+    const saved =
+      localStorage.getItem(
+        "MOHREN_BUDGET_MAX"
+      );
+
+
+    BUDGET_MAX =
+      saved &&
+      Number.isFinite(
+        Number(saved)
+      )
+        ? Number(saved)
+        : null;
+
+
+    const el =
+      document.getElementById(
+        "budgetInput"
+      );
+
+
+    if (
+      el &&
+      BUDGET_MAX !== null
+    ) {
+
+      el.value =
+        BUDGET_MAX;
+
+    }
+
+  }
+
+
+  function setPriceRange() {
+
+    const minEl =
+      document.getElementById(
+        "priceMin"
+      );
+
+    const maxEl =
+      document.getElementById(
+        "priceMax"
+      );
+
+
+    const minVal =
+      minEl &&
+      minEl.value !== ""
+        ? Number(minEl.value)
+        : null;
+
+
+    const maxVal =
+      maxEl &&
+      maxEl.value !== ""
+        ? Number(maxEl.value)
+        : null;
+
+
+    PRICE_MIN =
+      Number.isFinite(minVal) &&
+      minVal >= 0
+        ? minVal
+        : null;
+
+
+    PRICE_MAX =
+      Number.isFinite(maxVal) &&
+      maxVal >= 0
+        ? maxVal
+        : null;
+
+
+    localStorage.setItem(
+      "MOHREN_PRICE_MIN",
+      PRICE_MIN === null
+        ? ""
+        : String(PRICE_MIN)
+    );
+
+
+    localStorage.setItem(
+      "MOHREN_PRICE_MAX",
+      PRICE_MAX === null
+        ? ""
+        : String(PRICE_MAX)
+    );
+
+
+    renderAllSections();
+
+  }
+
+
+  function resetPriceRange() {
+
+    PRICE_MIN = null;
+
+    PRICE_MAX = null;
+
+
+    const minEl =
+      document.getElementById(
+        "priceMin"
+      );
+
+    const maxEl =
+      document.getElementById(
+        "priceMax"
+      );
+
+
+    if (minEl) {
+      minEl.value = "";
+    }
+
+
+    if (maxEl) {
+      maxEl.value = "";
+    }
+
+
+    localStorage.removeItem(
+      "MOHREN_PRICE_MIN"
+    );
+
+    localStorage.removeItem(
+      "MOHREN_PRICE_MAX"
+    );
+
+
+    renderAllSections();
+
+  }
+
+
+  function restorePriceRange() {
+
+    const minSaved =
+      localStorage.getItem(
+        "MOHREN_PRICE_MIN"
+      );
+
+
+    const maxSaved =
+      localStorage.getItem(
+        "MOHREN_PRICE_MAX"
+      );
+
+
+    PRICE_MIN =
+      minSaved !== null &&
+      minSaved !== "" &&
+      Number.isFinite(
+        Number(minSaved)
+      )
+        ? Number(minSaved)
+        : null;
+
+
+    PRICE_MAX =
+      maxSaved !== null &&
+      maxSaved !== "" &&
+      Number.isFinite(
+        Number(maxSaved)
+      )
+        ? Number(maxSaved)
+        : null;
+
+
+    const minEl =
+      document.getElementById(
+        "priceMin"
+      );
+
+    const maxEl =
+      document.getElementById(
+        "priceMax"
+      );
+
+
+    if (
+      minEl &&
+      PRICE_MIN !== null
+    ) {
+
+      minEl.value =
+        PRICE_MIN;
+
+    }
+
+
+    if (
+      maxEl &&
+      PRICE_MAX !== null
+    ) {
+
+      maxEl.value =
+        PRICE_MAX;
+
+    }
+
+  }
+
+
+  /* ========================================================
+     SECURITY
+     ======================================================== */
+
+  function escapeHtml(str) {
+
+    return String(
+      str ?? ""
+    ).replace(
+      /[&<>"']/g,
+      ch =>
+        ({
+          "&":
+            "&amp;",
+
+          "<":
+            "&lt;",
+
+          ">":
+            "&gt;",
+
+          '"':
+            "&quot;",
+
+          "'":
+            "&#039;"
+
+        }[ch])
+    );
+
+  }
+
+
+  /* ========================================================
+     FIREBASE FETCH
+     ======================================================== */
+
+  async function fetchJson(url) {
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 30000);
+    const clock = () => typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const started = clock();
+    let succeeded = false;
+    try {
+      const res = await fetch(publicDataURL(url), {cache:'no-store', signal:abort.signal});
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const value = await res.json();
+      succeeded = true;
+      return value;
+    } finally {
+      clearTimeout(timer);
+      // Browser fetch + JSON parsing, not exchange latency or source freshness.
+      if (window.DashboardUX) window.DashboardUX.requestFinished(clock() - started, succeeded);
+    }
+  }
+
+  function updateDashboardUX() {
+    if (!window.DashboardUX) return;
+    window.DashboardUX.update({stocks:COMPUTED_STOCKS, meta:META, live:INTRADAY_LIVE,
+      health:liveDataState(), dailyValid:COMPUTED_STOCKS.some(validSelection),
+      dailyFetchState:DAILY_FETCH_STATE,
+      openStock:symbol=>openStockDetail(symbol, 'REBOUND')});
+  }
+
+  function clearDisplayFilters() {
+    BUDGET_MAX = null;
+    const budget = document.getElementById('budgetInput');
+    if (budget) budget.value = '';
+    localStorage.removeItem('MOHREN_BUDGET_MAX');
+    resetPriceRange();
+  }
+
+  function stockKlineUrl(stock) {
+    const id = stock.kline_release_id;
+    const base = typeof id === 'string' && /^[0-9A-Za-z_-]+$/.test(id)
+      ? `${FIREBASE_ROOT}/releases/${id}` : FIREBASE_ROOT;
+    return `${base}/kline/${encodeURIComponent(stock.symbol)}.json`;
+  }
+
+
+  /* ========================================================
+     NEW FIREBASE SCHEMA
+     ======================================================== */
+
+  async function loadSplitSchema() {
+    const id = await fetchJson(`${FIREBASE_ROOT}/active_release.json`).catch(()=>null);
+    const versioned = typeof id === 'string' && /^[0-9A-Za-z_-]+$/.test(id);
+    const base = versioned ? `${FIREBASE_ROOT}/releases/${id}` : FIREBASE_ROOT;
+    const [summary, meta, backtests, overnight] = await Promise.all([
+      fetchJson(`${base}/summary.json`), fetchJson(`${base}/meta.json`), fetchJson(`${base}/backtests.json`),
+      fetchJson(`${FIREBASE_ROOT}/intraday_picks.json`).catch(()=>INTRADAY)
+    ]);
+    if (!summary || !meta) throw new Error('日線資料尚未完整');
+    const display = await fetchJson(`${FIREBASE_ROOT}/public_v1/display.json`);
+    const rows = Object.values(summary).filter(Boolean).map(s => ({...s, public_display:display?.[s.symbol]}));
+    if (versioned && meta.release_id !== id) throw new Error('資料版本尚未完成');
+    if (meta.rule_version === RULE_VERSION && rows.some(row => row.release_id !== meta.release_id)) throw new Error('日線資料正在更新，稍後重新讀取');
+    if (!versioned) {
+      const after = await fetchJson(`${FIREBASE_ROOT}/meta.json`);
+      if (after?.release_id !== meta.release_id) throw new Error('日線版本已切換，稍後重新讀取');
+    }
+    META = {...meta, backtests:backtests || {}};
+    INTRADAY = overnight || {};
+    DATA_MODE = 'split';
+    return rows.map(row => ({...row, kline_release_id:versioned && meta.kline_schema_version === 1 ? id : null}));
+  }
+
+  async function loadLegacySchema() {
+
+    const data =
+      await fetchJson(
+        `${FIREBASE_ORIGIN}/.json`
+      );
+
+
+    if (
+      !data ||
+      !data.stocks
+    ) {
+
+      throw new Error(
+        "找不到新版 summary，也沒有可相容的舊版 stocks"
+      );
+
+    }
+
+
+    DATA_MODE =
+      "legacy";
+
+
+    META = {
+      ...(data.metadata || {}),
+
+      updated_at:
+        data.updated_at,
+
+      backtests:
+        data.backtests
+        ||
+        data.metadata?.backtests
+        ||
+        {}
+    };
+
+
+    INTRADAY =
+      data.intraday_picks
+      || {};
+
+
+    return Array.isArray(
+      data.stocks
+    )
+      ? data.stocks
+      : Object.values(
+          data.stocks
+        );
+
+  }
+
+
+  /* ========================================================
+     UPDATE SYSTEM STATUS
+     ======================================================== */
+
+  function updateSystemStatus() {
+
+    const scanAt =
+      INTRADAY?.last_scan_at
+      ||
+      INTRADAY?.generated_at;
+
+
+    const scanEl =
+      document.getElementById(
+        "metaScanTime"
+      );
+
+
+    if (scanEl) {
+
+      scanEl.textContent =
+        scanAt
+          ? formatTaiwanDateTime(
+              scanAt
+            )
+          : "--";
+
+    }
+
+
+    const refreshEl =
+      document.getElementById(
+        "metaRefreshTime"
+      );
+
+
+    if (refreshEl) {
+
+      refreshEl.textContent =
+        SYSTEM_REFRESH_AT
+          ? formatTaiwanTime(
+              SYSTEM_REFRESH_AT
+            )
+          : "--";
+
+    }
+
+
+    const sessionEl =
+      document.getElementById(
+        "metaSession"
+      );
+
+
+    if (sessionEl) {
+
+      sessionEl.textContent =
+        !liveDataState().current ? liveDataState().label
+          : ({preopen:'開盤前',daytrade:'Paper 盤中監控',no_new_entry:'停止新進場',force_exit:'強制出場',closed:'收盤 / 歷史快照'}[INTRADAY_LIVE.session] || '階段待確認');
+
+    }
+
+
+    const trackingEl =
+      document.getElementById(
+        "metaTracking"
+      );
+
+
+    if (trackingEl) {
+
+      trackingEl.textContent = liveDataState().label;
+
+    }
+    updateDashboardUX();
+
+  }
+
+
+  /* ========================================================
+     MAIN FETCH
+     ======================================================== */
+
+  async function fetchMarketData() {
+    DAILY_FETCH_STATE = 'loading';
+    updateDashboardUX();
+
+    /*
+     * 這個時間代表：
+     * 使用者按「重新整理」後，
+     * 瀏覽器開始重新讀 Firebase 的時間。
+     */
+
+    SYSTEM_REFRESH_AT =
+      new Date();
+
+
+    const refreshEl =
+      document.getElementById(
+        "metaRefreshTime"
+      );
+
+
+    if (refreshEl) {
+
+      refreshEl.textContent =
+        formatTaiwanTime(
+          SYSTEM_REFRESH_AT
+        );
+
+    }
+
+
+    const status =
+      document.getElementById(
+        "dataStatusText"
+      );
+
+
+    status.textContent =
+      "正在從 Firebase 讀取摘要資料…";
+
+
+    try {
+
+      let raw;
+
+
+      try {
+
+        raw =
+          await loadSplitSchema();
+
+      } catch (newErr) {
+
+        console.warn(
+          "新版 schema 尚未可用，改讀舊版 root",
+          newErr
+        );
+
+
+        status.textContent =
+          "新版資料尚未建立：可查看舊資料，選股等待後端重新執行。";
+
+
+        raw =
+          await loadLegacySchema();
+
+      }
+
+
+      COMPUTED_STOCKS =
+        runQuantitativeEngine(
+          raw
+        );
+
+
+      document.getElementById(
+        "metaStocks"
+      ).textContent =
+        raw.length;
+
+
+      document.getElementById(
+        "metaDate"
+      ).textContent =
+        META.updated_at
+        ||
+        INTRADAY?.scan_date
+        ||
+        "--";
+
+
+      const avgQuality =
+        COMPUTED_STOCKS.length
+
+          ? Math.round(
+              COMPUTED_STOCKS.reduce(
+                (a, b) =>
+                  a + b.dataQuality,
+                0
+              )
+              /
+              COMPUTED_STOCKS.length
+            )
+
+          : 0;
+
+
+      document.getElementById(
+        "metaQuality"
+      ).textContent =
+        `${avgQuality}%`;
+
+
+      const signalCount =
+        Object.values(
+          META.backtests || {}
+        )
+        .reduce(
+          (a, b) =>
+            a +
+            (
+              Number(
+                b?.signals
+              ) || 0
+            ),
+          0
+        );
+
+
+      document.getElementById(
+        "metaSignals"
+      ).textContent =
+        signalCount.toLocaleString();
+
+
+      updateSystemStatus();
+
+
+      const scanAt =
+        INTRADAY?.last_scan_at
+        ||
+        INTRADAY?.generated_at;
+
+
+      status.textContent = META.rule_version === RULE_VERSION
+        ? `日線資料日 ${META.updated_at} · 後端完成 ${formatTaiwanDateTime(META.published_at || META.generated_at_utc)} · ${raw.length}檔 · 日線收盤資料，不是即時報價`
+        : '等待新版後端資料：請執行 Daily Stock Data Update；舊版評分不產生推薦。';
+
+
+      DAILY_FETCH_STATE = 'success';
+      renderAllSections();
+
+
+    } catch (err) {
+
+      console.error(err);
+
+      status.textContent =
+        `Firebase 讀取失敗：${
+          err.message
+        }（請點擊上方按鈕重試）`;
+
+      if (!COMPUTED_STOCKS.length) {
+        const stocksEl = document.getElementById("metaStocks");
+        const dateEl = document.getElementById("metaDate");
+        if (stocksEl && stocksEl.textContent.includes('載入')) stocksEl.textContent = '讀取失敗';
+        if (dateEl && dateEl.textContent.includes('載入')) dateEl.textContent = '連線逾時';
+      }
+      DAILY_FETCH_STATE = 'failed';
+      updateDashboardUX();
+
+    }
+
+  }
+
+
+  /* ========================================================
+     EVENTS
+     ======================================================== */
+
+  window.addEventListener(
+    "click",
+    e => {
+
+      if (
+        e.target.id ===
+        "stockDetailModal"
+      ) {
+
+        closeModal();
+
+      }
+
+    }
+  );
+
+
+  window.addEventListener(
+    "keydown",
+    e => {
+
+      if (
+        e.key === "Escape"
+      ) {
+
+        closeModal();
+
+      }
+
+    }
+  );
+
+
+  window.addEventListener(
+    "resize",
+    () => {
+
+      if (currentChart) {
+
+        const c =
+          document.getElementById(
+            "chartContainer"
+          );
+
+
+        currentChart.applyOptions(
+          {
+            width:
+              c.clientWidth
+          }
+        );
+
+      }
+
+    }
+  );
+
+
+  /* ========================================================
+     START
+     ======================================================== */
+
+  async function refreshLiveData() {
+    if (liveRefreshBusy) return;
+    liveRefreshBusy = true;
+    try {
+      try {
+        const live = await fetchJson(`${FIREBASE_ROOT}/intraday_live.json`);
+        if (live && typeof live === 'object' && !Array.isArray(live) && (live.last_update_at || live.generated_at)) {
+          INTRADAY_LIVE = live;
+          LIVE_FETCH_ERROR = '';
+          try {
+            window.dispatchEvent(new CustomEvent('easystock-live-update', { detail: live }));
+          } catch (_) {}
+        } else {
+          LIVE_FETCH_ERROR = 'unavailable';
+        }
+      } catch (_) {
+        LIVE_FETCH_ERROR = 'unavailable';
+      }
+      renderLiveIntraday();
+      updateSystemStatus();
+    } finally { liveRefreshBusy = false; }
+  }
+
+
+  let slowRefreshBusy = false;
+  async function refreshDailyAndOvernight() {
+    if (slowRefreshBusy) return;
+    slowRefreshBusy = true;
+    try {
+      const [active, overnight] = await Promise.all([
+        fetchJson(`${FIREBASE_ROOT}/active_release.json`),
+        fetchJson(`${FIREBASE_ROOT}/intraday_picks.json`).catch(() => INTRADAY)
+      ]);
+      INTRADAY = overnight || {};
+      const id = typeof active === 'string' ? active : (await fetchJson(`${FIREBASE_ROOT}/meta.json`))?.release_id;
+      if (id && id !== META.release_id) await fetchMarketData();
+      else { renderAllSections(); updateSystemStatus(); }
+    } catch (err) {
+      console.warn('日線／隔日衝更新失敗',err);
+      renderAllSections(); // Re-evaluate expiry even when offline.
+    } finally { slowRefreshBusy = false; }
+  }
+
+  let booted = false;
+  function boot() {
+    if (booted) return;
+    booted = true;
+
+    setTheme(
+      CURRENT_THEME
+    );
+
+    restorePriceRange();
+    restoreBudget();
+
+    fetchMarketData();
+    refreshLiveData();
+    setInterval(refreshDailyAndOvernight, 60000);
+
+    // Shioaji / AI 即時節點：每 5 秒只抓 live 節點。
+    setInterval(refreshLiveData, 5000);
+  }
+
+  window.onload = boot;
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(() => { if (!booted && window.onload === boot) boot(); }, 0);
+    } else if (document.addEventListener) {
+      document.addEventListener('DOMContentLoaded', () => {
+        if (!booted && window.onload === boot) boot();
+      });
+    }
+  }
+
+</script>
+
+<dialog id="moduleShareDialog" aria-labelledby="moduleShareTitle">
+  <div class="flex items-center justify-between gap-3"><h2 id="moduleShareTitle" class="text-main font-bold text-lg">分享模塊圖片</h2><button class="btn" type="button" onclick="closeModuleShare()" aria-label="關閉分享預覽">關閉</button></div>
+  <p id="moduleShareStatus" role="status" class="text-sub text-sm mt-3"></p>
+  <img id="moduleSharePreview" alt="模塊分享圖片預覽" hidden>
+  <div class="flex flex-wrap gap-2"><button class="btn" type="button" id="moduleShareSend" onclick="sendModuleShare()" disabled>選擇分享 App</button><button class="btn" type="button" id="moduleShareDownload" onclick="downloadModuleShare()" disabled>下載 PNG</button></div>
+  <p class="text-sub text-xs mt-3">支援的手機可在系統分享選單選擇 LINE；未支援時，下載圖片後在 LINE 附加傳送。</p>
+</dialog>
+<script src="assets/vendor/html2canvas.min.js"></script>
+<script src="assets/module-share.js?v=b12b4078b9d0"></script>
+<script src="assets/learning-status.js?v=e0341bf81f00"></script>
+<script src="assets/dashboard-layout.js?v=488bb302a486"></script>
+<script src="assets/intraday-chart.js?v=a8d7bf6d1a35"></script>
+<script src="assets/provider-health.js?v=e8f08c578597"></script>
+<nav class="mobile-bottom-nav glass-chrome" aria-label="手機主導覽">
+  <a href="#intraday-strategies" aria-label="盤中摸魚" aria-current="location"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span><span>盤中摸魚</span></a>
+  <a href="#eight-methods" aria-label="開盤八法・尾盤八法"><span class="material-symbols-outlined" aria-hidden="true">trending_up</span><span>八法觀察</span></a>
+  <a href="#learningSection" aria-label="牛馬 AI"><span class="material-symbols-outlined" aria-hidden="true">psychology</span><span>牛馬 AI</span></a>
+  
+</nav>
+<script src="assets/mobile-nav.js?v=a9a35b4a4d36"></script>
+<script src="assets/revenue-observation.js?v=c1040fe37c1d"></script>
+<script src="assets/eight-methods.js?v=dbfd908b8895"></script>
+<script src="assets/b-lanes-replay.js?v=ea6b415dae32"></script>
+<script src="assets/a-watchlist.js?v=44db2c9964bb"></script>
+<script src="assets/glass-home.js?v=fa31148a9e1a"></script>
+</body>
+</html>

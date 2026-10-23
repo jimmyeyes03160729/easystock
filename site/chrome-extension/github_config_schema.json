@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "global_vip_switch": false,
+  "vip_keys_hash": [],
+  "payment_gateway_url": "",
+  "market_holidays": ["2026-09-25", "2026-09-28"],
+  "daytrade_strategy_signals": []
+}
