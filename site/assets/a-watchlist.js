@@ -15,11 +15,8 @@
     return {message:'A 候選觀察｜候選尚未成交，進場仍須通過風控與模擬帳檢查。',rows};
   }
   function cards(result) {
-    return `<p class="text-xs text-[#94A3B8]">${escape(result.message)}</p>`+result.rows.map(r=>{
-      const score=Number.isFinite(r.model_score)?`模型分數 ${r.model_score.toFixed(3)}（非已驗證勝率）`:'模型分數待資料';
-      const state=r.state==='rule_ready'?'規則條件已齊，等待成交確認':`觀察中：${(r.waits||[]).join('、')}`;
-      return `<article class="rounded-lg border border-cyan-500/30 p-3 text-xs"><div>${escape(r.symbol)} ${escape(r.name)} · ${escape(r.price)} · 規則 ${escape(r.rule_score)} 分</div><div class="text-[#94A3B8] mt-1">${escape(score)}</div><div class="mt-1">${escape((r.reasons||[]).join('、'))}</div><div class="text-[#F59E0B] mt-1">${escape(state)}${r.opening_recovery?' · 開低轉強型態':''}</div></article>`;
-    }).join('');
+    return `<p class="text-xs text-sub">${escape(result.message)}</p>` + result.rows.map(r =>
+      `<article class="rounded-lg border border-cyan-500/30 p-3 text-xs"><div>${escape(r.symbol)} ${escape(r.name)} · ${escape(r.price)}</div><p>候選觀察，尚未成交</p></article>`).join('');
   }
   const api={view,cards,render(live,health){
     const el=global.document?.getElementById('aCandidateList');if(el)el.innerHTML=cards(view(live,health));
