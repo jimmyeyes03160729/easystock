@@ -18,6 +18,18 @@
     const originals=[source,...source.querySelectorAll('*')], copies=[copy,...copy.querySelectorAll('*')];
     originals.forEach((node,index)=>{
       const target=copies[index], style=getComputedStyle(node);
+      // The browser may retain boxes inside a closed <details>, even though
+      // its contents are not painted. Never export those hidden descendants.
+      let closedDetails=false;
+      for(let parent=node.parentElement;parent&&source.contains(parent);parent=parent.parentElement){
+        if(parent.tagName==='DETAILS'&&!parent.open){
+          const summary=[...parent.children].find(el=>el.tagName==='SUMMARY');
+          if(!summary?.contains(node)){closedDetails=true;break;}
+        }
+      }
+      if (closedDetails || !node.getClientRects().length || style.display==='none') {
+        target.remove(); return;
+      }
       for(let i=0;i<style.length;i++){
         const name=style[i];let value=style.getPropertyValue(name);
         if(/color$/.test(name))value=resolve(value);
@@ -27,6 +39,14 @@
       }
       target.style.animation='none';target.style.transition='none';
       target.style.backdropFilter='none';target.style.webkitBackdropFilter='none';
+      // Inset glass shadows render as overlapping bands in html2canvas.
+      // Flatten them only in the exported copy, keeping text and chart colors.
+      target.style.boxShadow='none';target.style.textShadow='none';
+      // A cloned canvas has no bitmap; preserve charts without touching the source.
+      if (node instanceof HTMLCanvasElement) {
+        target.width=node.width;target.height=node.height;
+        target.getContext('2d')?.drawImage(node,0,0);
+      }
     });
   }
   function clearFile() {
@@ -57,21 +77,29 @@
       if (document.fonts?.ready) await document.fonts.ready;
       if (token !== generation) return;
       // Freeze this module before the live Firebase refresh changes the DOM.
-      staging = source.cloneNode(true);
-      freezeStyles(source,staging);
-      staging.querySelectorAll('[hidden]').forEach(el=>el.remove());
-      staging.removeAttribute('id');
-      staging.querySelectorAll('[data-share-ignore],button').forEach(el => el.remove());
-      staging.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-      staging.querySelectorAll('[onclick],[onkeydown]').forEach(el => {el.removeAttribute('onclick');el.removeAttribute('onkeydown');});
-      Object.assign(staging.style,{position:'fixed',left:'-20000px',top:'0',width:`${Math.max(360,Math.min(1000,source.getBoundingClientRect().width))}px`,height:'auto',maxHeight:'none',overflow:'visible',padding:'24px',margin:'0',transform:'none'});
+      const bounds=source.getBoundingClientRect(), copy=source.cloneNode(true);
+      freezeStyles(source,copy);
+      copy.querySelectorAll('[hidden]').forEach(el=>el.remove());
+      copy.removeAttribute('id');
+      // Tabs are buttons too: retain their visible labels in the exported image.
+      copy.querySelectorAll('[data-share-ignore]').forEach(el => el.remove());
+      copy.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+      copy.querySelectorAll('[onclick],[onkeydown]').forEach(el => {el.removeAttribute('onclick');el.removeAttribute('onkeydown');});
+      // Keep the source's exact border-box width and padding. Resizing after
+      // freezing children mixes two layouts, especially on 320/390px screens.
+      Object.assign(copy.style,{position:'relative',left:'0',top:'0',width:`${bounds.width}px`,height:`${bounds.height}px`,maxHeight:'none',margin:'0',transform:'none'});
+      // Keep the footer outside the frozen module's measured height.
+      staging=document.createElement('div');
+      const background=getComputedStyle(document.documentElement).getPropertyValue('--lg-canvas').trim() || (document.documentElement.dataset.theme==='dark'?'#0b1529':'#ffffff');
+      Object.assign(staging.style,{position:'fixed',left:'-20000px',top:'0',width:`${bounds.width}px`,height:'auto',overflow:'visible',margin:'0',backgroundColor:background,color:getComputedStyle(source).color,fontFamily:getComputedStyle(source).fontFamily});
+      staging.append(copy);
       const footer = document.createElement('div');
       footer.textContent = `當沖吧！牛馬仔 · ${new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',dateStyle:'short',timeStyle:'short'}).format(new Date())} 擷取 · 僅供研究`;
-      Object.assign(footer.style,{paddingTop:'18px',fontSize:'12px',color:getComputedStyle(document.documentElement).getPropertyValue('--sub')});
+      Object.assign(footer.style,{padding:'16px 18px',fontSize:'12px',lineHeight:'20px',color:getComputedStyle(document.documentElement).getPropertyValue('--sub')});
       staging.append(footer);document.body.append(staging);
       const width=staging.scrollWidth,height=staging.scrollHeight;
       if (!width || !height || height>16000) throw new Error('模塊過長，請縮小顯示範圍後再試。');
-      const canvas=await html2canvas(staging,{backgroundColor:getComputedStyle(source).backgroundColor,useCORS:true,logging:false,width,height,scale:Math.min(2,Math.sqrt(12000000/(width*height)))});
+      const canvas=await html2canvas(staging,{backgroundColor:background,useCORS:true,logging:false,width,height,scale:Math.min(2,Math.sqrt(12000000/(width*height)))});
       const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
       if (token!==generation) return;
       if (!blob) throw new Error('圖片製作失敗，請再試一次。');
