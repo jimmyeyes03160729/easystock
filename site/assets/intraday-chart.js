@@ -40,18 +40,18 @@
   const at=Date.parse(t?.entry_quote_at),age=number(t?.entry_quote_age_seconds);
   const quoteText=Number.isFinite(at)
    ?`進場行情 ${new Date(at).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})}（台北）${age!==null&&age>=0?` · 判斷時行情年齡 ${age.toFixed(2)} 秒`:''}`
-   :'舊紀錄未保存行情時間，不推估延遲';
+   :'未提供進場行情時間，不推估延遲';
   return {label,value,signal,filled,quoteText};
  }
  window.tradeEntryPresentation=entryPresentation;
  function outcome(t){
-  if(t.lane){const action=t.direction===-1?'先賣後買':'買進做多';return `${t.lane} 模擬${action} ${price(t.entry_price)} 元${t.open?' · 持倉損益尚未實現。':` → 平倉 ${price(t.exit_price)} 元 · 扣成本報酬 ${price(t.return_pct)}% · ${t.exit_reason||'已平倉'}。`}`;}
+  if(t.lane){const action=t.direction===-1?'先賣後買':t.direction===1?'買進做多':'方向待確認';return `${t.lane} 模擬${action} ${price(t.entry_price)} 元${t.open?' · 持倉損益尚未實現。':` → 平倉 ${price(t.exit_price)} 元 · 扣成本報酬 ${price(t.return_pct)}% · ${t.exit_reason||'出場原因未提供／未公開'}。`}`;}
   const s=paperStatus(t),research=s&&!s.filled,net=number(t.research_net_pnl_pct);
   const entry=entryPresentation(t);
   const ret=net!==null?`研究訊號扣成本報酬 ${price(net)}%`:`訊號報酬（未扣成本）${price(t.pnl_pct)}%`;
   const name=research?'研究訊號進場':entry.filled?'模擬買入':'進場參考（成交待確認）';
   const head=t.open?`${name} ${price(entry.value)} 元 · 持倉損益尚未實現。`
-   :`${name} ${price(entry.value)} 元 → ${research?'研究出場':'出場紀錄'} ${price(t.exit_price)} 元 · ${ret} · ${t.exit_reason||'已平倉'}。`;
+   :`${name} ${price(entry.value)} 元 → ${research?'研究出場':'出場紀錄'} ${price(t.exit_price)} 元 · ${ret} · ${t.exit_reason||'出場原因未提供／未公開'}。`;
   const signal=entry.filled&&entry.signal!==entry.value?` 訊號參考價 ${price(entry.signal)} 元。`:'';
   return `${head}${s?` ${s.text}`:''}${signal} ${entry.quoteText}`;
  }
@@ -65,7 +65,7 @@
    if(number(f[key])!==null)lines.push(`${label}：${Number(f[key]).toFixed(2)}${suffix}`);
   }
   if(e.model_version)lines.push(`模型版本：${e.model_version}`);
-  if(!lines.length)lines.push(...(Array.isArray(t.lane?t.reasons:t.entry_reasons)?(t.lane?t.reasons:t.entry_reasons).map(String):[]));
+  if(!lines.length)lines.push(...(Array.isArray(t.lane?t.reasons:t.entry_reasons)?(t.lane?t.reasons:t.entry_reasons).map(String):[]));if(!lines.length&&t.entry_evidence_private)lines.push('進場細節保留於內部，不公開模型參數或規則。');
   const list=document.getElementById('tradeReasons');list.replaceChildren();for(const line of lines.length?lines:['尚無可用的進場依據']){const li=document.createElement('li');li.textContent=line;list.append(li);}
  }
  function draw(payload,t){
@@ -90,7 +90,7 @@
    bars.forEach((b,i)=>{if(i&&Date.parse(b.time)-Date.parse(bars[i-1].time)>gap)flush();points.push(`${x(b.time)},${y(b.close)}`);});flush();
   }
   for(const time of (W<500?['09:00','10:00','11:00','12:00','13:30']:['09:00','10:00','11:00','12:00','13:00','13:30']))add('text',{x:x(`${wanted}T${time}:00+08:00`),y:335,fill:'currentColor','font-size':11,'text-anchor':'middle'},time);
-  for(const [key,when,label,color]of [['entry_price','entry_time',t.lane?(t.direction===-1?'賣出':'買入'):'訊號進場','#fbbf24'],['exit_price','exit_time',t.lane?(t.direction===-1?'買回':'賣出'):'出場紀錄','#60a5fa']])if(number(t[key])!==null&&day(t[when])===wanted){add('line',{x1:left,x2:right,y1:y(Number(t[key])),y2:y(Number(t[key])),stroke:color,'stroke-dasharray':'4 4'});add('circle',{cx:x(t[when]),cy:y(Number(t[key])),r:5,fill:color});add('text',{x:W<500?right-3:right+5,y:y(Number(t[key]))+4,fill:color,'font-size':11,'text-anchor':W<500?'end':'start'},`${label} ${price(t[key])}`);}
+  for(const [key,when,label,color]of [['entry_price','entry_time',t.lane?(t.direction===-1?'賣出':t.direction===1?'買入':'方向待確認'):'訊號進場','#fbbf24'],['exit_price','exit_time',t.lane?(t.direction===-1?'買回':t.direction===1?'賣出':'出場紀錄'):'出場紀錄','#60a5fa']])if(number(t[key])!==null&&day(t[when])===wanted){add('line',{x1:left,x2:right,y1:y(Number(t[key])),y2:y(Number(t[key])),stroke:color,'stroke-dasharray':'4 4'});add('circle',{cx:x(t[when]),cy:y(Number(t[key])),r:5,fill:color});add('text',{x:W<500?right-3:right+5,y:y(Number(t[key]))+4,fill:color,'font-size':11,'text-anchor':W<500?'end':'start'},`${label} ${price(t[key])}`);}
   target.append(svg);
  }
  async function refresh(t){const mine=++generation;controller?.abort();controller=new AbortController();const timer=setTimeout(()=>controller.abort(),12000);try{

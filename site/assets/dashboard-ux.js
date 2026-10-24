@@ -11,13 +11,14 @@
   function emptyReason({live = {}, health = {}, filtered = false, now = Date.now()} = {}) {
     if (!health.current) return health.message || '尚無有效快照，無法確認訊號原因。';
     if (filtered) return '目前紀錄被股價 / 單張預算篩選隱藏；請清除篩選。篩選不會改變交易設定。';
-    if (live.config?.entry_mode === 'model' && live.config.model_ready === false) return MODEL_PAUSED;
+    const operation = live.public_status || (window.PUBLIC_RESULTS_V1 ? {} : live.config) || {};
+    if (operation.entry_mode === 'model' && operation.model_ready === false) return MODEL_PAUSED;
     if (live.session === 'closed') return '當沖已結束；目前為收盤 / 歷史快照，不代表今日有新訊號。';
     if (live.session === 'preopen') return '開盤前待命；尚未進入盤中訊號時段。';
     if (live.session === 'no_new_entry') return '已停止新進場；現有模擬部位仍依原規則監控。';
     if (live.session === 'force_exit') return '強制出場階段，不產生新的進場訊號。';
     if (live.session !== 'daytrade') return '盤中階段待確認；不以缺少紀錄推測市場休市。';
-    const gate = live.market_risk || {};
+    const gate = live.public_risk || (window.PUBLIC_RESULTS_V1 ? {} : live.market_risk) || {};
     const age = now - Date.parse(gate.checked_at || gate.received_at);
     const freshGate = Number.isFinite(age) && age >= -60000 && age <= 90000;
     if (freshGate && gate.gate_action === 'BLOCK') {

@@ -21,6 +21,7 @@
   #learningSection .research-card div{font-size:13px;line-height:1.9;overflow-wrap:anywhere}
   #learningSection .research-stale{margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--sub)}
   @media(max-width:900px){#learningSection .learning-columns,#learningSection .research-grid{grid-template-columns:1fr}#learningSection .learning-head{display:block}#learningSection .learning-head h2{margin-bottom:10px}#learningSection .learning-head p{max-width:none}}
+  @media(max-width:480px){#learningSection .learning-column-head{display:block}#learningSection .learning-column-head .phase-badge{display:inline-block;max-width:100%;white-space:normal;margin-top:8px}}
   `;
   document.head.append(style);
   const metric=(label,id)=>`<div><span>${label}</span><strong id="${id}">—</strong></div>`;
@@ -29,7 +30,7 @@
     <div class="learning-columns">
       <article class="learning-column"><header class="learning-column-head"><div><h3>每日研究</h3><p id="dailyLearningDate">最近交易日：待資料</p></div><span id="publicDailyState" class="phase-badge" role="status">等待狀態更新</span></header>
         <div class="learning-numbers">${metric('累積學習日','learnDays')}${metric('最近交易日推薦','learnStocks')}${metric('觀察股票','learnObserved')}${metric('完成 Label','learnLearned')}${metric('研究樣本','learnSamples')}${metric('資料收集','learnCoverage')}</div>
-        <div class="learning-bottom"><p id="learnModel">模型狀態：內部診斷請至管理後臺確認</p><p id="publicDailyTime">最後更新：未提供</p><p id="publicDailyError" role="status"></p></div>
+        <div class="learning-bottom"><p id="learnModel">模型狀態：內部診斷請至管理後臺確認</p><p id="learnTraining">累積訓練：待資料</p><p id="publicDailyTime">最後更新：未提供</p><p id="publicDailyError" role="status"></p></div>
       </article>
       <article class="learning-column"><header class="learning-column-head"><div><h3>歷史資料研究</h3><p>歷史標記樣本，不等於可直接訓練或實際成交。</p></div><span id="publicHistoryState" class="phase-badge" role="status">等待狀態更新</span></header>
         <div class="learning-numbers">${metric('處理股票日','historyProcessed')}${metric('有效標記日','historyDays')}${metric('歷史樣本','historySamples')}${metric('保留樣本','historyTestSamples')}</div>
@@ -39,8 +40,9 @@
     <section class="research-summary" aria-labelledby="researchSummaryTitle"><h3 id="researchSummaryTitle">每日盤後研究摘要</h3><p id="researchSummaryDate">最近交易日：待資料</p>
       <div id="researchStale" class="research-stale" hidden>目前顯示最後一次紀錄；更新已過期，不代表服務仍在執行。</div>
       <div class="research-grid"><article class="research-card"><h4>研究交易</h4><div id="researchTrades">研究交易：待資料</div><div id="researchClosed">研究完成：待資料</div><div id="researchWins">獲利：待資料</div><div id="researchLosses">虧損：待資料</div></article>
-      <article class="research-card"><h4>研究報酬</h4><div id="researchPnl">研究淨報酬合計：待資料</div><div id="researchReturn">研究毛報酬合計：待資料</div><div id="researchAvg">平均單筆：待資料</div><div id="researchMfe">MFE：待資料</div><div id="researchMae">MAE：待資料</div><p>各筆研究訊號的百分比加總，非帳戶報酬或實盤績效。</p></article>
+      <article class="research-card"><h4>研究報酬</h4><div id="researchPnl">研究淨報酬合計：待資料</div><div id="researchReturn">研究毛報酬合計：待資料</div><div id="researchAvg">平均單筆：待資料</div><div id="researchMfe">MFE：待資料</div><div id="researchMae">MAE：待資料</div><div id="researchPf">Profit Factor：待資料</div><div id="researchDrawdown">最大回撤：待資料</div><p>各筆研究訊號的百分比加總，非帳戶報酬或實盤績效。</p></article>
       <article class="research-card"><h4>資料收集</h4><div id="researchSamples">新增樣本：待資料</div><div id="researchLabels">完成 Label：待資料</div><div id="researchCoverage">收集完整度：待資料</div><p>缺少的數值保持待資料，不補成零。</p></article></div>
+      <article class="research-card" style="margin-top:12px"><h4>研究出場原因</h4><ul id="researchExits"><li>待資料</li></ul><p>僅顯示公開分類；模型參數與規則細節保留於內部。</p></article>
     </section>`;
   const put=(id,text)=>{document.getElementById(id).textContent=text;};
   const number=v=>typeof v==='number'&&Number.isFinite(v)?v:null;
@@ -59,9 +61,12 @@
       const session=s.session||{},totals=s.totals||{},r=s.research_summary||{},trades=r.trades||{};
       const reportDay=day(session.date||r.date);put('dailyLearningDate',`最近交易日：${reportDay}`);put('researchSummaryDate',`最近交易日：${reportDay} · 最後更新：${date(s.updated_at)}`);
       put('learnDays',count(totals.learning_days));put('learnStocks',count(session.recommended_stocks));put('learnObserved',count(session.observed_stocks));put('learnLearned',count(session.labeled_count??session.learned_stocks));put('learnSamples',count(session.sample_count));put('learnCoverage',ratio(session.downloaded,session.requested));
+      put('learnTraining',`累積訓練：${count(totals.training_days)} 日 · ${count(totals.training_samples)} 筆樣本；不代表模型已部署。`);
       for(const[id,label,value]of [['researchTrades','研究交易',trades.research_trades??trades.count],['researchClosed','研究完成',trades.research_closed??trades.count],['researchWins','獲利',trades.wins],['researchLosses','虧損',trades.losses],['researchSamples','新增樣本',r.new_samples],['researchLabels','完成 Label',r.labels]])put(id,`${label}：${count(value)}`);
       for(const[id,label,value]of [['researchPnl','研究淨報酬合計',trades.net_pnl_pct],['researchReturn','研究毛報酬合計',trades.gross_pnl_pct],['researchAvg','平均單筆',trades.avg_pnl_pct],['researchMfe','MFE',trades.avg_mfe_pct],['researchMae','MAE',trades.avg_mae_pct]])put(id,`${label}：${pct(value)}`);
       put('researchCoverage',`收集完整度：${ratio(r.downloaded,r.requested)}`);document.getElementById('researchStale').hidden=current;
+      put('researchPf',`Profit Factor：${number(trades.profit_factor)===null?'待資料':trades.profit_factor.toFixed(2)}`);put('researchDrawdown',`最大回撤：${pct(trades.max_drawdown_pct)}`);
+      const exits=document.getElementById('researchExits');exits.replaceChildren();const rows=Object.entries(trades.exit_reasons||{});for(const[label,value]of rows.length?rows:[['待資料',null]]){const li=document.createElement('li');li.textContent=value===null?label:`${label}：${count(value)}`;exits.append(li);}
     }else{
       const r=s.run||{},a=s.archive||{};put('historyProcessed',ratio(r.processed_files,r.archive_files));put('historyDays',count(r.labeled_dates));put('historySamples',count(r.labeled_samples));put('historyTestSamples',count(s.training?.test_samples));put('historyDownload',`歷史下載：${ratio(a.archived_stock_days,a.target_stock_days)}`);
     }

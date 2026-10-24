@@ -873,7 +873,7 @@
 
 
 <script>window.PUBLIC_RESULTS_V1=true;</script><script src="assets/public-data.js?v=8276b4415cb8"></script>
-<script src="assets/dashboard-ux.js?v=7d2bc8c260a1"></script>
+<script src="assets/dashboard-ux.js?v=9211c73918b8"></script>
 <script>
 
   /* ========================================================
@@ -2209,14 +2209,14 @@
 
     const modelBadge = document.getElementById("intradayModelBadge");
     const metaDaytradeModel = document.getElementById("metaDaytradeModel");
-    const config = INTRADAY_LIVE?.config || {};
+    const config = INTRADAY_LIVE?.public_status || (window.PUBLIC_RESULTS_V1 ? {} : INTRADAY_LIVE?.config) || {};
     const modeLabel = config.entry_mode === 'rules' ? '規則模式'
-      : config.entry_mode === 'model' ? (config.model_ready ? '模型模式' : 'A 暫停進場（模型改版中）')
+      : config.entry_mode === 'model' ? (config.model_ready === true ? '模型模式' : config.model_ready === false ? 'A 暫停進場（模型改版中）' : '模型狀態待確認')
       : '模式待確認';
     const modeDate = INTRADAY_LIVE?.scan_date || '日期未知';
     if (modelBadge) {
       modelBadge.textContent = `當沖：${modeLabel}`;
-      modelBadge.title = `引擎設定日期：${modeDate}；模型版本：${config.model_version || '未提供'}。設定不代表當下服務正常，請同時查看更新時間。`;
+      modelBadge.title = `引擎設定日期：${modeDate}。設定不代表當下服務正常，請同時查看更新時間。`;
     }
     if (metaDaytradeModel) {
       metaDaytradeModel.textContent = modeLabel;
@@ -2815,7 +2815,7 @@
     container.innerHTML = rows.map(x => {
       const isOpen = x._liveStatus === "OPEN";
       const entry = n(x.entry_price);
-      const current = laneFresh && !x.quote_stale ? n(x.current_price) : null;
+      const current = laneFresh && x.quote_stale === false ? n(x.current_price) : null;
       const exit = n(x.exit_price);
       const displayPrice = isOpen ? current : exit;
 
@@ -2834,7 +2834,7 @@
       if (!exitReason) exitReason = "出場原因未提供";
 
       let pnl = null;
-      if (isOpen && entry !== null && current !== null && entry > 0) {
+      if (isOpen && entry !== null && current !== null && entry > 0 && (x.direction === 1 || x.direction === -1)) {
         pnl = ((current / entry) - 1) * 100 * (x.direction === -1 ? -1 : 1);
       } else if (!isOpen) {
         pnl = n(x.return_pct);
@@ -2845,18 +2845,18 @@
       const netPnl = n(x.net_pnl);
       const netPnlText = netPnl !== null ? `${netPnl >= 0 ? "+" : ""}${Math.round(netPnl).toLocaleString()} 元` : "";
 
-      const signalTypeLabel = lane === 'B1' ? `B1 五檔${x.direction === -1 ? "反彈做空" : "拉回做多"}` :
-        `${lane} ${lane === 'B2' ? '布林轉折' : '五分K突破'}${x.direction === -1 ? '做空' : '做多'}`;
+      const signalTypeLabel = lane === 'B1' ? `B1 五檔${x.direction === -1 ? "反彈做空" : x.direction === 1 ? "拉回做多" : "方向待確認"}` :
+        `${lane} ${lane === 'B2' ? '布林轉折' : '五分K突破'}${x.direction === -1 ? '做空' : x.direction === 1 ? '做多' : '方向待確認'}`;
       
       let rawReasons = Array.isArray(x.reasons) ? x.reasons : (typeof x.reasons === "string" ? x.reasons.split(",").map(s => s.trim()) : []);
       let reasons = rawReasons.filter(r => typeof r === "string" && !r.includes("?"));
-      if (!reasons.length) reasons = ["進場理由未提供"];
+      if (!reasons.length) reasons = [x.entry_evidence_private ? "進場細節保留於內部" : "進場理由未提供／未公開"];
 
       return `
         <div class="rounded-xl border border-emerald-500/20 bg-[#0F172A]/70 p-3.5 sm:p-4 surface home-trade-card trade-detail-card transition-all hover:border-emerald-500/40 cursor-pointer" role="button" tabindex="0" data-home-price="${displayPrice !== null ? displayPrice : ''}" data-home-status="${isOpen ? 'OPEN' : 'CLOSED'}" data-trade-lane="${lane}" data-trade-symbol="${escapeHtml(x.symbol)}" data-trade-entry="${escapeHtml(x.entry_time || '')}" aria-label="${escapeHtml(stockName)} ${lane} 模擬交易紀錄">
           <div class="home-trade-main flex items-start justify-between gap-2.5">
             <div class="home-trade-identity"><strong>${escapeHtml(stockName)}</strong><span>${escapeHtml(x.symbol)}</span></div>
-            <div class="home-trade-reason">${isOpen ? (x.quote_stale || !laneFresh ? '報價延遲 · 等待新鮮五檔' : '持倉監控中') : escapeHtml(exitReason)}</div>
+            <div class="home-trade-reason">${isOpen ? (x.quote_stale !== false || !laneFresh ? '報價待確認 · 等待新鮮五檔' : '持倉監控中') : escapeHtml(exitReason)}</div>
             <div class="home-trade-signal"><span class="home-position-state ${isOpen ? 'trade-open' : 'trade-closed'}">${isOpen ? 'OPEN · 持倉中' : 'CLOSE · 已平倉'}</span><span class="home-signal-badge">${escapeHtml(signalTypeLabel)}</span></div>
 
             ${renderHomeTradeExecution(x, entry, exit, isOpen)}
@@ -4345,9 +4345,9 @@
 </dialog>
 <script src="assets/vendor/html2canvas.min.js"></script>
 <script src="assets/module-share.js?v=0d69267f1a3f"></script>
-<script src="assets/learning-status.js?v=0144b811bf46"></script>
+<script src="assets/learning-status.js?v=7e08d4b68264"></script>
 <script src="assets/dashboard-layout.js?v=488bb302a486"></script>
-<script src="assets/intraday-chart.js?v=a8d7bf6d1a35"></script>
+<script src="assets/intraday-chart.js?v=6c1f5753a246"></script>
 <script src="assets/provider-health.js?v=e8f08c578597"></script>
 <nav class="mobile-bottom-nav glass-chrome" aria-label="手機主導覽">
   <a href="#intraday-strategies" aria-label="盤中摸魚" aria-current="location"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span><span>盤中摸魚</span></a>
